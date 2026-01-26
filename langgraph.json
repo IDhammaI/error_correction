@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "network_search_agent": "./network_search_agent/agent.py:agent",
+    "error_correction_agent": "./error_correction_agent/agent.py:agent"
+  },
+  "env": ".env"
+}
