@@ -328,16 +328,33 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
     for i, q in enumerate(selected_questions, start=1):
         md_content += f"## {i}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
 
+        # 获取图片引用列表，用于填充空的 image block
+        image_refs = q.get('image_refs', [])
+        image_ref_index = 0
+
         # 添加内容块
         for block in q.get('content_blocks', []):
             if block['block_type'] == 'text':
                 md_content += f"{block['content']}\n\n"
             elif block['block_type'] == 'display_formula':
-                md_content += f"$$\n{block['content']}\n$$\n\n"
+                # 去除已存在的 $$ 标记，避免双重包裹
+                formula_content = block['content'].strip()
+                if formula_content.startswith('$$') and formula_content.endswith('$$'):
+                    formula_content = formula_content[2:-2].strip()
+                md_content += f"$$\n{formula_content}\n$$\n\n"
             elif block['block_type'] == 'inline_formula':
-                md_content += f"${block['content']}$ "
+                # 去除已存在的 $ 标记
+                formula_content = block['content'].strip()
+                if formula_content.startswith('$') and formula_content.endswith('$'):
+                    formula_content = formula_content[1:-1].strip()
+                md_content += f"${formula_content}$ "
             elif block['block_type'] == 'image':
-                md_content += f"![图片]({block.get('content', '')})\n\n"
+                # 优先使用 block 的 content，如果为空则从 image_refs 获取
+                image_path = block.get('content', '').strip()
+                if not image_path and image_ref_index < len(image_refs):
+                    image_path = image_refs[image_ref_index]
+                    image_ref_index += 1
+                md_content += f"![图片]({image_path})\n\n"
 
         # 添加选项
         if q.get('options'):
