@@ -232,12 +232,10 @@ def build_preview(questions: List[Dict[str, Any]], output_path: str = None) -> s
         <div class="question-content">
 """
 
-        # 添加内容块
+        # 添加内容块（只有 text 和 image 两种类型，公式以 LaTeX 标记嵌入 text 中）
         for block in q.get('content_blocks', []):
             if block['block_type'] == 'text':
                 html_content += f"            <p>{block['content']}</p>\n"
-            elif block['block_type'] == 'display_formula':
-                html_content += f"            <div class='formula'>{block['content']}</div>\n"
             elif block['block_type'] == 'image':
                 html_content += f"            <p class='image-ref'>📷 图片: {block.get('content', '')}</p>\n"
 
@@ -332,22 +330,10 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
         image_refs = q.get('image_refs', [])
         image_ref_index = 0
 
-        # 添加内容块
+        # 添加内容块（只有 text 和 image，公式以 LaTeX 标记嵌入 text 中）
         for block in q.get('content_blocks', []):
             if block['block_type'] == 'text':
                 md_content += f"{block['content']}\n\n"
-            elif block['block_type'] == 'display_formula':
-                # 去除已存在的 $$ 标记，避免双重包裹
-                formula_content = block['content'].strip()
-                if formula_content.startswith('$$') and formula_content.endswith('$$'):
-                    formula_content = formula_content[2:-2].strip()
-                md_content += f"$$\n{formula_content}\n$$\n\n"
-            elif block['block_type'] == 'inline_formula':
-                # 去除已存在的 $ 标记
-                formula_content = block['content'].strip()
-                if formula_content.startswith('$') and formula_content.endswith('$'):
-                    formula_content = formula_content[1:-1].strip()
-                md_content += f"${formula_content}$ "
             elif block['block_type'] == 'image':
                 # 优先使用 block 的 content
                 image_path = block.get('content', '').strip()
