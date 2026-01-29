@@ -114,8 +114,9 @@ def upload_file():
         global current_thread_id
         current_thread_id = str(uuid.uuid4())
 
-        # 保存文件
-        filename = secure_filename(file.filename)
+        # 保存文件（使用uuid生成文件名，支持中文文件名上传）
+        original_ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{original_ext}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
