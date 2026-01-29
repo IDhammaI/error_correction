@@ -5,6 +5,8 @@
 
 import os
 import json
+import logging
+import time
 from typing import List, Dict, Any, TypedDict
 from dotenv import load_dotenv
 from rich.console import Console
@@ -16,6 +18,18 @@ from .utils import prepare_input, export_wrongbook
 
 load_dotenv()
 console = Console()
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler('workflow.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 # ── 状态定义 ──────────────────────────────────────────────
@@ -37,18 +51,22 @@ class WorkflowState(TypedDict, total=False):
 def prepare_input_node(state: WorkflowState) -> dict:
     """节点: 准备输入（PDF/图片 → 标准化图片列表）"""
     console.print("[bold yellow]步骤 1: 准备输入文件[/bold yellow]")
+    step_start = time.time()
     image_paths = prepare_input(state["file_path"])
+    logger.info(f"步骤1完成: 准备输入文件，共 {len(image_paths)} 张图片，耗时 {time.time() - step_start:.2f}s")
     return {"image_paths": image_paths}
 
 
 def ocr_parse_node(state: WorkflowState) -> dict:
     """节点: PaddleOCR 解析"""
     console.print("[bold yellow]步骤 2: PaddleOCR 解析[/bold yellow]")
+    step_start = time.time()
     client = PaddleOCRClient()
     results = []
     for image_path in state["image_paths"]:
         result = client.parse_image(image_path, save_output=True)
         results.append(result)
+    logger.info(f"步骤2完成: OCR解析，共 {len(results)} 个结果，耗时 {time.time() - step_start:.2f}s")
     console.print(f"[green]✓ 成功解析 {len(results)} 张图片[/green]")
     return {"ocr_results": results}
 
@@ -56,6 +74,7 @@ def ocr_parse_node(state: WorkflowState) -> dict:
 def split_questions_node(state: WorkflowState) -> dict:
     """节点: Agent 智能分割题目"""
     console.print("[bold yellow]步骤 3: Agent 分割题目[/bold yellow]")
+    step_start = time.time()
 
     # 清除上一次的结果文件，避免 Agent 失败时读到旧数据
     results_dir = os.getenv("RESULTS_DIR", "results")
@@ -65,6 +84,7 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     from error_correction_agent.agent import create_question_split_agent
 
+    logger.info("开始调用Agent分割题目")
     agent = create_question_split_agent()
 
     # 简化 OCR 结果为 Agent 友好格式
@@ -118,8 +138,10 @@ OCR结果包含 {len(simplified_results)} 页内容。
     if os.path.exists(questions_file):
         with open(questions_file, 'r', encoding='utf-8') as f:
             questions = json.load(f)
+        logger.info(f"Agent分割完成: 共 {len(questions)} 道题目，耗时 {time.time() - step_start:.2f}s")
         console.print(f"[green]✓ 成功加载 {len(questions)} 道题目[/green]")
     else:
+        logger.warning("Agent未保存题目，请检查执行日志")
         console.print("[yellow]⚠ Agent未保存题目，请检查执行日志[/yellow]")
         console.print("[yellow]  可能原因: Agent 未调用 save_questions 工具，或工具调用失败[/yellow]")
 
@@ -129,7 +151,9 @@ OCR结果包含 {len(simplified_results)} 页内容。
 def export_node(state: WorkflowState) -> dict:
     """节点: 导出错题本"""
     console.print("[bold yellow]步骤 4: 导出错题本[/bold yellow]")
+    step_start = time.time()
     output_path = export_wrongbook(state["questions"], state["selected_ids"])
+    logger.info(f"导出完成: {output_path}，耗时 {time.time() - step_start:.2f}s")
     return {"output_path": output_path}
 
 
