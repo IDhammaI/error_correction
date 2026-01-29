@@ -57,6 +57,12 @@ def split_questions_node(state: WorkflowState) -> dict:
     """节点: Agent 智能分割题目"""
     console.print("[bold yellow]步骤 3: Agent 分割题目[/bold yellow]")
 
+    # 清除上一次的结果文件，避免 Agent 失败时读到旧数据
+    results_dir = os.getenv("RESULTS_DIR", "results")
+    questions_file = os.path.join(results_dir, "questions.json")
+    if os.path.exists(questions_file):
+        os.remove(questions_file)
+
     from error_correction_agent.agent import create_question_split_agent
 
     agent = create_question_split_agent()
@@ -86,17 +92,28 @@ OCR结果包含 {len(simplified_results)} 页内容。
 如果遇到不确定的情况，请使用 log_issue 工具记录。
 """
 
-    agent.invoke({
-        "messages": [
-            {"role": "user", "content": prompt},
-            {"role": "user", "content": f"OCR数据: {simplified_results}"}
-        ]
-    })
+    console.print(f"[cyan]Agent 输入: {len(simplified_results)} 页, 共 {sum(len(r.get('blocks', [])) for r in simplified_results)} 个 block[/cyan]")
 
-    # 从文件读取 Agent 保存的结果
-    results_dir = os.getenv("RESULTS_DIR", "results")
-    questions_file = os.path.join(results_dir, "questions.json")
+    response = agent.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": prompt},
+                {"role": "user", "content": f"OCR数据: {simplified_results}"}
+            ]
+        },
+        config={"recursion_limit": 50},
+    )
 
+    # 打印 Agent 响应摘要，便于排查
+    if response and "messages" in response:
+        for msg in response["messages"]:
+            role = getattr(msg, "type", "unknown")
+            content = getattr(msg, "content", "")
+            if role != "human":
+                preview = str(content)[:200] if content else "(empty)"
+                console.print(f"[dim]  [{role}] {preview}[/dim]")
+
+    # 从文件读取 Agent 保存的结果（路径已在函数开头定义）
     questions = []
     if os.path.exists(questions_file):
         with open(questions_file, 'r', encoding='utf-8') as f:
@@ -104,6 +121,7 @@ OCR结果包含 {len(simplified_results)} 页内容。
         console.print(f"[green]✓ 成功加载 {len(questions)} 道题目[/green]")
     else:
         console.print("[yellow]⚠ Agent未保存题目，请检查执行日志[/yellow]")
+        console.print("[yellow]  可能原因: Agent 未调用 save_questions 工具，或工具调用失败[/yellow]")
 
     return {"questions": questions}
 
