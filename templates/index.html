@@ -365,45 +365,15 @@
         }
 
         // 格式化题目内容
+        // 只处理 text 和 image 两种 block 类型，公式以 LaTeX 标记嵌入 text 中由 MathJax 渲染
         function formatQuestionContent(question) {
             let html = '';
 
-            // 显示内容块
-            // 将连续的 text 和 inline_formula 合并为一个段落，避免莫名换行
             if (question.content_blocks && question.content_blocks.length > 0) {
-                let inlineParts = []; // 收集连续的行内内容
-
-                function flushInlineParts() {
-                    if (inlineParts.length > 0) {
-                        html += `<p>${inlineParts.join('')}</p>`;
-                        inlineParts = [];
-                    }
-                }
-
                 question.content_blocks.forEach(block => {
                     if (block.block_type === 'text') {
-                        // text 块作为行内内容累积
-                        inlineParts.push(block.content);
-                    } else if (block.block_type === 'inline_formula') {
-                        // 行内公式也作为行内内容累积
-                        let formula = block.content.trim();
-                        if (!formula.startsWith('$')) {
-                            formula = '$' + formula + '$';
-                        }
-                        inlineParts.push(formula);
-                    } else if (block.block_type === 'display_formula') {
-                        // 遇到块级公式，先输出累积的行内内容
-                        flushInlineParts();
-                        // 确保公式被正确包裹用于 MathJax 渲染
-                        let formula = block.content.trim();
-                        if (!formula.startsWith('$$')) {
-                            formula = '$$' + formula + '$$';
-                        }
-                        html += `<div class="formula-block">${formula}</div>`;
+                        html += `<p>${block.content}</p>`;
                     } else if (block.block_type === 'image') {
-                        // 遇到图片，先输出累积的行内内容
-                        flushInlineParts();
-                        // 显示图片
                         const imgPath = block.content || '';
                         if (imgPath) {
                             html += `<img src="${imgPath}" style="max-width: 100%; margin: 10px 0;">`;
@@ -412,9 +382,6 @@
                         }
                     }
                 });
-
-                // 输出剩余的行内内容
-                flushInlineParts();
             }
 
             // 显示选项（选项中可能包含公式）
