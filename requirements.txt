@@ -1,0 +1,42 @@
+# --- Core agent stack ---
+deepagents==0.3.5
+langchain==1.2.3
+langchain-core==1.2.7
+langgraph==1.0.5
+
+# --- Model providers / adapters ---
+langchain-deepseek==1.0.1
+langchain-openai==1.1.7
+openai==2.15.0
+
+# --- Tools ---
+tavily==1.1.0
+langchain-tavily==0.2.16
+
+# --- Utils ---
+python-dotenv==1.2.1
+
+# --- Optional: pretty CLI output ---
+rich==14.2.0
+
+# --- 图像处理 ---
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pdf2image>=1.16.3
+numpy>=1.24.0
+
+# --- HTTP 请求 ---
+requests>=2.31.0
+
+
+
+# --- 进度条 ---
+tqdm>=4.65.0
+
+# --- 数据验证 ---
+pydantic>=2.0.0
+
+flask==3.1.2
+werkzeug==3.1.5
+aiohttp>=3.9.0
+

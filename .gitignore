@@ -1,9 +1,12 @@
 .env
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 output/pages/
 results/
 dataset/
 output/
 uploads/
 printed-vs-handwritten/
+workflow.log
