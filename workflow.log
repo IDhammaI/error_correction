@@ -1,0 +1,53 @@
+2026-01-30 17:22:44 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://172.18.0.1:5001
+2026-01-30 17:22:44 [INFO] [33mPress CTRL+C to quit[0m
+2026-01-30 17:22:44 [INFO]  * Restarting with stat
+2026-01-30 17:22:46 [WARNING]  * Debugger is active!
+2026-01-30 17:22:46 [INFO]  * Debugger PIN: 773-777-513
+2026-01-30 17:25:44 [INFO] 127.0.0.1 - - [30/Jan/2026 17:25:44] "GET / HTTP/1.1" 200 -
+2026-01-30 17:25:44 [INFO] 127.0.0.1 - - [30/Jan/2026 17:25:44] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-30 17:25:44 [INFO] 127.0.0.1 - - [30/Jan/2026 17:25:44] "GET /api/status HTTP/1.1" 200 -
+2026-01-30 17:25:50 [INFO] 步骤1完成: 准备输入文件，共 1 张图片，耗时 0.06s
+2026-01-30 17:25:59 [INFO] 步骤2完成: OCR解析，共 1 个结果，耗时 8.48s
+2026-01-30 17:25:59 [INFO] 127.0.0.1 - - [30/Jan/2026 17:25:59] "POST /api/upload HTTP/1.1" 200 -
+2026-01-30 17:26:04 [INFO] 开始调用Agent分割题目
+2026-01-30 17:26:06 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:26:12 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:26:18 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:26:35 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:26:50 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:27:02 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:27:07 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:27:20 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:27:25 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 17:27:38 [INFO] Agent分割完成: 共 2 道题目，耗时 96.16s
+2026-01-30 17:27:38 [INFO] 127.0.0.1 - - [30/Jan/2026 17:27:38] "POST /api/split HTTP/1.1" 200 -
+2026-01-30 19:59:50 [INFO] 导出完成: results\wrongbook.md，耗时 0.00s
+2026-01-30 19:59:50 [INFO] 127.0.0.1 - - [30/Jan/2026 19:59:50] "POST /api/export HTTP/1.1" 200 -
+2026-01-30 20:28:53 [INFO] 步骤1完成: 准备输入文件，共 5 张图片，耗时 3.03s
+2026-01-30 20:30:07 [INFO] 步骤2完成: OCR解析，共 5 个结果，耗时 74.58s
+2026-01-30 20:30:07 [INFO] 127.0.0.1 - - [30/Jan/2026 20:30:07] "POST /api/upload HTTP/1.1" 200 -
+2026-01-30 20:31:49 [INFO] 开始调用Agent分割题目
+2026-01-30 20:31:50 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:31:58 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:32:06 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:32:18 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:32:33 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:32:42 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:32:54 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:33:09 [INFO] HTTP Request: POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-30 20:35:11 [WARNING] Agent未保存题目，请检查执行日志
+2026-01-30 20:35:11 [INFO] 127.0.0.1 - - [30/Jan/2026 20:35:11] "POST /api/split HTTP/1.1" 200 -
+2026-01-30 20:35:22 [INFO] 127.0.0.1 - - [30/Jan/2026 20:35:22] "[35m[1mPOST /api/split HTTP/1.1[0m" 500 -
+2026-01-30 20:35:28 [INFO] 127.0.0.1 - - [30/Jan/2026 20:35:28] "[35m[1mPOST /api/split HTTP/1.1[0m" 500 -
+2026-01-30 20:35:29 [INFO] 127.0.0.1 - - [30/Jan/2026 20:35:29] "[35m[1mPOST /api/split HTTP/1.1[0m" 500 -
+2026-01-30 20:40:41 [INFO]  * Detected change in 'e:\\code\\python\\error_correction\\src\\paddleocr_client.py', reloading
+2026-01-30 20:40:41 [INFO]  * Restarting with stat
+2026-01-30 20:40:43 [WARNING]  * Debugger is active!
+2026-01-30 20:40:43 [INFO]  * Debugger PIN: 773-777-513
+2026-01-30 20:50:05 [INFO]  * Detected change in 'e:\\code\\python\\error_correction\\src\\paddleocr_client.py', reloading
+2026-01-30 20:50:05 [INFO]  * Restarting with stat
+2026-01-30 20:50:06 [WARNING]  * Debugger is active!
+2026-01-30 20:50:06 [INFO]  * Debugger PIN: 773-777-513
