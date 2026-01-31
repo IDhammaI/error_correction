@@ -32,11 +32,20 @@ def save_questions(questions: List[Dict[str, Any]], output_path: str = None) -> 
             os.makedirs(results_dir, exist_ok=True)
             output_path = os.path.join(results_dir, "questions.json")
 
+        # 读取已有数据（支持多次调用追加）
+        existing = []
+        if os.path.exists(output_path):
+            with open(output_path, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+
+        # 合并已有数据和新数据
+        all_questions = existing + questions
+
         # 保存JSON
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(questions, f, ensure_ascii=False, indent=2)
+            json.dump(all_questions, f, ensure_ascii=False, indent=2)
 
-        return f"成功保存 {len(questions)} 道题目到: {output_path}"
+        return f"成功保存 {len(questions)} 道题目（总计 {len(all_questions)} 道）到: {output_path}"
 
     except Exception as e:
         return f"保存失败: {str(e)}"
