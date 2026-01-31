@@ -31,7 +31,6 @@ class PaddleOCRClient:
         self.use_doc_orientation = os.getenv("PADDLEOCR_USE_DOC_ORIENTATION", "false").lower() == "true"
         self.use_doc_unwarping = os.getenv("PADDLEOCR_USE_DOC_UNWARPING", "false").lower() == "true"
         self.use_chart_recognition = os.getenv("PADDLEOCR_USE_CHART_RECOGNITION", "false").lower() == "true"
-
         # 验证必需的配置
         if not self.api_url or not self.token:
             raise ValueError(
@@ -287,15 +286,23 @@ class PaddleOCRClient:
             "useChartRecognition": self.use_chart_recognition,
         }
 
-        async with session.post(self.api_url, json=payload, headers=headers) as response:
-            if response.status != 200:
-                text = await response.text()
-                console.print(f"[red]API 调用失败: HTTP {response.status}[/red]")
-                console.print(f"[red]响应内容: {text}[/red]")
-                raise Exception(f"PaddleOCR API 调用失败: {response.status}")
-
-            data = await response.json()
-            result = data["result"]
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            async with session.post(self.api_url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    result = data["result"]
+                    break
+                else:
+                    text = await response.text()
+                    if attempt < max_retries:
+                        wait = attempt * 5
+                        console.print(f"[yellow]API 调用失败 (HTTP {response.status})，{wait}s 后重试 ({attempt}/{max_retries})...[/yellow]")
+                        await asyncio.sleep(wait)
+                    else:
+                        console.print(f"[red]API 调用失败: HTTP {response.status}，已重试 {max_retries} 次[/red]")
+                        console.print(f"[red]响应内容: {text}[/red]")
+                        raise Exception(f"PaddleOCR API 调用失败: {response.status}")
 
         console.print(f"[green]✓ 解析成功: {image_path}[/green]")
 
