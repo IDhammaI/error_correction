@@ -933,7 +933,7 @@
                         if (last) filename = last;
                     }
 
-                    const downloadUrl = `/download/${encodeURIComponent(filename)}`;
+                    const downloadUrl = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`;
 
                     const auto = document.createElement('a');
                     auto.href = downloadUrl;

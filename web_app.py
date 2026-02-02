@@ -9,11 +9,12 @@ import uuid
 import shutil
 import threading
 import asyncio
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_file
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
 from src.workflow import build_workflow
+from src.utils import export_wrongbook as export_wrongbook_md
 
 # 加载环境变量
 load_dotenv()
@@ -310,16 +311,29 @@ def export_wrongbook():
 
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        # 将用户选中的题目 ID 注入图状态
+        # 将用户选中的题目 ID 注入图状态（便于调试/对齐会话状态）
         workflow_graph.update_state(config, {"selected_ids": selected_ids})
 
-        # 恢复图：执行 export → END
-        state = workflow_graph.invoke(None, config=config)
+        # 注意：首次导出后图已到 END，后续再次 invoke 不会重复执行 export 节点。
+        # 因此这里每次都根据最新的 selected_ids 重新生成 wrongbook.md。
+        results_dir = os.getenv("RESULTS_DIR", "results")
+        questions_file = os.path.join(results_dir, "questions.json")
+        if not os.path.exists(questions_file):
+            return jsonify({
+                'success': False,
+                'error': '请先分割题目'
+            }), 400
+
+        with open(questions_file, 'r', encoding='utf-8') as f:
+            questions = json.load(f)
+
+        output_path = export_wrongbook_md(questions, selected_ids)
+        workflow_graph.update_state(config, {"output_path": output_path})
 
         return jsonify({
             'success': True,
             'message': '错题本导出成功',
-            'output_path': state.get('output_path', '')
+            'output_path': output_path
         })
 
     except Exception as e:
@@ -386,7 +400,20 @@ def preview():
 def download_file(filename):
     """下载结果文件"""
     results_dir = os.getenv("RESULTS_DIR", "results")
-    return send_from_directory(results_dir, filename, as_attachment=True)
+    file_path = os.path.join(results_dir, filename)
+
+    resp = send_file(
+        file_path,
+        as_attachment=True,
+        download_name=os.path.basename(filename),
+        conditional=False,
+        etag=False,
+        max_age=0,
+    )
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 
 @app.route('/api/status', methods=['GET'])
