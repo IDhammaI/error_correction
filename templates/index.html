@@ -368,6 +368,7 @@
         let uploadQueue = [];
         let waitingFileKeys = new Set();
         let splittingInProgress = false;
+        let splitCompleted = false;
 
         const removeHoverClasses = ['hover:bg-slate-100', 'hover:text-slate-700', 'dark:hover:bg-slate-800', 'dark:hover:text-slate-100'];
         function setRemoveButtonsDisabled(disabled) {
@@ -527,7 +528,7 @@
                 remove.classList.add(...removeHoverClasses);
                 remove.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    if (splittingInProgress) return;
+                    if (splittingInProgress || splitCompleted) return;
 
                     const locked = isUploadBusy() || uploadArea.dataset.ready === '1';
                     if (locked) {
@@ -557,12 +558,13 @@
                 applyProgressToFileEl(item, p);
             }
 
-            setRemoveButtonsDisabled(splittingInProgress);
+            setRemoveButtonsDisabled(splittingInProgress || splitCompleted);
             updateSplitAvailability();
         }
 
         function resetForNewUpload() {
             uploadArea.dataset.ready = '0';
+            splitCompleted = false;
 
             const splitBtn = document.getElementById('splitBtn');
             const exportBtn = document.getElementById('exportBtn');
@@ -879,6 +881,8 @@
                     displayQuestions(data.questions);
 
                     document.getElementById('exportBtn').disabled = false;
+                    splitCompleted = true;
+                    setRemoveButtonsDisabled(true);
                     splitBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> 已完成分割';
                     setStep(4);
                 } else {
@@ -898,7 +902,7 @@
                 showError('分割失败: ' + error.message);
             } finally {
                 splittingInProgress = false;
-                setRemoveButtonsDisabled(false);
+                setRemoveButtonsDisabled(splittingInProgress || splitCompleted);
             }
         });
 
