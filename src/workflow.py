@@ -103,10 +103,10 @@ def split_questions_node(state: WorkflowState) -> dict:
     results_dir = os.getenv("RESULTS_DIR", "results")
     os.makedirs(results_dir, exist_ok=True)
 
-    from error_correction_agent.agent import create_question_split_agent
+    from error_correction_agent.agent import create_split_agent
 
     logger.info("开始调用Agent分割题目")
-    agent = create_question_split_agent()
+    agent = create_split_agent()
 
     # 简化 OCR 结果：只保留 Agent 分割题目所需的字段
     simplified_results = []
@@ -164,7 +164,7 @@ OCR结果包含 {len(simplified_results)} 页内容，请严格按照 page_index
                 {"role": "user", "content": f"OCR数据: {simplified_results}"}
             ]
         },
-        config={"recursion_limit": 50},
+        config={"recursion_limit": 300},
     )
 
     # 从 structured_response 获取结构化结果
