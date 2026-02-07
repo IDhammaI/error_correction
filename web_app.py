@@ -92,7 +92,55 @@ def _run_async(coro):
 @app.route('/')
 def index():
     """主页"""
-    return render_template('index.html')
+    return vue_index()
+
+
+def _vite_manifest():
+    manifest_path = os.path.join(app.root_path, 'frontend', 'dist', '.vite', 'manifest.json')
+    if not os.path.exists(manifest_path):
+        return None
+    with open(manifest_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+@app.route('/static/vue/<path:filename>')
+def serve_vue_dist(filename):
+    dist_dir = os.path.join(app.root_path, 'frontend', 'dist')
+    return send_from_directory(dist_dir, filename)
+
+
+def _vite_collect_imports(manifest: dict, entry_key: str):
+    seen = set()
+    stack = list((manifest.get(entry_key) or {}).get('imports', []))
+    out = []
+    while stack:
+        k = stack.pop()
+        if k in seen:
+            continue
+        seen.add(k)
+        item = manifest.get(k)
+        if not item:
+            continue
+        out.append(item['file'])
+        stack.extend(item.get('imports', []))
+    return out
+
+
+@app.route('/vue')
+def vue_index():
+    manifest = _vite_manifest()
+    entry_key = 'index.html'
+    if not manifest or entry_key not in manifest:
+        return render_template('vue.html', vite=None)
+
+    entry = manifest[entry_key]
+    base = '/static/vue/'
+    vite = {
+        'js': f"{base}{entry['file']}",
+        'css': [f"{base}{p}" for p in entry.get('css', [])],
+        'preload': [f"{base}{p}" for p in _vite_collect_imports(manifest, entry_key)],
+    }
+    return render_template('vue.html', vite=vite)
 
 
 @app.route('/api/upload', methods=['POST'])

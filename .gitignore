@@ -14,3 +14,7 @@ workflow.log
 .idea/
 __pycache__/
 .langgraph_api/
+
+# 前端构建产物
+frontend/dist/
+static/vue/
