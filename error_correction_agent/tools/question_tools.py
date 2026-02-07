@@ -95,3 +95,52 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
     except Exception as e:
         return f"记录失败: {str(e)}"
+
+
+@tool(parse_docstring=True)
+def split_batch(ocr_data: str) -> str:
+    """对一批OCR数据进行题目分割，返回结构化题目列表JSON
+
+    将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
+    返回经过Pydantic校验的结构化题目列表。
+
+    Args:
+        ocr_data: 一批OCR数据的JSON字符串，包含1-2页的blocks数据
+
+    Returns:
+        题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
+    """
+    logger.info("split_batch called")
+    try:
+        from ..agent import create_inner_split_agent
+
+        inner_agent = create_inner_split_agent()
+
+        prompt = f"""请分析以下OCR识别结果，将其分割为独立的题目。
+
+每页的数据结构：
+- page_index: 页码索引
+- blocks: 内容块列表，每个 block 有 block_label、block_content、block_order 三个字段
+
+请按 page_index 和 block_order 顺序处理，返回结构化的题目列表。
+
+OCR数据：
+{ocr_data}"""
+
+        response = inner_agent.invoke(
+            {"messages": [{"role": "user", "content": prompt}]},
+            config={"recursion_limit": 100},
+        )
+
+        structured = response.get("structured_response")
+        if structured:
+            questions = [q.model_dump() for q in structured.questions]
+            logger.info(f"split_batch done: {len(questions)} questions")
+            return json.dumps(questions, ensure_ascii=False)
+
+        logger.warning("split_batch: no structured_response")
+        return "[]"
+
+    except Exception as e:
+        logger.error(f"split_batch error: {str(e)}")
+        return f"分割失败: {str(e)}"
