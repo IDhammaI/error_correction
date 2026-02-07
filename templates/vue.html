@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>错题本生成系统（Vue）</title>
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$']],
+          displayMath: [['$$', '$$']],
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+    <link rel="stylesheet" href="/static/style.css">
+    {% if vite %}
+      {% for href in vite.css %}
+        <link rel="stylesheet" href="{{ href }}" />
+      {% endfor %}
+      {% for href in vite.preload %}
+        <link rel="modulepreload" href="{{ href }}" />
+      {% endfor %}
+      <script type="module" src="{{ vite.js }}"></script>
+    {% endif %}
+  </head>
+  <body>
+    <div id="app"></div>
+    {% if not vite %}
+      <div style="padding: 16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;">
+        <div style="font-weight: 700;">Vue 前端资源未构建</div>
+        <div style="margin-top: 8px; color: #334155;">
+          请先在 frontend 目录运行 npm run build（或使用 npm run dev 通过 Vite 开发服务器访问）。
+        </div>
+      </div>
+    {% endif %}
+  </body>
+</html>
