@@ -1,0 +1,62 @@
+:root {
+    view-transition-name: root;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+}
+
+::view-transition-old(root) {
+    z-index: 1;
+}
+
+::view-transition-new(root) {
+    z-index: 2;
+}
+
+@property --p {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+}
+
+.file-chip {
+    position: relative;
+    border-radius: 0.75rem;
+    --p: 0;
+    --ring: rgb(37 99 235);
+    transition: --p 240ms linear;
+}
+
+.file-chip::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(from -90deg, var(--ring) calc(var(--p) * 1%), rgba(148, 163, 184, 0) 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+}
+
+.file-chip.file-chip--progress::before {
+    opacity: 1;
+}
+
+mjx-container[jax="SVG"] {
+    display: inline-block;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+    display: block;
+    margin: 0.75rem 0;
+}
+
+mjx-container[jax="SVG"] > svg {
+    display: inline;
+}
