@@ -17,4 +17,5 @@ __pycache__/
 
 # 前端构建产物
 frontend/dist/
+frontend/package-lock.json
 static/vue/

@@ -9,6 +9,10 @@ import uuid
 import shutil
 import threading
 import asyncio
+import mimetypes
+
+# Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
+mimetypes.add_type('application/javascript', '.js')
 from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
