@@ -343,6 +343,9 @@ const deselectAll = () => {
 
 const formatOption = (s) => String(s || '')
 
+/** 判断内容是否包含 HTML 标签（OCR 表格等） */
+const isHtml = (s) => /<\/?(?:table|tr|td|th|thead|tbody)\b/i.test(s || '')
+
 const typesetMath = async () => {
   await nextTick()
   const mj = window.MathJax
@@ -720,7 +723,8 @@ onBeforeUnmount(() => {
                 <div class="question-content">
                   <template v-if="q.content_blocks && q.content_blocks.length">
                     <template v-for="(b, i) in q.content_blocks" :key="`${q.question_id}-${i}`">
-                      <p v-if="b.block_type === 'text'" class="my-2 leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
+                      <div v-if="b.block_type === 'text' && isHtml(b.content)" v-html="b.content" class="question-text my-2 leading-7 text-slate-800 dark:text-slate-100"></div>
+                      <p v-else-if="b.block_type === 'text'" class="my-2 whitespace-pre-line leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
                       <img
                         v-else-if="b.block_type === 'image' && b.content"
                         :src="b.content"
@@ -731,7 +735,7 @@ onBeforeUnmount(() => {
                       <p v-else-if="b.block_type === 'image'" class="my-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
                         <i class="fa-regular fa-image mr-2"></i>图片资源
                       </p>
-                      <p v-else class="my-2 leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
+                      <p v-else class="my-2 whitespace-pre-line leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
                     </template>
                   </template>
                   <p v-else class="text-sm text-slate-500 dark:text-slate-300">（内容为空）</p>

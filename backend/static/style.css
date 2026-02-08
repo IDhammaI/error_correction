@@ -60,3 +60,26 @@ mjx-container[jax="SVG"][display="true"] {
 mjx-container[jax="SVG"] > svg {
     display: inline;
 }
+
+/* OCR 表格样式 */
+.question-text table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.question-text table td,
+.question-text table th {
+    border: 1px solid #cbd5e1;
+    padding: 0.375rem 0.625rem;
+    text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+    .question-text table td,
+    .question-text table th {
+        border-color: #334155;
+    }
+}
