@@ -56,7 +56,8 @@ class PaddleOCRClient:
             Dict: PaddleOCR API 返回的结构化结果
         """
         if output_dir is None:
-            output_dir = os.getenv("STRUCT_DIR", "output/struct")
+            from .utils import RUNTIME_ROOT
+            output_dir = os.getenv("STRUCT_DIR", os.path.join(RUNTIME_ROOT, "struct"))
 
         console.print(f"[cyan]正在解析图片: {image_path}[/cyan]")
 
@@ -182,7 +183,8 @@ class PaddleOCRClient:
             Dict: PaddleOCR API 返回的结构化结果
         """
         if output_dir is None:
-            output_dir = os.getenv("STRUCT_DIR", "output/struct")
+            from .utils import RUNTIME_ROOT
+            output_dir = os.getenv("STRUCT_DIR", os.path.join(RUNTIME_ROOT, "struct"))
 
         console.print(f"[cyan]正在解析 PDF: {pdf_path}[/cyan]")
 
@@ -264,7 +266,8 @@ class PaddleOCRClient:
             Dict: PaddleOCR API 返回的结构化结果
         """
         if output_dir is None:
-            output_dir = os.getenv("STRUCT_DIR", "output/struct")
+            from .utils import RUNTIME_ROOT
+            output_dir = os.getenv("STRUCT_DIR", os.path.join(RUNTIME_ROOT, "struct"))
 
         console.print(f"[cyan]正在解析图片: {image_path}[/cyan]")
 

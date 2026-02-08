@@ -17,6 +17,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from .paddleocr_client import PaddleOCRClient
 from .utils import prepare_input, export_wrongbook
 
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+RUNTIME_ROOT = os.path.join(BACKEND_ROOT, "runtime_data")
+
 load_dotenv()
 console = Console()
 
@@ -100,7 +103,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     console.print("[bold yellow]步骤 3: Agent 分割题目[/bold yellow]")
     step_start = time.time()
 
-    results_dir = os.getenv("RESULTS_DIR", "results")
+    results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
     os.makedirs(results_dir, exist_ok=True)
 
     from error_correction_agent.agent import create_orchestrator_agent

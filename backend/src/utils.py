@@ -14,6 +14,9 @@ from PIL import Image
 load_dotenv()
 console = Console()
 
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+RUNTIME_ROOT = os.path.join(BACKEND_ROOT, "runtime_data")
+
 
 def prepare_input(file_path: str) -> List[str]:
     """
@@ -35,8 +38,8 @@ def prepare_input(file_path: str) -> List[str]:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 
-    # 获取输出目录
-    pages_dir = os.getenv("PAGES_DIR", "output/pages")
+    # 获取输出目录（统一到 backend/runtime_data/pages 下）
+    pages_dir = os.getenv("PAGES_DIR", os.path.join(RUNTIME_ROOT, "pages"))
     os.makedirs(pages_dir, exist_ok=True)
 
     # 获取文件扩展名
@@ -113,7 +116,7 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
         str: 导出的Markdown文件路径
     """
     if output_path is None:
-        results_dir = os.getenv("RESULTS_DIR", "results")
+        results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
         os.makedirs(results_dir, exist_ok=True)
         output_path = os.path.join(results_dir, "wrongbook.md")
 
@@ -147,8 +150,10 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
 
                 # 将 Flask 路由路径转为 Markdown 相对路径
                 if image_path.startswith("/images/"):
-                    struct_dir = os.getenv("STRUCT_DIR", "output/struct")
-                    image_path = f"../{struct_dir}/imgs/{image_path[len('/images/'):]}"
+                    struct_dir = os.getenv("STRUCT_DIR", os.path.join(RUNTIME_ROOT, "struct"))
+                    results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
+                    rel_struct_dir = os.path.relpath(struct_dir, results_dir)
+                    image_path = f"{rel_struct_dir}/imgs/{image_path[len('/images/') :]}"
 
                 md_content += f"![图片]({image_path})\n\n"
 
