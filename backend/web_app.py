@@ -25,6 +25,8 @@ load_dotenv()
 
 app = Flask(__name__)
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 # 配置
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
@@ -100,7 +102,7 @@ def index():
 
 
 def _vite_manifest():
-    manifest_path = os.path.join(app.root_path, 'frontend', 'dist', '.vite', 'manifest.json')
+    manifest_path = os.path.join(PROJECT_ROOT, 'frontend', 'dist', '.vite', 'manifest.json')
     if not os.path.exists(manifest_path):
         return None
     with open(manifest_path, 'r', encoding='utf-8') as f:
@@ -109,7 +111,7 @@ def _vite_manifest():
 
 @app.route('/static/vue/<path:filename>')
 def serve_vue_dist(filename):
-    dist_dir = os.path.join(app.root_path, 'frontend', 'dist')
+    dist_dir = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
     return send_from_directory(dist_dir, filename)
 
 
