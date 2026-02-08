@@ -19,25 +19,23 @@ from dotenv import load_dotenv
 
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
+from config import (
+    PROJECT_ROOT,
+    UPLOAD_DIR,
+    PAGES_DIR,
+    STRUCT_DIR,
+    RESULTS_DIR,
+    MAX_FILE_SIZE_MB,
+    ALLOWED_EXTENSIONS,
+)
 
 # 加载环境变量
 load_dotenv()
 
 app = Flask(__name__)
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# 配置
-BACKEND_ROOT = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = os.path.join(BACKEND_ROOT, 'uploads')
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-MAX_FILE_SIZE_MB = 50
+app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
-
-# 确保上传目录存在
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -371,7 +369,7 @@ def export_wrongbook():
 
         # 注意：首次导出后图已到 END，后续再次 invoke 不会重复执行 export 节点。
         # 因此这里每次都根据最新的 selected_ids 重新生成 wrongbook.md。
-        results_dir = os.getenv("RESULTS_DIR", "results")
+        results_dir = RESULTS_DIR
         questions_file = os.path.join(results_dir, "questions.json")
         if not os.path.exists(questions_file):
             return jsonify({
@@ -407,7 +405,7 @@ def get_questions():
         JSON响应，包含题目列表
     """
     try:
-        results_dir = os.getenv("RESULTS_DIR", "results")
+        results_dir = RESULTS_DIR
         questions_file = os.path.join(results_dir, "questions.json")
 
         if not os.path.exists(questions_file):
@@ -440,7 +438,7 @@ def get_questions():
 @app.route('/preview')
 def preview():
     """显示预览页面"""
-    results_dir = os.getenv("RESULTS_DIR", "results")
+    results_dir = RESULTS_DIR
     preview_file = os.path.join(results_dir, "preview.html")
 
     if os.path.exists(preview_file):
@@ -454,7 +452,7 @@ def preview():
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件"""
-    results_dir = os.getenv("RESULTS_DIR", "results")
+    results_dir = RESULTS_DIR
     file_path = os.path.join(results_dir, filename)
 
     resp = send_file(
@@ -474,7 +472,7 @@ def download_file(filename):
 @app.route('/images/<path:filename>')
 def serve_image(filename):
     """提供 OCR 解析出的图片资源"""
-    struct_dir = os.getenv("STRUCT_DIR", "output/struct")
+    struct_dir = STRUCT_DIR
     return send_from_directory(os.path.join(struct_dir, "imgs"), filename)
 
 
@@ -493,9 +491,9 @@ def get_status():
             'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
-                'pages': os.getenv('PAGES_DIR', 'output/pages'),
-                'struct': os.getenv('STRUCT_DIR', 'output/struct'),
-                'results': os.getenv('RESULTS_DIR', 'results'),
+                'pages': PAGES_DIR,
+                'struct': STRUCT_DIR,
+                'results': RESULTS_DIR,
             }
         }
 
@@ -589,9 +587,9 @@ def reset_session():
             inflight_file_keys.clear()
 
         _clear_directory_contents(app.config['UPLOAD_FOLDER'])
-        _clear_directory_contents(os.getenv('PAGES_DIR', 'output/pages'))
-        _clear_directory_contents(os.getenv('STRUCT_DIR', 'output/struct'))
-        _clear_directory_contents(os.getenv('RESULTS_DIR', 'results'))
+        _clear_directory_contents(PAGES_DIR)
+        _clear_directory_contents(STRUCT_DIR)
+        _clear_directory_contents(RESULTS_DIR)
 
         workflow_graph = build_workflow()
 

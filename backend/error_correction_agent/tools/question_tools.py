@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.tools import tool
+from config import RESULTS_DIR
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def save_questions(questions: List[Dict[str, Any]], output_path: str = None) -> 
     try:
         # 使用默认路径
         if output_path is None:
-            results_dir = os.getenv("RESULTS_DIR", "results")
+            results_dir = RESULTS_DIR
             os.makedirs(results_dir, exist_ok=True)
             output_path = os.path.join(results_dir, "questions.json")
 
@@ -75,7 +76,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
         记录结果消息
     """
     try:
-        results_dir = os.getenv("RESULTS_DIR", "results")
+        results_dir = RESULTS_DIR
         os.makedirs(results_dir, exist_ok=True)
         log_path = os.path.join(results_dir, "split_issues.jsonl")
 
