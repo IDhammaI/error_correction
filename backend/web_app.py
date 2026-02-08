@@ -28,7 +28,8 @@ app = Flask(__name__)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # 配置
-UPLOAD_FOLDER = 'uploads'
+BACKEND_ROOT = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(BACKEND_ROOT, 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

@@ -7,7 +7,7 @@ output/pages/
 results/
 dataset/
 output/
-uploads/
+backend/uploads/
 printed-vs-handwritten/
 workflow.log
 .venv/
