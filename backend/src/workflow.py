@@ -7,7 +7,6 @@ import os
 import json
 import logging
 import time
-import asyncio
 from typing import List, Dict, Any, TypedDict
 from dotenv import load_dotenv
 from rich.console import Console
@@ -15,7 +14,6 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from config import RESULTS_DIR
-from .paddleocr_client import PaddleOCRClient
 from .utils import prepare_input, export_wrongbook
 
 BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -44,7 +42,6 @@ class WorkflowState(TypedDict, total=False):
     """工作流全局状态"""
     file_paths: List[str]                # 输入文件路径列表（支持多文件）
     image_paths: List[str]               # 标准化后的图片路径列表
-    ocr_results: List[Dict[str, Any]]    # OCR 解析结果
     questions: List[Dict[str, Any]]      # 分割后的题目列表
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
@@ -67,110 +64,41 @@ def prepare_input_node(state: WorkflowState) -> dict:
     return {"image_paths": all_image_paths}
 
 
-def _run_async(coro):
-    """安全地运行异步协程，兼容已有事件循环的场景（如 LangGraph 内部）"""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        # 已有事件循环在运行，无法直接 asyncio.run()
-        # 在新线程中创建独立事件循环来执行
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(asyncio.run, coro).result()
-    else:
-        return asyncio.run(coro)
-
-
-def ocr_parse_node(state: WorkflowState) -> dict:
-    """节点: PaddleOCR 解析（异步并发）"""
-    console.print("[bold yellow]步骤 2: PaddleOCR 解析[/bold yellow]")
-    step_start = time.time()
-    client = PaddleOCRClient()
-    image_paths = state["image_paths"]
-
-    # 使用异步并发解析所有图片（兼容已有事件循环）
-    results = _run_async(client.parse_images_async(image_paths, save_output=True))
-
-    logger.info(f"步骤2完成: OCR解析，共 {len(results)} 个结果，耗时 {time.time() - step_start:.2f}s")
-    console.print(f"[green]✓ 成功解析 {len(results)} 张图片[/green]")
-    return {"ocr_results": results}
-
-
 def split_questions_node(state: WorkflowState) -> dict:
-    """节点: Agent 智能分割题目"""
-    console.print("[bold yellow]步骤 3: Agent 分割题目[/bold yellow]")
+    """节点: Agent 智能分割题目
+
+    OCR 解析由编排智能体的 OCRMiddleware 自动完成。
+    workflow 只需将图片路径传给 agent，中间件会：
+    1. 调用 PaddleOCR API 解析图片
+    2. 简化结果并注入 messages
+    3. agent 自主分批调用 split_batch + save_questions
+    """
+    console.print("[bold yellow]步骤 2: Agent OCR + 分割题目[/bold yellow]")
     step_start = time.time()
 
-    results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
+    results_dir = RESULTS_DIR
     os.makedirs(results_dir, exist_ok=True)
 
     from error_correction_agent.agent import create_orchestrator_agent
 
-    logger.info("开始调用编排智能体分割题目")
+    logger.info("开始调用编排智能体（OCR + 分割）")
     agent = create_orchestrator_agent()
 
-    # 简化 OCR 结果：只保留 Agent 分割题目所需的字段
-    simplified_results = []
-    page_index = 0
-    for result in state["ocr_results"]:
-        if "layoutParsingResults" in result:
-            for page in result["layoutParsingResults"]:
-                if "prunedResult" in page:
-                    parsing_res = page["prunedResult"].get("parsing_res_list", [])
-                    slim_blocks = []
-                    for b in parsing_res:
-                        content = b.get("block_content", "")
-                        # 图片 block 的 content 始终为空，用 bbox 构造实际图片路径
-                        if b.get("block_label") == "image" and not content:
-                            bbox = b.get("block_bbox")
-                            if bbox:
-                                content = f"/images/img_in_image_box_{bbox[0]}_{bbox[1]}_{bbox[2]}_{bbox[3]}.jpg"
-                        slim_blocks.append({
-                            "block_label": b.get("block_label"),
-                            "block_content": content,
-                            "block_order": b.get("block_order"),
-                        })
-                    simplified_results.append({
-                        "page_index": page_index,
-                        "blocks": slim_blocks,
-                    })
-                    page_index += 1
-
-    # 保存发送给 Agent 的 JSON 到本地
-    agent_input_path = os.path.join(results_dir, "agent_input.json")
-    with open(agent_input_path, 'w', encoding='utf-8') as f:
-        json.dump(simplified_results, f, ensure_ascii=False, indent=2)
-    logger.info(f"Agent 输入数据已保存到: {agent_input_path}")
+    image_paths = state["image_paths"]
 
     # 清空旧的 questions.json（外层 agent 通过 save_questions 追加写入）
     questions_file = os.path.join(results_dir, "questions.json")
     if os.path.exists(questions_file):
         os.remove(questions_file)
 
-    prompt = f"""请分析以下OCR识别结果，将其分割为独立的题目。
+    console.print(f"[cyan]Agent 输入: {len(image_paths)} 张图片[/cyan]")
 
-OCR结果包含 {len(simplified_results)} 页内容。
-
-每页的数据结构：
-- page_index: 页码索引（从0开始），决定全局阅读顺序
-- blocks: 包含所有识别的内容块，每个 block 有三个字段：
-  - block_label: 类型（text / image / doc_title / paragraph_title 等）
-  - block_content: 文本内容（公式用 LaTeX 标记）或图片路径
-  - block_order: 该 block 在页内的阅读顺序
-
-请按你的编排策略分批处理这些数据。"""
-
-    console.print(f"[cyan]Agent 输入: {len(simplified_results)} 页, 共 {sum(len(r.get('blocks', [])) for r in simplified_results)} 个 block[/cyan]")
-
-    # 外层 deepagents 编排：自主分批调 split_batch + save_questions
+    # 传入图片路径 JSON，OCRMiddleware 会自动解析并注入 OCR 结果
     agent.invoke(
         {
             "messages": [
-                {"role": "user", "content": prompt},
-                {"role": "user", "content": f"OCR数据: {json.dumps(simplified_results, ensure_ascii=False)}"}
+                {"role": "user", "content": "请对以下图片进行 OCR 解析并分割题目。"},
+                {"role": "user", "content": json.dumps(image_paths, ensure_ascii=False)}
             ]
         },
         config={"recursion_limit": 300},
@@ -194,7 +122,7 @@ OCR结果包含 {len(simplified_results)} 页内容。
 
 def export_node(state: WorkflowState) -> dict:
     """节点: 导出错题本"""
-    console.print("[bold yellow]步骤 4: 导出错题本[/bold yellow]")
+    console.print("[bold yellow]步骤 3: 导出错题本[/bold yellow]")
     step_start = time.time()
     output_path = export_wrongbook(state["questions"], state["selected_ids"])
     logger.info(f"导出完成: {output_path}，耗时 {time.time() - step_start:.2f}s")
@@ -210,10 +138,10 @@ def build_workflow():
 
     图结构:
 
-        START → prepare_input → ocr_parse → [中断] → split_questions → [中断] → export → END
+        START → prepare_input → [中断] → split_questions → [中断] → export → END
 
-    在 split_questions 和 export 节点前设置中断，
-    以支持 Web 端的分步交互（上传 → 分割 → 导出）。
+    OCR 解析由 split_questions 内的 OCRMiddleware 中间件自动完成，
+    不再需要独立的 ocr_parse 节点。
 
     Returns:
         编译后的 CompiledStateGraph 实例
@@ -222,14 +150,12 @@ def build_workflow():
 
     # 添加节点
     builder.add_node("prepare_input", prepare_input_node)
-    builder.add_node("ocr_parse", ocr_parse_node)
     builder.add_node("split_questions", split_questions_node)
     builder.add_node("export", export_node)
 
     # 定义边
     builder.add_edge(START, "prepare_input")
-    builder.add_edge("prepare_input", "ocr_parse")
-    builder.add_edge("ocr_parse", "split_questions")
+    builder.add_edge("prepare_input", "split_questions")
     builder.add_edge("split_questions", "export")
     builder.add_edge("export", END)
 

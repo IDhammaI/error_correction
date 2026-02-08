@@ -14,6 +14,7 @@ from deepagents import create_deep_agent
 from .prompts import SPLIT_PROMPT, ORCHESTRATOR_PROMPT
 from .schemas import QuestionSplitResult
 from .tools import save_questions, log_issue, split_batch
+from .middleware import OCRMiddleware
 
 load_dotenv()
 
@@ -76,6 +77,7 @@ def create_orchestrator_agent():
         model=model,
         tools=tools,
         system_prompt=ORCHESTRATOR_PROMPT,
+        middleware=[OCRMiddleware()],
     )
 
 
