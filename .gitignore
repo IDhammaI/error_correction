@@ -14,9 +14,11 @@ workflow.log
 .idea/
 __pycache__/
 .langgraph_api/
+frontend/uploads/
+uploads/
 
 # 前端构建产物
 frontend/dist/
 frontend/package-lock.json
 static/vue/
-frontend/package-lock.json
+
