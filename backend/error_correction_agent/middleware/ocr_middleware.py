@@ -142,7 +142,7 @@ class OCRMiddleware(AgentMiddleware):
                     if b.get("block_label") == "image" and not content:
                         bbox = b.get("block_bbox")
                         if bbox:
-                            content = f"/images/img_in_image_box_{bbox[0]}_{bbox[1]}_{bbox[2]}_{bbox[3]}.jpg"
+                            content = f"/images/img_in_image_box_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}.jpg"
                     slim_blocks.append({
                         "block_label": b.get("block_label"),
                         "block_content": content,

@@ -118,9 +118,8 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
         str: 导出的Markdown文件路径
     """
     if output_path is None:
-        results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
-        os.makedirs(results_dir, exist_ok=True)
-        output_path = os.path.join(results_dir, "wrongbook.md")
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        output_path = os.path.join(RESULTS_DIR, "wrongbook.md")
 
     # 过滤选中的题目
     selected_questions = [q for q in questions if q.get('question_id') in selected_ids]
@@ -152,9 +151,8 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
 
                 # 将 Flask 路由路径转为 Markdown 相对路径
                 if image_path.startswith("/images/"):
-                    struct_dir = os.getenv("STRUCT_DIR", os.path.join(RUNTIME_ROOT, "struct"))
-                    results_dir = os.getenv("RESULTS_DIR", os.path.join(RUNTIME_ROOT, "results"))
-                    rel_struct_dir = os.path.relpath(struct_dir, results_dir)
+                    from config import STRUCT_DIR
+                    rel_struct_dir = os.path.relpath(STRUCT_DIR, RESULTS_DIR)
                     image_path = f"{rel_struct_dir}/imgs/{image_path[len('/images/') :]}"
 
                 md_content += f"![图片]({image_path})\n\n"
