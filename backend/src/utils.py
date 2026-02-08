@@ -11,6 +11,8 @@ from rich.console import Console
 from pdf2image import convert_from_path
 from PIL import Image
 
+from config import RESULTS_DIR
+
 load_dotenv()
 console = Console()
 
@@ -113,7 +115,7 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
         str: 导出的Markdown文件路径
     """
     if output_path is None:
-        results_dir = os.getenv("RESULTS_DIR", "results")
+        results_dir = RESULTS_DIR
         os.makedirs(results_dir, exist_ok=True)
         output_path = os.path.join(results_dir, "wrongbook.md")
 
@@ -147,8 +149,11 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
 
                 # 将 Flask 路由路径转为 Markdown 相对路径
                 if image_path.startswith("/images/"):
-                    struct_dir = os.getenv("STRUCT_DIR", "output/struct")
-                    image_path = f"../{struct_dir}/imgs/{image_path[len('/images/'):]}"
+                    # 运行产物目录统一为 runtime_data/ 下：
+                    # - 图片位于 runtime_data/struct/imgs/
+                    # - 错题本位于 runtime_data/results/
+                    # 从 wrongbook.md 所在的 results/ 目录相对引用图片
+                    image_path = f"../struct/imgs/{image_path[len('/images/'):]}"
 
                 md_content += f"![图片]({image_path})\n\n"
 
