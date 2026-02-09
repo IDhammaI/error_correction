@@ -1,24 +1,26 @@
-.env
-__pycache__/
 *.pyc
 *.pyo
 *.pyd
-output/pages/
-results/
 dataset/
-output/
-backend/runtime_data/
 printed-vs-handwritten/
-workflow.log
 .venv/
 .idea/
-__pycache__/
 .langgraph_api/
-frontend/uploads/
-uploads/
 
 # 前端构建产物
 frontend/dist/
 frontend/package-lock.json
 static/vue/
 
+# 后端运行产物
+backend/runtime_data/
+__pycache__/
+
+# 日志
+workflow.log
+
+# 数据集
+dataset/
+
+# 环境变量
+.env
