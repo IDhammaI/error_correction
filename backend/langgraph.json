@@ -3,5 +3,5 @@
   "graphs": {
     "error_correction_agent": "error_correction_agent.agent:agent"
   },
-  "env": ".env"
+  "env": "../.env"
 }
