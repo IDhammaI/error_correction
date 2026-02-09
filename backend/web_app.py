@@ -54,6 +54,14 @@ def _resolve_dir(env_key: str, default_path: str) -> str:
     return os.path.abspath(os.path.join(PROJECT_ROOT, p))
 
 
+def _safe_join(base_dir: str, rel_path: str) -> str | None:
+    base = os.path.abspath(base_dir)
+    target = os.path.abspath(os.path.join(base, rel_path))
+    if os.path.normcase(target).startswith(os.path.normcase(base + os.sep)):
+        return target
+    return None
+
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MAX_FILE_SIZE_MB = 50
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -506,7 +514,12 @@ def preview():
 def download_file(filename):
     """下载结果文件"""
     results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
-    file_path = os.path.join(results_dir, filename)
+    file_path = _safe_join(results_dir, filename)
+    if not file_path:
+        return jsonify({
+            'success': False,
+            'error': '非法文件路径'
+        }), 400
 
     if not os.path.exists(file_path):
         return jsonify({
@@ -549,9 +562,9 @@ def get_status():
             'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
-                'pages': os.getenv('PAGES_DIR', PAGES_DIR_DEFAULT),
-                'struct': os.getenv('STRUCT_DIR', STRUCT_DIR_DEFAULT),
-                'results': os.getenv('RESULTS_DIR', RESULTS_DIR_DEFAULT),
+                'pages': _resolve_dir('PAGES_DIR', PAGES_DIR_DEFAULT),
+                'struct': _resolve_dir('STRUCT_DIR', STRUCT_DIR_DEFAULT),
+                'results': _resolve_dir('RESULTS_DIR', RESULTS_DIR_DEFAULT),
             }
         }
 
