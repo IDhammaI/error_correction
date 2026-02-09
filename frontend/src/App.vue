@@ -298,7 +298,7 @@ const handleUpload = (files) => {
       }
       uploadReady.value = pendingFiles.length > 0
       step.value = pendingFiles.length > 0 ? 3 : 1
-      pushToast('success', `文件处理成功！本次新增 ${data.result.file_count} 个文件，总共有 ${data.result.image_count} 张图片`)
+      pushToast('success', `上传成功！本次新增 ${fileCount} 个文件，点击“开始分割题目”开始处理`) 
       pumpUploadQueue()
       return
     }
@@ -449,22 +449,18 @@ const doExport = async () => {
 }
 
 const doReset = async () => {
-  try {
-    await fetch('/api/reset', { method: 'POST' }).catch(() => null)
-  } finally {
-    uploadBusy.value = false
-    uploadReady.value = false
-    splitting.value = false
-    splitCompleted.value = false
-    pendingFiles.splice(0, pendingFiles.length)
-    for (const k of Object.keys(fileProgress)) delete fileProgress[k]
-    waitingKeys.clear()
-    uploadQueue.splice(0, uploadQueue.length)
-    questions.value = []
-    selectedIds.clear()
-    step.value = 1
-    pushToast('success', '已重置')
-  }
+  uploadBusy.value = false
+  uploadReady.value = false
+  splitting.value = false
+  splitCompleted.value = false
+  pendingFiles.splice(0, pendingFiles.length)
+  for (const k of Object.keys(fileProgress)) delete fileProgress[k]
+  waitingKeys.clear()
+  uploadQueue.splice(0, uploadQueue.length)
+  questions.value = []
+  selectedIds.clear()
+  step.value = 1
+  pushToast('success', '已重置')
 }
 
 const onFileInput = (e) => {

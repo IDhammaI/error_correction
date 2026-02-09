@@ -6,7 +6,6 @@
 import os
 import json
 import uuid
-import shutil
 import threading
 import asyncio
 import mimetypes
@@ -45,6 +44,16 @@ RESULTS_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'results')
 STRUCT_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'struct')
 PAGES_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'pages')
 
+
+def _resolve_dir(env_key: str, default_path: str) -> str:
+    p = os.getenv(env_key)
+    if not p:
+        return default_path
+    if os.path.isabs(p):
+        return p
+    return os.path.abspath(os.path.join(PROJECT_ROOT, p))
+
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 MAX_FILE_SIZE_MB = 50
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -82,7 +91,6 @@ current_thread_id = None
 session_files = {}
 session_file_order = []
 cancelled_file_keys = set()
-inflight_file_keys = set()
 session_lock = threading.Lock()
 
 
@@ -162,13 +170,13 @@ def vue_index():
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
-    """
-    处理文件上传并执行预处理（支持多文件）
+    """处理文件上传（支持多文件）。
 
-    只做文件预处理（PDF/图片 → 标准化图片），OCR 由 Agent 的 OCRMiddleware 完成。
+    这里只负责把原始文件保存到 uploads 并登记到会话中；
+    标准化(PDF/图片 → 图片列表) + OCR + 分割，会在 /api/split 里由用户点击“开始分割”后统一触发。
 
     Returns:
-        JSON响应，包含处理结果
+        JSON响应，包含上传结果
     """
     # 支持多文件：前端用 'files' 字段发送，兼容单文件 'file' 字段
     files = request.files.getlist('files')
@@ -203,7 +211,7 @@ def upload_file():
             }), 400
 
     try:
-        global workflow_graph, current_thread_id, session_files, session_file_order
+        global current_thread_id, session_files, session_file_order
 
         file_keys = request.form.getlist('file_key')
         if not file_keys:
@@ -219,73 +227,50 @@ def upload_file():
         if not prepared:
             return jsonify({'error': '没有上传文件'}), 400
 
-        from src.utils import prepare_input
-
-        with session_lock:
-            if current_thread_id is None:
-                current_thread_id = str(uuid.uuid4())
-                config = {"configurable": {"thread_id": current_thread_id}}
-                workflow_graph.invoke({"file_paths": []}, config=config)
-
         results_out = []
         for fk, file in prepared:
             file_key = fk or f"{uuid.uuid4().hex}"
-
-            with session_lock:
-                inflight_file_keys.add(file_key)
 
             original_ext = file.filename.rsplit('.', 1)[1].lower()
             filename = f"{uuid.uuid4().hex}.{original_ext}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
 
-            # 只做文件预处理（PDF/图片 → 标准化图片列表），OCR 由 Agent 中间件完成
-            image_paths = prepare_input(filepath)
+            with session_lock:
+                cancelled = file_key in cancelled_file_keys
+                if cancelled:
+                    cancelled_file_keys.discard(file_key)
+
+            if cancelled:
+                try:
+                    os.remove(filepath)
+                except FileNotFoundError:
+                    pass
+                continue
 
             with session_lock:
-                inflight_file_keys.discard(file_key)
-
-                if file_key in cancelled_file_keys:
-                    cancelled_file_keys.discard(file_key)
-                    session_files.pop(file_key, None)
-                    if file_key in session_file_order:
-                        session_file_order = [x for x in session_file_order if x != file_key]
-                    continue
+                if current_thread_id is not None:
+                    current_thread_id = None
+                    session_files = {}
+                    session_file_order = []
 
                 session_files[file_key] = {
                     "filename": file.filename,
-                    "image_paths": list(image_paths),
+                    "filepath": filepath,
                 }
                 if file_key not in session_file_order:
                     session_file_order.append(file_key)
 
-                agg_image_paths = []
-                for k in session_file_order:
-                    v = session_files.get(k)
-                    if not v:
-                        continue
-                    agg_image_paths.extend(v.get("image_paths", []))
-
-                config = {"configurable": {"thread_id": current_thread_id}}
-                workflow_graph.update_state(config, {
-                    "image_paths": agg_image_paths,
-                })
-
             results_out.append({
                 "file_key": file_key,
                 "filename": file.filename,
-                "image_count": len(image_paths),
             })
-
-        with session_lock:
-            total_images = sum(len(session_files[k]["image_paths"]) for k in session_file_order if k in session_files)
 
         return jsonify({
             'success': True,
-            'message': '文件处理成功',
+            'message': '上传成功',
             'result': {
                 'file_count': len(results_out),
-                'image_count': total_images,
                 'files': results_out,
             }
         })
@@ -302,27 +287,89 @@ def upload_file():
         }), 500
 
 
+@app.route('/api/cancel_file', methods=['POST'])
+def cancel_file():
+    try:
+        global current_thread_id, session_files, session_file_order
+
+        data = request.get_json(silent=True) or {}
+        file_key = data.get('file_key')
+        if not file_key:
+            return jsonify({
+                'success': False,
+                'error': '缺少 file_key'
+            }), 400
+
+        if current_thread_id is not None:
+            return jsonify({
+                'success': False,
+                'error': '已开始分割，无法撤销单个文件；请重置后重新上传'
+            }), 400
+
+        filepath = None
+        existed = False
+        with session_lock:
+            cancelled_file_keys.add(file_key)
+
+            existed = file_key in session_files
+            v = session_files.pop(file_key, None) or {}
+            filepath = v.get('filepath')
+            if file_key in session_file_order:
+                session_file_order = [x for x in session_file_order if x != file_key]
+
+            cancelled_file_keys.discard(file_key)
+
+        if filepath:
+            try:
+                os.remove(filepath)
+            except FileNotFoundError:
+                pass
+
+        return jsonify({
+            'success': True,
+            'message': '已撤销该文件' if existed else '已标记撤销该文件',
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'撤销失败：{str(e)}'
+        }), 500
+
+
 @app.route('/api/split', methods=['POST'])
 def split_questions():
-    """
-    恢复图执行 Agent 分割题目
+    """开始执行标准化 + OCR + 分割。
 
-    图执行: split_questions → [中断]
+    用户点击前端“开始分割题目”后调用该接口：
+    - 标准化输入（PDF/图片 → 图片列表）
+    - 触发 Agent/OCR 并分割题目
 
     Returns:
         JSON响应，包含分割后的题目
     """
     try:
-        global current_thread_id, session_file_order
+        global workflow_graph, current_thread_id, session_files, session_file_order
 
-        if current_thread_id is None or not session_file_order:
+        with session_lock:
+            keys = list(session_file_order)
+            file_paths = []
+            for k in keys:
+                v = session_files.get(k) or {}
+                fp = v.get('filepath')
+                if fp:
+                    file_paths.append(fp)
+
+        if not file_paths:
             return jsonify({
                 'success': False,
                 'error': '请先上传文件'
             }), 400
 
-        # 恢复图：执行 split_questions → 在 export 前中断
+        current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
+
+        workflow_graph.invoke({"file_paths": file_paths}, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -375,7 +422,7 @@ def export_wrongbook():
 
         # 注意：首次导出后图已到 END，后续再次 invoke 不会重复执行 export 节点。
         # 因此这里每次都根据最新的 selected_ids 重新生成 wrongbook.md。
-        results_dir = os.getenv("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+        results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
         questions_file = os.path.join(results_dir, "questions.json")
         if not os.path.exists(questions_file):
             return jsonify({
@@ -411,7 +458,7 @@ def get_questions():
         JSON响应，包含题目列表
     """
     try:
-        results_dir = os.getenv("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+        results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
         questions_file = os.path.join(results_dir, "questions.json")
 
         if not os.path.exists(questions_file):
@@ -444,7 +491,7 @@ def get_questions():
 @app.route('/preview')
 def preview():
     """显示预览页面"""
-    results_dir = os.getenv("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+    results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
     preview_file = os.path.join(results_dir, "preview.html")
 
     if os.path.exists(preview_file):
@@ -458,8 +505,14 @@ def preview():
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件"""
-    results_dir = os.getenv("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+    results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
     file_path = os.path.join(results_dir, filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({
+            'success': False,
+            'error': '文件不存在'
+        }), 404
 
     resp = send_file(
         file_path,
@@ -511,99 +564,6 @@ def get_status():
         return jsonify({
             'success': False,
             'error': f'获取系统状态失败：{str(e)}'
-        }), 500
-
-
-def _clear_directory_contents(dir_path: str):
-    if not dir_path or not os.path.exists(dir_path):
-        return
-    for name in os.listdir(dir_path):
-        p = os.path.join(dir_path, name)
-        if os.path.isdir(p):
-            shutil.rmtree(p, ignore_errors=True)
-        else:
-            try:
-                os.remove(p)
-            except FileNotFoundError:
-                pass
-
-
-@app.route('/api/cancel_file', methods=['POST'])
-def cancel_file():
-    try:
-        global current_thread_id, session_files, session_file_order
-
-        data = request.get_json(silent=True) or {}
-        file_key = data.get('file_key')
-        if not file_key:
-            return jsonify({
-                'success': False,
-                'error': '缺少 file_key'
-            }), 400
-
-        with session_lock:
-            cancelled_file_keys.add(file_key)
-            inflight_file_keys.discard(file_key)
-
-            existed = file_key in session_files
-            session_files.pop(file_key, None)
-            if file_key in session_file_order:
-                session_file_order = [x for x in session_file_order if x != file_key]
-
-            agg_image_paths = []
-            for k in session_file_order:
-                v = session_files.get(k)
-                if not v:
-                    continue
-                agg_image_paths.extend(v.get("image_paths", []))
-
-            if current_thread_id is not None:
-                config = {"configurable": {"thread_id": current_thread_id}}
-                workflow_graph.update_state(config, {
-                    "image_paths": agg_image_paths,
-                })
-
-        return jsonify({
-            'success': True,
-            'message': '已撤销该文件' if existed else '已标记撤销该文件',
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'撤销失败：{str(e)}'
-        }), 500
-
-
-@app.route('/api/reset', methods=['POST'])
-def reset_session():
-    """清空全部文件与会话。"""
-    try:
-        global workflow_graph, current_thread_id, session_files, session_file_order
-
-        with session_lock:
-            current_thread_id = None
-            session_files = {}
-            session_file_order = []
-            cancelled_file_keys.clear()
-            inflight_file_keys.clear()
-
-        _clear_directory_contents(app.config['UPLOAD_FOLDER'])
-        _clear_directory_contents(os.getenv('PAGES_DIR', PAGES_DIR_DEFAULT))
-        _clear_directory_contents(os.getenv('STRUCT_DIR', STRUCT_DIR_DEFAULT))
-        _clear_directory_contents(os.getenv('RESULTS_DIR', RESULTS_DIR_DEFAULT))
-
-        workflow_graph = build_workflow()
-
-        return jsonify({
-            'success': True,
-            'message': '已清空全部文件并重置会话',
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'重置失败：{str(e)}'
         }), 500
 
 
