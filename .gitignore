@@ -12,11 +12,12 @@ frontend/dist/
 frontend/package-lock.json
 frontend/uploads/
 frontend/output
-frontend/static/vue/
 
 # 后端运行产物
 backend/runtime_data/
 __pycache__/
+backend/static/vue/
+
 
 # 日志
 workflow.log
