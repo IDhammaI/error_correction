@@ -10,6 +10,8 @@ printed-vs-handwritten/
 # 前端构建产物
 frontend/dist/
 frontend/package-lock.json
+frontend/uploads/
+frontend/output
 static/vue/
 
 # 后端运行产物
