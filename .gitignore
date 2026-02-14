@@ -16,7 +16,7 @@ frontend/output
 # 后端运行产物
 backend/runtime_data/
 __pycache__/
-backend/static/vue/
+backend/static/vue/assets
 
 
 # 日志
