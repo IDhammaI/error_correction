@@ -12,7 +12,7 @@ frontend/dist/
 frontend/package-lock.json
 frontend/uploads/
 frontend/output
-static/vue/
+frontend/static/vue/
 
 # 后端运行产物
 backend/runtime_data/
