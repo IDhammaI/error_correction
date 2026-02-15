@@ -150,3 +150,53 @@ OCR数据：
     except Exception as e:
         logger.error(f"split_batch error: {str(e)}")
         return f"分割失败: {str(e)}"
+
+
+@tool(parse_docstring=True)
+def correct_batch(questions_json: str, ocr_context: str) -> str:
+    """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
+
+    将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
+    返回经过Pydantic校验的纠错结果。
+
+    Args:
+        questions_json: 待纠错题目列表的JSON字符串
+        ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
+
+    Returns:
+        纠错后的题目列表JSON字符串
+    """
+    logger.info("correct_batch called")
+    try:
+        from ..agent import create_correction_agent
+
+        correction_agent = create_correction_agent()
+
+        prompt = f"""请修复以下题目中的 OCR 错误。
+
+## 待纠错题目
+{questions_json}
+
+## 原始 OCR 参考数据
+以下是这些题目对应页面的原始 OCR block 数据，可作为纠错参考：
+{ocr_context}
+
+请逐题修复标记的 OCR 问题，输出纠错后的结构化数据。"""
+
+        response = correction_agent.invoke(
+            {"messages": [{"role": "user", "content": prompt}]},
+            config={"recursion_limit": 100},
+        )
+
+        structured = response.get("structured_response")
+        if structured:
+            corrected = [q.model_dump() for q in structured.corrected_questions]
+            logger.info(f"correct_batch done: {len(corrected)} questions corrected")
+            return json.dumps(corrected, ensure_ascii=False)
+
+        logger.warning("correct_batch: no structured_response")
+        return "[]"
+
+    except Exception as e:
+        logger.error(f"correct_batch error: {str(e)}")
+        return f"纠错失败: {str(e)}"

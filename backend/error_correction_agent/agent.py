@@ -11,8 +11,8 @@ from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
 from deepagents import create_deep_agent
 
-from .prompts import SPLIT_PROMPT, ORCHESTRATOR_PROMPT
-from .schemas import QuestionSplitResult
+from .prompts import SPLIT_PROMPT, ORCHESTRATOR_PROMPT, CORRECTION_PROMPT
+from .schemas import QuestionSplitResult, CorrectionResult
 from .tools import save_questions, log_issue, split_batch
 from .middleware import OCRMiddleware
 
@@ -46,6 +46,30 @@ def create_inner_split_agent():
         system_prompt=SPLIT_PROMPT,
         response_format=ToolStrategy(
             schema=QuestionSplitResult,
+            handle_errors=True,
+        ),
+    )
+
+
+def create_correction_agent():
+    """创建内层 OCR 纠错智能体
+
+    使用 create_agent + ToolStrategy，保证结构化输出。
+    无外部工具，专注于修复 OCR 错误并输出 CorrectionResult。
+
+    由 correct_batch 工具内部调用。
+
+    Returns:
+        create_agent 返回的 CompiledStateGraph
+    """
+    model = _init_model(temperature=0.0)
+
+    return create_agent(
+        model=model,
+        tools=[],
+        system_prompt=CORRECTION_PROMPT,
+        response_format=ToolStrategy(
+            schema=CorrectionResult,
             handle_errors=True,
         ),
     )

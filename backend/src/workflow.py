@@ -120,6 +120,82 @@ def split_questions_node(state: WorkflowState) -> dict:
     return {"questions": questions}
 
 
+def correct_questions_node(state: WorkflowState) -> dict:
+    """节点: OCR 纠错
+
+    对标记了 needs_correction 的题目执行 OCR 纠错。
+    未标记的题目直接通过，不消耗额外 LLM 调用。
+    """
+    console.print("[bold yellow]步骤 2.5: OCR 纠错检查[/bold yellow]")
+    step_start = time.time()
+
+    questions = state.get("questions", [])
+    if not questions:
+        logger.info("纠错跳过: 无题目")
+        return {"questions": questions}
+
+    # 筛选需要纠错的题目
+    flagged = [q for q in questions if q.get("needs_correction", False)]
+
+    if not flagged:
+        logger.info("纠错跳过: 无需纠错的题目")
+        console.print("[green]✓ 所有题目均无 OCR 错误标记，跳过纠错[/green]")
+        return {"questions": questions}
+
+    console.print(f"[cyan]发现 {len(flagged)} 道题目需要纠错（共 {len(questions)} 道）[/cyan]")
+    logger.info(f"开始纠错: {len(flagged)}/{len(questions)} 道题目")
+
+    # 加载原始 OCR 数据作为纠错上下文
+    ocr_context = "{}"
+    agent_input_path = os.path.join(RESULTS_DIR, "agent_input.json")
+    if os.path.exists(agent_input_path):
+        with open(agent_input_path, 'r', encoding='utf-8') as f:
+            ocr_context = f.read()
+
+    # 调用纠错工具
+    from error_correction_agent.tools import correct_batch
+
+    flagged_json = json.dumps(flagged, ensure_ascii=False)
+    result_str = correct_batch.invoke({
+        "questions_json": flagged_json,
+        "ocr_context": ocr_context,
+    })
+
+    # 解析纠错结果
+    try:
+        corrected = json.loads(result_str)
+    except (json.JSONDecodeError, TypeError):
+        logger.error(f"纠错结果解析失败: {result_str[:200]}")
+        console.print("[red]⚠ 纠错结果解析失败，保留原始题目[/red]")
+        return {"questions": questions}
+
+    # 按 question_id 合并纠错结果
+    corrected_map = {q["question_id"]: q for q in corrected}
+
+    merged = []
+    for q in questions:
+        qid = q.get("question_id")
+        if qid in corrected_map:
+            cq = corrected_map[qid]
+            corrections = cq.pop("corrections_applied", [])
+            cq["needs_correction"] = False
+            cq["ocr_issues"] = None
+            merged.append(cq)
+            logger.info(f"题目 {qid} 已纠错: {corrections}")
+        else:
+            merged.append(q)
+
+    # 更新 questions.json
+    questions_file = os.path.join(RESULTS_DIR, "questions.json")
+    with open(questions_file, 'w', encoding='utf-8') as f:
+        json.dump(merged, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"纠错完成: {len(corrected)}/{len(flagged)} 道题目已修复，耗时 {time.time() - step_start:.2f}s")
+    console.print(f"[green]✓ 纠错完成: {len(corrected)} 道题目已修复[/green]")
+
+    return {"questions": merged}
+
+
 def export_node(state: WorkflowState) -> dict:
     """节点: 导出错题本"""
     console.print("[bold yellow]步骤 3: 导出错题本[/bold yellow]")
@@ -138,10 +214,11 @@ def build_workflow():
 
     图结构:
 
-        START → prepare_input → [中断] → split_questions → [中断] → export → END
+        START → prepare_input → [中断] → split_questions → correct_questions → [中断] → export → END
 
     OCR 解析由 split_questions 内的 OCRMiddleware 中间件自动完成，
     不再需要独立的 ocr_parse 节点。
+    纠错节点在分割后自动执行，仅对标记了 needs_correction 的题目调用纠错智能体。
 
     Returns:
         编译后的 CompiledStateGraph 实例
@@ -151,12 +228,14 @@ def build_workflow():
     # 添加节点
     builder.add_node("prepare_input", prepare_input_node)
     builder.add_node("split_questions", split_questions_node)
+    builder.add_node("correct_questions", correct_questions_node)
     builder.add_node("export", export_node)
 
     # 定义边
     builder.add_edge(START, "prepare_input")
     builder.add_edge("prepare_input", "split_questions")
-    builder.add_edge("split_questions", "export")
+    builder.add_edge("split_questions", "correct_questions")
+    builder.add_edge("correct_questions", "export")
     builder.add_edge("export", END)
 
     # 编译：MemorySaver 保存中间状态，interrupt_before 在关键节点前暂停
