@@ -22,6 +22,7 @@ class Question(BaseModel):
     has_formula: bool = Field(default=False, description="是否包含数学公式")
     has_image: bool = Field(default=False, description="是否包含图片")
     image_refs: Optional[List[str]] = Field(default=None, description="图片引用路径列表")
+    knowledge_tags: Optional[List[str]] = Field(default=None, description="知识点标签列表，如 ['三角函数', '诱导公式']")
     needs_correction: bool = Field(default=False, description="是否疑似存在OCR错误（乱码、公式残缺等），需要后续纠错")
     ocr_issues: Optional[List[str]] = Field(default=None, description="疑似OCR错误描述列表，如 ['公式断裂: 缺少闭合括号']")
 
@@ -40,6 +41,7 @@ class CorrectedQuestion(BaseModel):
     has_formula: bool = Field(default=False, description="是否包含数学公式")
     has_image: bool = Field(default=False, description="是否包含图片")
     image_refs: Optional[List[str]] = Field(default=None, description="图片引用路径列表")
+    knowledge_tags: Optional[List[str]] = Field(default=None, description="知识点标签列表")
     corrections_applied: List[str] = Field(description="已应用的纠错操作列表，如 ['修复断裂公式', '替换乱码字符']")
 
 
