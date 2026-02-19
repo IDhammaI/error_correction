@@ -15,6 +15,8 @@ frontend/output
 
 # 后端运行产物
 backend/runtime_data/
+backend/output/
+output/
 __pycache__/
 backend/static/vue/assets
 

@@ -103,16 +103,22 @@ def prepare_input(file_path: str) -> List[str]:
     return image_paths
 
 
-def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], output_path: str = None) -> str:
+def export_wrongbook(
+    questions: List[Dict[str, Any]],
+    selected_ids: List[str],
+    output_path: str = None,
+    batch_info: Dict[str, Any] = None
+) -> str:
     """
     步骤5: 导出错题本
 
-    将用户选择的题目导出为Markdown格式的错题本
+    将用户选择的题目导出为Markdown格式的错题本，并可选入库到数据库
 
     Args:
         questions: 题目列表
         selected_ids: 用户选择的题目ID列表
         output_path: 输出Markdown文件路径（可选）
+        batch_info: 批次信息（用于入库），包含 original_filename, subject 等
 
     Returns:
         str: 导出的Markdown文件路径
@@ -178,5 +184,21 @@ def export_wrongbook(questions: List[Dict[str, Any]], selected_ids: List[str], o
         f.write(md_content)
 
     console.print(f"[green]✓ 错题本已导出: {output_path}[/green]")
+
+    # 入库到数据库
+    if batch_info:
+        try:
+            from db import SessionLocal
+            from db.crud import save_questions_to_db
+
+            selected_questions = [q for q in questions if q.get('question_id') in selected_ids]
+            with SessionLocal() as db:
+                result = save_questions_to_db(db, selected_questions, batch_info)
+                console.print(
+                    f"[green]✓ 已入库 {result['created']} 道新题目"
+                    f"（跳过 {result['duplicates']} 道重复题目）[/green]"
+                )
+        except Exception as e:
+            console.print(f"[yellow]⚠ 入库失败: {e}[/yellow]")
 
     return output_path

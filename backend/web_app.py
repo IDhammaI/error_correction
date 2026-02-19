@@ -7,13 +7,11 @@ import os
 import json
 import uuid
 import threading
-import asyncio
 import mimetypes
 
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
 from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
-from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
 from src.workflow import build_workflow
@@ -27,31 +25,16 @@ from config import (
     MAX_FILE_SIZE_MB,
     ALLOWED_EXTENSIONS,
 )
+from db import init_db
 
 # 加载环境变量
 load_dotenv()
 
 app = Flask(__name__)
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# 配置
-BACKEND_ROOT = os.path.abspath(os.path.dirname(__file__))
-RUNTIME_ROOT = os.path.join(BACKEND_ROOT, 'runtime_data')
-UPLOAD_FOLDER = os.path.join(RUNTIME_ROOT, 'uploads')
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
-RESULTS_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'results')
-STRUCT_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'struct')
-PAGES_DIR_DEFAULT = os.path.join(RUNTIME_ROOT, 'pages')
-
-
-def _resolve_dir(env_key: str, default_path: str) -> str:
-    p = os.getenv(env_key)
-    if not p:
-        return default_path
-    if os.path.isabs(p):
-        return p
-    return os.path.abspath(os.path.join(PROJECT_ROOT, p))
+# 配置（统一从 config.py 导入）
+app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
 def _safe_join(base_dir: str, rel_path: str) -> str | None:
@@ -60,11 +43,6 @@ def _safe_join(base_dir: str, rel_path: str) -> str | None:
     if os.path.normcase(target).startswith(os.path.normcase(base + os.sep)):
         return target
     return None
-
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-MAX_FILE_SIZE_MB = 50
-app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -106,20 +84,6 @@ def allowed_file(filename):
     """检查文件扩展名是否允许"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def _run_async(coro):
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(asyncio.run, coro).result()
-
-    return asyncio.run(coro)
 
 
 @app.route('/')
@@ -406,10 +370,11 @@ def export_wrongbook():
         JSON响应，包含导出文件路径
     """
     try:
-        global current_thread_id
+        global current_thread_id, session_files, session_file_order
 
         data = request.get_json()
         selected_ids = data.get('selected_ids', [])
+        subject = data.get('subject')  # 前端传入科目（可选）
 
         if not selected_ids:
             return jsonify({
@@ -417,20 +382,8 @@ def export_wrongbook():
                 'error': '未选择任何题目'
             }), 400
 
-        if current_thread_id is None:
-            return jsonify({
-                'success': False,
-                'error': '请先分割题目'
-            }), 400
-
-        config = {"configurable": {"thread_id": current_thread_id}}
-
-        # 将用户选中的题目 ID 注入图状态（便于调试/对齐会话状态）
-        workflow_graph.update_state(config, {"selected_ids": selected_ids})
-
-        # 注意：首次导出后图已到 END，后续再次 invoke 不会重复执行 export 节点。
-        # 因此这里每次都根据最新的 selected_ids 重新生成 wrongbook.md。
-        results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+        # 检查是否已分割（通过 questions.json 存在性判断，不依赖内存中的 current_thread_id）
+        results_dir = RESULTS_DIR
         questions_file = os.path.join(results_dir, "questions.json")
         if not os.path.exists(questions_file):
             return jsonify({
@@ -441,8 +394,21 @@ def export_wrongbook():
         with open(questions_file, 'r', encoding='utf-8') as f:
             questions = json.load(f)
 
-        output_path = export_wrongbook_md(questions, selected_ids)
-        workflow_graph.update_state(config, {"output_path": output_path})
+        # 构建批次信息用于入库
+        batch_info = {
+            "original_filename": ", ".join(
+                session_files.get(k, {}).get("filename", "未知")
+                for k in session_file_order
+            ),
+            "subject": subject,
+            "file_path": "",
+        }
+
+        output_path = export_wrongbook_md(
+            questions,
+            selected_ids,
+            batch_info=batch_info
+        )
 
         return jsonify({
             'success': True,
@@ -466,7 +432,7 @@ def get_questions():
         JSON响应，包含题目列表
     """
     try:
-        results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+        results_dir = RESULTS_DIR
         questions_file = os.path.join(results_dir, "questions.json")
 
         if not os.path.exists(questions_file):
@@ -499,7 +465,7 @@ def get_questions():
 @app.route('/preview')
 def preview():
     """显示预览页面"""
-    results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+    results_dir = RESULTS_DIR
     preview_file = os.path.join(results_dir, "preview.html")
 
     if os.path.exists(preview_file):
@@ -513,7 +479,7 @@ def preview():
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件"""
-    results_dir = _resolve_dir("RESULTS_DIR", RESULTS_DIR_DEFAULT)
+    results_dir = RESULTS_DIR
     file_path = _safe_join(results_dir, filename)
     if not file_path:
         return jsonify({
@@ -562,9 +528,9 @@ def get_status():
             'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
-                'pages': _resolve_dir('PAGES_DIR', PAGES_DIR_DEFAULT),
-                'struct': _resolve_dir('STRUCT_DIR', STRUCT_DIR_DEFAULT),
-                'results': _resolve_dir('RESULTS_DIR', RESULTS_DIR_DEFAULT),
+                'pages': PAGES_DIR,
+                'struct': STRUCT_DIR,
+                'results': RESULTS_DIR,
             }
         }
 
@@ -581,6 +547,10 @@ def get_status():
 
 
 if __name__ == '__main__':
+    # 初始化数据库
+    init_db()
+    print("[数据库] 初始化完成")
+
     print("=" * 60)
     print("错题本生成系统 - Web应用")
     print("=" * 60)
