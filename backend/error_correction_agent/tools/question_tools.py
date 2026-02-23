@@ -14,19 +14,21 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 @tool(parse_docstring=True)
-def save_questions(questions: List[Dict[str, Any]], output_path: str = None) -> str:
+def save_questions(questions: List[Dict[str, Any]], subject: str = "", output_path: str = None) -> str:
     """保存分割后的题目列表到JSON文件
 
     将Agent分割后的题目列表保存为结构化JSON文件，供后续步骤使用。
+    同时保存科目等元数据到 split_metadata.json，供导出入库时使用。
 
     Args:
         questions: 题目列表，每个题目是一个字典，包含question_id、question_type、content_blocks等字段
+        subject: 识别出的试卷科目（如 "高中数学"），每次调用都应传入
         output_path: 输出文件路径，如果不提供则使用默认路径（RESULTS_DIR/questions.json）
 
     Returns:
         保存成功的文件路径
     """
-    logger.info(f"save_questions called: {len(questions)} questions")
+    logger.info(f"save_questions called: {len(questions)} questions, subject={subject}")
     try:
         # 使用默认路径
         if output_path is None:
@@ -45,6 +47,17 @@ def save_questions(questions: List[Dict[str, Any]], output_path: str = None) -> 
         # 保存JSON
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(all_questions, f, ensure_ascii=False, indent=2)
+
+        # 保存元数据（科目信息供导出入库时使用）
+        if subject.strip():
+            meta_path = os.path.join(RESULTS_DIR, "split_metadata.json")
+            meta = {}
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+            meta["subject"] = subject.strip()
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
 
         msg = f"成功保存 {len(questions)} 道题目（总计 {len(all_questions)} 道）到: {output_path}"
         logger.info(f"save_questions done: {msg}")
