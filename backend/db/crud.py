@@ -31,72 +31,22 @@ def compute_content_hash(content_blocks: List[Dict]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def detect_subject(questions: List[Dict]) -> str:
-    """
-    AI 识别科目：基于 knowledge_tags 和内容推断
-    """
-    # 科目关键词映射
-    math_tags = {"复数", "函数", "三角函数", "数列", "立体几何", "圆锥曲线",
-                 "概率", "统计", "导数", "不等式", "向量", "集合", "算法",
-                 "平面几何", "解析几何", "极限", "积分", "矩阵"}
+def get_existing_subjects(db: Session) -> List[str]:
+    """获取数据库中已有的所有科目名称（去重）"""
+    rows = db.query(UploadBatch.subject).distinct().filter(
+        UploadBatch.subject.isnot(None),
+        UploadBatch.subject != "",
+    ).all()
+    return [r[0] for r in rows]
 
-    physics_tags = {"力学", "电学", "光学", "热学", "电磁学", "机械波",
-                    "动量", "能量", "电路", "磁场", "电场", "重力"}
 
-    chemistry_tags = {"化学方程式", "有机化学", "无机化学", "氧化还原",
-                      "离子反应", "化学平衡", "电化学", "物质结构"}
-
-    biology_tags = {"细胞", "遗传", "进化", "生态", "代谢", "基因",
-                    "光合作用", "呼吸作用"}
-
-    english_tags = {"语法", "词汇", "阅读理解", "完形填空", "写作", "听力"}
-
-    chinese_tags = {"文言文", "现代文", "古诗", "作文", "修辞", "阅读"}
-
-    # 收集所有标签
-    all_tags = set()
-    for q in questions:
-        tags = q.get("knowledge_tags") or []
-        all_tags.update(tags)
-
-    # 匹配科目
-    if all_tags & math_tags:
-        return "数学"
-    if all_tags & physics_tags:
-        return "物理"
-    if all_tags & chemistry_tags:
-        return "化学"
-    if all_tags & biology_tags:
-        return "生物"
-    if all_tags & english_tags:
-        return "英语"
-    if all_tags & chinese_tags:
-        return "语文"
-
-    # 如果标签匹配失败，尝试从内容中推断
-    for q in questions:
-        content_text = ""
-        for block in q.get("content_blocks", []):
-            if block.get("block_type") == "text":
-                content_text += block.get("content", "")
-
-        # 检查数学公式标记
-        if "$$" in content_text or "$" in content_text:
-            return "数学"
-
-        # 检查化学符号
-        if any(sym in content_text for sym in ["→", "⇌", "↑", "↓"]):
-            # 更多化学特征判断
-            chem_elements = ["H₂", "O₂", "Na", "Cl", "Ca", "Fe", "Cu", "Zn"]
-            if any(el in content_text for el in chem_elements):
-                return "化学"
-
-        # 检查物理单位
-        physics_units = ["m/s", "kg", "N", "J", "W", "V", "A", "Ω", "Hz"]
-        if any(unit in content_text for unit in physics_units):
-            return "物理"
-
-    return "未知"
+def get_existing_tag_names(db: Session, subject: Optional[str] = None) -> List[str]:
+    """获取数据库中已有的知识点标签名称列表（字符串）"""
+    query = db.query(KnowledgeTag.tag_name).distinct()
+    if subject:
+        query = query.filter(KnowledgeTag.subject == subject)
+    rows = query.order_by(KnowledgeTag.tag_name).all()
+    return [r[0] for r in rows]
 
 
 def get_or_create_tag(db: Session, tag_name: str, subject: str) -> KnowledgeTag:
@@ -135,8 +85,8 @@ def save_questions_to_db(
     Returns:
         dict: {"created": 新增数量, "duplicates": 重复数量}
     """
-    # 检测科目
-    subject = batch_info.get("subject") or detect_subject(questions)
+    # 科目由编排智能体识别，不再使用关键词匹配
+    subject = batch_info.get("subject") or "未知"
 
     # 创建批次记录
     batch = UploadBatch(

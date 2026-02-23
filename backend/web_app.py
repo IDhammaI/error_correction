@@ -394,6 +394,14 @@ def export_wrongbook():
         with open(questions_file, 'r', encoding='utf-8') as f:
             questions = json.load(f)
 
+        # 如果前端未传入科目，从分割阶段保存的元数据中读取
+        if not subject:
+            meta_path = os.path.join(results_dir, "split_metadata.json")
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+                subject = meta.get("subject")
+
         # 构建批次信息用于入库
         batch_info = {
             "original_filename": ", ".join(

@@ -188,15 +188,19 @@ ORCHESTRATOR_PROMPT = """# 错题本生成系统编排者
 1. **分析数据规模与识别科目**：
    - 查看 OCR 数据共有多少页（page_index）
    - 浏览首批 OCR 内容，判断试卷所属科目（如"高中数学"、"初中物理"、"高中化学"等）
-   - 将科目信息记录下来，后续每批 split_batch 调用时传入 `subject` 参数
+   - **如果用户消息中提供了"历史数据参考"**，其中包含数据库已有的科目名称和知识点标签：
+     - 优先复用已有科目名称（如数据库中已有"高中数学"，就不要写成"数学"或"高一数学"）
+     - 将数据库已有标签作为第 1 批 existing_tags 的初始值
+   - 将科目信息记录下来，后续每批 split_batch 和 save_questions 调用时都要传入
 2. **分批处理**：按每 2 页一批进行分组，相邻批次重叠 1 页（避免跨页题目被截断）
    - 例如 5 页数据：第1批 page 0-1，第2批 page 1-2，第3批 page 2-3，第4批 page 3-4
 3. **逐批调用 split_batch**：将每批数据的 JSON 传给 split_batch 工具
-   - 第 1 批：`split_batch(ocr_data=..., existing_ids="", subject="高中数学", existing_tags="")`
+   - 第 1 批：`split_batch(ocr_data=..., existing_ids="", subject="高中数学", existing_tags="<数据库已有标签>")`
    - 后续批次：传入已处理的题号列表和已积累的知识点标签池
    - 例如第 1 批返回题目 1-8（知识点有"复数""集合""立体几何"），则第 2 批调用：
      `split_batch(ocr_data=..., existing_ids="1,2,3,4,5,6,7,8", subject="高中数学", existing_tags="复数,复数运算,集合,补集,立体几何,圆锥")`
-4. **保存结果**：将 split_batch 返回的题目列表传给 save_questions 工具追加保存
+4. **保存结果**：将 split_batch 返回的题目列表传给 save_questions 工具追加保存，**必须传入 subject 参数**
+   - `save_questions(questions=[...], subject="高中数学")`
 5. **维护已处理题号列表和知识点标签池**：
    - 将新保存的题目 ID 追加到 `existing_ids`
    - 从新保存的题目中提取所有 `knowledge_tags`，去重后追加到 `existing_tags` 标签池
@@ -208,6 +212,7 @@ ORCHESTRATOR_PROMPT = """# 错题本生成系统编排者
 - 不要跳过任何页面
 - **existing_ids 非常重要**：它防止重叠页上的题目被重复提取，每一批都必须正确传入
 - **existing_tags 保证知识点标签一致性**：后续批次的分割智能体会优先复用已有标签，避免同一知识点出现不同名称
+- **save_questions 必须传入 subject**：科目信息会被持久化，供后续入库和跨会话标签一致性使用
 - 如果某批 split_batch 返回 "[]"（空列表），用 log_issue 记录后继续下一批
 - 只有 1 页数据时不需要分批，直接处理
 - split_batch 的输入必须是 JSON 字符串格式

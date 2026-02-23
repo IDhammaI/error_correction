@@ -86,10 +86,35 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     image_paths = state["image_paths"]
 
-    # 清空旧的 questions.json（外层 agent 通过 save_questions 追加写入）
+    # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
     if os.path.exists(questions_file):
         os.remove(questions_file)
+    meta_path = os.path.join(results_dir, "split_metadata.json")
+    if os.path.exists(meta_path):
+        os.remove(meta_path)
+
+    # 从数据库加载已有科目和知识点标签，供编排智能体参考
+    db_context = ""
+    try:
+        from db import SessionLocal
+        from db.crud import get_existing_subjects, get_existing_tag_names
+
+        with SessionLocal() as db:
+            existing_subjects = get_existing_subjects(db)
+            existing_tags = get_existing_tag_names(db)
+
+        if existing_subjects or existing_tags:
+            db_context = "\n\n## 历史数据参考\n"
+            if existing_subjects:
+                db_context += f"数据库中已有科目：{', '.join(existing_subjects)}\n"
+                db_context += "请优先复用上述科目名称，保持一致性。\n"
+            if existing_tags:
+                db_context += f"数据库中已有知识点标签：{', '.join(existing_tags)}\n"
+                db_context += "第 1 批 split_batch 的 existing_tags 参数请传入上述标签（逗号分隔），后续批次在此基础上追加新标签。\n"
+            logger.info(f"已加载 DB 上下文: {len(existing_subjects)} 个科目, {len(existing_tags)} 个标签")
+    except Exception as e:
+        logger.warning(f"加载 DB 上下文失败（不影响分割）: {e}")
 
     console.print(f"[cyan]Agent 输入: {len(image_paths)} 张图片[/cyan]")
 
@@ -97,7 +122,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     agent.invoke(
         {
             "messages": [
-                {"role": "user", "content": "请对以下图片进行 OCR 解析并分割题目。"},
+                {"role": "user", "content": f"请对以下图片进行 OCR 解析并分割题目。{db_context}"},
                 {"role": "user", "content": json.dumps(image_paths, ensure_ascii=False)}
             ]
         },
