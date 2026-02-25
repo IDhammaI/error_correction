@@ -5,6 +5,7 @@
 import os
 import json
 import logging
+import asyncio
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -223,3 +224,89 @@ def correct_batch(questions_json: str, ocr_context: str) -> str:
     except Exception as e:
         logger.error(f"correct_batch error: {str(e)}")
         return f"纠错失败: {str(e)}"
+
+
+@tool(parse_docstring=True)
+def retry_ocr(image_paths_json: str) -> str:
+    """当 OCR 中间件解析失败时，手动重试 OCR 解析
+
+    此工具供编排智能体在 OCR 中间件失败后调用。
+    它会重新执行 PaddleOCR 解析、简化结果、保存 agent_input.json，
+    并返回可直接传给 split_batch 的 OCR 数据 JSON。
+
+    Args:
+        image_paths_json: 图片路径列表的 JSON 字符串，如 '["path/to/img1.png", "path/to/img2.png"]'
+
+    Returns:
+        简化后的 OCR 数据 JSON 字符串，可直接传给 split_batch 的 ocr_data 参数
+    """
+    logger.info("retry_ocr called")
+    try:
+        image_paths = json.loads(image_paths_json)
+        if not isinstance(image_paths, list) or not image_paths:
+            return "错误: image_paths_json 必须是非空的路径列表 JSON"
+
+        from src.paddleocr_client import PaddleOCRClient
+
+        client = PaddleOCRClient()
+
+        # 执行异步 OCR（兼容已有事件循环）
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                ocr_results = pool.submit(
+                    asyncio.run,
+                    client.parse_images_async(image_paths, save_output=True)
+                ).result()
+        else:
+            ocr_results = asyncio.run(
+                client.parse_images_async(image_paths, save_output=True)
+            )
+
+        # 简化 OCR 结果（与 OCRMiddleware._simplify_results 逻辑一致）
+        simplified = []
+        page_index = 0
+        for result in ocr_results:
+            if "layoutParsingResults" not in result:
+                continue
+            for page in result["layoutParsingResults"]:
+                if "prunedResult" not in page:
+                    continue
+                parsing_res = page["prunedResult"].get("parsing_res_list", [])
+                slim_blocks = []
+                for b in parsing_res:
+                    content = b.get("block_content", "")
+                    if b.get("block_label") == "image" and not content:
+                        bbox = b.get("block_bbox")
+                        if bbox:
+                            content = f"/images/img_in_image_box_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}.jpg"
+                    slim_blocks.append({
+                        "block_label": b.get("block_label"),
+                        "block_content": content,
+                        "block_order": b.get("block_order"),
+                    })
+                simplified.append({
+                    "page_index": page_index,
+                    "blocks": slim_blocks,
+                })
+                page_index += 1
+
+        # 保存 agent_input.json
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        agent_input_path = os.path.join(RESULTS_DIR, "agent_input.json")
+        with open(agent_input_path, 'w', encoding='utf-8') as f:
+            json.dump(simplified, f, ensure_ascii=False, indent=2)
+
+        total_blocks = sum(len(r.get("blocks", [])) for r in simplified)
+        logger.info(f"retry_ocr done: {len(simplified)} pages, {total_blocks} blocks")
+
+        return json.dumps(simplified, ensure_ascii=False)
+
+    except Exception as e:
+        logger.error(f"retry_ocr error: {str(e)}")
+        return f"OCR 重试失败: {str(e)}"
