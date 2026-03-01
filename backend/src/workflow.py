@@ -388,7 +388,11 @@ def split_questions_node(state: WorkflowState) -> dict:
                     "subject": subject,
                     "existing_tags": existing_tags_str,
                 })
-                questions = json.loads(result_str) if result_str.startswith("[") else []
+                # split_batch 内部捕获异常并返回 "分割失败: ..." 字符串，
+                # 需要检测这种情况并触发重试
+                if not result_str or not result_str.startswith("["):
+                    raise RuntimeError(f"split_batch 返回非JSON: {result_str[:200]}")
+                questions = json.loads(result_str)
                 batch_results[batch_idx] = questions
                 logger.info(f"批次 {batch_idx} 完成: {len(questions)} 道题目")
                 console.print(f"[green]  ✓ 批次 {batch_idx} 完成: {len(questions)} 道题目[/green]")
