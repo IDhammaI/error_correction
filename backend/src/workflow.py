@@ -362,6 +362,18 @@ def split_questions_node(state: WorkflowState) -> dict:
         console.print(f"[cyan]识别科目: {subject}[/cyan]")
         logger.info(f"识别科目: {subject}")
 
+    # ── Step 3.5: 按科目过滤知识点标签 ──
+    if subject and db_tags:
+        from db import SessionLocal
+        from db.crud import get_existing_tag_names
+
+        try:
+            with SessionLocal() as db:
+                db_tags = get_existing_tag_names(db, subject=subject)
+            logger.info(f"按科目 '{subject}' 过滤后剩余 {len(db_tags)} 个标签")
+        except Exception as e:
+            logger.warning(f"按科目过滤标签失败，使用全量标签: {e}")
+
     # ── Step 4: 构建重叠批次 ──
     batches = _build_overlapping_batches(ocr_data, batch_size=2, overlap=1)
     console.print(f"[cyan]构建 {len(batches)} 个批次（2页/批, 1页重叠）[/cyan]")
