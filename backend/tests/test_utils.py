@@ -24,6 +24,9 @@ class TestPrepareInput:
     @patch("src.utils.convert_from_path")
     def test_pdf_conversion(self, mock_convert, mock_env, tmp_path):
         """测试 PDF 转图片流程"""
+        # 确保环境变量已生效（虽然没有直接使用 mock_env 变量，但 fixture 必须运行）
+        assert os.getenv("PAGES_DIR")
+
         # 模拟 PDF 文件
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
@@ -48,6 +51,9 @@ class TestPrepareInput:
     @patch("src.utils.Image.open")
     def test_image_standardization(self, mock_open, mock_env, tmp_path):
         """测试图片标准化流程"""
+        # 确保环境变量已生效
+        assert os.getenv("PAGES_DIR")
+
         # 模拟图片文件
         img_path = tmp_path / "test.jpg"
         img_path.touch()
