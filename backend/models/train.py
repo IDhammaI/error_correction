@@ -120,8 +120,8 @@ class EnsExamRealDataset(Dataset):
         Ms_gt_np, Mb_gt_np = generate_mask_from_pair(Iin, Igt, threshold=20)
 
         # 3. 图像预处理（归一化到[-1,1]）
-        Iin = self.img_transform(Iin.astype(np.float32))  # (3,512,512)，[-1,1]
-        Igt = self.img_transform(Igt.astype(np.float32))  # (3,512,512)，[-1,1]
+        Iin = self.img_transform(Iin)  # (3,512,512)，[-1,1]
+        Igt = self.img_transform(Igt)  # (3,512,512)，[-1,1]
 
         # 4. 掩码预处理（归一化到[0,1]，扩展通道维度）
         Ms_gt = torch.from_numpy(Ms_gt_np).unsqueeze(0).float()  # (1,512,512)，[0,1]
@@ -204,34 +204,29 @@ def train_ensexam(
             # ---------------------- 步骤1：训练判别器D ----------------------
             optimizer_D.zero_grad()
 
-            # 1.1 真实图像的判别损失（label=real）
-            real_global_score, real_local_score = D(Igt, Mb_gt)
-            loss_D_real = (criterion.adversarial_loss(real_global_score, is_real=True) +
-                           criterion.adversarial_loss(real_local_score, is_real=True)) / 2
-
-            # 1.2 生成图像的判别损失（label=fake）
+            # 1.1 真实图像判别
+            real_global, real_local = D(Igt, Mb_gt)
+            # 1.2 生成图像判别
             gen_out = G(Iin)
-            Icomp = gen_out[-1]  # 生成的最终擦除结果
-            fake_global_score, fake_local_score = D(Icomp.detach(), Mb_gt)  # detach避免更新G
-            loss_D_fake = (criterion.adversarial_loss(fake_global_score, is_real=False) +
-                           criterion.adversarial_loss(fake_local_score, is_real=False)) / 2
+            Icomp = gen_out[-1]  # 取最后一个输出Icomp
+            fake_global, fake_local = D(Icomp.detach(), Mb_gt)
+            # 1.3 计算D损失（使用Model中的hinge_loss_D）
+            loss_D_global = EnsExamLoss.hinge_loss_D(real_global, fake_global)
+            loss_D_local = EnsExamLoss.hinge_loss_D(real_local, fake_local)
+            loss_D = (loss_D_global + loss_D_local) / 2
 
-            # 1.3 D总损失 & 反向传播
-            loss_D = (loss_D_real + loss_D_fake) / 2
             loss_D.backward()
             optimizer_D.step()
 
             # ---------------------- 步骤2：训练生成器G ----------------------
             optimizer_G.zero_grad()
 
-            # 2.1 重新计算生成图像的判别分数（用于G的对抗损失）
-            fake_global_score, fake_local_score = D(Icomp, Mb_gt)
-            disc_score = (fake_global_score, fake_local_score)
-
-            # 2.2 计算G的全量损失
+            # 2.1 重新计算生成图像的判别分数
+            fake_global, fake_local = D(Icomp, Mb_gt)
+            disc_score = (fake_global, fake_local)
+            # 2.2 计算G的全量损失（Model中的EnsExamLoss.forward）
             loss_G, loss_parts = criterion(gen_out, gt, disc_score)
 
-            # 2.3 G反向传播
             loss_G.backward()
             optimizer_G.step()
 
