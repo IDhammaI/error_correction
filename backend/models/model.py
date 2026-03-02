@@ -126,17 +126,11 @@ class CoarseNet(nn.Module):
         self.up4 = UpSample(256, 64, use_cbam=True)  # 1/2 → Ic2
         self.up5 = UpSample(128, 64, use_cbam=True)  # 1/1 → Ic1
         # 输出层：Ms(笔画掩码), Mb(文本块掩码), 多尺度Ic
-        self.up1_ms = UpSample(512, 512, use_cbam=True)
-        self.up2_ms = UpSample(1024, 256, use_cbam=True)
-        self.up3_ms = UpSample(512, 128, use_cbam=True)
-        self.up4_ms = UpSample(256, 64, use_cbam=True)
-        self.up5_ms = UpSample(128, 64, use_cbam=True)
-
-        self.up1_mb = UpSample(512, 512, use_cbam=True)
-        self.up2_mb = UpSample(1024, 256, use_cbam=True)
-        self.up3_mb = UpSample(512, 128, use_cbam=True)
-        self.up4_mb = UpSample(256, 64, use_cbam=True)
-        self.up5_mb = UpSample(128, 64, use_cbam=True)
+        self.up1_seg = UpSample(512, 512, use_cbam=True)
+        self.up2_seg = UpSample(1024, 256, use_cbam=True)
+        self.up3_seg = UpSample(512, 128, use_cbam=True)
+        self.up4_seg = UpSample(256, 64, use_cbam=True)
+        self.up5_seg = UpSample(128, 64, use_cbam=True)
 
         self.out_ms = nn.Conv2d(64, 1, 3, 1, 1, bias=True)
         self.out_mb = nn.Conv2d(64, 1, 3, 1, 1, bias=True)
@@ -170,27 +164,17 @@ class CoarseNet(nn.Module):
         u5 = self.up5(u4)  # H → 输出 Ic1, Mb, Ms
         Ic1 = torch.tanh(self.out_ic1(u5))
 
-        u1_mb = self.up1_mb(d5)
-        u1_mb = torch.cat([u1_mb, d4], dim=1)
-        u2_mb = self.up2_mb(u1_mb)
-        u2_mb = torch.cat([u2_mb, d3], dim=1)
-        u3_mb = self.up3_mb(u2_mb)
-        u3_mb = torch.cat([u3_mb, d2], dim=1)
-        u4_mb = self.up4_mb(u3_mb)
-        u4_mb = torch.cat([u4_mb, d1], dim=1)
-        u5_mb = self.up5_mb(u4_mb)
-        Mb = torch.sigmoid(self.out_mb(u5_mb))
-
-        u1_ms = self.up1_ms(d5)
-        u1_ms = torch.cat([u1_ms, d4], dim=1)
-        u2_ms = self.up2_ms(u1_ms)
-        u2_ms = torch.cat([u2_ms, d3], dim=1)
-        u3_ms = self.up3_ms(u2_ms)
-        u3_ms = torch.cat([u3_ms, d2], dim=1)
-        u4_ms = self.up4_ms(u3_ms)
-        u4_ms = torch.cat([u4_ms, d1], dim=1)
-        u5_ms = self.up5_ms(u4_ms)
-        Ms = torch.sigmoid(self.out_ms(u5_ms))
+        u1_seg = self.up1_seg(d5)
+        u1_seg = torch.cat([u1_seg, d4], dim=1)
+        u2_seg = self.up2_seg(u1_seg)
+        u2_seg = torch.cat([u2_seg, d3], dim=1)
+        u3_seg = self.up3_seg(u2_seg)
+        u3_seg = torch.cat([u3_seg, d2], dim=1)
+        u4_seg = self.up4_seg(u3_seg)
+        u4_seg = torch.cat([u4_seg, d1], dim=1)
+        u5_seg = self.up5_seg(u4_seg)
+        Mb = torch.sigmoid(self.out_mb(u5_seg))
+        Ms = torch.sigmoid(self.out_ms(u5_seg))
 
         return Ms, Mb, Ic4, Ic2, Ic1
 
