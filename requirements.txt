@@ -13,6 +13,7 @@ openai==2.15.0
 # --- Tools ---
 tavily==1.1.0
 langchain-tavily==0.2.16
+pytest==9.0.2
 
 # --- Utils ---
 python-dotenv==1.2.1
