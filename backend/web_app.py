@@ -544,10 +544,31 @@ def get_status():
     """
     try:
         # 检查配置
+        paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
+        deepseek_configured = bool(os.getenv('DEEPSEEK_API_KEY'))
+        ernie_configured = bool(os.getenv('ERNIE_API_KEY'))
+        
+        # 构建可用模型列表
+        available_models = [
+            {
+                'value': 'deepseek', 
+                'label': 'DeepSeek', 
+                'configured': deepseek_configured,
+                'description': 'DeepSeek V3.2'
+            },
+            {
+                'value': 'ernie', 
+                'label': '文心一言', 
+                'configured': ernie_configured,
+                'description': '百度文心大模型 4.5'
+            }
+        ]
+
         status = {
-            'paddleocr_configured': bool(os.getenv('PADDLEOCR_API_URL')),
-            'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
-            'ernie_configured': bool(os.getenv('ERNIE_API_KEY')),
+            'paddleocr_configured': paddleocr_configured,
+            'deepseek_configured': deepseek_configured,
+            'ernie_configured': ernie_configured,
+            'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
                 'pages': PAGES_DIR,
