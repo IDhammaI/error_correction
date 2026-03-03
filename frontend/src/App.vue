@@ -53,12 +53,29 @@ const toggleTheme = async (btnEl) => {
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
+
+const modelProvider = ref('deepseek')
+const providerOptions = computed(() => {
+  const s = systemStatus.value
+  return [
+    { value: 'deepseek', label: 'DeepSeek', configured: s ? !!s.deepseek_configured : false },
+    { value: 'ernie', label: '文心一言', configured: s ? !!s.ernie_configured : false },
+  ]
+})
+
 const statusPills = computed(() => {
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  pills.push({ key: 'deepseek', ok: !!s.deepseek_configured, label: s.deepseek_configured ? 'DeepSeek' : 'DeepSeek未配置' })
+  const activeProvider = providerOptions.value.find(p => p.value === modelProvider.value)
+  if (activeProvider) {
+    pills.push({
+      key: 'model',
+      ok: activeProvider.configured,
+      label: activeProvider.configured ? activeProvider.label : `${activeProvider.label}未配置`
+    })
+  }
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
 })
@@ -390,7 +407,11 @@ const doSplit = async () => {
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
 
   try {
-    const resp = await fetch('/api/split', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    const resp = await fetch('/api/split', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_provider: modelProvider.value }),
+    })
     const data = await resp.json()
     if (data && data.success) {
       questions.value = data.questions || []
@@ -459,6 +480,7 @@ const doReset = async () => {
   uploadQueue.splice(0, uploadQueue.length)
   questions.value = []
   selectedIds.clear()
+  modelProvider.value = 'deepseek'
   step.value = 1
   pushToast('success', '已重置')
 }
@@ -543,6 +565,23 @@ onBeforeUnmount(() => {
             <i class="fa-solid" :class="p.ok ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
             {{ p.label }}
           </span>
+          <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
+            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">模型</label>
+            <select
+              v-model="modelProvider"
+              :disabled="splitting || splitCompleted"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-blue-800"
+            >
+              <option
+                v-for="opt in providerOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :disabled="!opt.configured"
+              >
+                {{ opt.label }}{{ !opt.configured ? '（未配置）' : '' }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <div class="mb-8">
