@@ -47,6 +47,7 @@ class WorkflowState(TypedDict, total=False):
     questions: List[Dict[str, Any]]      # 分割后的题目列表
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
+    model_provider: str                  # 模型供应商: "deepseek" | "ernie"
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -323,6 +324,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     os.makedirs(results_dir, exist_ok=True)
 
     image_paths = state["image_paths"]
+    model_provider = state.get("model_provider", "deepseek")
 
     # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
@@ -399,6 +401,7 @@ def split_questions_node(state: WorkflowState) -> dict:
                     "existing_ids": "",
                     "subject": subject,
                     "existing_tags": existing_tags_str,
+                    "model_provider": model_provider,
                 })
                 # split_batch 内部捕获异常并返回 "分割失败: ..." 字符串，
                 # 需要检测这种情况并触发重试
@@ -501,10 +504,12 @@ def correct_questions_node(state: WorkflowState) -> dict:
     # 调用纠错工具
     from error_correction_agent.tools import correct_batch
 
+    model_provider = state.get("model_provider", "deepseek")
     flagged_json = json.dumps(flagged, ensure_ascii=False)
     result_str = correct_batch.invoke({
         "questions_json": flagged_json,
         "ocr_context": ocr_context,
+        "model_provider": model_provider,
     })
 
     # 解析纠错结果

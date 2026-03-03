@@ -19,15 +19,43 @@ from .middleware import OCRMiddleware
 load_dotenv()
 
 
-def _init_model(temperature=0.1):
-    """初始化 DeepSeek 模型（所有智能体共用）"""
-    return init_chat_model(
-        model="deepseek:deepseek-chat",
-        temperature=temperature,
-    )
+def _init_model(temperature: float = 0.1, provider: str = "deepseek"):
+    """初始化 LLM 模型
+
+    Args:
+        temperature: 温度参数
+        provider: 模型供应商，"deepseek"（默认）或 "ernie"
+    """
+    provider = (provider or "deepseek").strip().lower()
+
+    if provider == "ernie":
+        api_key = os.getenv("ERNIE_API_KEY", "")
+        base_url = os.getenv("ERNIE_BASE_URL", "https://aistudio.baidu.com/llm/lmapi/v3")
+        model_name = os.getenv("ERNIE_MODEL_NAME", "ernie-4.5-turbo-128k-preview")
+
+        if not api_key:
+            raise ValueError("使用文心一言需要配置 ERNIE_API_KEY 环境变量")
+
+        return init_chat_model(
+            model=model_name,
+            model_provider="openai",
+            base_url=base_url,
+            api_key=api_key,
+            temperature=temperature,
+        )
+    else:
+        api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        model_name = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat")
+        return init_chat_model(
+            model=f"deepseek:{model_name}",
+            api_key=api_key,
+            base_url=base_url,
+            temperature=temperature,
+        )
 
 
-def create_inner_split_agent():
+def create_inner_split_agent(provider: str = "deepseek"):
     """创建内层题目分割智能体
 
     使用 create_agent + ToolStrategy，保证结构化输出。
@@ -35,10 +63,13 @@ def create_inner_split_agent():
 
     由 split_batch 工具内部调用。
 
+    Args:
+        provider: 模型供应商，"deepseek" 或 "ernie"
+
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
-    model = _init_model(temperature=0.1)
+    model = _init_model(temperature=0.1, provider=provider)
 
     return create_agent(
         model=model,
@@ -51,7 +82,7 @@ def create_inner_split_agent():
     )
 
 
-def create_correction_agent():
+def create_correction_agent(provider: str = "deepseek"):
     """创建内层 OCR 纠错智能体
 
     使用 create_agent + ToolStrategy，保证结构化输出。
@@ -59,10 +90,13 @@ def create_correction_agent():
 
     由 correct_batch 工具内部调用。
 
+    Args:
+        provider: 模型供应商，"deepseek" 或 "ernie"
+
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
-    model = _init_model(temperature=0.0)
+    model = _init_model(temperature=0.0, provider=provider)
 
     return create_agent(
         model=model,

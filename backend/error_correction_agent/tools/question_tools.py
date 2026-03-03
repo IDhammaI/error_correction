@@ -109,7 +109,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
 
 @tool(parse_docstring=True)
-def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existing_tags: str = "") -> str:
+def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existing_tags: str = "", model_provider: str = "deepseek") -> str:
     """对一批OCR数据进行题目分割，返回结构化题目列表JSON
 
     将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
@@ -120,11 +120,12 @@ def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existi
         existing_ids: 前面批次已提取的题目ID列表，用逗号分隔（如 "1,2,3,4,5"），用于跳过重叠页上的已有题目
         subject: 试卷所属科目（如 "高中数学"、"初中物理"），用于辅助知识点标注
         existing_tags: 前面批次已使用的知识点标签，用逗号分隔（如 "复数,集合,立体几何"），用于保持标签一致性
+        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
 
     Returns:
         题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
     """
-    logger.info("split_batch called")
+    logger.info(f"split_batch called (provider={model_provider})")
 
     from ..agent import create_inner_split_agent
 
@@ -160,7 +161,7 @@ OCR数据：
     for attempt in range(1, max_retries + 1):
         try:
             # 每次重试都创建全新的 agent 实例，确保消息历史干净
-            inner_agent = create_inner_split_agent()
+            inner_agent = create_inner_split_agent(provider=model_provider)
             response = inner_agent.invoke(
                 {"messages": [{"role": "user", "content": prompt}]},
                 config={"recursion_limit": 100},
@@ -183,7 +184,7 @@ OCR数据：
 
 
 @tool(parse_docstring=True)
-def correct_batch(questions_json: str, ocr_context: str) -> str:
+def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "deepseek") -> str:
     """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
 
     将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
@@ -192,11 +193,12 @@ def correct_batch(questions_json: str, ocr_context: str) -> str:
     Args:
         questions_json: 待纠错题目列表的JSON字符串
         ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
+        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
 
     Returns:
         纠错后的题目列表JSON字符串
     """
-    logger.info("correct_batch called")
+    logger.info(f"correct_batch called (provider={model_provider})")
 
     from ..agent import create_correction_agent
 
@@ -215,7 +217,7 @@ def correct_batch(questions_json: str, ocr_context: str) -> str:
     last_error = None
     for attempt in range(1, max_retries + 1):
         try:
-            correction_agent = create_correction_agent()
+            correction_agent = create_correction_agent(provider=model_provider)
             response = correction_agent.invoke(
                 {"messages": [{"role": "user", "content": prompt}]},
                 config={"recursion_limit": 100},

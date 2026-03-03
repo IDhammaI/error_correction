@@ -327,6 +327,15 @@ def split_questions():
     try:
         global workflow_graph, current_thread_id, session_files, session_file_order
 
+        # 读取请求体参数（模型供应商）
+        data = request.get_json(silent=True) or {}
+        model_provider = data.get("model_provider", "deepseek")
+        if model_provider not in ("deepseek", "ernie"):
+            return jsonify({
+                'success': False,
+                'error': f'不支持的模型供应商: {model_provider}'
+            }), 400
+
         with session_lock:
             keys = list(session_file_order)
             file_paths = []
@@ -345,7 +354,7 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths}, config=config)
+        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider}, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -535,9 +544,31 @@ def get_status():
     """
     try:
         # 检查配置
+        paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
+        deepseek_configured = bool(os.getenv('DEEPSEEK_API_KEY'))
+        ernie_configured = bool(os.getenv('ERNIE_API_KEY'))
+        
+        # 构建可用模型列表
+        available_models = [
+            {
+                'value': 'deepseek', 
+                'label': 'DeepSeek', 
+                'configured': deepseek_configured,
+                'description': 'DeepSeek V3.2'
+            },
+            {
+                'value': 'ernie', 
+                'label': '文心一言', 
+                'configured': ernie_configured,
+                'description': '百度文心大模型 4.5'
+            }
+        ]
+
         status = {
-            'paddleocr_configured': bool(os.getenv('PADDLEOCR_API_URL')),
-            'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
+            'paddleocr_configured': paddleocr_configured,
+            'deepseek_configured': deepseek_configured,
+            'ernie_configured': ernie_configured,
+            'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
                 'pages': PAGES_DIR,
