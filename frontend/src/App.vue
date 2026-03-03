@@ -1,5 +1,11 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOptions,
+  ListboxOption,
+} from '@headlessui/vue'
 
 const theme = ref('light')
 const applyTheme = (nextTheme) => {
@@ -57,10 +63,17 @@ const statusError = ref('')
 const modelProvider = ref('deepseek')
 const providerOptions = computed(() => {
   const s = systemStatus.value
-  return [
-    { value: 'deepseek', label: 'DeepSeek', configured: s ? !!s.deepseek_configured : false },
-    { value: 'ernie', label: '文心一言', configured: s ? !!s.ernie_configured : false },
-  ]
+  return s && s.available_models ? s.available_models : []
+})
+
+// 自动选中第一个已配置的模型
+watch(systemStatus, (newVal) => {
+  if (newVal && newVal.available_models) {
+    const configured = newVal.available_models.find(m => m.configured)
+    if (configured) {
+      modelProvider.value = configured.value
+    }
+  }
 })
 
 const statusPills = computed(() => {
@@ -566,21 +579,59 @@ onBeforeUnmount(() => {
             {{ p.label }}
           </span>
           <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
-            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">模型</label>
-            <select
-              v-model="modelProvider"
-              :disabled="splitting || splitCompleted"
-              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-blue-800"
-            >
-              <option
-                v-for="opt in providerOptions"
-                :key="opt.value"
-                :value="opt.value"
-                :disabled="!opt.configured"
-              >
-                {{ opt.label }}{{ !opt.configured ? '（未配置）' : '' }}
-              </option>
-            </select>
+            <Listbox v-model="modelProvider" :disabled="splitting || splitCompleted">
+              <div class="relative">
+                <ListboxButton
+                  class="relative w-full cursor-default rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-10 text-left text-xs font-semibold text-slate-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-blue-800"
+                >
+                  <span class="block truncate">{{ providerOptions.find(p => p.value === modelProvider)?.label || '选择模型' }}</span>
+                  <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <i class="fa-solid fa-chevron-down h-3 w-3 text-slate-400" aria-hidden="true"></i>
+                  </span>
+                </ListboxButton>
+
+                <transition
+                  leave-active-class="transition duration-100 ease-in"
+                  leave-from-class="opacity-100"
+                  leave-to-class="opacity-0"
+                >
+                  <ListboxOptions
+                    class="absolute right-0 mt-1 max-h-60 w-56 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm dark:bg-slate-800 dark:ring-white/10 z-50"
+                  >
+                    <ListboxOption
+                      v-for="opt in providerOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                      :disabled="!opt.configured"
+                      as="template"
+                      v-slot="{ active, selected, disabled }"
+                    >
+                      <li
+                        class="relative cursor-default select-none py-2 pl-10 pr-4"
+                        :class="[
+                          active ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100' : 'text-slate-900 dark:text-slate-100',
+                          disabled ? 'opacity-50 cursor-not-allowed' : ''
+                        ]"
+                      >
+                        <span class="block truncate" :class="[selected ? 'font-medium' : 'font-normal']">
+                          {{ opt.label }}
+                          <span v-if="!opt.configured" class="ml-1 text-xs text-rose-500">(未配置)</span>
+                        </span>
+                        <span v-if="opt.description" class="block truncate text-xs text-slate-500 dark:text-slate-400">
+                          {{ opt.description }}
+                        </span>
+                        <span
+                          v-if="selected"
+                          class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-blue-400"
+                        >
+                          <i class="fa-solid fa-check h-3 w-3" aria-hidden="true"></i>
+                        </span>
+                      </li>
+                    </ListboxOption>
+                  </ListboxOptions>
+                </transition>
+              </div>
+            </Listbox>
           </div>
         </div>
 
