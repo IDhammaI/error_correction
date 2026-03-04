@@ -63,7 +63,7 @@ SPLIT_PROMPT = """# 错题本题目分割专家
 3. **收集题目内容**
    - 从题号开始，收集后续的 block
    - 遇到下一个题号时停止
-   - 包括：text、image 两种 block 类型
+   - **content_blocks 的 block_type 只允许 `text` 或 `image` 两个值**。即使 OCR 原始数据中有 `paragraph_title`、`doc_title` 等标签，输出时一律归为 `text`
    - 公式不单独成块，直接用 LaTeX 标记嵌入 text 的 content 中（行内 `$...$`，独占行 `$$...$$`）
    - **图片必须嵌入 content_blocks**：所有属于该题目的 image block 都必须作为 `{"block_type": "image", "content": "/images/..."}` 加入 content_blocks，即使图片与选项关联（如实验操作图）。不要只放在 image_refs 中而不嵌入 content_blocks
 
