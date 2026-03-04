@@ -12,7 +12,7 @@ from langchain.agents.structured_output import ToolStrategy
 from langchain_core.messages import SystemMessage, HumanMessage
 from deepagents import create_deep_agent
 
-from .prompts import SPLIT_PROMPT, ORCHESTRATOR_PROMPT, CORRECTION_PROMPT
+from .prompts import SPLIT_PROMPT, SPLIT_PROMPT_LITE, ORCHESTRATOR_PROMPT, CORRECTION_PROMPT
 from .schemas import QuestionSplitResult, CorrectionResult
 from .tools import save_questions, log_issue, split_batch
 from .middleware import OCRMiddleware
@@ -167,7 +167,7 @@ def invoke_split(prompt: str, provider: str = "deepseek"):
         model = _init_model(temperature=0.1, provider=provider)
         structured_model = model.with_structured_output(QuestionSplitResult)
         return structured_model.invoke([
-            SystemMessage(content=SPLIT_PROMPT),
+            SystemMessage(content=SPLIT_PROMPT_LITE),
             HumanMessage(content=prompt),
         ])
     else:

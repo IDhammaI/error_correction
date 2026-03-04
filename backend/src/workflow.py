@@ -435,7 +435,6 @@ def split_questions_node(state: WorkflowState) -> dict:
             try:
                 result_str = split_batch.invoke({
                     "ocr_data": json.dumps(batch_data, ensure_ascii=False),
-                    "existing_ids": "",
                     "subject": subject,
                     "existing_tags": existing_tags_str,
                     "model_provider": model_provider,
