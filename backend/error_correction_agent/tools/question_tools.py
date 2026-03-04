@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import asyncio
+import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -172,6 +173,11 @@ OCR数据：
             last_error = str(e)
             logger.warning(f"split_batch: 第 {attempt}/{max_retries} 次失败: {last_error}")
 
+        if attempt < max_retries:
+            wait = 2 ** attempt  # 2s, 4s
+            logger.info(f"split_batch: 等待 {wait}s 后重试...")
+            time.sleep(wait)
+
     logger.error(f"split_batch: {max_retries} 次尝试均失败: {last_error}")
     return f"分割失败: {last_error}"
 
@@ -221,6 +227,11 @@ def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "
         except Exception as e:
             last_error = str(e)
             logger.warning(f"correct_batch: 第 {attempt}/{max_retries} 次失败: {last_error}")
+
+        if attempt < max_retries:
+            wait = 2 ** attempt  # 2s, 4s
+            logger.info(f"correct_batch: 等待 {wait}s 后重试...")
+            time.sleep(wait)
 
     logger.error(f"correct_batch: {max_retries} 次尝试均失败: {last_error}")
     return f"纠错失败: {last_error}"
