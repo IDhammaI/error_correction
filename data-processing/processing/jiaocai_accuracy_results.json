@@ -1,0 +1,92 @@
+{
+    "jiaocaineedrop_624b60c58c9d8bfb6ff1886c2fd605d2adeb6ea4da576068201b6c6958ce93f4.pdf_8.jpg": {
+        "original_img": "jiaocaineedrop_624b60c58c9d8bfb6ff1886c2fd605d2adeb6ea4da576068201b6c6958ce93f4.pdf_8.jpg",
+        "strategy": "raw",
+        "latency_s": 1.1,
+        "size_kb": 182.96,
+        "text_len": 1440,
+        "true_accuracy_pct": 91.17,
+        "blocks": 9
+    },
+    "jiaocaineedrop_eng-45646.pdf_30.jpg": {
+        "original_img": "jiaocaineedrop_eng-45646.pdf_30.jpg",
+        "strategy": "raw",
+        "latency_s": 1.18,
+        "size_kb": 184.09,
+        "text_len": 2348,
+        "true_accuracy_pct": 93.59,
+        "blocks": 21
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_1249.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_1249.jpg",
+        "strategy": "raw",
+        "latency_s": 1.24,
+        "size_kb": 234.65,
+        "text_len": 2859,
+        "true_accuracy_pct": 95.9,
+        "blocks": 10
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_1303.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_1303.jpg",
+        "strategy": "raw",
+        "latency_s": 1.28,
+        "size_kb": 286.56,
+        "text_len": 1264,
+        "true_accuracy_pct": 91.93,
+        "blocks": 13
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_1544.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_1544.jpg",
+        "strategy": "raw",
+        "latency_s": 1.29,
+        "size_kb": 251.11,
+        "text_len": 1191,
+        "true_accuracy_pct": 91.86,
+        "blocks": 31
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_1884.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_1884.jpg",
+        "strategy": "raw",
+        "latency_s": 0.89,
+        "size_kb": 226.79,
+        "text_len": 980,
+        "true_accuracy_pct": 95.21,
+        "blocks": 38
+    },
+    "jiaocai_jiaocai_en_117.jpg": {
+        "original_img": "jiaocai_jiaocai_en_117.jpg",
+        "strategy": "raw",
+        "latency_s": 0.7,
+        "size_kb": 62.76,
+        "text_len": 188,
+        "true_accuracy_pct": 94.51,
+        "blocks": 7
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_2002.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_2002.jpg",
+        "strategy": "raw",
+        "latency_s": 0.97,
+        "size_kb": 259.87,
+        "text_len": 916,
+        "true_accuracy_pct": 96.73,
+        "blocks": 12
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_3428.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_3428.jpg",
+        "strategy": "raw",
+        "latency_s": 1.11,
+        "size_kb": 364.84,
+        "text_len": 1422,
+        "true_accuracy_pct": 96.99,
+        "blocks": 13
+    },
+    "jiaocaineedrop_jiaocai_needrop_en_377.jpg": {
+        "original_img": "jiaocaineedrop_jiaocai_needrop_en_377.jpg",
+        "strategy": "raw",
+        "latency_s": 1.44,
+        "size_kb": 372.6,
+        "text_len": 5329,
+        "true_accuracy_pct": 96.81,
+        "blocks": 78
+    }
+}

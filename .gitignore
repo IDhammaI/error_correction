@@ -6,6 +6,8 @@ printed-vs-handwritten/
 .venv/
 .idea/
 .langgraph_api/
+OmniDocBench.json
+.vscode
 
 # 前端构建产物
 frontend/dist/

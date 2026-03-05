@@ -1,0 +1,92 @@
+{
+    "exam_paper_en-file-putnam-archive_1997_Solutions_1997s_page_003.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_1997_Solutions_1997s_page_003.png",
+        "strategy": "raw",
+        "latency_s": 1.48,
+        "size_kb": 430.64,
+        "text_len": 3214,
+        "true_accuracy_pct": 78.42,
+        "blocks": 16
+    },
+    "exam_paper_2018年广西北海、钦州、南宁、来宾、崇左、防城港、北部湾经济区中考英语试题（空白卷）_page_001.png": {
+        "original_img": "exam_paper_2018年广西北海、钦州、南宁、来宾、崇左、防城港、北部湾经济区中考英语试题（空白卷）_page_001.png",
+        "strategy": "raw",
+        "latency_s": 1.62,
+        "size_kb": 448.54,
+        "text_len": 1178,
+        "true_accuracy_pct": 85.9,
+        "blocks": 16
+    },
+    "exam_paper_2016年安徽省中考英语试题（解析）_page_003.png": {
+        "original_img": "exam_paper_2016年安徽省中考英语试题（解析）_page_003.png",
+        "strategy": "raw",
+        "latency_s": 1.95,
+        "size_kb": 346.44,
+        "text_len": 899,
+        "true_accuracy_pct": 91.58,
+        "blocks": 13
+    },
+    "exam_paper_en-file-putnam-archive_2006_Problems_2006_page_001.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2006_Problems_2006_page_001.png",
+        "strategy": "raw",
+        "latency_s": 2.24,
+        "size_kb": 478.25,
+        "text_len": 3861,
+        "true_accuracy_pct": 78.96,
+        "blocks": 24
+    },
+    "exam_paper_en-file-putnam-archive_2007_Problems_2007_page_001.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2007_Problems_2007_page_001.png",
+        "strategy": "raw",
+        "latency_s": 1.48,
+        "size_kb": 424.95,
+        "text_len": 3441,
+        "true_accuracy_pct": 79.24,
+        "blocks": 20
+    },
+    "exam_paper_2016年安徽省中考英语试题（解析）_page_015.png": {
+        "original_img": "exam_paper_2016年安徽省中考英语试题（解析）_page_015.png",
+        "strategy": "raw",
+        "latency_s": 3.12,
+        "size_kb": 417.37,
+        "text_len": 2060,
+        "true_accuracy_pct": 96.34,
+        "blocks": 12
+    },
+    "exam_paper_en-file-putnam-archive_2009_Solutions_2009s_page_002.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2009_Solutions_2009s_page_002.png",
+        "strategy": "raw",
+        "latency_s": 1.63,
+        "size_kb": 642.68,
+        "text_len": 5019,
+        "true_accuracy_pct": 77.01,
+        "blocks": 29
+    },
+    "exam_paper_en-file-putnam-archive_2014_Problems_2014_page_001.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2014_Problems_2014_page_001.png",
+        "strategy": "raw",
+        "latency_s": 1.63,
+        "size_kb": 479.37,
+        "text_len": 3534,
+        "true_accuracy_pct": 84.34,
+        "blocks": 29
+    },
+    "exam_paper_en-file-putnam-archive_2009_Solutions_2009s_page_003.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2009_Solutions_2009s_page_003.png",
+        "strategy": "raw",
+        "latency_s": 1.98,
+        "size_kb": 714.66,
+        "text_len": 5844,
+        "true_accuracy_pct": 85.32,
+        "blocks": 24
+    },
+    "exam_paper_en-file-putnam-archive_2015_Problems_2015_page_001.png": {
+        "original_img": "exam_paper_en-file-putnam-archive_2015_Problems_2015_page_001.png",
+        "strategy": "raw",
+        "latency_s": 1.35,
+        "size_kb": 426.23,
+        "text_len": 3329,
+        "true_accuracy_pct": 82.49,
+        "blocks": 27
+    }
+}
