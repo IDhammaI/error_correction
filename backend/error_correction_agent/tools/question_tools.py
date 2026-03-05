@@ -271,7 +271,7 @@ def retry_ocr(image_paths_json: str) -> str:
                 client.parse_images_async(image_paths, save_output=True)
             )
 
-        # 简化 OCR 结果（与 OCRMiddleware._simplify_results 逻辑一致）
+        # 简化 OCR 结果，只保留 block_label、block_content、block_order
         simplified = []
         page_index = 0
         for result in ocr_results:

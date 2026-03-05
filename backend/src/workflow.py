@@ -126,7 +126,7 @@ def _run_ocr_and_simplify(image_paths: List[str]) -> List[Dict[str, Any]]:
 def _simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
     """简化 OCR 结果，只保留 split 所需字段
 
-    与 OCRMiddleware._simplify_results 逻辑一致。
+    只保留 block_label、block_content、block_order 三个字段。
     """
     simplified = []
     page_index = 0

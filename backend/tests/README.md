@@ -34,7 +34,6 @@ backend/tests/
 ├── test_web_helpers.py          # web_app.py 纯函数测试（22 个）
 ├── test_crud.py                 # 数据库 CRUD 测试（32 个）
 ├── test_schemas.py              # Pydantic schema 校验测试（14 个）
-├── test_ocr_middleware.py       # OCR 中间件测试（18 个）
 ├── test_question_tools.py       # 题目工具函数测试（7 个）
 ├── test_correct_node.py         # 纠错节点合并逻辑测试（4 个）
 ├── test_utils.py                # 通用工具函数测试（4 个）
@@ -119,16 +118,6 @@ backend/tests/
 | `TestQuestionSplitResult` | `QuestionSplitResult` | 2 | 空列表、包含题目 |
 | `TestCorrectedQuestion` | `CorrectedQuestion` | 2 | 正常构造、缺 corrections_applied 拒绝 |
 | `TestCorrectionResult` | `CorrectionResult` | 2 | 空列表、包含纠错结果 |
-
-### test_ocr_middleware.py （18 个）
-
-测试 `backend/error_correction_agent/middleware/ocr_middleware.py` 中的中间件逻辑（Mock 外部依赖）：
-
-| 测试类 | 被测函数 | 用例数 | 说明 |
-|--------|----------|--------|------|
-| `TestExtractImagePaths` | `_extract_image_paths` | 9 | JSON 解析：合法列表、空列表、非法 JSON、非列表、混合类型 |
-| `TestSimplifyResults` | `_simplify_results` | 5 | OCR 简化：text/chart/image block、bbox 路径生成、缺字段跳过 |
-| `TestBeforeAgent` | `before_agent` | 4 | 中间件主流程：无消息跳过、提取图片 -> Mock OCR -> 注入结果、OCR 失败处理 |
 
 ### test_question_tools.py （7 个）
 
