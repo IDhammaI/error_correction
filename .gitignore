@@ -6,6 +6,7 @@ printed-vs-handwritten/
 .venv/
 .idea/
 .langgraph_api/
+.claude/
 
 # 前端构建产物
 frontend/dist/

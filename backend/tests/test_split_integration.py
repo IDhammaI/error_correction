@@ -44,7 +44,6 @@ def split_result(ocr_data, model_provider):
 
     result = split_batch.invoke({
         "ocr_data": json.dumps(ocr_data, ensure_ascii=False),
-        "existing_ids": "",
         "subject": "高中数学",
         "existing_tags": "",
         "model_provider": model_provider,

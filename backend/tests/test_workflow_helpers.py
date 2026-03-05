@@ -7,16 +7,19 @@ workflow.py 中纯函数的单元测试
 - _dedup_questions
 - _question_richness
 - _sort_key
-- _identify_subject
+- _extract_text_sample
+- _identify_subject（含 LLM 预检层）
 """
 
 import pytest
+from unittest.mock import patch, MagicMock
 from src.workflow import (
     _simplify_ocr_results,
     _build_overlapping_batches,
     _dedup_questions,
     _question_richness,
     _sort_key,
+    _extract_text_sample,
     _identify_subject,
 )
 
@@ -437,12 +440,88 @@ class TestDedupQuestions:
 
 
 # ═══════════════════════════════════════════════════════════
+# _extract_text_sample
+# ═══════════════════════════════════════════════════════════
+
+
+class TestExtractTextSample:
+    """_extract_text_sample 测试"""
+
+    def test_empty_input(self):
+        assert _extract_text_sample([]) == ""
+
+    def test_extracts_text_blocks(self):
+        """应提取 text 类型 block 的内容"""
+        ocr = [{
+            "page_index": 0,
+            "blocks": [
+                {"block_label": "text", "block_content": "hello"},
+                {"block_label": "text", "block_content": "world"},
+            ]
+        }]
+        result = _extract_text_sample(ocr)
+        assert "hello" in result
+        assert "world" in result
+
+    def test_includes_title_blocks(self):
+        """应包含 paragraph_title 和 doc_title"""
+        ocr = [{
+            "page_index": 0,
+            "blocks": [
+                {"block_label": "doc_title", "block_content": "数学试卷"},
+                {"block_label": "paragraph_title", "block_content": "选择题"},
+            ]
+        }]
+        result = _extract_text_sample(ocr)
+        assert "数学试卷" in result
+        assert "选择题" in result
+
+    def test_ignores_non_text_blocks(self):
+        """不应包含 image/chart 类型"""
+        ocr = [{
+            "page_index": 0,
+            "blocks": [
+                {"block_label": "image", "block_content": "图片内容"},
+                {"block_label": "text", "block_content": "文本内容"},
+            ]
+        }]
+        result = _extract_text_sample(ocr)
+        assert "图片内容" not in result
+        assert "文本内容" in result
+
+    def test_only_first_two_pages(self):
+        """只应读取前 2 页"""
+        ocr = [
+            {"page_index": 0, "blocks": [{"block_label": "text", "block_content": "页面0"}]},
+            {"page_index": 1, "blocks": [{"block_label": "text", "block_content": "页面1"}]},
+            {"page_index": 2, "blocks": [{"block_label": "text", "block_content": "页面2"}]},
+        ]
+        result = _extract_text_sample(ocr)
+        assert "页面0" in result
+        assert "页面1" in result
+        assert "页面2" not in result
+
+
+# ═══════════════════════════════════════════════════════════
 # _identify_subject
 # ═══════════════════════════════════════════════════════════
 
 
 class TestIdentifySubject:
-    """_identify_subject 测试"""
+    """_identify_subject 测试
+
+    autouse fixture 默认 mock detect_subject_via_llm 返回空字符串，
+    确保关键词 / 特征推断的 fallback 逻辑不受 LLM 层影响。
+    """
+
+    @pytest.fixture(autouse=True)
+    def _mock_llm(self):
+        with patch(
+            "error_correction_agent.agent.detect_subject_via_llm",
+            return_value="",
+        ) as mock:
+            self.mock_llm = mock
+            yield mock
 
     def _make_ocr(self, text: str) -> list:
         """构造只有一页、一个 text block 的 OCR 数据"""
@@ -555,3 +634,61 @@ class TestIdentifySubject:
         }]
         result = _identify_subject(ocr, [])
         assert result == "高中化学"
+
+
+# ═══════════════════════════════════════════════════════════
+# _identify_subject — LLM 预检层专项测试
+# ═══════════════════════════════════════════════════════════
+
+
+class TestIdentifySubjectLLM:
+    """_identify_subject LLM 预检层测试"""
+
+    def _make_ocr(self, text: str) -> list:
+        return [{
+            "page_index": 0,
+            "blocks": [{
+                "block_label": "text",
+                "block_content": text,
+            }]
+        }]
+
+    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="高中数学")
+    def test_llm_success(self, mock_llm):
+        """LLM 返回有效科目时直接采用"""
+        ocr = self._make_ocr("普通内容无关键词")
+        result = _identify_subject(ocr, [])
+        assert result == "高中数学"
+        mock_llm.assert_called_once()
+
+    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="初中地理")
+    def test_llm_returns_new_subject(self, mock_llm):
+        """LLM 返回不在 db_subjects 中的新科目也应采用"""
+        ocr = self._make_ocr("普通内容")
+        result = _identify_subject(ocr, ["高中数学"])
+        assert result == "初中地理"
+
+    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="")
+    def test_llm_empty_fallback_to_keyword(self, mock_llm):
+        """LLM 返回空时应 fallback 到关键词匹配"""
+        ocr = self._make_ocr("数学试卷")
+        result = _identify_subject(ocr, [])
+        assert result == "高中数学"
+
+    @patch(
+        "error_correction_agent.agent.detect_subject_via_llm",
+        side_effect=Exception("API error"),
+    )
+    def test_llm_exception_fallback(self, mock_llm):
+        """LLM 调用异常时应静默 fallback"""
+        ocr = self._make_ocr("物理考试")
+        result = _identify_subject(ocr, [])
+        assert result == "高中物理"
+
+    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="高中物理")
+    def test_llm_receives_provider(self, mock_llm):
+        """model_provider 应正确传递到 LLM 函数"""
+        ocr = self._make_ocr("普通内容")
+        _identify_subject(ocr, ["高中数学"], model_provider="ernie")
+        _, kwargs = mock_llm.call_args
+        assert kwargs.get("provider") == "ernie"

@@ -110,7 +110,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
 
 @tool(parse_docstring=True)
-def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existing_tags: str = "", model_provider: str = "deepseek") -> str:
+def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "deepseek") -> str:
     """对一批OCR数据进行题目分割，返回结构化题目列表JSON
 
     将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
@@ -118,7 +118,6 @@ def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existi
 
     Args:
         ocr_data: 一批OCR数据的JSON字符串，包含1-2页的blocks数据
-        existing_ids: 前面批次已提取的题目ID列表，用逗号分隔（如 "1,2,3,4,5"），用于跳过重叠页上的已有题目
         subject: 试卷所属科目（如 "高中数学"、"初中物理"），用于辅助知识点标注
         existing_tags: 前面批次已使用的知识点标签，用逗号分隔（如 "复数,集合,立体几何"），用于保持标签一致性
         model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
@@ -127,13 +126,6 @@ def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existi
         题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
     """
     logger.info(f"split_batch called (provider={model_provider})")
-
-    skip_instruction = ""
-    if existing_ids.strip():
-        skip_instruction = f"""
-**重要 - 跳过已处理的题目**：
-以下题号的题目已经在前面的批次中提取过，请不要再次输出它们：{existing_ids}
-只输出新的、不在上述列表中的题目。"""
 
     tags_instruction = ""
     if subject.strip() or existing_tags.strip():
@@ -150,7 +142,7 @@ def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existi
 - blocks: 内容块列表，每个 block 有 block_label、block_content、block_order 三个字段
 
 请按 page_index 和 block_order 顺序处理，返回结构化的题目列表。
-{skip_instruction}{tags_instruction}
+{tags_instruction}
 
 OCR数据：
 {ocr_data}"""
