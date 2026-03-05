@@ -62,3 +62,50 @@
 
 
 当需要使用本地 LangChain 文档时，必须优先读取 docs/langchain/INDEX.md；除非 INDEX.md 无法定位，再按需读取 1–3 个相关页面片段（禁止整库加载）。
+
+---
+
+## 3) 前端开发规范
+
+进行前端开发时，必须严格遵循以下技术栈和代码风格。
+
+### 技术栈
+
+- Vue 3 + `<script setup>`（Composition API，不使用 Options API）
+- Vite 构建
+- Tailwind CSS 3（utility-first，class-based dark mode）
+- HeadlessUI Vue（`@headlessui/vue`）用于可访问的交互组件
+- Font Awesome 图标（fa-solid / fa-regular）
+- 纯 JavaScript（不使用 TypeScript）
+- 原生 fetch API 进行网络请求（不使用 axios）
+
+### 设计风格
+
+- 配色：slate 作为中性色系，blue 用于主操作，emerald 用于成功状态，rose 用于错误/危险
+- 圆角：卡片用 `rounded-2xl`，按钮用 `rounded-lg`，pill 标签用 `rounded-full`
+- 阴影：轻量 `shadow-sm`，hover 时 `shadow-md`
+- 边框：`border-slate-200`（亮色）/ `border-slate-800`（暗色）
+- 字重：标题和按钮用 `font-semibold`，正文用默认
+- 间距：容器 `max-w-5xl mx-auto`，内容区 `p-4 sm:p-6`
+- 暗色模式：所有元素必须包含 `dark:` 变体，暗色背景用 `slate-900/950`
+
+### 按钮样式规范
+
+- 主按钮：`bg-blue-700 text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-200`
+- 次按钮：`border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`（暗色对应 `dark:border-slate-800 dark:bg-slate-900`）
+- 所有按钮：`inline-flex items-center justify-center gap-2 px-4/5 py-2/2.5 text-sm font-semibold transition-colors duration-200 active:scale-[0.98]`
+- 禁用态：`disabled:cursor-not-allowed disabled:opacity-50`
+
+### 状态管理
+
+- 用 `ref()` 管理简单状态，`reactive()` 管理对象/数组
+- 用 `computed()` 派生状态
+- 用 `watch()` 响应数据变化
+
+### 代码规范
+
+- UI 文案使用中文
+- API 路径前缀 `/api/`
+- 错误处理：`try/catch` + toast 通知用户
+- 文件上传使用 `FormData` + XHR（支持进度回调）
+- 新功能优先提取为独立 `.vue` 单文件组件放在 `src/components/` 下，使用 `<script setup>` + props/emits 通信
