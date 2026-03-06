@@ -29,34 +29,34 @@ python -m pytest tests/ -v -k "dedup"
 ```
 backend/tests/
 ├── conftest.py                  # pytest 配置，sys.path + --model-provider 参数
-├── test_workflow_helpers.py     # workflow.py 纯函数测试（58 个）
+├── test_workflow_helpers.py     # workflow.py 纯函数测试（77 个）
 ├── test_export.py               # export_wrongbook 导出测试（10 个）
 ├── test_web_helpers.py          # web_app.py 纯函数测试（22 个）
 ├── test_crud.py                 # 数据库 CRUD 测试（32 个）
 ├── test_schemas.py              # Pydantic schema 校验测试（14 个）
 ├── test_question_tools.py       # 题目工具函数测试（7 个）
 ├── test_correct_node.py         # 纠错节点合并逻辑测试（4 个）
-├── test_utils.py                # 通用工具函数测试（4 个）
+├── test_utils.py                # 通用工具函数测试（6 个）
 ├── test_benchmark_metrics.py    # benchmark 评测指标测试（26 个）
 ├── test_solve_schemas.py        # 解题结果 schema 测试（7 个）
-├── test_ocr_api.py              # PaddleOCR API 集成测试（需要 API 配置，21 个）
+├── test_ocr_api.py              # PaddleOCR API 集成测试（需要 API 配置，22 个）
 ├── test_split_integration.py    # 分割集成测试（需要 API Key，6 个）
 └── test_solve_integration.py    # 解题集成测试（需要 API Key，7 个）
 ```
 
 ---
 
-### test_utils.py （4 个）
+### test_utils.py （6 个）
 
-测试 `backend/src/utils.py` 中的通用工具函数（Mock 外部依赖）：
+测试 `backend/src/utils.py` 中的通用工具函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
-| `TestPrepareInput` | `prepare_input` | 4 | PDF 转图片（Mock pdf2image）、图片标准化（Mock PIL）、文件不存在、格式不支持 |
+| `TestPrepareInput` | `prepare_input` | 6 | PDF 直接复制、图片直接复制（jpg/png）、文件不存在、格式不支持、自动创建目录 |
 
-### test_workflow_helpers.py （58 个）
+### test_workflow_helpers.py （77 个）
 
-测试 `backend/src/workflow.py` 中不依赖外部服务的纯函数：
+测试 `backend/src/workflow.py` 和 `backend/src/utils.py` 中不依赖外部服务的纯函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
@@ -66,6 +66,8 @@ backend/tests/
 | `TestSortKey` | `_sort_key` | 7 | 题号排序：数字优先、混合排序 |
 | `TestDedupQuestions` | `_dedup_questions` | 9 | 按 question_id 去重：保留更丰富版本、空 id 跳过、输出排序 |
 | `TestIdentifySubject` | `_identify_subject` | 15 | 科目识别：DB 优先匹配、关键词匹配、指标词推断、只读前 2 页、忽略非文本 block |
+| `TestMergePages` | `PaddleOCRClient._merge_pages` | 4 | JSONL 多页合并：空输入、单页、多页合并、缺失 key 跳过 |
+| `TestRunOcrAndSimplifyFileTypes` | `_run_ocr_and_simplify` | 5 | 混合文件分发：纯图片、纯 PDF、混合文件、大小写不敏感、空输入 |
 
 ### test_export.py （10 个）
 
@@ -162,7 +164,7 @@ backend/tests/
 | `TestSolveResult` | `SolveResult` | 4 | 最小构造、自定义 confidence、缺 answer 拒绝、缺 reasoning 拒绝 |
 | `TestSolveBatchResult` | `SolveBatchResult` | 3 | 空列表、包含结果、model_dump 完整性 |
 
-### test_ocr_api.py （21 个）
+### test_ocr_api.py （22 个）
 
 **集成测试**：验证 PaddleOCR V2 异步任务 API 的连通性与结果格式兼容性。需要配置 `PADDLEOCR_API_URL`、`PADDLEOCR_API_TOKEN`。测试文件使用 `example_uploads/` 下的 `test.jpg`（图片）和 `test4.pdf`（PDF）。
 
@@ -177,7 +179,7 @@ pytest tests/test_ocr_api.py -v -s
 | `TestPdfApiConnection` | 3 | PDF API 连通性：任务提交、完成、多页解析 |
 | `TestPdfResultFormat` | 3 | PDF 结果格式：非空结果、layoutParsingResults 结构、block 必填字段 |
 | `TestOcrClientImage` | 3 | PaddleOCRClient 图片解析：parse_image 返回值、_struct.json 保存、simplify_ocr_results 兼容 |
-| `TestOcrClientPdf` | 2 | PaddleOCRClient PDF 解析：parse_pdf 返回值、simplify_ocr_results 兼容 |
+| `TestOcrClientPdf` | 3 | PaddleOCRClient PDF 解析：parse_pdf 返回值、simplify_ocr_results 兼容、多页 page_index 连续性 |
 
 > **注意**：此测试会消耗 API 配额。图片和 PDF 各使用 module 级 fixture 共享一次 API 调用（`Connection` + `ResultFormat` 测试类共享），`OcrClient*` 测试类独立调用客户端方法验证端到端流程。无 API 配置或测试文件缺失时自动 skip。
 

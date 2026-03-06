@@ -5,10 +5,18 @@
 ## 项目结构
 
 ```
-├── backend/          # Flask 后端（API + 静态资源托管）
-├── frontend/         # Vue 3 + Vite + Tailwind CSS 前端
-├── .env.example      # 环境变量模板
-└── requirements.txt  # Python 依赖
+├── backend/              # Flask 后端（API + 静态资源托管）
+│   ├── src/              # 核心模块（workflow、OCR 客户端、工具函数）
+│   ├── error_correction_agent/  # LangChain Agent（分割、纠错）
+│   ├── solve_agent/      # 解题智能体
+│   ├── benchmark/        # 模型评测
+│   ├── db/               # SQLite 数据库（CRUD、模型）
+│   └── tests/            # 后端测试
+├── frontend/             # Vue 3 + Vite + Tailwind CSS 前端
+│   └── src/__tests__/    # 前端测试
+├── example_uploads/      # 示例测试文件（图片 + PDF）
+├── .env.example          # 环境变量模板
+└── requirements.txt      # Python 依赖
 ```
 
 ## 环境部署
@@ -25,18 +33,6 @@ pip install -r requirements.txt
 cd frontend && npm install
 ```
 
-如需处理 PDF 文件，还需安装 poppler：
-
-```bash
-# 通过 scoop
-scoop install poppler
-
-# 或通过 choco
-choco install poppler
-```
-
-安装后重启终端，确保 `pdftoppm` 命令可用。
-
 ### 2. 配置环境变量
 
 ```bash
@@ -50,9 +46,10 @@ copy .env.example .env
 DEEPSEEK_API_KEY=your_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
-# PaddleOCR API（文档结构解析）
-PADDLEOCR_API_URL=your_url
+# PaddleOCR API（文档结构解析，V2 异步任务接口）
+PADDLEOCR_API_URL=https://paddleocr.aistudio-app.com/api/v2/ocr/jobs
 PADDLEOCR_API_TOKEN=your_token
+PADDLEOCR_MODEL=PaddleOCR-VL-1.5
 ```
 
 可选配置见 `.env.example`。
@@ -82,6 +79,20 @@ cd backend && python web_app.py
 ## 支持的文件格式
 
 PDF(`.pdf`)、图片(`.jpg` `.jpeg` `.png` `.bmp` `.tiff` `.webp`)，单次上传限制 50 MB。
+
+PDF 文件直接发送至 PaddleOCR API 处理，无需本地安装 poppler 等 PDF 转图工具。
+
+## 测试
+
+```bash
+# 后端测试
+cd backend && python -m pytest tests/ -v
+
+# 前端测试
+cd frontend && npm test
+```
+
+详见 [backend/tests/README.md](backend/tests/README.md) 和 [frontend/src/__tests__/README.md](frontend/src/__tests__/README.md)。
 
 ## 许可证
 
