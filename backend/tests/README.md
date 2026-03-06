@@ -7,7 +7,7 @@
 # 在 backend/ 目录下执行
 cd backend
 
-# 运行全部测试（171 个）
+# 运行全部单元测试（210 个）
 python -m pytest tests/ -v
 
 # 运行单个测试文件
@@ -37,7 +37,10 @@ backend/tests/
 ├── test_question_tools.py       # 题目工具函数测试（7 个）
 ├── test_correct_node.py         # 纠错节点合并逻辑测试（4 个）
 ├── test_utils.py                # 通用工具函数测试（4 个）
-└── test_split_integration.py    # 分割集成测试（需要 API Key，6 个）
+├── test_benchmark_metrics.py    # benchmark 评测指标测试（26 个）
+├── test_solve_schemas.py        # 解题结果 schema 测试（7 个）
+├── test_split_integration.py    # 分割集成测试（需要 API Key，6 个）
+└── test_solve_integration.py    # 解题集成测试（需要 API Key，7 个）
 ```
 
 ---
@@ -139,6 +142,25 @@ backend/tests/
 | `test_merge_corrected` | 纠错结果按 question_id 合并回原列表，未标记题目不受影响 |
 | `test_invalid_json_keeps_original` | 纠错返回无效 JSON 时保留原始题目 |
 
+### test_benchmark_metrics.py （26 个）
+
+测试 `backend/benchmark/metrics.py` 中的评测指标函数：
+
+| 测试类 | 被测函数 | 用例数 | 说明 |
+|--------|----------|--------|------|
+| `TestNormalizeAnswer` | `normalize_answer` | 10 | 空白去除、选择题字母大写+排序、判断题统一格式、普通文本原样返回 |
+| `TestCompareAnswers` | `compare_answers` | 9 | 大小写、多选排序无关、判断题跨格式比较、空白容忍 |
+| `TestComputeAccuracy` | `compute_accuracy` | 7 | 空结果、全对、全错、混合、分题型统计、未知题型兜底 |
+
+### test_solve_schemas.py （7 个）
+
+测试 `backend/solve_agent/schemas.py` 中解题结果 Pydantic 模型：
+
+| 测试类 | 被测模型 | 用例数 | 说明 |
+|--------|----------|--------|------|
+| `TestSolveResult` | `SolveResult` | 4 | 最小构造、自定义 confidence、缺 answer 拒绝、缺 reasoning 拒绝 |
+| `TestSolveBatchResult` | `SolveBatchResult` | 3 | 空列表、包含结果、model_dump 完整性 |
+
 ### test_split_integration.py （6 个）
 
 **集成测试**：调用真实大模型 API 验证 `split_batch` 的分割效果。需要配置对应的 API Key 环境变量。
@@ -163,6 +185,30 @@ python -m pytest tests/test_split_integration.py -v -s --model-provider ernie
 | `test_knowledge_tags` | 至少一半题目有知识点标注 |
 
 > **注意**：此测试会消耗 API 配额，使用 session 级 fixture 共享一次调用结果以减少开销。测试数据来自 `runtime_data/results/agent_input.json`。
+
+### test_solve_integration.py （7 个）
+
+**集成测试**：调用真实 LLM API 验证解题智能体的解题能力。需要配置 API Key 环境变量。
+
+```bash
+# 使用 deepseek（默认）
+python -m pytest tests/test_solve_integration.py -v -s
+
+# 使用文心一言
+python -m pytest tests/test_solve_integration.py -v -s --model-provider ernie
+```
+
+| 测试方法 | 说明 |
+|----------|------|
+| `test_returns_all_answers` | 返回与输入题目数量相同的答案 |
+| `test_question_ids_match` | question_id 与输入一致 |
+| `test_choice_answer_correct` | 选择题（集合交集）答案正确 |
+| `test_fill_answer_correct` | 填空题（2³+3²）答案正确 |
+| `test_judge_answer_correct` | 判断题（π是有理数）答案正确 |
+| `test_has_reasoning` | 每道题包含非空推理过程 |
+| `test_confidence_in_range` | 置信度在 0-1 范围内 |
+
+> **注意**：使用 session 级 fixture 共享一次 API 调用（3 道题：选择题+填空题+判断题），减少配额消耗。
 
 ---
 
