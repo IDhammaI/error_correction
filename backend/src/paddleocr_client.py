@@ -1,11 +1,10 @@
 """
 PaddleOCR 文档解析客户端
-用于调用 PaddleOCR-VL API 进行文档结构化解析
+调用 PaddleOCR V2 异步任务 API 进行文档结构化解析
 """
 
 import os
 import json
-import base64
 import asyncio
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -13,21 +12,24 @@ import requests
 import aiohttp
 from dotenv import load_dotenv
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 # 加载环境变量
 load_dotenv()
 
 console = Console()
 
+# 任务轮询间隔（秒）
+POLL_INTERVAL = 3
+
 
 class PaddleOCRClient:
-    """PaddleOCR API 客户端"""
+    """PaddleOCR V2 异步任务 API 客户端"""
 
     def __init__(self):
         """初始化客户端，从环境变量读取配置"""
         self.api_url = os.getenv("PADDLEOCR_API_URL")
         self.token = os.getenv("PADDLEOCR_API_TOKEN")
+        self.model = os.getenv("PADDLEOCR_MODEL", "PaddleOCR-VL-1.5")
         self.use_doc_orientation = os.getenv("PADDLEOCR_USE_DOC_ORIENTATION", "false").lower() == "true"
         self.use_doc_unwarping = os.getenv("PADDLEOCR_USE_DOC_UNWARPING", "false").lower() == "true"
         self.use_chart_recognition = os.getenv("PADDLEOCR_USE_CHART_RECOGNITION", "false").lower() == "true"
@@ -39,68 +41,97 @@ class PaddleOCRClient:
                 "- PADDLEOCR_API_TOKEN"
             )
 
-    def _parse_file(
-        self,
-        file_path: str,
-        file_type: int,
-        save_output: bool = True,
-        output_dir: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """解析文件（图片或 PDF）并返回结构化结果
+    @property
+    def _headers(self) -> Dict[str, str]:
+        return {"Authorization": f"bearer {self.token}"}
 
-        Args:
-            file_path: 文件路径
-            file_type: 文件类型，0 表示 PDF，1 表示图片
-            save_output: 是否保存输出结果
-            output_dir: 输出目录（默认从环境变量 STRUCT_DIR 读取）
-
-        Returns:
-            Dict: PaddleOCR API 返回的结构化结果
-        """
-        if output_dir is None:
-            from config import STRUCT_DIR
-            output_dir = STRUCT_DIR
-
-        label = "PDF" if file_type == 0 else "图片"
-        console.print(f"[cyan]正在解析{label}: {file_path}[/cyan]")
-
-        with open(file_path, "rb") as file:
-            file_bytes = file.read()
-            file_data = base64.b64encode(file_bytes).decode("ascii")
-
-        headers = {
-            "Authorization": f"token {self.token}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "file": file_data,
-            "fileType": file_type,
+    @property
+    def _optional_payload(self) -> Dict[str, Any]:
+        return {
             "useDocOrientationClassify": self.use_doc_orientation,
             "useDocUnwarping": self.use_doc_unwarping,
             "useChartRecognition": self.use_chart_recognition,
         }
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("正在调用 PaddleOCR API...", total=None)
-            response = requests.post(self.api_url, json=payload, headers=headers)
-            progress.update(task, completed=True)
+    # ── 同步方法 ──────────────────────────────────────────────
 
-        if response.status_code != 200:
-            console.print(f"[red]API 调用失败: HTTP {response.status_code}[/red]")
-            console.print(f"[red]响应内容: {response.text}[/red]")
-            raise Exception(f"PaddleOCR API 调用失败: {response.status_code}")
+    def _submit_job(self, file_path: str) -> str:
+        """提交 OCR 任务，返回 jobId"""
+        data = {
+            "model": self.model,
+            "optionalPayload": json.dumps(self._optional_payload),
+        }
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            resp = requests.post(self.api_url, headers=self._headers, data=data, files=files)
 
-        result = response.json()["result"]
-        console.print(f"[green]✓ 解析成功![/green]")
+        if resp.status_code != 200:
+            raise Exception(f"提交 OCR 任务失败: HTTP {resp.status_code}, {resp.text}")
+
+        return resp.json()["data"]["jobId"]
+
+    def _poll_job(self, job_id: str) -> str:
+        """轮询任务状态直到完成，返回 JSONL 结果 URL"""
+        url = f"{self.api_url}/{job_id}"
+        while True:
+            resp = requests.get(url, headers=self._headers)
+            if resp.status_code != 200:
+                raise Exception(f"查询任务状态失败: HTTP {resp.status_code}")
+
+            state = resp.json()["data"]["state"]
+            if state == "done":
+                return resp.json()["data"]["resultUrl"]["jsonUrl"]
+            elif state == "failed":
+                error_msg = resp.json()["data"].get("errorMsg", "未知错误")
+                raise Exception(f"OCR 任务失败: {error_msg}")
+            elif state == "running":
+                progress = resp.json()["data"].get("extractProgress", {})
+                total = progress.get("totalPages", "?")
+                extracted = progress.get("extractedPages", "?")
+                console.print(f"  [dim]进度: {extracted}/{total} 页...[/dim]")
+
+            import time
+            time.sleep(POLL_INTERVAL)
+
+    def _download_result(self, jsonl_url: str) -> List[Dict[str, Any]]:
+        """下载 JSONL 结果并解析为结果列表"""
+        resp = requests.get(jsonl_url)
+        resp.raise_for_status()
+
+        results = []
+        for line in resp.text.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            results.append(json.loads(line)["result"])
+        return results
+
+    def _parse_file(
+        self,
+        file_path: str,
+        save_output: bool = True,
+        output_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """解析文件并返回结构化结果（同步，任务轮询模式）"""
+        if output_dir is None:
+            from config import STRUCT_DIR
+            output_dir = STRUCT_DIR
+
+        console.print(f"[cyan]正在解析: {file_path}[/cyan]")
+
+        # 提交 → 轮询 → 下载
+        job_id = self._submit_job(file_path)
+        console.print(f"[dim]任务已提交: {job_id}[/dim]")
+
+        jsonl_url = self._poll_job(job_id)
+        result_pages = self._download_result(jsonl_url)
+
+        # 合并所有页面到一个 result（保持与下游兼容）
+        result = self._merge_pages(result_pages)
+        console.print(f"[green]✓ 解析成功: {file_path}[/green]")
 
         if save_output:
             os.makedirs(output_dir, exist_ok=True)
-
             filename = Path(file_path).stem + "_struct.json"
             output_path = os.path.join(output_dir, filename)
             with open(output_path, 'w', encoding='utf-8') as f:
@@ -112,20 +143,28 @@ class PaddleOCRClient:
 
         return result
 
+    @staticmethod
+    def _merge_pages(result_pages: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """将多页 JSONL 结果合并为单个 result 对象
+
+        下游 simplify_ocr_results 期望每个 result 有 layoutParsingResults 列表。
+        """
+        merged_layouts = []
+        for page_result in result_pages:
+            merged_layouts.extend(page_result.get("layoutParsingResults", []))
+        return {"layoutParsingResults": merged_layouts}
+
     def parse_image(self, image_path: str, save_output: bool = True, output_dir: Optional[str] = None) -> Dict[str, Any]:
         """解析图片并返回结构化结果"""
-        return self._parse_file(image_path, file_type=1, save_output=save_output, output_dir=output_dir)
+        return self._parse_file(image_path, save_output=save_output, output_dir=output_dir)
+
+    def parse_pdf(self, pdf_path: str, save_output: bool = True, output_dir: Optional[str] = None) -> Dict[str, Any]:
+        """解析 PDF 并返回结构化结果"""
+        return self._parse_file(pdf_path, save_output=save_output, output_dir=output_dir)
 
     def _save_images(self, result: Dict[str, Any], output_dir: str, file_prefix: str = ""):
-        """下载并保存结果中的图片资源
-
-        Args:
-            result: PaddleOCR 返回结果
-            output_dir: 输出目录
-            file_prefix: 文件名前缀（用于区分不同图片的输出）
-        """
+        """下载并保存结果中的图片资源"""
         for i, res in enumerate(result.get("layoutParsingResults", [])):
-            # 保存 Markdown 文档
             markdown_text = res.get("markdown", {}).get("text", "")
             if markdown_text:
                 md_filename = os.path.join(output_dir, f"{file_prefix}_doc_{i}.md")
@@ -133,12 +172,10 @@ class PaddleOCRClient:
                     md_file.write(markdown_text)
                 console.print(f"[green]Markdown 已保存: {md_filename}[/green]")
 
-            # 下载 markdown 中的图片
             images = res.get("markdown", {}).get("images", {})
             for img_path, img_url in images.items():
                 full_img_path = os.path.join(output_dir, img_path)
                 os.makedirs(os.path.dirname(full_img_path), exist_ok=True)
-
                 try:
                     img_response = requests.get(img_url)
                     if img_response.status_code == 200:
@@ -150,7 +187,6 @@ class PaddleOCRClient:
                 except Exception as e:
                     console.print(f"[yellow]图片下载出错: {img_path} - {e}[/yellow]")
 
-            # 下载输出图片
             output_images = res.get("outputImages", {})
             for img_name, img_url in output_images.items():
                 try:
@@ -159,88 +195,96 @@ class PaddleOCRClient:
                         filename = os.path.join(output_dir, f"{img_name}_{file_prefix}_{i}.jpg")
                         with open(filename, "wb") as f:
                             f.write(img_response.content)
-                        console.print(f"[green]输出图片已保存: {filename}[/green]")
+                        console.print(f"[green]图片已保存: {filename}[/green]")
                 except Exception as e:
-                    console.print(f"[yellow]输出图片下载出错: {img_name} - {e}[/yellow]")
-
-    def parse_pdf(self, pdf_path: str, save_output: bool = True, output_dir: Optional[str] = None) -> Dict[str, Any]:
-        """解析 PDF 并返回结构化结果"""
-        return self._parse_file(pdf_path, file_type=0, save_output=save_output, output_dir=output_dir)
+                    console.print(f"[yellow]图片下载出错: {img_name} - {e}[/yellow]")
 
     # ── 异步方法 ──────────────────────────────────────────────
+
+    async def _async_submit_job(self, session: aiohttp.ClientSession, file_path: str) -> str:
+        """异步提交 OCR 任务，返回 jobId"""
+        data = aiohttp.FormData()
+        data.add_field("model", self.model)
+        data.add_field("optionalPayload", json.dumps(self._optional_payload))
+
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
+        data.add_field("file", file_bytes, filename=Path(file_path).name)
+
+        async with session.post(self.api_url, headers=self._headers, data=data) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise Exception(f"提交 OCR 任务失败: HTTP {resp.status}, {text}")
+            result = await resp.json()
+            return result["data"]["jobId"]
+
+    async def _async_poll_job(self, session: aiohttp.ClientSession, job_id: str) -> str:
+        """异步轮询任务状态直到完成，返回 JSONL 结果 URL"""
+        url = f"{self.api_url}/{job_id}"
+        while True:
+            async with session.get(url, headers=self._headers) as resp:
+                if resp.status != 200:
+                    raise Exception(f"查询任务状态失败: HTTP {resp.status}")
+                data = await resp.json()
+
+            state = data["data"]["state"]
+            if state == "done":
+                return data["data"]["resultUrl"]["jsonUrl"]
+            elif state == "failed":
+                error_msg = data["data"].get("errorMsg", "未知错误")
+                raise Exception(f"OCR 任务失败: {error_msg}")
+            elif state == "running":
+                progress = data["data"].get("extractProgress", {})
+                total = progress.get("totalPages", "?")
+                extracted = progress.get("extractedPages", "?")
+                console.print(f"  [dim]进度: {extracted}/{total} 页...[/dim]")
+
+            await asyncio.sleep(POLL_INTERVAL)
+
+    async def _async_download_result(self, session: aiohttp.ClientSession, jsonl_url: str) -> List[Dict[str, Any]]:
+        """异步下载 JSONL 结果"""
+        async with session.get(jsonl_url) as resp:
+            resp.raise_for_status()
+            text = await resp.text()
+
+        results = []
+        for line in text.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            results.append(json.loads(line)["result"])
+        return results
 
     async def async_parse_image(
         self,
         session: aiohttp.ClientSession,
         image_path: str,
         save_output: bool = True,
-        output_dir: Optional[str] = None
+        output_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """异步解析单张图片
-
-        Args:
-            session: aiohttp 会话（由调用方管理生命周期）
-            image_path: 图片文件路径
-            save_output: 是否保存输出结果
-            output_dir: 输出目录
-
-        Returns:
-            Dict: PaddleOCR API 返回的结构化结果
-        """
+        """异步解析单张图片（提交任务 → 轮询 → 下载结果）"""
         if output_dir is None:
             from config import STRUCT_DIR
             output_dir = STRUCT_DIR
 
         console.print(f"[cyan]正在解析图片: {image_path}[/cyan]")
 
-        # 读取图片并转为 base64
-        with open(image_path, "rb") as file:
-            file_bytes = file.read()
-            file_data = base64.b64encode(file_bytes).decode("ascii")
+        # 提交 → 轮询 → 下载
+        job_id = await self._async_submit_job(session, image_path)
+        console.print(f"[dim]任务已提交: {job_id}[/dim]")
 
-        headers = {
-            "Authorization": f"token {self.token}",
-            "Content-Type": "application/json"
-        }
+        jsonl_url = await self._async_poll_job(session, job_id)
+        result_pages = await self._async_download_result(session, jsonl_url)
 
-        payload = {
-            "file": file_data,
-            "fileType": 1,
-            "useDocOrientationClassify": self.use_doc_orientation,
-            "useDocUnwarping": self.use_doc_unwarping,
-            "useChartRecognition": self.use_chart_recognition,
-        }
-
-        max_retries = 3
-        for attempt in range(1, max_retries + 1):
-            async with session.post(self.api_url, json=payload, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    result = data["result"]
-                    break
-                else:
-                    text = await response.text()
-                    if attempt < max_retries:
-                        wait = attempt * 5
-                        console.print(f"[yellow]API 调用失败 (HTTP {response.status})，{wait}s 后重试 ({attempt}/{max_retries})...[/yellow]")
-                        await asyncio.sleep(wait)
-                    else:
-                        console.print(f"[red]API 调用失败: HTTP {response.status}，已重试 {max_retries} 次[/red]")
-                        console.print(f"[red]响应内容: {text}[/red]")
-                        raise Exception(f"PaddleOCR API 调用失败: {response.status}")
-
+        result = self._merge_pages(result_pages)
         console.print(f"[green]✓ 解析成功: {image_path}[/green]")
 
-        # 保存结果
         if save_output:
             os.makedirs(output_dir, exist_ok=True)
-
             filename = Path(image_path).stem + "_struct.json"
             output_path = os.path.join(output_dir, filename)
-
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
-
             console.print(f"[green]结构化结果已保存到: {output_path}[/green]")
 
             file_prefix = Path(image_path).stem
@@ -248,12 +292,7 @@ class PaddleOCRClient:
 
         return result
 
-    async def _async_download_image(
-        self,
-        session: aiohttp.ClientSession,
-        url: str,
-        save_path: str
-    ):
+    async def _async_download_image(self, session: aiohttp.ClientSession, url: str, save_path: str):
         """异步下载单张图片"""
         try:
             async with session.get(url) as response:
@@ -273,18 +312,10 @@ class PaddleOCRClient:
         session: aiohttp.ClientSession,
         result: Dict[str, Any],
         output_dir: str,
-        file_prefix: str = ""
+        file_prefix: str = "",
     ):
-        """异步下载并保存结果中的所有图片资源
-
-        Args:
-            session: aiohttp 会话
-            result: PaddleOCR 返回结果
-            output_dir: 输出目录
-            file_prefix: 文件名前缀（用于区分不同图片的输出，避免并发写入冲突）
-        """
+        """异步下载并保存结果中的所有图片资源"""
         for i, res in enumerate(result.get("layoutParsingResults", [])):
-            # 保存 Markdown 文档（同步文件写入）
             markdown_text = res.get("markdown", {}).get("text", "")
             if markdown_text:
                 md_filename = os.path.join(output_dir, f"{file_prefix}_doc_{i}.md")
@@ -292,9 +323,7 @@ class PaddleOCRClient:
                     md_file.write(markdown_text)
                 console.print(f"[green]Markdown 已保存: {md_filename}[/green]")
 
-            # 收集所有图片下载任务
             download_tasks = []
-
             images = res.get("markdown", {}).get("images", {})
             for img_path, img_url in images.items():
                 full_img_path = os.path.join(output_dir, img_path)
@@ -309,7 +338,6 @@ class PaddleOCRClient:
                     self._async_download_image(session, img_url, filename)
                 )
 
-            # 并发下载所有图片
             if download_tasks:
                 await asyncio.gather(*download_tasks)
 
@@ -320,16 +348,9 @@ class PaddleOCRClient:
         output_dir: Optional[str] = None,
         stagger_delay: float = 1,
     ) -> List[Dict[str, Any]]:
-        """异步并发解析多张图片（错峰发送，避免 API 限流）
+        """异步并发解析多张图片
 
-        Args:
-            image_paths: 图片路径列表
-            save_output: 是否保存输出结果
-            output_dir: 输出目录
-            stagger_delay: 每个请求之间的错峰间隔（秒），默认 1s
-
-        Returns:
-            List[Dict]: 每张图片的结构化结果（顺序与输入一致）
+        所有图片的任务同时提交，然后各自独立轮询，最大化并行度。
         """
         console.print(f"[bold cyan]异步并发解析 {len(image_paths)} 张图片...[/bold cyan]")
 
@@ -353,8 +374,7 @@ def main():
     """测试函数"""
     client = PaddleOCRClient()
 
-    # 测试解析图片
-    test_image = "input/test.png"  # 替换为实际测试图片
+    test_image = "input/test.png"
 
     if os.path.exists(test_image):
         result = client.parse_image(test_image)
