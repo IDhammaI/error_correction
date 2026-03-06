@@ -21,32 +21,32 @@ from .metrics import compare_answers, compute_accuracy
 logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-TARGETS_PATH = os.path.join(DATA_DIR, "targets.json")
+TARGET_DIR = os.path.join(DATA_DIR, "target")
 RESULTS_DIR = os.path.join(DATA_DIR, "results")
 
 
-def load_targets() -> List[Dict[str, Any]]:
-    """加载标准答案（作业帮结果）
+def load_targets(subject: str = None) -> List[Dict[str, Any]]:
+    """从 target/{科目}/{试卷名}.json 加载所有标准答案
 
-    targets.json 格式:
-    [
-        {
-            "question_id": "1",
-            "question_type": "选择题",
-            "answer": "B",
-            "question": { ... }   # 完整题目数据（可选，方便查看）
-        },
-        ...
-    ]
+    可通过 subject 参数筛选特定科目。
     """
-    if not os.path.exists(TARGETS_PATH):
+    if not os.path.isdir(TARGET_DIR):
         raise FileNotFoundError(
-            f"标准答案文件不存在: {TARGETS_PATH}\n"
-            f"请先创建 {TARGETS_PATH}，格式参见 evaluate.py 注释"
+            f"标准答案目录不存在: {TARGET_DIR}\n"
+            f"请先运行 python -m benchmark.collect 采集数据"
         )
 
-    with open(TARGETS_PATH, "r", encoding="utf-8") as f:
-        targets = json.load(f)
+    targets = []
+    for root, _dirs, files in os.walk(TARGET_DIR):
+        rel = os.path.relpath(root, TARGET_DIR)
+        if subject and subject not in rel:
+            continue
+        for fname in sorted(files):
+            if not fname.endswith(".json"):
+                continue
+            fpath = os.path.join(root, fname)
+            with open(fpath, "r", encoding="utf-8") as f:
+                targets.extend(json.load(f))
 
     logger.info(f"加载 {len(targets)} 道标准答案")
     return targets
@@ -153,9 +153,11 @@ def main():
     parser = argparse.ArgumentParser(description="解题模型评测")
     parser.add_argument("--provider", choices=["deepseek", "ernie"], default=None,
                         help="指定评测模型，不指定则评测全部")
+    parser.add_argument("--subject", "-s", default=None,
+                        help="筛选科目关键词（如 '高中数学'），不指定则全部")
     args = parser.parse_args()
 
-    targets = load_targets()
+    targets = load_targets(subject=args.subject)
     providers = [args.provider] if args.provider else ["deepseek", "ernie"]
 
     for provider in providers:
