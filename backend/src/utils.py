@@ -4,16 +4,15 @@
 """
 
 import os
+import shutil
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from rich.console import Console
-from pdf2image import convert_from_path
-from PIL import Image
 
-from config import PAGES_DIR, RESULTS_DIR
+from config import PAGES_DIR, RESULTS_DIR, ALLOWED_EXTENSIONS
 
 load_dotenv()
 console = Console()
@@ -23,83 +22,42 @@ def prepare_input(file_path: str) -> List[str]:
     """
     步骤1: 准备输入文件
 
-    接受PDF或图片文件,统一转换为标准化的图片列表
+    验证文件格式，将文件复制到 PAGES_DIR 统一管理。
+    PDF 和图片均直接保留原始格式，由 PaddleOCR API 统一处理。
 
     Args:
         file_path: 输入文件路径 (PDF或图片文件)
 
     Returns:
-        List[str]: 标准化后的图片路径列表
+        List[str]: 标准化后的文件路径列表（单个文件返回单元素列表）
 
     Raises:
         FileNotFoundError: 文件不存在
         ValueError: 不支持的文件格式
     """
-    # 验证文件存在
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 
-    # 获取输出目录（统一从 config.py 导入）
     pages_dir = PAGES_DIR
     os.makedirs(pages_dir, exist_ok=True)
 
-    # 获取文件扩展名
     file_ext = Path(file_path).suffix.lower()
     file_stem = Path(file_path).stem
 
-    # 支持的图片格式
-    image_formats = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-
-    image_paths = []
+    supported_exts = {f".{ext}" for ext in ALLOWED_EXTENSIONS}
+    if file_ext not in supported_exts:
+        raise ValueError(
+            f"不支持的文件格式: {file_ext}\n"
+            f"支持的格式: {', '.join(sorted(supported_exts))}"
+        )
 
     console.print(f"[cyan]正在处理文件: {file_path}[/cyan]")
 
-    if file_ext == '.pdf':
-        # PDF转图片
-        console.print("[yellow]检测到PDF文件,正在转换为图片...[/yellow]")
+    output_path = os.path.join(pages_dir, f"{file_stem}{file_ext}")
+    shutil.copy2(file_path, output_path)
+    console.print(f"[green]  ✓ 文件已复制: {output_path}[/green]")
 
-        try:
-            # 转换PDF为图片列表
-            images = convert_from_path(file_path, dpi=300)
-
-            console.print(f"[green]成功转换,共{len(images)}页[/green]")
-
-            # 保存每一页
-            for i, image in enumerate(images, start=1):
-                output_path = os.path.join(pages_dir, f"{file_stem}_page_{i:03d}.png")
-                image.save(output_path, 'PNG')
-                image_paths.append(output_path)
-                console.print(f"[green]  ✓ 保存第{i}页: {output_path}[/green]")
-
-        except Exception as e:
-            console.print(f"[red]PDF转换失败: {e}[/red]")
-            raise
-
-    elif file_ext in image_formats:
-        # 已经是图片,复制到标准位置
-        console.print("[yellow]检测到图片文件,正在标准化...[/yellow]")
-
-        try:
-            # 打开并重新保存为PNG格式(标准化)
-            image = Image.open(file_path)
-            output_path = os.path.join(pages_dir, f"{file_stem}.png")
-            image.save(output_path, 'PNG')
-            image_paths.append(output_path)
-            console.print(f"[green]  ✓ 标准化完成: {output_path}[/green]")
-
-        except Exception as e:
-            console.print(f"[red]图片处理失败: {e}[/red]")
-            raise
-
-    else:
-        raise ValueError(
-            f"不支持的文件格式: {file_ext}\n"
-            f"支持的格式: PDF (.pdf) 或图片 ({', '.join(image_formats)})"
-        )
-
-    console.print(f"[bold green]✓ 输入准备完成,共{len(image_paths)}张图片[/bold green]")
-
-    return image_paths
+    return [output_path]
 
 
 def export_wrongbook(

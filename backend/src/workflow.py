@@ -50,26 +50,26 @@ class WorkflowState(TypedDict, total=False):
 
 
 def prepare_input_node(state: WorkflowState) -> dict:
-    """节点: 准备输入（PDF/图片 → 标准化图片列表），支持多文件"""
+    """节点: 准备输入（验证文件并复制到工作目录），支持多文件"""
     console.print("[bold yellow]步骤 1: 准备输入文件[/bold yellow]")
     step_start = time.time()
 
     file_paths = state["file_paths"]
-    all_image_paths = []
+    all_paths = []
     for fp in file_paths:
-        all_image_paths.extend(prepare_input(fp))
+        all_paths.extend(prepare_input(fp))
 
-    logger.info(f"步骤1完成: 准备输入文件，共 {len(all_image_paths)} 张图片（来自 {len(file_paths)} 个文件），耗时 {time.time() - step_start:.2f}s")
-    return {"image_paths": all_image_paths}
+    logger.info(f"步骤1完成: 准备输入文件，共 {len(all_paths)} 个文件（来自 {len(file_paths)} 个文件），耗时 {time.time() - step_start:.2f}s")
+    return {"image_paths": all_paths}
 
 
 # ── 并行分割辅助函数 ──────────────────────────────────────────
 
 
-def _run_ocr_and_simplify(image_paths: List[str]) -> List[Dict[str, Any]]:
+def _run_ocr_and_simplify(file_paths: List[str]) -> List[Dict[str, Any]]:
     """执行 OCR 解析并简化结果（含重试机制）
 
-    调用 PaddleOCR API 解析所有图片（图片级并行），
+    支持混合文件类型：PDF 直传 API，图片并行上传。
     然后将结果简化为 split_batch 所需的格式。
 
     Returns:
@@ -79,29 +79,58 @@ def _run_ocr_and_simplify(image_paths: List[str]) -> List[Dict[str, Any]]:
 
     client = PaddleOCRClient()
 
+    # 按文件类型分组
+    pdf_paths = [p for p in file_paths if p.lower().endswith(".pdf")]
+    image_paths = [p for p in file_paths if not p.lower().endswith(".pdf")]
+
     max_retries = 3
     retry_delays = [15, 30, 60]
-    ocr_results = None
+    ocr_results = []
     last_error = None
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            ocr_results = run_async(
-                client.parse_images_async(image_paths, save_output=True, stagger_delay=1.0)
-            )
-            break
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries:
-                delay = retry_delays[attempt - 1]
-                logger.warning(f"OCR 第 {attempt} 次失败 ({e})，{delay}s 后重试...")
-                console.print(f"[yellow]OCR 第 {attempt} 次失败，{delay}s 后重试...[/yellow]")
-                time.sleep(delay)
-            else:
-                logger.error(f"OCR 全部 {max_retries} 次重试失败: {last_error}")
-                console.print(f"[red]OCR 解析失败（已重试 {max_retries} 次）: {last_error}[/red]")
+    # PDF 直传（每个 PDF 单独提交，API 内部处理分页）
+    for pdf_path in pdf_paths:
+        result = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = client.parse_pdf(pdf_path, save_output=True)
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries:
+                    delay = retry_delays[attempt - 1]
+                    logger.warning(f"OCR PDF 第 {attempt} 次失败 ({e})，{delay}s 后重试...")
+                    console.print(f"[yellow]OCR PDF 第 {attempt} 次失败，{delay}s 后重试...[/yellow]")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"OCR PDF 全部 {max_retries} 次重试失败: {last_error}")
+                    console.print(f"[red]OCR PDF 解析失败（已重试 {max_retries} 次）: {last_error}[/red]")
+        if result is not None:
+            ocr_results.append(result)
 
-    if ocr_results is None:
+    # 图片并行上传
+    if image_paths:
+        img_results = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                img_results = run_async(
+                    client.parse_images_async(image_paths, save_output=True)
+                )
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries:
+                    delay = retry_delays[attempt - 1]
+                    logger.warning(f"OCR 图片第 {attempt} 次失败 ({e})，{delay}s 后重试...")
+                    console.print(f"[yellow]OCR 图片第 {attempt} 次失败，{delay}s 后重试...[/yellow]")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"OCR 图片全部 {max_retries} 次重试失败: {last_error}")
+                    console.print(f"[red]OCR 图片解析失败（已重试 {max_retries} 次）: {last_error}[/red]")
+        if img_results:
+            ocr_results.extend(img_results)
+
+    if not ocr_results:
         return []
 
     return simplify_ocr_results(ocr_results)
@@ -308,7 +337,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     results_dir = RESULTS_DIR
     os.makedirs(results_dir, exist_ok=True)
 
-    image_paths = state["image_paths"]
+    file_paths = state["image_paths"]
     model_provider = state.get("model_provider", "deepseek")
 
     # 清空旧的 questions.json 和 split_metadata.json
@@ -320,10 +349,10 @@ def split_questions_node(state: WorkflowState) -> dict:
         os.remove(meta_path)
 
     # ── Step 1: OCR 解析 ──
-    console.print(f"[cyan]OCR 解析 {len(image_paths)} 张图片...[/cyan]")
+    console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
     ocr_start = time.time()
 
-    ocr_data = _run_ocr_and_simplify(image_paths)
+    ocr_data = _run_ocr_and_simplify(file_paths)
 
     if not ocr_data:
         logger.error("OCR 解析失败，无数据返回")
