@@ -6,7 +6,7 @@ import {
   ListboxOptions,
   ListboxOption,
 } from '@headlessui/vue'
-import DOMPurify from 'dompurify'
+import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale } from './utils.js'
 
 const theme = ref('light')
 const applyTheme = (nextTheme) => {
@@ -143,8 +143,7 @@ const closeModal = () => {
 }
 const onModalWheel = (e) => {
   e.preventDefault()
-  const delta = e.deltaY > 0 ? -0.1 : 0.1
-  modalScale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, modalScale.value + delta))
+  modalScale.value = clampScale(modalScale.value, e.deltaY, MIN_SCALE, MAX_SCALE)
 }
 const onKeydown = (e) => {
   if (e.key === 'Escape' && modalOpen.value) closeModal()
@@ -164,7 +163,6 @@ let activeXhr = null
 let fakeProgressTimer = null
 let fakeProgressKeys = []
 
-const fileKey = (file) => `${file.name}|${file.size}|${file.lastModified}`
 
 const pendingCount = computed(() => pendingFiles.length)
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value)
@@ -387,13 +385,6 @@ const deselectAll = () => {
   selectedIds.clear()
 }
 
-const formatOption = (s) => String(s || '')
-
-/** 判断内容是否包含 HTML 标签（OCR 表格等） */
-const isHtml = (s) => /<\/?(?:table|tr|td|th|thead|tbody)\b/i.test(s || '')
-
-const ALLOWED_HTML_TAGS = ['table', 'tr', 'td', 'th', 'thead', 'tbody', 'p', 'br', 'span', 'b', 'i', 'em', 'strong', 'sub', 'sup']
-const sanitizeHtml = (html) => DOMPurify.sanitize(html, { ALLOWED_TAGS: ALLOWED_HTML_TAGS })
 
 const typesetMath = async () => {
   await nextTick()
