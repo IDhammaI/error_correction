@@ -1,108 +1,63 @@
-# Benchmark 数据采集模块
+# Benchmark 评测模块
 
-复用本系统的 **PaddleOCR + Agent 分割**流水线，批量处理 `dataset/` 下的考试 PDF（每份取前 2 页），提取所有完整题目按科目分目录保存，用于评测解题智能体准确率。
+基于 [C-Eval](https://huggingface.co/datasets/ceval/ceval-exam) 数据集评测解题智能体准确率。C-Eval 包含 52 个科目、共 13948 道四选一选择题。
 
 ## 快速开始
 
 ```bash
 cd backend
 
-# 1. 查看有哪些 PDF（不请求 API）
-python -m benchmark.collect --dry-run
+# 列出所有可用科目
+python -m benchmark.evaluate --list-subjects
 
-# 2. 采集全部科目（4 线程并行）
-python -m benchmark.collect
+# 评测单科（val 集）
+python -m benchmark.evaluate --subjects high_school_mathematics
 
-# 3. 只采集某个科目
-python -m benchmark.collect --subject 高中数学
+# 评测多个科目
+python -m benchmark.evaluate --subjects high_school_mathematics,high_school_physics,high_school_chemistry
 
-# 4. 用文心模型分割
-python -m benchmark.collect --provider ernie
+# 评测全部 52 个科目
+python -m benchmark.evaluate
 
-# 5. 指定并行数
-python -m benchmark.collect --workers 8
+# 使用 test 集（题目更多）
+python -m benchmark.evaluate --subjects high_school_mathematics --split test
+
+# 指定模型
+python -m benchmark.evaluate --provider ernie
+
+# 调整每批题目数
+python -m benchmark.evaluate --batch-size 5
 ```
 
-## 工作流程
+## 数据集说明
 
-```
-dataset/{科目}/pdf文档/*.pdf
-    │
-    ├── 取前 2 页，转 200dpi PNG
-    │
-    ├── PaddleOCR API 解析（布局+公式+图片识别）
-    │
-    ├── Agent 智能分割（识别题号、题型、选项、知识点）
-    │
-    ├── 并行处理多个 PDF（ThreadPoolExecutor）
-    │
-    ├── 按科目分目录保存 → benchmark/data/target/{科目}/{试卷名}.json
-    │
-    └── 标注人员填写 answer 字段
-            │
-            └── python -m benchmark.evaluate  (AI 解答 + 对比正确率)
-```
+| 分割 | 用途 | 有答案 |
+|------|------|--------|
+| `dev` | 少样本示例（每科 5 题） | 有 |
+| `val` | 验证集（每科约 20 题） | 有 |
+| `test` | 测试集（每科约 100+ 题） | 有 |
 
-## 输出文件
+每道题格式：`question + A/B/C/D 四个选项 + answer（正确选项字母）`
 
-```
-benchmark/data/target/
-├── 初中数学/
-│   ├── 2023年某市中考数学真题.json
-│   └── ...
-├── 高中数学/
-│   ├── 2023年北京高考数学真题.json
-│   └── ...
-├── 化学/
-│   └── ...
-└── ...
-```
+## 输出
 
-每个 JSON 文件格式：
+评测报告保存在 `benchmark/results/` 目录：
 
 ```json
-[
-  {
-    "question_id": "2023年北京高考数学真题_1",
-    "question_type": "选择题",
-    "answer": "",
-    "source": { "pdf": "2023年北京高考数学真题", "local_id": "1" },
-    "question": {
-      "question_id": "2023年北京高考数学真题_1",
-      "question_type": "选择题",
-      "content_blocks": [{"block_type": "text", "content": "已知集合..."}],
-      "options": ["A. ...", "B. ..."],
-      "has_formula": true,
-      "knowledge_tags": ["集合", "交集"]
-    }
+{
+  "provider": "deepseek",
+  "split": "val",
+  "overall_accuracy": 0.72,
+  "total": 18,
+  "correct": 13,
+  "by_subject": {
+    "high_school_mathematics": {"total": 18, "correct": 13, "accuracy": 0.72}
   }
-]
-```
-
-## 标注答案
-
-采集完成后 `answer` 字段为空，标注人员按题型填写：
-
-| 题型 | answer 格式 | 示例 |
-|------|-------------|------|
-| 选择题 | 选项字母 | `"B"` |
-| 判断题 | 正确/错误 | `"正确"` |
-| 填空题 | 精确答案 | `"$\\frac{1}{2}$"` |
-| 解答题 | 完整解答过程 | `"由题意可知..."` |
-
-标注完成后运行评测：
-
-```bash
-python -m benchmark.evaluate                      # 评测全部模型
-python -m benchmark.evaluate --provider deepseek   # 只评测 deepseek
-python -m benchmark.evaluate --subject 高中数学    # 只评测某科目
+}
 ```
 
 ## 依赖
 
-复用系统已有组件，无额外依赖：
-
-- `src/paddleocr_client.py` — OCR 解析
-- `error_correction_agent/tools/split_batch` — Agent 分割
-- `pdf2image` + `poppler` — PDF 转图
-- 环境变量：`PADDLEOCR_API_URL`、`PADDLEOCR_API_TOKEN`、`DEEPSEEK_API_KEY`
+- `datasets` — HuggingFace 数据集加载
+- `solve_agent` — 本系统解题智能体
+- 环境变量：`DEEPSEEK_API_KEY` 或 ERNIE 相关配置
