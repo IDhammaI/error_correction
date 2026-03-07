@@ -23,6 +23,8 @@ MAX_FILE_SIZE_MB = 50
 # 错题库数据库（SQLite）
 DB_PATH = os.environ.get("APP_DB_PATH", os.path.join(RUNTIME_ROOT, "error_book.db"))
 
-# 确保必要目录存在
-for _d in [UPLOAD_DIR, PAGES_DIR, STRUCT_DIR, RESULTS_DIR]:
-    os.makedirs(_d, exist_ok=True)
+
+def ensure_dirs():
+    """确保必要目录存在（应在应用启动入口显式调用）"""
+    for _d in [UPLOAD_DIR, PAGES_DIR, STRUCT_DIR, RESULTS_DIR]:
+        os.makedirs(_d, exist_ok=True)

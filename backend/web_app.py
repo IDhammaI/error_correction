@@ -28,6 +28,7 @@ from config import (
     RESULTS_DIR,
     MAX_FILE_SIZE_MB,
     ALLOWED_EXTENSIONS,
+    ensure_dirs,
 )
 from db import init_db, SessionLocal
 from db import crud
@@ -775,6 +776,8 @@ def delete_question(question_id):
 
 
 if __name__ == '__main__':
+    # 确保运行时目录存在
+    ensure_dirs()
     # 初始化数据库
     init_db()
     print("[数据库] 初始化完成")
