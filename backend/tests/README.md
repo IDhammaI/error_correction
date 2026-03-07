@@ -186,9 +186,9 @@ python -m pytest tests/test_split_integration.py -v -s --model-provider ernie
 
 > **注意**：此测试会消耗 API 配额，使用 session 级 fixture 共享一次调用结果以减少开销。测试数据来自 `runtime_data/results/agent_input.json`。
 
-### test_solve_integration.py （7 个）
+### test_solve_integration.py （6 个）
 
-**集成测试**：调用真实 LLM API 验证解题智能体的解题能力。需要配置 API Key 环境变量。
+**集成测试**：从 C-Eval 数据集加载高中数学 dev 集（5 题），调用解题智能体验证端到端能力。需要配置 API Key 环境变量。
 
 ```bash
 # 使用 deepseek（默认）
@@ -202,13 +202,12 @@ python -m pytest tests/test_solve_integration.py -v -s --model-provider ernie
 |----------|------|
 | `test_returns_all_answers` | 返回与输入题目数量相同的答案 |
 | `test_question_ids_match` | question_id 与输入一致 |
-| `test_choice_answer_correct` | 选择题（集合交集）答案正确 |
-| `test_fill_answer_correct` | 填空题（2³+3²）答案正确 |
-| `test_judge_answer_correct` | 判断题（π是有理数）答案正确 |
+| `test_answers_are_valid_options` | 每道题答案为 A/B/C/D |
 | `test_has_reasoning` | 每道题包含非空推理过程 |
 | `test_confidence_in_range` | 置信度在 0-1 范围内 |
+| `test_accuracy_above_threshold` | dev 集正确率不低于 40% |
 
-> **注意**：使用 session 级 fixture 共享一次 API 调用（3 道题：选择题+填空题+判断题），减少配额消耗。
+> **注意**：使用 session 级 fixture 共享一次 API 调用（C-Eval 高中数学 dev 集 5 题），减少配额消耗。依赖 `datasets` 库。
 
 ---
 
