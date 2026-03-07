@@ -28,25 +28,28 @@ python -m pytest tests/ -v -k "dedup"
 
 ```
 backend/tests/
-├── conftest.py                  # pytest 配置，sys.path + --model-provider 参数
-├── test_workflow_helpers.py     # workflow.py 纯函数测试（77 个）
-├── test_export.py               # export_wrongbook 导出测试（10 个）
-├── test_web_helpers.py          # web_app.py 纯函数测试（22 个）
-├── test_crud.py                 # 数据库 CRUD 测试（32 个）
-├── test_schemas.py              # Pydantic schema 校验测试（14 个）
-├── test_question_tools.py       # 题目工具函数测试（7 个）
-├── test_correct_node.py         # 纠错节点合并逻辑测试（4 个）
-├── test_utils.py                # 通用工具函数测试（6 个）
-├── test_benchmark_metrics.py    # benchmark 评测指标测试（26 个）
-├── test_solve_schemas.py        # 解题结果 schema 测试（7 个）
-├── test_ocr_api.py              # PaddleOCR API 集成测试（需要 API 配置，22 个）
-├── test_split_integration.py    # 分割集成测试（需要 API Key，6 个）
-└── test_solve_integration.py    # 解题集成测试（需要 API Key，7 个）
+├── conftest.py                  # pytest 配置，公共 fixture（db / make_question）
+├── fixtures/                    # 测试数据
+│   └── sample_ocr_data.json    # OCR 测试数据（split_integration 使用）
+├── test_workflow_helpers.py     # workflow.py 纯函数测试
+├── test_export.py               # export_wrongbook 导出测试
+├── test_web_helpers.py          # web_app.py 纯函数测试
+├── test_web_routes.py           # Flask 路由集成测试（内存数据库）
+├── test_crud.py                 # 数据库 CRUD 测试
+├── test_schemas.py              # Pydantic schema 校验测试
+├── test_question_tools.py       # 题目工具函数测试
+├── test_correct_node.py         # 纠错节点合并逻辑测试
+├── test_utils.py                # 通用工具函数测试
+├── test_benchmark_metrics.py    # benchmark 评测指标测试
+├── test_solve_schemas.py        # 解题结果 schema 测试
+├── test_ocr_api.py              # PaddleOCR API 集成测试（需要 API 配置）
+├── test_split_integration.py    # 分割集成测试（需要 API Key）
+└── test_solve_integration.py    # 解题集成测试（需要 API Key）
 ```
 
 ---
 
-### test_utils.py （6 个）
+### test_utils.py
 
 测试 `backend/src/utils.py` 中的通用工具函数：
 
@@ -54,7 +57,7 @@ backend/tests/
 |--------|----------|--------|------|
 | `TestPrepareInput` | `prepare_input` | 6 | PDF 直接复制、图片直接复制（jpg/png）、文件不存在、格式不支持、自动创建目录 |
 
-### test_workflow_helpers.py （77 个）
+### test_workflow_helpers.py
 
 测试 `backend/src/workflow.py` 和 `backend/src/utils.py` 中不依赖外部服务的纯函数：
 
@@ -69,7 +72,7 @@ backend/tests/
 | `TestMergePages` | `PaddleOCRClient._merge_pages` | 4 | JSONL 多页合并：空输入、单页、多页合并、缺失 key 跳过 |
 | `TestRunOcrAndSimplifyFileTypes` | `_run_ocr_and_simplify` | 5 | 混合文件分发：纯图片、纯 PDF、混合文件、大小写不敏感、空输入 |
 
-### test_export.py （10 个）
+### test_export.py
 
 测试 `backend/src/utils.py` 中的 `export_wrongbook` 函数：
 
@@ -86,7 +89,7 @@ backend/tests/
 | `test_image_refs_not_duplicated` | 已渲染的图片不重复出现 |
 | `test_multiple_questions_numbered` | 多题编号正确 |
 
-### test_web_helpers.py （22 个）
+### test_web_helpers.py
 
 测试 `backend/web_app.py` 中不依赖 Flask 请求上下文的纯函数：
 
@@ -96,7 +99,7 @@ backend/tests/
 | `TestSafeJoin` | `_safe_join` | 6 | 路径安全拼接：正常路径、目录遍历攻击（`../`）、空路径 |
 | `TestViteCollectImports` | `_vite_collect_imports` | 7 | Vite manifest 依赖收集：线性链、循环依赖、菱形依赖、缺失入口 |
 
-### test_crud.py （32 个）
+### test_crud.py
 
 测试 `backend/db/crud.py` 中所有 CRUD 函数，使用 **SQLite 内存数据库**（每个测试用例独立数据库）：
 
@@ -113,7 +116,7 @@ backend/tests/
 | `TestGetAllTags` | `get_all_tags` | 2 | 获取全部标签：空库、按科目筛选 |
 | `TestGetStatistics` | `get_statistics` | 2 | 统计信息：空库、有数据 |
 
-### test_schemas.py （14 个）
+### test_schemas.py
 
 测试 `backend/error_correction_agent/schemas.py` 中 Pydantic 模型的校验逻辑：
 
@@ -125,7 +128,7 @@ backend/tests/
 | `TestCorrectedQuestion` | `CorrectedQuestion` | 2 | 正常构造、缺 corrections_applied 拒绝 |
 | `TestCorrectionResult` | `CorrectionResult` | 2 | 空列表、包含纠错结果 |
 
-### test_question_tools.py （7 个）
+### test_question_tools.py
 
 测试 `backend/error_correction_agent/tools/question_tools.py` 中的文件 I/O 工具（使用 `tmp_path`）：
 
@@ -134,7 +137,7 @@ backend/tests/
 | `TestSaveQuestions` | `save_questions` | 4 | 新建文件、追加数据、科目元数据保存、空科目不生成元数据 |
 | `TestLogIssue` | `log_issue` | 3 | 基本记录、附带 block_info、多次追加（JSONL 格式）|
 
-### test_correct_node.py （4 个）
+### test_correct_node.py
 
 测试 `backend/src/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
 
@@ -145,7 +148,7 @@ backend/tests/
 | `test_merge_corrected` | 纠错结果按 question_id 合并回原列表，未标记题目不受影响 |
 | `test_invalid_json_keeps_original` | 纠错返回无效 JSON 时保留原始题目 |
 
-### test_benchmark_metrics.py （26 个）
+### test_benchmark_metrics.py
 
 测试 `backend/benchmark/metrics.py` 中的评测指标函数：
 
@@ -155,7 +158,7 @@ backend/tests/
 | `TestCompareAnswers` | `compare_answers` | 9 | 大小写、多选排序无关、判断题跨格式比较、空白容忍 |
 | `TestComputeAccuracy` | `compute_accuracy` | 7 | 空结果、全对、全错、混合、分题型统计、未知题型兜底 |
 
-### test_solve_schemas.py （7 个）
+### test_solve_schemas.py
 
 测试 `backend/solve_agent/schemas.py` 中解题结果 Pydantic 模型：
 
@@ -164,7 +167,7 @@ backend/tests/
 | `TestSolveResult` | `SolveResult` | 4 | 最小构造、自定义 confidence、缺 answer 拒绝、缺 reasoning 拒绝 |
 | `TestSolveBatchResult` | `SolveBatchResult` | 3 | 空列表、包含结果、model_dump 完整性 |
 
-### test_ocr_api.py （22 个）
+### test_ocr_api.py
 
 **集成测试**：验证 PaddleOCR V2 异步任务 API 的连通性与结果格式兼容性。需要配置 `PADDLEOCR_API_URL`、`PADDLEOCR_API_TOKEN`。测试文件使用 `example_uploads/` 下的 `test.jpg`（图片）和 `test4.pdf`（PDF）。
 
@@ -185,7 +188,7 @@ pytest tests/test_ocr_api.py -v -s
 
 ---
 
-### test_split_integration.py （6 个）
+### test_split_integration.py
 
 **集成测试**：调用真实大模型 API 验证 `split_batch` 的分割效果。需要配置对应的 API Key 环境变量。
 
@@ -208,9 +211,9 @@ python -m pytest tests/test_split_integration.py -v -s --model-provider ernie
 | `test_formula_detection` | 含 LaTeX 的题目标记 has_formula |
 | `test_knowledge_tags` | 至少一半题目有知识点标注 |
 
-> **注意**：此测试会消耗 API 配额，使用 session 级 fixture 共享一次调用结果以减少开销。测试数据来自 `runtime_data/results/agent_input.json`。
+> **注意**：此测试会消耗 API 配额，使用 session 级 fixture 共享一次调用结果以减少开销。测试数据来自 `tests/fixtures/sample_ocr_data.json`。
 
-### test_solve_integration.py （7 个）
+### test_solve_integration.py
 
 **集成测试**：调用真实 LLM API 验证解题智能体的解题能力。需要配置 API Key 环境变量。
 
