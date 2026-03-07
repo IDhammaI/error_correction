@@ -5,7 +5,7 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -196,3 +196,134 @@ def get_statistics(db: Session) -> Dict[str, Any]:
         "total_tags": total_tags or 0,
         "by_subject": {s: c for s, c in subject_stats}
     }
+
+
+def get_history_questions(
+    db: Session,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    page: int = 1,
+    page_size: int = 20
+) -> Tuple[List[Question], int]:
+    """
+    分页查询历史题目（全部题目）
+
+    Args:
+        db: 数据库会话
+        start_date: 开始日期筛选
+        end_date: 结束日期筛选
+        page: 页码（从1开始）
+        page_size: 每页数量
+
+    Returns:
+        (题目列表, 总数)
+    """
+    query = db.query(Question).join(UploadBatch)
+
+    if start_date:
+        query = query.filter(UploadBatch.upload_time >= start_date)
+    if end_date:
+        query = query.filter(UploadBatch.upload_time <= end_date)
+
+    # 获取总数
+    total = query.count()
+
+    # 分页查询
+    offset = (page - 1) * page_size
+    questions = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
+
+    return questions, total
+
+
+def search_questions(
+    db: Session,
+    keyword: Optional[str] = None,
+    knowledge_tag: Optional[str] = None,
+    question_type: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+) -> Tuple[List[Question], int]:
+    """
+    搜索题目（知识点/题型/关键字）
+
+    Args:
+        db: 数据库会话
+        keyword: 关键字搜索（匹配题目内容 content_json）
+        knowledge_tag: 知识点标签筛选
+        question_type: 题型筛选
+        page: 页码（从1开始）
+        page_size: 每页数量
+
+    Returns:
+        (题目列表, 总数)
+    """
+    query = db.query(Question)
+
+    # 关键字搜索：匹配 content_json 中的内容
+    if keyword:
+        query = query.filter(Question.content_json.ilike(f"%{keyword}%"))
+
+    # 题型筛选
+    if question_type:
+        query = query.filter(Question.question_type == question_type)
+
+    # 知识点标签筛选
+    if knowledge_tag:
+        query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
+            KnowledgeTag.tag_name == knowledge_tag
+        )
+
+    # 获取总数（需要先去除distinct，因为join可能产生重复）
+    total = query.distinct().count()
+
+    # 分页查询
+    offset = (page - 1) * page_size
+    questions = query.distinct().order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
+
+    return questions, total
+
+
+def get_knowledge_stats(db: Session) -> List[Dict]:
+    """
+    获取知识点统计信息
+
+    Returns:
+        [{"tag_name": "xxx", "count": 10}, ...]
+    """
+    stats = db.query(
+        KnowledgeTag.tag_name,
+        func.count(QuestionTagMapping.question_id).label("count")
+    ).join(
+        QuestionTagMapping, QuestionTagMapping.tag_id == KnowledgeTag.id
+    ).group_by(
+        KnowledgeTag.id, KnowledgeTag.tag_name
+    ).order_by(
+        func.count(QuestionTagMapping.question_id).desc()
+    ).all()
+
+    return [{"tag_name": tag_name, "count": count} for tag_name, count in stats]
+
+
+def delete_question(db: Session, question_id: int) -> bool:
+    """
+    删除题目
+
+    Args:
+        db: 数据库会话
+        question_id: 题目ID
+
+    Returns:
+        是否删除成功
+    """
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        return False
+
+    # 删除关联的标签映射
+    db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id == question_id).delete()
+
+    # 删除题目
+    db.delete(question)
+    db.commit()
+
+    return True

@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import asyncio
+import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -109,7 +110,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
 
 @tool(parse_docstring=True)
-def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existing_tags: str = "") -> str:
+def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "deepseek") -> str:
     """对一批OCR数据进行题目分割，返回结构化题目列表JSON
 
     将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
@@ -117,67 +118,64 @@ def split_batch(ocr_data: str, existing_ids: str = "", subject: str = "", existi
 
     Args:
         ocr_data: 一批OCR数据的JSON字符串，包含1-2页的blocks数据
-        existing_ids: 前面批次已提取的题目ID列表，用逗号分隔（如 "1,2,3,4,5"），用于跳过重叠页上的已有题目
         subject: 试卷所属科目（如 "高中数学"、"初中物理"），用于辅助知识点标注
         existing_tags: 前面批次已使用的知识点标签，用逗号分隔（如 "复数,集合,立体几何"），用于保持标签一致性
+        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
 
     Returns:
         题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
     """
-    logger.info("split_batch called")
-    try:
-        from ..agent import create_inner_split_agent
+    logger.info(f"split_batch called (provider={model_provider})")
 
-        inner_agent = create_inner_split_agent()
+    tags_instruction = ""
+    if subject.strip() or existing_tags.strip():
+        tags_instruction = "\n**知识点标注上下文**："
+        if subject.strip():
+            tags_instruction += f"\n- 本试卷科目：{subject}"
+        if existing_tags.strip():
+            tags_instruction += f"\n- 已有知识点标签池（请优先复用）：{existing_tags}"
 
-        skip_instruction = ""
-        if existing_ids.strip():
-            skip_instruction = f"""
-**重要 - 跳过已处理的题目**：
-以下题号的题目已经在前面的批次中提取过，请不要再次输出它们：{existing_ids}
-只输出新的、不在上述列表中的题目。"""
-
-        tags_instruction = ""
-        if subject.strip() or existing_tags.strip():
-            tags_instruction = "\n**知识点标注上下文**："
-            if subject.strip():
-                tags_instruction += f"\n- 本试卷科目：{subject}"
-            if existing_tags.strip():
-                tags_instruction += f"\n- 已有知识点标签池（请优先复用）：{existing_tags}"
-
-        prompt = f"""请分析以下OCR识别结果，将其分割为独立的题目。
+    prompt = f"""请分析以下OCR识别结果，将其分割为独立的题目。
 
 每页的数据结构：
 - page_index: 页码索引
 - blocks: 内容块列表，每个 block 有 block_label、block_content、block_order 三个字段
 
 请按 page_index 和 block_order 顺序处理，返回结构化的题目列表。
-{skip_instruction}{tags_instruction}
+{tags_instruction}
 
 OCR数据：
 {ocr_data}"""
 
-        response = inner_agent.invoke(
-            {"messages": [{"role": "user", "content": prompt}]},
-            config={"recursion_limit": 100},
-        )
+    from ..agent import invoke_split
 
-        structured = response.get("structured_response")
-        if structured:
-            questions = [q.model_dump() for q in structured.questions]
-            logger.info(f"split_batch done: {len(questions)} questions")
-            return json.dumps(questions, ensure_ascii=False)
+    max_retries = 3
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            structured = invoke_split(prompt, provider=model_provider)
+            if structured:
+                questions = [q.model_dump() for q in structured.questions]
+                logger.info(f"split_batch done: {len(questions)} questions")
+                return json.dumps(questions, ensure_ascii=False)
 
-        logger.warning("split_batch: no structured_response")
-        return "[]"
+            logger.warning(f"split_batch: 第 {attempt} 次未获得 structured_response，重试")
+            last_error = "未获得 structured_response"
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"split_batch: 第 {attempt}/{max_retries} 次失败: {last_error}")
 
-    except Exception as e:
-        logger.error(f"split_batch error: {str(e)}")
-        return f"分割失败: {str(e)}"
+        if attempt < max_retries:
+            wait = 2 ** attempt  # 2s, 4s
+            logger.info(f"split_batch: 等待 {wait}s 后重试...")
+            time.sleep(wait)
+
+    logger.error(f"split_batch: {max_retries} 次尝试均失败: {last_error}")
+    return f"分割失败: {last_error}"
 
 
 @tool(parse_docstring=True)
-def correct_batch(questions_json: str, ocr_context: str) -> str:
+def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "deepseek") -> str:
     """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
 
     将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
@@ -186,17 +184,16 @@ def correct_batch(questions_json: str, ocr_context: str) -> str:
     Args:
         questions_json: 待纠错题目列表的JSON字符串
         ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
+        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
 
     Returns:
         纠错后的题目列表JSON字符串
     """
-    logger.info("correct_batch called")
-    try:
-        from ..agent import create_correction_agent
+    logger.info(f"correct_batch called (provider={model_provider})")
 
-        correction_agent = create_correction_agent()
+    from ..agent import invoke_correction
 
-        prompt = f"""请修复以下题目中的 OCR 错误。
+    prompt = f"""请修复以下题目中的 OCR 错误。
 
 ## 待纠错题目
 {questions_json}
@@ -207,23 +204,29 @@ def correct_batch(questions_json: str, ocr_context: str) -> str:
 
 请逐题修复标记的 OCR 问题，输出纠错后的结构化数据。"""
 
-        response = correction_agent.invoke(
-            {"messages": [{"role": "user", "content": prompt}]},
-            config={"recursion_limit": 100},
-        )
+    max_retries = 3
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            structured = invoke_correction(prompt, provider=model_provider)
+            if structured:
+                corrected = [q.model_dump() for q in structured.corrected_questions]
+                logger.info(f"correct_batch done: {len(corrected)} questions corrected")
+                return json.dumps(corrected, ensure_ascii=False)
 
-        structured = response.get("structured_response")
-        if structured:
-            corrected = [q.model_dump() for q in structured.corrected_questions]
-            logger.info(f"correct_batch done: {len(corrected)} questions corrected")
-            return json.dumps(corrected, ensure_ascii=False)
+            logger.warning(f"correct_batch: 第 {attempt} 次未获得 structured_response，重试")
+            last_error = "未获得 structured_response"
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"correct_batch: 第 {attempt}/{max_retries} 次失败: {last_error}")
 
-        logger.warning("correct_batch: no structured_response")
-        return "[]"
+        if attempt < max_retries:
+            wait = 2 ** attempt  # 2s, 4s
+            logger.info(f"correct_batch: 等待 {wait}s 后重试...")
+            time.sleep(wait)
 
-    except Exception as e:
-        logger.error(f"correct_batch error: {str(e)}")
-        return f"纠错失败: {str(e)}"
+    logger.error(f"correct_batch: {max_retries} 次尝试均失败: {last_error}")
+    return f"纠错失败: {last_error}"
 
 
 @tool(parse_docstring=True)
@@ -268,7 +271,7 @@ def retry_ocr(image_paths_json: str) -> str:
                 client.parse_images_async(image_paths, save_output=True)
             )
 
-        # 简化 OCR 结果（与 OCRMiddleware._simplify_results 逻辑一致）
+        # 简化 OCR 结果，只保留 block_label、block_content、block_order
         simplified = []
         page_index = 0
         for result in ocr_results:

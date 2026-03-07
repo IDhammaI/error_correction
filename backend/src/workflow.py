@@ -47,6 +47,7 @@ class WorkflowState(TypedDict, total=False):
     questions: List[Dict[str, Any]]      # 分割后的题目列表
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
+    model_provider: str                  # 模型供应商: "deepseek" | "ernie"
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -125,7 +126,7 @@ def _run_ocr_and_simplify(image_paths: List[str]) -> List[Dict[str, Any]]:
 def _simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
     """简化 OCR 结果，只保留 split 所需字段
 
-    与 OCRMiddleware._simplify_results 逻辑一致。
+    只保留 block_label、block_content、block_order 三个字段。
     """
     simplified = []
     page_index = 0
@@ -208,24 +209,61 @@ def _load_db_context():
     return db_subjects, db_tags
 
 
-def _identify_subject(
-    ocr_data: List[Dict[str, Any]],
-    db_subjects: List[str],
-) -> str:
-    """从 OCR 数据前几页启发式识别科目
+def _extract_text_sample(ocr_data: List[Dict[str, Any]]) -> str:
+    """从 OCR 数据前 2 页提取文本
 
-    优先匹配 DB 已有科目名称，其次按关键词匹配。
+    只读取 text / paragraph_title / doc_title 类型的 block。
+
+    Args:
+        ocr_data: 简化后的 OCR 数据列表
+
+    Returns:
+        拼接的文本字符串
     """
     if not ocr_data:
         return ""
 
-    # 提取前 2 页的文本
     text_sample = ""
     for page in ocr_data[:2]:
         for block in page.get("blocks", []):
             if block.get("block_label") in ("text", "paragraph_title", "doc_title"):
                 text_sample += block.get("block_content", "") + "\n"
+    return text_sample
 
+
+def _identify_subject(
+    ocr_data: List[Dict[str, Any]],
+    db_subjects: List[str],
+    model_provider: str = "deepseek",
+) -> str:
+    """从 OCR 数据前几页识别科目（三层 fallback）
+
+    1. LLM 预检（轻量模型，失败时静默 fallback）
+    2. 关键词匹配（DB 已有科目 + 通用关键词）
+    3. 内容特征推断（指标词计数）
+
+    Args:
+        ocr_data: 简化后的 OCR 数据列表
+        db_subjects: 数据库已有科目列表
+        model_provider: 模型供应商
+    """
+    if not ocr_data:
+        return ""
+
+    text_sample = _extract_text_sample(ocr_data)
+
+    # ── 第 1 层：LLM 预检 ──
+    try:
+        from error_correction_agent.agent import detect_subject_via_llm
+
+        llm_result = detect_subject_via_llm(text_sample, db_subjects, provider=model_provider)
+        if llm_result:
+            logger.info(f"LLM 科目识别成功: {llm_result}")
+            return llm_result
+    except Exception as e:
+        logger.warning(f"LLM 科目识别失败，回退关键词匹配: {e}")
+
+    # ── 第 2 层：关键词匹配 ──
     # 优先匹配 DB 已有科目
     for subj in db_subjects:
         if subj in text_sample:
@@ -248,7 +286,7 @@ def _identify_subject(
             if kw in text_sample:
                 return subj
 
-    # 从内容特征推断
+    # ── 第 3 层：内容特征推断 ──
     indicators = {
         "高中数学": ["函数", "方程", "不等式", "三角", "向量", "概率", "数列", "导数", "圆锥", "椭圆"],
         "高中物理": ["力", "速度", "加速度", "电场", "磁场", "动能", "势能"],
@@ -323,6 +361,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     os.makedirs(results_dir, exist_ok=True)
 
     image_paths = state["image_paths"]
+    model_provider = state.get("model_provider", "deepseek")
 
     # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
@@ -357,10 +396,22 @@ def split_questions_node(state: WorkflowState) -> dict:
     db_subjects, db_tags = _load_db_context()
 
     # ── Step 3: 识别科目 ──
-    subject = _identify_subject(ocr_data, db_subjects)
+    subject = _identify_subject(ocr_data, db_subjects, model_provider=model_provider)
     if subject:
         console.print(f"[cyan]识别科目: {subject}[/cyan]")
         logger.info(f"识别科目: {subject}")
+
+    # ── Step 3.5: 按科目过滤知识点标签 ──
+    if subject and db_tags:
+        from db import SessionLocal
+        from db.crud import get_existing_tag_names
+
+        try:
+            with SessionLocal() as db:
+                db_tags = get_existing_tag_names(db, subject=subject)
+            logger.info(f"按科目 '{subject}' 过滤后剩余 {len(db_tags)} 个标签")
+        except Exception as e:
+            logger.warning(f"按科目过滤标签失败，使用全量标签: {e}")
 
     # ── Step 4: 构建重叠批次 ──
     batches = _build_overlapping_batches(ocr_data, batch_size=2, overlap=1)
@@ -384,9 +435,9 @@ def split_questions_node(state: WorkflowState) -> dict:
             try:
                 result_str = split_batch.invoke({
                     "ocr_data": json.dumps(batch_data, ensure_ascii=False),
-                    "existing_ids": "",
                     "subject": subject,
                     "existing_tags": existing_tags_str,
+                    "model_provider": model_provider,
                 })
                 # split_batch 内部捕获异常并返回 "分割失败: ..." 字符串，
                 # 需要检测这种情况并触发重试
@@ -489,10 +540,12 @@ def correct_questions_node(state: WorkflowState) -> dict:
     # 调用纠错工具
     from error_correction_agent.tools import correct_batch
 
+    model_provider = state.get("model_provider", "deepseek")
     flagged_json = json.dumps(flagged, ensure_ascii=False)
     result_str = correct_batch.invoke({
         "questions_json": flagged_json,
         "ocr_context": ocr_context,
+        "model_provider": model_provider,
     })
 
     # 解析纠错结果

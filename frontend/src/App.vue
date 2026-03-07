@@ -1,5 +1,11 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOptions,
+  ListboxOption,
+} from '@headlessui/vue'
 
 const theme = ref('light')
 const applyTheme = (nextTheme) => {
@@ -53,12 +59,36 @@ const toggleTheme = async (btnEl) => {
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
+
+const modelProvider = ref('deepseek')
+const providerOptions = computed(() => {
+  const s = systemStatus.value
+  return s && s.available_models ? s.available_models : []
+})
+
+// 自动选中第一个已配置的模型
+watch(systemStatus, (newVal) => {
+  if (newVal && newVal.available_models) {
+    const configured = newVal.available_models.find(m => m.configured)
+    if (configured) {
+      modelProvider.value = configured.value
+    }
+  }
+})
+
 const statusPills = computed(() => {
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  pills.push({ key: 'deepseek', ok: !!s.deepseek_configured, label: s.deepseek_configured ? 'DeepSeek' : 'DeepSeek未配置' })
+  const activeProvider = providerOptions.value.find(p => p.value === modelProvider.value)
+  if (activeProvider) {
+    pills.push({
+      key: 'model',
+      ok: activeProvider.configured,
+      label: activeProvider.configured ? activeProvider.label : `${activeProvider.label}未配置`
+    })
+  }
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
 })
@@ -390,7 +420,11 @@ const doSplit = async () => {
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
 
   try {
-    const resp = await fetch('/api/split', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    const resp = await fetch('/api/split', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_provider: modelProvider.value }),
+    })
     const data = await resp.json()
     if (data && data.success) {
       questions.value = data.questions || []
@@ -459,6 +493,7 @@ const doReset = async () => {
   uploadQueue.splice(0, uploadQueue.length)
   questions.value = []
   selectedIds.clear()
+  modelProvider.value = 'deepseek'
   step.value = 1
   pushToast('success', '已重置')
 }
@@ -543,6 +578,61 @@ onBeforeUnmount(() => {
             <i class="fa-solid" :class="p.ok ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
             {{ p.label }}
           </span>
+          <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
+            <Listbox v-model="modelProvider" :disabled="splitting || splitCompleted">
+              <div class="relative">
+                <ListboxButton
+                  class="relative w-full cursor-default rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-10 text-left text-xs font-semibold text-slate-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-blue-800"
+                >
+                  <span class="block truncate">{{ providerOptions.find(p => p.value === modelProvider)?.label || '选择模型' }}</span>
+                  <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <i class="fa-solid fa-chevron-down h-3 w-3 text-slate-400" aria-hidden="true"></i>
+                  </span>
+                </ListboxButton>
+
+                <transition
+                  leave-active-class="transition duration-100 ease-in"
+                  leave-from-class="opacity-100"
+                  leave-to-class="opacity-0"
+                >
+                  <ListboxOptions
+                    class="absolute right-0 mt-1 max-h-60 w-56 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm dark:bg-slate-800 dark:ring-white/10 z-50"
+                  >
+                    <ListboxOption
+                      v-for="opt in providerOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                      :disabled="!opt.configured"
+                      as="template"
+                      v-slot="{ active, selected, disabled }"
+                    >
+                      <li
+                        class="relative cursor-default select-none py-2 pl-10 pr-4"
+                        :class="[
+                          active ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100' : 'text-slate-900 dark:text-slate-100',
+                          disabled ? 'opacity-50 cursor-not-allowed' : ''
+                        ]"
+                      >
+                        <span class="block truncate" :class="[selected ? 'font-medium' : 'font-normal']">
+                          {{ opt.label }}
+                          <span v-if="!opt.configured" class="ml-1 text-xs text-rose-500">(未配置)</span>
+                        </span>
+                        <span v-if="opt.description" class="block truncate text-xs text-slate-500 dark:text-slate-400">
+                          {{ opt.description }}
+                        </span>
+                        <span
+                          v-if="selected"
+                          class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-blue-400"
+                        >
+                          <i class="fa-solid fa-check h-3 w-3" aria-hidden="true"></i>
+                        </span>
+                      </li>
+                    </ListboxOption>
+                  </ListboxOptions>
+                </transition>
+              </div>
+            </Listbox>
+          </div>
         </div>
 
         <div class="mb-8">

@@ -8,6 +8,8 @@ import json
 import uuid
 import threading
 import mimetypes
+from datetime import datetime
+from typing import Optional
 
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
@@ -26,6 +28,8 @@ from config import (
     ALLOWED_EXTENSIONS,
 )
 from db import init_db
+from db import crud
+from db.models import Question, UploadBatch, KnowledgeTag
 
 # 加载环境变量
 load_dotenv()
@@ -323,6 +327,15 @@ def split_questions():
     try:
         global workflow_graph, current_thread_id, session_files, session_file_order
 
+        # 读取请求体参数（模型供应商）
+        data = request.get_json(silent=True) or {}
+        model_provider = data.get("model_provider", "deepseek")
+        if model_provider not in ("deepseek", "ernie"):
+            return jsonify({
+                'success': False,
+                'error': f'不支持的模型供应商: {model_provider}'
+            }), 400
+
         with session_lock:
             keys = list(session_file_order)
             file_paths = []
@@ -341,7 +354,7 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths}, config=config)
+        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider}, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -531,9 +544,31 @@ def get_status():
     """
     try:
         # 检查配置
+        paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
+        deepseek_configured = bool(os.getenv('DEEPSEEK_API_KEY'))
+        ernie_configured = bool(os.getenv('ERNIE_API_KEY'))
+        
+        # 构建可用模型列表
+        available_models = [
+            {
+                'value': 'deepseek', 
+                'label': 'DeepSeek', 
+                'configured': deepseek_configured,
+                'description': 'DeepSeek V3.2'
+            },
+            {
+                'value': 'ernie', 
+                'label': '文心一言', 
+                'configured': ernie_configured,
+                'description': '百度文心大模型 4.5'
+            }
+        ]
+
         status = {
-            'paddleocr_configured': bool(os.getenv('PADDLEOCR_API_URL')),
-            'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
+            'paddleocr_configured': paddleocr_configured,
+            'deepseek_configured': deepseek_configured,
+            'ernie_configured': ernie_configured,
+            'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
                 'pages': PAGES_DIR,
@@ -552,6 +587,197 @@ def get_status():
             'success': False,
             'error': f'获取系统状态失败：{str(e)}'
         }), 500
+
+
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    """
+    分页查询历史题目（全部题目，非仅错题）
+
+    Query参数:
+        page: 页码（默认1）
+        page_size: 每页数量（默认20）
+        start_date: 开始日期（可选，格式：YYYY-MM-DD）
+        end_date: 结束日期（可选，格式：YYYY-MM-DD）
+    """
+    from db import SessionLocal
+
+    try:
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 20, type=int)
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+
+        # 解析日期
+        start_date = None
+        end_date = None
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        db = SessionLocal()
+        try:
+            questions, total = crud.get_history_questions(
+                db,
+                start_date=start_date,
+                end_date=end_date,
+                page=page,
+                page_size=page_size
+            )
+
+            total_pages = (total + page_size - 1) // page_size
+
+            # 序列化题目
+            items = []
+            for q in questions:
+                items.append({
+                    'id': q.id,
+                    'question_type': q.question_type,
+                    'content_json': json.loads(q.content_json) if q.content_json else [],
+                    'options_json': json.loads(q.options_json) if q.options_json else None,
+                    'has_formula': q.has_formula,
+                    'has_image': q.has_image,
+                    'needs_correction': q.needs_correction,
+                    'created_at': q.created_at.isoformat() if q.created_at else None,
+                })
+
+            return jsonify({
+                'items': items,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': total_pages
+            })
+        finally:
+            db.close()
+
+    except ValueError as e:
+        return jsonify({'success': False, 'error': f'日期格式错误：{str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'查询失败：{str(e)}'}), 500
+
+
+@app.route('/api/search', methods=['GET'])
+def search_questions():
+    """
+    搜索题目（知识点/题型/关键字）
+
+    Query参数:
+        keyword: 关键字搜索（匹配题目内容）
+        knowledge_tag: 知识点标签筛选
+        question_type: 题型筛选
+        page: 页码（默认1）
+        page_size: 每页数量（默认20）
+    """
+    from db import SessionLocal
+
+    try:
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 20, type=int)
+        keyword = request.args.get('keyword', type=str)
+        knowledge_tag = request.args.get('knowledge_tag', type=str)
+        question_type = request.args.get('question_type', type=str)
+
+        # 至少需要一个搜索条件
+        if not any([keyword, knowledge_tag, question_type]):
+            return jsonify({
+                'success': False,
+                'error': '至少需要提供一个搜索条件（keyword/knowledge_tag/question_type）'
+            }), 400
+
+        db = SessionLocal()
+        try:
+            questions, total = crud.search_questions(
+                db,
+                keyword=keyword if keyword else None,
+                knowledge_tag=knowledge_tag if knowledge_tag else None,
+                question_type=question_type if question_type else None,
+                page=page,
+                page_size=page_size
+            )
+
+            total_pages = (total + page_size - 1) // page_size
+
+            # 序列化题目
+            items = []
+            for q in questions:
+                items.append({
+                    'id': q.id,
+                    'question_type': q.question_type,
+                    'content_json': json.loads(q.content_json) if q.content_json else [],
+                    'options_json': json.loads(q.options_json) if q.options_json else None,
+                    'has_formula': q.has_formula,
+                    'has_image': q.has_image,
+                    'needs_correction': q.needs_correction,
+                    'created_at': q.created_at.isoformat() if q.created_at else None,
+                })
+
+            return jsonify({
+                'items': items,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': total_pages
+            })
+        finally:
+            db.close()
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'搜索失败：{str(e)}'}), 500
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """
+    获取知识点统计信息
+    """
+    from db import SessionLocal
+
+    try:
+        db = SessionLocal()
+        try:
+            stats = crud.get_knowledge_stats(db)
+            return jsonify({
+                'stats': stats,
+                'total_tags': len(stats)
+            })
+        finally:
+            db.close()
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'获取统计失败：{str(e)}'}), 500
+
+
+@app.route('/api/question/<int:question_id>', methods=['DELETE'])
+def delete_question(question_id):
+    """
+    删除题目
+
+    Path参数:
+        question_id: 题目ID
+    """
+    from db import SessionLocal
+
+    try:
+        db = SessionLocal()
+        try:
+            success = crud.delete_question(db, question_id)
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': '题目已删除'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': '题目不存在'
+                }), 404
+        finally:
+            db.close()
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'删除失败：{str(e)}'}), 500
 
 
 if __name__ == '__main__':
