@@ -14,8 +14,8 @@ frontend/package-lock.json
 frontend/uploads/
 frontend/output
 
-# Benchmark 采集数据（标注数据不入库）
-backend/benchmark/data/
+# Benchmark 评测结果
+backend/benchmark/results/
 
 # 后端运行产物
 backend/runtime_data/
