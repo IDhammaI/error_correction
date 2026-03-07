@@ -19,21 +19,29 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── 跳过条件 ───────────────────────────────────────────────
+
+skip_no_api_key = pytest.mark.skipif(
+    not os.getenv("DEEPSEEK_API_KEY") and not os.getenv("ERNIE_API_KEY"),
+    reason="未配置 LLM API Key（DEEPSEEK_API_KEY 或 ERNIE_API_KEY）",
+)
+
 # ── 测试数据路径 ───────────────────────────────────────────
 
-AGENT_INPUT_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "runtime_data", "results", "agent_input.json"
+FIXTURE_PATH = os.path.join(
+    os.path.dirname(__file__), "fixtures", "sample_ocr_data.json"
 )
 
 
 @pytest.fixture(scope="session")
 def ocr_data():
-    """从 agent_input.json 加载真实 OCR 数据"""
-    path = os.path.abspath(AGENT_INPUT_PATH)
-    assert os.path.exists(path), f"测试数据文件不存在: {path}"
+    """从 fixtures/sample_ocr_data.json 加载 OCR 测试数据"""
+    path = os.path.abspath(FIXTURE_PATH)
+    if not os.path.exists(path):
+        pytest.skip(f"测试数据文件不存在: {path}")
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    assert isinstance(data, list) and len(data) > 0, "agent_input.json 应为非空列表"
+    assert isinstance(data, list) and len(data) > 0, "sample_ocr_data.json 应为非空列表"
     return data
 
 
@@ -60,6 +68,7 @@ def split_result(ocr_data, model_provider):
 # ── 测试用例 ───────────────────────────────────────────────
 
 
+@skip_no_api_key
 class TestSplitIntegration:
     """集成测试：验证 split_batch 能否通过大模型正确分割题目"""
 

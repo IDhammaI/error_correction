@@ -9,8 +9,17 @@ solve_agent 集成测试 — 调用真实 LLM API 验证解题能力
     python -m pytest tests/test_solve_integration.py -v -s --model-provider ernie
 """
 
+import os
 import pytest
+from dotenv import load_dotenv
 from benchmark.metrics import compare_answers
+
+load_dotenv()
+
+skip_no_api_key = pytest.mark.skipif(
+    not os.getenv("DEEPSEEK_API_KEY") and not os.getenv("ERNIE_API_KEY"),
+    reason="未配置 LLM API Key（DEEPSEEK_API_KEY 或 ERNIE_API_KEY）",
+)
 
 
 # ── 共享一次 API 调用 ──────────────────────────────────────
@@ -53,6 +62,7 @@ def solve_results(model_provider):
 # ── 测试用例 ──────────────────────────────────────────────
 
 
+@skip_no_api_key
 class TestSolveIntegration:
     """解题智能体集成测试"""
 
