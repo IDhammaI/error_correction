@@ -5,10 +5,7 @@
 
 import os
 import logging
-<<<<<<< HEAD
-=======
 import threading
->>>>>>> afe0f90 (fix(backend): Agent 模块安全加固与健壮性改进)
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
@@ -23,10 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Agent 实例缓存（避免每次调用重复初始化模型和编译图）
 _agent_cache = {}
-<<<<<<< HEAD
-=======
 _agent_cache_lock = threading.Lock()
->>>>>>> afe0f90 (fix(backend): Agent 模块安全加固与健壮性改进)
 
 
 def detect_subject_via_llm(ocr_text_sample: str, db_subjects: list, provider: str = "deepseek") -> str:
@@ -142,18 +136,11 @@ def invoke_split(prompt: str, provider: str = "deepseek"):
         ])
     else:
         cache_key = f"split_{provider}"
-<<<<<<< HEAD
-        if cache_key not in _agent_cache:
-            logger.info(f"创建分割 Agent 实例 (provider={provider})")
-            _agent_cache[cache_key] = create_inner_split_agent(provider=provider)
-        agent = _agent_cache[cache_key]
-=======
         with _agent_cache_lock:
             if cache_key not in _agent_cache:
                 logger.info(f"创建分割 Agent 实例 (provider={provider})")
                 _agent_cache[cache_key] = create_inner_split_agent(provider=provider)
             agent = _agent_cache[cache_key]
->>>>>>> afe0f90 (fix(backend): Agent 模块安全加固与健壮性改进)
         response = agent.invoke(
             {"messages": [{"role": "user", "content": prompt}]},
             config={"recursion_limit": 100},
@@ -180,18 +167,11 @@ def invoke_correction(prompt: str, provider: str = "deepseek"):
         ])
     else:
         cache_key = f"correction_{provider}"
-<<<<<<< HEAD
-        if cache_key not in _agent_cache:
-            logger.info(f"创建纠错 Agent 实例 (provider={provider})")
-            _agent_cache[cache_key] = create_correction_agent(provider=provider)
-        agent = _agent_cache[cache_key]
-=======
         with _agent_cache_lock:
             if cache_key not in _agent_cache:
                 logger.info(f"创建纠错 Agent 实例 (provider={provider})")
                 _agent_cache[cache_key] = create_correction_agent(provider=provider)
             agent = _agent_cache[cache_key]
->>>>>>> afe0f90 (fix(backend): Agent 模块安全加固与健壮性改进)
         response = agent.invoke(
             {"messages": [{"role": "user", "content": prompt}]},
             config={"recursion_limit": 100},
