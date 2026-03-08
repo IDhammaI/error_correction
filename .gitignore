@@ -6,16 +6,14 @@ printed-vs-handwritten/
 .venv/
 .idea/
 .langgraph_api/
-.claude/
+OmniDocBench.json
+.vscode
 
 # 前端构建产物
 frontend/dist/
 frontend/package-lock.json
 frontend/uploads/
 frontend/output
-
-# Benchmark 采集数据（标注数据不入库）
-backend/benchmark/data/
 
 # 后端运行产物
 backend/runtime_data/
@@ -33,3 +31,4 @@ dataset/
 
 # 环境变量
 .env
+PR.md
