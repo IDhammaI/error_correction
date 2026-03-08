@@ -42,9 +42,16 @@ copy .env.example .env
 编辑 `.env`，填写以下必需项：
 
 ```dotenv
-# DeepSeek API（Agent 智能分割题目）
+# LLM API（Agent 智能分割题目，二选一即可）
+# DeepSeek
 DEEPSEEK_API_KEY=your_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL_NAME=deepseek-chat
+
+# 文心一言（百度 AIStudio OpenAI 兼容接口）
+ERNIE_API_KEY=your_key
+ERNIE_BASE_URL=https://aistudio.baidu.com/llm/lmapi/v3
+ERNIE_MODEL_NAME=ernie-4.5-turbo-128k-preview
 
 # PaddleOCR API（文档结构解析，V2 异步任务接口）
 PADDLEOCR_API_URL=https://paddleocr.aistudio-app.com/api/v2/ocr/jobs
@@ -52,7 +59,7 @@ PADDLEOCR_API_TOKEN=your_token
 PADDLEOCR_MODEL=PaddleOCR-VL-1.5
 ```
 
-可选配置见 `.env.example`。
+> DeepSeek 和文心二选一配置即可，前端会自动检测已配置的模型供选择。轻量模型、LangSmith 等可选配置见 `.env.example`。
 
 ### 3. 启动
 
@@ -96,4 +103,4 @@ cd frontend && npm test
 
 ## 许可证
 
-MIT License
+本项目基于 [AGPL-3.0](LICENSE) 开源。任何修改或基于本项目的衍生作品（包括网络服务部署）均须以相同许可证开源。
