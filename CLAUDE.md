@@ -232,9 +232,6 @@ C:/ProgramData/miniconda3/envs/da/python.exe -m pytest tests/ -v
 ```
 <type>(<scope>): <中文描述>
 
-[可选正文]
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 ### Type 类型
