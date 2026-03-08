@@ -69,6 +69,7 @@ def split_result(ocr_data, model_provider):
 
 
 @skip_no_api_key
+@pytest.mark.xfail(reason="LangChain ToolStrategy 与 DeepSeek API 兼容性问题，待上游修复")
 class TestSplitIntegration:
     """集成测试：验证 split_batch 能否通过大模型正确分割题目"""
 

@@ -190,16 +190,21 @@ def simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
                 continue
             parsing_res = page["prunedResult"].get("parsing_res_list", [])
             slim_blocks = []
+            # block_label 归一化映射：OCR API 可能返回新标签，统一转为已知类型
+            _label_normalize = {
+                "display_formula": "formula",
+                "number": "text",
+            }
             for b in parsing_res:
                 content = b.get("block_content", "")
-                label = b.get("block_label", "")
+                label = _label_normalize.get(b.get("block_label", ""), b.get("block_label", ""))
                 if label in ("image", "chart") and not content:
                     bbox = b.get("block_bbox")
                     if bbox:
                         prefix = "img_in_chart_box" if label == "chart" else "img_in_image_box"
                         content = f"/images/{prefix}_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}.jpg"
                 slim_blocks.append({
-                    "block_label": b.get("block_label"),
+                    "block_label": label,
                     "block_content": content,
                     "block_order": b.get("block_order"),
                 })
