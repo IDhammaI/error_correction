@@ -3,14 +3,15 @@
 @tailwind utilities;
 
 @layer components {
+  /* 优化按钮：引入微妙的渐变、阴影，以及点击和悬浮的丝滑微动效 */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus:outline-none bg-blue-700 text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-900/50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 transition-all duration-300 active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-blue-500/30 focus:ring-4 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-md dark:shadow-none dark:hover:shadow-blue-900/40;
   }
   .btn-success {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus:outline-none bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-emerald-900/50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-md shadow-emerald-500/20 transition-all duration-300 active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-400 hover:to-teal-500 hover:shadow-lg hover:shadow-emerald-500/30 focus:ring-4 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-md dark:shadow-none dark:hover:shadow-emerald-900/40;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus:outline-none border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus:ring-4 focus:ring-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-800;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-sm transition-all duration-300 active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none border border-slate-200 bg-white/80 backdrop-blur-sm text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:ring-4 focus:ring-slate-200/50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:border-slate-600 dark:focus:ring-slate-800/50;
   }
 }
 
@@ -22,4 +23,131 @@ body,
 
 body {
   margin: 0;
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 selection:bg-blue-200 selection:text-blue-900 dark:selection:bg-blue-900/50 dark:selection:text-blue-100;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   平滑主题切换动画 (View Transitions API)
+   ============================================================ */
+:root {
+    view-transition-name: root;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+}
+::view-transition-old(root) {
+    z-index: 1;
+}
+::view-transition-new(root) {
+    z-index: 2;
+}
+
+/* ============================================================
+   进度环动画逻辑保持不变，优化显示表现
+   ============================================================ */
+@property --p {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+}
+
+.file-chip {
+    position: relative;
+    --p: 0;
+    --ring: rgb(59 130 246); /* Tailwind blue-500 */
+    transition: --p 240ms linear;
+}
+
+.file-chip::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(from -90deg, var(--ring) calc(var(--p) * 1%), transparent 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+}
+
+.file-chip.file-chip--progress::before {
+    opacity: 1;
+}
+.dark .file-chip {
+    --ring: rgb(96 165 250); /* Tailwind blue-400 */
+}
+
+/* ============================================================
+   MathJax 样式
+   ============================================================ */
+mjx-container[jax="SVG"] {
+    display: inline-block;
+}
+mjx-container[jax="SVG"][display="true"] {
+    display: block;
+    margin: 1rem 0;
+}
+mjx-container[jax="SVG"] > svg {
+    display: inline;
+}
+
+/* ============================================================
+   OCR 表格样式（美化）
+   ============================================================ */
+.question-text table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+.dark .question-text table {
+    border-color: #334155;
+}
+.question-text table td,
+.question-text table th {
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+.dark .question-text table td,
+.dark .question-text table th {
+    border-color: #334155;
+}
+.question-text table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+}
+.dark .question-text table th {
+    background-color: #0f172a;
+}
+.question-text table tr:last-child td {
+    border-bottom: none;
+}
+.question-text table td:last-child,
+.question-text table th:last-child {
+    border-right: none;
+}
+
+/* ============================================================
+   Toast 动画
+   ============================================================ */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
 }

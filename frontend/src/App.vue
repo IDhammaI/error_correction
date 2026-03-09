@@ -1,13 +1,22 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOptions,
-  ListboxOption,
-} from '@headlessui/vue'
-import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale } from './utils.js'
+import { fileKey } from './utils.js'
+import * as api from './api.js'
+// 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
+import StatusBar from './components/StatusBar.vue'
+import StepIndicator from './components/StepIndicator.vue'
+import FileUploader from './components/FileUploader.vue'
+import QuestionList from './components/QuestionList.vue'
+import ActionBar from './components/ActionBar.vue'
+import ImageModal from './components/ImageModal.vue'
+import ToastContainer from './components/ToastContainer.vue'
+import Dashboard from './components/Dashboard.vue'
+import CatLoading from './components/CatLoading.vue'
 
+// ---- 视图路由控制 ----
+const currentView = ref('workspace') // 'workspace' | 'dashboard'
+
+// ---- 主题 ----
 const theme = ref('light')
 const applyTheme = (nextTheme) => {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light'
@@ -32,48 +41,39 @@ const toggleTheme = async (btnEl) => {
   const y = rect.top + rect.height / 2
   const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
 
-  const transition = document.startViewTransition(() => {
-    applyTheme(nextTheme)
-  })
-
+  const transition = document.startViewTransition(() => applyTheme(nextTheme))
   try {
     await transition.ready
     const duration = 1000
     const grow = [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`]
-
     document.documentElement.animate(
       { clipPath: grow },
       { duration, easing: 'cubic-bezier(0.2, 0, 0, 1)', pseudoElement: '::view-transition-new(root)' },
     )
-
     document.documentElement.animate(
       { opacity: [1, 0.98] },
       { duration, easing: 'linear', pseudoElement: '::view-transition-old(root)' },
     )
-
     await transition.finished
   } catch (_) {
     applyTheme(nextTheme)
   }
 }
-
+// ---- 系统状态 ----
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
-
 const modelProvider = ref('deepseek')
+
 const providerOptions = computed(() => {
   const s = systemStatus.value
   return s && s.available_models ? s.available_models : []
 })
 
-// 自动选中第一个已配置的模型
 watch(systemStatus, (newVal) => {
   if (newVal && newVal.available_models) {
     const configured = newVal.available_models.find(m => m.configured)
-    if (configured) {
-      modelProvider.value = configured.value
-    }
+    if (configured) modelProvider.value = configured.value
   }
 })
 
@@ -84,25 +84,17 @@ const statusPills = computed(() => {
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
   const activeProvider = providerOptions.value.find(p => p.value === modelProvider.value)
   if (activeProvider) {
-    pills.push({
-      key: 'model',
-      ok: activeProvider.configured,
-      label: activeProvider.configured ? activeProvider.label : `${activeProvider.label}未配置`
-    })
+    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? activeProvider.label : `${activeProvider.label}未配置` })
   }
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
 })
 
-const fetchStatus = async () => {
+const doFetchStatus = async () => {
   statusLoading.value = true
   statusError.value = ''
   try {
-    const resp = await fetch('/api/status')
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (data && data.success) systemStatus.value = data.status
-    else statusError.value = (data && data.error) || '获取系统状态失败'
+    systemStatus.value = await api.fetchStatus()
   } catch (e) {
     statusError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -110,25 +102,20 @@ const fetchStatus = async () => {
   }
 }
 
+// ---- 步骤 & Toast ----
 const step = ref(1)
-
 const toasts = ref([])
 let toastId = 0
 const pushToast = (type, message, timeout = 2600) => {
   const id = ++toastId
   toasts.value = [{ id, type, message }, ...toasts.value].slice(0, 5)
-  if (timeout > 0) {
-    window.setTimeout(() => {
-      toasts.value = toasts.value.filter((t) => t.id !== id)
-    }, timeout)
-  }
+  if (timeout > 0) window.setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, timeout)
 }
 
+// ---- 图片弹窗 ----
 const modalOpen = ref(false)
 const modalSrc = ref('')
 const modalScale = ref(1)
-const MIN_SCALE = 0.25
-const MAX_SCALE = 5
 const openModal = (src) => {
   modalSrc.value = src || ''
   modalScale.value = 1
@@ -141,19 +128,13 @@ const closeModal = () => {
   modalScale.value = 1
   document.body.style.overflow = ''
 }
-const onModalWheel = (e) => {
-  e.preventDefault()
-  modalScale.value = clampScale(modalScale.value, e.deltaY, MIN_SCALE, MAX_SCALE)
-}
-const onKeydown = (e) => {
-  if (e.key === 'Escape' && modalOpen.value) closeModal()
-}
+const onKeydown = (e) => { if (e.key === 'Escape' && modalOpen.value) closeModal() }
 
+// ---- 上传状态 ----
 const uploadBusy = ref(false)
 const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
-const fileInputEl = ref(null)
 
 const pendingFiles = reactive([])
 const fileProgress = reactive({})
@@ -163,8 +144,6 @@ let activeXhr = null
 let fakeProgressTimer = null
 let fakeProgressKeys = []
 
-
-const pendingCount = computed(() => pendingFiles.length)
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
@@ -175,27 +154,18 @@ const stopFakeProgress = () => {
   }
   fakeProgressKeys = []
 }
-
-const setProgress = (key, p) => {
-  fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0))
-}
+const setProgress = (key, p) => { fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0)) }
 
 const startFakeProgress = (keys) => {
   stopFakeProgress()
   fakeProgressKeys = Array.from(keys || [])
   const tick = () => {
-    if (!uploadBusy.value) {
-      stopFakeProgress()
-      return
-    }
+    if (!uploadBusy.value) { stopFakeProgress(); return }
     for (const key of fakeProgressKeys) {
       const current = Number(fileProgress[key] || 0)
       const cap = 82
       if (current >= cap) continue
-      let inc = 0
-      if (current < 55) inc = 1 + Math.random() * 3
-      else if (current < 75) inc = 0.4 + Math.random() * 1.1
-      else inc = 0.08 + Math.random() * 0.25
+      let inc = current < 55 ? 1 + Math.random() * 3 : current < 75 ? 0.4 + Math.random() * 1.1 : 0.08 + Math.random() * 0.25
       setProgress(key, Math.min(cap, current + inc))
     }
   }
@@ -206,105 +176,70 @@ const startFakeProgress = (keys) => {
 const enqueueUpload = (files) => {
   const list = Array.from(files || [])
   if (!list.length) return
-  if (splitCompleted.value || splitting.value) {
-    pushToast('error', '已分割完成，请先重新开始')
-    return
-  }
-
+  if (splitCompleted.value || splitting.value) { pushToast('error', '已分割完成，请先重新开始'); return }
   for (const f of list) {
     const k = fileKey(f)
-    if (pendingFiles.some((x) => x.key === k)) continue
+    if (pendingFiles.some(x => x.key === k)) continue
     pendingFiles.push({ key: k, file: f })
     setProgress(k, 0)
   }
-
   if (uploadBusy.value) {
     for (const f of list) waitingKeys.add(fileKey(f))
     uploadQueue.push(list)
     return
   }
-
   handleUpload(list)
 }
 
 const pumpUploadQueue = () => {
-  if (uploadBusy.value) return
-  if (!uploadQueue.length) return
+  if (uploadBusy.value || !uploadQueue.length) return
   const next = uploadQueue.shift()
   if (next && next.length) handleUpload(next)
 }
-
 const removePendingFile = async (key) => {
-  if (!key) return
-  if (splitting.value || splitCompleted.value) return
-
-  const locked = uploadBusy.value || uploadReady.value
-  if (locked) {
-    await cancelFile(key)
-    return
-  }
-
-  const idx = pendingFiles.findIndex((x) => x.key === key)
+  if (!key || splitting.value || splitCompleted.value) return
+  if (uploadBusy.value || uploadReady.value) { await doCancelFile(key); return }
+  const idx = pendingFiles.findIndex(x => x.key === key)
   if (idx >= 0) pendingFiles.splice(idx, 1)
   delete fileProgress[key]
   waitingKeys.delete(key)
   for (let i = uploadQueue.length - 1; i >= 0; i--) {
-    uploadQueue[i] = (uploadQueue[i] || []).filter((f) => fileKey(f) !== key)
+    uploadQueue[i] = (uploadQueue[i] || []).filter(f => fileKey(f) !== key)
     if (!uploadQueue[i].length) uploadQueue.splice(i, 1)
   }
 }
 
-const cancelFile = async (key) => {
+const doCancelFile = async (key) => {
   try {
-    if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter((k) => k !== key)
+    if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter(k => k !== key)
     if (!fakeProgressKeys.length) stopFakeProgress()
-
-    const resp = await fetch('/api/cancel_file', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file_key: key }),
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json().catch(() => null)
-
-    if (data && data.success) {
-      const idx = pendingFiles.findIndex((x) => x.key === key)
-      if (idx >= 0) pendingFiles.splice(idx, 1)
-      delete fileProgress[key]
-      waitingKeys.delete(key)
-
-      questions.value = []
-      selectedIds.clear()
-      splitCompleted.value = false
-      if (!pendingFiles.length) {
-        uploadReady.value = false
-        step.value = 1
-      } else {
-        step.value = 3
-      }
-      pushToast('success', data.message || '已撤销')
-
-      if (!pendingFiles.length && activeXhr) {
-        try {
-          activeXhr.abort()
-        } catch (_) {}
-      }
+    const data = await api.cancelFile(key)
+    const idx = pendingFiles.findIndex(x => x.key === key)
+    if (idx >= 0) pendingFiles.splice(idx, 1)
+    delete fileProgress[key]
+    waitingKeys.delete(key)
+    questions.value = []
+    selectedIds.clear()
+    splitCompleted.value = false
+    if (!pendingFiles.length) {
+      uploadReady.value = false
+      step.value = 1
     } else {
-      pushToast('error', (data && data.error) || '撤销失败')
+      step.value = 3
     }
-  } catch (_) {
-    pushToast('error', '撤销失败: 网络错误')
-  }
+    pushToast('success', data.message || '已撤销')
+    if (!pendingFiles.length && activeXhr) {
+      try { activeXhr.abort() } catch (_) {}
+    }
+  } catch (_) { pushToast('error', '撤销失败: 网络错误') }
 }
 
 const handleUpload = (files) => {
-  const uploadFiles = Array.from(files || []).filter((f) => pendingFiles.some((x) => x.key === fileKey(f)))
+  const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
   if (!uploadFiles.length) return
-
   uploadBusy.value = true
   step.value = 2
-
-  const keys = uploadFiles.map((f) => fileKey(f))
+  const keys = uploadFiles.map(f => fileKey(f))
   for (const k of keys) waitingKeys.delete(k)
   startFakeProgress(keys)
 
@@ -314,140 +249,82 @@ const handleUpload = (files) => {
     formData.append('file_key', fileKey(f))
   }
 
-  const xhr = new XMLHttpRequest()
-  activeXhr = xhr
-  xhr.open('POST', '/api/upload', true)
-
-  xhr.upload.addEventListener('progress', (e) => {
-    if (!e.lengthComputable) return
-    const pct = Math.max(0, Math.min(95, (e.loaded / e.total) * 95))
-    for (const k of keys) {
-      if (pendingFiles.some((x) => x.key === k)) setProgress(k, Math.max(fileProgress[k] || 0, pct))
-    }
-  })
-
-  xhr.addEventListener('load', () => {
-    stopFakeProgress()
-    uploadBusy.value = false
-    activeXhr = null
-
-    let data = null
-    try {
-      data = JSON.parse(xhr.responseText)
-    } catch (_) {}
-
-    if (data && data.success) {
+  activeXhr = api.uploadFiles(formData, {
+    onProgress: (ratio) => {
+      const pct = Math.max(0, Math.min(95, ratio * 95))
       for (const k of keys) {
-        if (pendingFiles.some((x) => x.key === k)) setProgress(k, 100)
+        if (pendingFiles.some(x => x.key === k)) setProgress(k, Math.max(fileProgress[k] || 0, pct))
+      }
+    },
+    onSuccess: () => {
+      stopFakeProgress()
+      uploadBusy.value = false
+      activeXhr = null
+      for (const k of keys) {
+        if (pendingFiles.some(x => x.key === k)) setProgress(k, 100)
       }
       uploadReady.value = pendingFiles.length > 0
       step.value = pendingFiles.length > 0 ? 3 : 1
-      pushToast('success', `上传成功！本次新增 ${keys.length} 个文件，点击"开始分割题目"开始处理`) 
+      pushToast('success', `上传成功！本次新增 ${keys.length} 个文件，点击"开始分割题目"开始处理`)
       pumpUploadQueue()
-      return
-    }
-
-    const msg = (data && data.error) || '文件处理失败'
-    pushToast('error', msg)
-    pumpUploadQueue()
-  })
-
-  xhr.addEventListener('error', () => {
-    stopFakeProgress()
-    uploadBusy.value = false
-    activeXhr = null
-    pushToast('error', '上传失败: 网络错误')
-    pumpUploadQueue()
-  })
-
-  xhr.addEventListener('abort', () => {
-    stopFakeProgress()
-    uploadBusy.value = false
-    activeXhr = null
-    pumpUploadQueue()
-  })
-
-  xhr.send(formData)
-}
-
-const questions = ref([])
-const selectedIds = reactive(new Set())
-const questionsBoxEl = ref(null)
-const questionListEl = ref(null)
-let sortable = null
-
-const selectedCountLabel = computed(() => `已选择 ${selectedIds.size} 道题目`)
-
-const selectAll = () => {
-  for (const q of questions.value) selectedIds.add(q.question_id)
-}
-const deselectAll = () => {
-  selectedIds.clear()
-}
-
-
-const typesetMath = async () => {
-  await nextTick()
-  const mj = window.MathJax
-  const el = questionsBoxEl.value
-  if (!mj || !el || typeof mj.typesetPromise !== 'function') return
-  try {
-    await mj.typesetPromise([el])
-  } catch (_) {}
-}
-
-const initSortable = async () => {
-  await nextTick()
-  const el = questionListEl.value
-  if (!el) return
-  const Sortable = window.Sortable
-  if (!Sortable) return
-  if (sortable) sortable.destroy()
-  sortable = Sortable.create(el, {
-    animation: 150,
-    handle: '[data-drag-handle="1"]',
-    onEnd: (evt) => {
-      const oldIndex = evt.oldIndex
-      const newIndex = evt.newIndex
-      if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
-      const arr = questions.value.slice()
-      const [moved] = arr.splice(oldIndex, 1)
-      arr.splice(newIndex, 0, moved)
-      questions.value = arr
+    },
+    onError: (msg) => {
+      stopFakeProgress()
+      uploadBusy.value = false
+      activeXhr = null
+      pushToast('error', msg)
+      pumpUploadQueue()
+    },
+    onAbort: () => {
+      stopFakeProgress()
+      uploadBusy.value = false
+      activeXhr = null
+      pumpUploadQueue()
     },
   })
 }
 
-const doSplit = async () => {
-  if (!uploadReady.value) {
-    pushToast('error', '请先上传文件')
-    return
-  }
-  if (splitting.value || splitCompleted.value) return
+// ---- 题目 ----
+const questions = ref([])
+const selectedIds = reactive(new Set())
+const questionListRef = ref(null)
 
+const toggleQuestion = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
+const selectAll = () => { for (const q of questions.value) selectedIds.add(q.question_id) }
+const deselectAll = () => { selectedIds.clear() }
+const reorderQuestions = (oldIndex, newIndex) => {
+  const arr = questions.value.slice()
+  const [moved] = arr.splice(oldIndex, 1)
+  arr.splice(newIndex, 0, moved)
+  questions.value = arr
+}
+
+const typesetMath = async () => {
+  await nextTick()
+  const mj = window.MathJax
+  if (!mj || typeof mj.typesetPromise !== 'function') return
+  try {
+    const el = questionListRef.value?.questionsBoxEl
+    if (el) {
+      await mj.typesetPromise([el])
+    } else {
+      await mj.typesetPromise()
+    }
+  } catch (_) {}
+}
+const doSplit = async () => {
+  if (!uploadReady.value || splitting.value || splitCompleted.value) return
   splitting.value = true
   step.value = 3
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
-
   try {
-    const resp = await fetch('/api/split', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model_provider: modelProvider.value }),
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (data && data.success) {
-      questions.value = data.questions || []
-      selectedIds.clear()
-      splitCompleted.value = true
-      step.value = 4
-      pushToast('success', `成功分割 ${questions.value.length} 道题目`)
-      await typesetMath()
-      await initSortable()
-      return
-    }
-    pushToast('error', (data && data.error) || '题目分割失败')
+    const data = await api.splitQuestions(modelProvider.value)
+    questions.value = data.questions || []
+    selectedIds.clear()
+    splitCompleted.value = true
+    step.value = 4
+    pushToast('success', `成功分割 ${questions.value.length} 道题目`)
+    await typesetMath()
   } catch (e) {
     pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -456,45 +333,30 @@ const doSplit = async () => {
 }
 
 const doExport = async () => {
-  if (!selectedIds.size) {
-    pushToast('error', '请至少选择一道题目！')
-    return
-  }
+  if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
   try {
-    const resp = await fetch('/api/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selected_ids: Array.from(selectedIds) }),
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (data && data.success) {
-      step.value = 5
-      pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
-
-      let filename = 'wrongbook.md'
-      if (data.output_path) {
-        const parts = String(data.output_path).split(/[/\\]/)
-        const last = parts[parts.length - 1]
-        if (last) filename = last
-      }
-      const downloadUrl = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = filename
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      return
+    const data = await api.exportQuestions(Array.from(selectedIds))
+    step.value = 5
+    pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
+    let filename = 'wrongbook.md'
+    if (data.output_path) {
+      const parts = String(data.output_path).split(/[/\\]/)
+      const last = parts[parts.length - 1]
+      if (last) filename = last
     }
-    pushToast('error', (data && data.error) || '导出失败')
+    const a = document.createElement('a')
+    a.href = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
+    a.download = filename
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
   } catch (e) {
     pushToast('error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
   }
 }
 
-const doReset = async () => {
+const doReset = () => {
   uploadBusy.value = false
   uploadReady.value = false
   splitting.value = false
@@ -511,437 +373,198 @@ const doReset = async () => {
   pushToast('success', '已重置')
 }
 
-const onFileInput = (e) => {
-  enqueueUpload(e.target.files)
-  e.target.value = ''
-}
-
-const uploadHover = ref(false)
-const onDrop = (e) => {
-  e.preventDefault()
-  uploadHover.value = false
-  enqueueUpload(e.dataTransfer.files)
-}
-
+// ---- 生命周期 ----
 onMounted(() => {
   const saved = localStorage.getItem('theme')
   const initial = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   applyTheme(initial)
-  fetchStatus()
+  doFetchStatus()
   document.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
   stopFakeProgress()
   document.removeEventListener('keydown', onKeydown)
-  if (sortable) sortable.destroy()
-  sortable = null
 })
 </script>
 
 <template>
-  <div class="min-h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-    <div class="container mx-auto max-w-5xl px-4 py-8">
-      <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
-            <i class="fa-solid fa-file-circle-check mr-2 text-slate-700 dark:text-slate-200"></i>
-            错题本生成系统
-          </h1>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">智能识别、分割和导出试卷题目</p>
+  <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-500 dark:bg-[#05050A] dark:text-slate-300">
+    
+    <!-- ================== PC端：左侧边栏导航 ================== -->
+    <aside class="hidden w-64 flex-col justify-between border-r border-slate-200/80 bg-white/60 backdrop-blur-xl transition-colors md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
+      <div>
+        <!-- Logo 标题区 -->
+        <div class="flex h-20 items-center gap-3 border-b border-slate-100 px-6 dark:border-white/5">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-indigo-900/40">
+            <i class="fa-solid fa-file-circle-check text-xl"></i>
+          </div>
+          <span class="text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:to-indigo-200">
+            智卷系统
+          </span>
         </div>
+
+        <!-- 视图切换菜单 -->
+        <nav class="mt-6 flex flex-col gap-2 px-4">
+          <div class="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-slate-400">核心功能</div>
+          
+          <button
+            @click="currentView = 'workspace'"
+            class="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all"
+            :class="currentView === 'workspace' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            录题工作台
+          </button>
+
+          <button
+            @click="currentView = 'dashboard'"
+            class="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all"
+            :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          >
+            <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            我的错题本
+          </button>
+        </nav>
+      </div>
+
+      <!-- 底部控制与返回栏 -->
+      <div class="space-y-2 border-t border-slate-100 p-4 dark:border-white/5">
         <button
-          type="button"
-          class="btn-secondary px-4 py-2"
           @click="(e) => toggleTheme(e.currentTarget)"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
-          <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
-          <span>{{ theme === 'dark' ? '浅色' : '深色' }}</span>
+          <i class="fa-solid w-5 text-center text-lg transition-transform" :class="theme === 'dark' ? 'fa-sun text-amber-400 rotate-12' : 'fa-moon'"></i>
+          <span>{{ theme === 'dark' ? '浅色模式' : '深色模式' }}</span>
         </button>
-      </header>
 
-      <div class="main-content rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-        <div
-          class="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-200"
+        <!-- 替换为带有左箭头的返回介绍页面按钮 -->
+        <a
+          href="index.html"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
-          <span class="font-semibold text-slate-900 dark:text-slate-100">系统状态</span>
-          <span
-            v-if="statusLoading"
-            class="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-slate-500"></span>
-            检查中...
-          </span>
-          <span
-            v-else-if="statusError"
-            class="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"
-          >
-            <i class="fa-solid fa-circle-xmark"></i>
-            {{ statusError }}
-          </span>
-          <span
-            v-else
-            v-for="p in statusPills"
-            :key="p.key"
-            class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
-            :class="
-              p.ok
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'
-            "
-          >
-            <i class="fa-solid" :class="p.ok ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
-            {{ p.label }}
-          </span>
-          <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
-            <Listbox v-model="modelProvider" :disabled="splitting || splitCompleted">
-              <div class="relative">
-                <ListboxButton
-                  class="relative w-full cursor-default rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-10 text-left text-xs font-semibold text-slate-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-blue-800"
-                >
-                  <span class="block truncate">{{ providerOptions.find(p => p.value === modelProvider)?.label || '选择模型' }}</span>
-                  <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                    <i class="fa-solid fa-chevron-down h-3 w-3 text-slate-400" aria-hidden="true"></i>
-                  </span>
-                </ListboxButton>
+          <i class="fa-solid fa-arrow-left-long w-5 text-center text-lg"></i>
+          返回介绍页面
+        </a>
+      </div>
+    </aside>
 
-                <transition
-                  leave-active-class="transition duration-100 ease-in"
-                  leave-from-class="opacity-100"
-                  leave-to-class="opacity-0"
-                >
-                  <ListboxOptions
-                    class="absolute right-0 mt-1 max-h-60 w-56 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm dark:bg-slate-800 dark:ring-white/10 z-50"
-                  >
-                    <ListboxOption
-                      v-for="opt in providerOptions"
-                      :key="opt.value"
-                      :value="opt.value"
-                      :disabled="!opt.configured"
-                      as="template"
-                      v-slot="{ active, selected, disabled }"
-                    >
-                      <li
-                        class="relative cursor-default select-none py-2 pl-10 pr-4"
-                        :class="[
-                          active ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100' : 'text-slate-900 dark:text-slate-100',
-                          disabled ? 'opacity-50 cursor-not-allowed' : ''
-                        ]"
-                      >
-                        <span class="block truncate" :class="[selected ? 'font-medium' : 'font-normal']">
-                          {{ opt.label }}
-                          <span v-if="!opt.configured" class="ml-1 text-xs text-rose-500">(未配置)</span>
-                        </span>
-                        <span v-if="opt.description" class="block truncate text-xs text-slate-500 dark:text-slate-400">
-                          {{ opt.description }}
-                        </span>
-                        <span
-                          v-if="selected"
-                          class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-blue-400"
-                        >
-                          <i class="fa-solid fa-check h-3 w-3" aria-hidden="true"></i>
-                        </span>
-                      </li>
-                    </ListboxOption>
-                  </ListboxOptions>
-                </transition>
-              </div>
-            </Listbox>
-          </div>
+    <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/90 pb-2 pt-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#0A0A0F]/90">
+      <div class="flex justify-around">
+        <button @click="currentView = 'workspace'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'workspace' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-wand-magic-sparkles mb-1 text-xl"></i>
+          <span class="text-[10px] font-bold">工作台</span>
+        </button>
+        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-chart-pie mb-1 text-xl"></i>
+          <span class="text-[10px] font-bold">错题本</span>
+        </button>
+        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
+          <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon'"></i>
+          <span class="text-[10px] font-bold">主题</span>
+        </button>
+        <!-- 移动端同步替换 -->
+        <a href="index.html" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
+          <i class="fa-solid fa-arrow-left-long mb-1 text-xl"></i>
+          <span class="text-[10px] font-bold">返回介绍</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- ================== 右侧主内容区 ================== -->
+    <main class="relative z-10 flex-1 overflow-y-auto pb-20 md:pb-0">
+      
+      <!-- 视图 1：录题工作台 -->
+      <div v-show="currentView === 'workspace'" class="relative min-h-full">
+        <!-- 专属背景光晕 -->
+        <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div class="absolute -top-[10%] left-[-10%] h-[40vw] w-[40vw] rounded-full bg-blue-300/10 mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-indigo-600/10 dark:mix-blend-screen"></div>
+          <div class="absolute -bottom-[10%] right-[-10%] h-[30vw] w-[30vw] rounded-full bg-cyan-200/20 mix-blend-multiply blur-[80px] transition-colors duration-1000 dark:bg-fuchsia-600/10 dark:mix-blend-screen"></div>
         </div>
 
-        <div class="mb-8">
-          <ol class="w-full items-center space-y-4 sm:flex sm:justify-between sm:space-x-0 sm:space-y-0 rtl:space-x-reverse">
-            <li
-              v-for="n in 4"
-              :key="n"
-              class="step flex items-center space-x-3 rtl:space-x-reverse"
-              :class="n === step ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'"
-            >
-              <span
-                class="step-circle flex h-10 w-10 shrink-0 items-center justify-center rounded-full lg:h-12 lg:w-12"
-                :class="
-                  n <= step
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
-                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
-                "
-              >
-                <i v-if="n < step" class="fa-solid fa-check"></i>
-                <span v-else class="text-sm font-semibold tabular-nums">{{ n }}</span>
-              </span>
-              <span>
-                <h3 class="step-label font-medium leading-tight">
-                  {{ n === 1 ? '上传文件' : n === 2 ? 'OCR解析' : n === 3 ? '分割题目' : '预览导出' }}
-                </h3>
-                <p class="step-desc text-sm text-slate-600 dark:text-slate-300">
-                  {{
-                    n === 1
-                      ? '选择 PDF / 图片并上传'
-                      : n === 2
-                        ? '结构化识别题干/图片'
-                        : n === 3
-                          ? 'AI 识别题号并拆分'
-                          : '勾选题目并导出'
-                  }}
-                </p>
-              </span>
-            </li>
-          </ol>
-        </div>
-
-        <div v-if="pendingCount" class="mb-6">
-          <div class="flex flex-wrap items-center gap-2">
-            <div
-              v-for="item in pendingFiles"
-              :key="item.key"
-              class="file-chip inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-              :class="(uploadBusy || uploadReady) && 'file-chip--progress'"
-              :style="{ '--p': String(fileProgress[item.key] ?? 0) }"
-              :data-file-key="item.key"
-            >
-              <i
-                class="fa-regular"
-                :class="
-                  item.file.name.toLowerCase().endsWith('.pdf')
-                    ? 'fa-file-pdf text-rose-600 dark:text-rose-300'
-                    : 'fa-file-image text-slate-600 dark:text-slate-300'
-                "
-              ></i>
-              <span class="max-w-[260px] truncate" :title="item.file.name">{{ item.file.name }}</span>
-              <span class="ml-1 text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-300">
-                {{
-                  waitingKeys.has(item.key) && uploadBusy && (fileProgress[item.key] ?? 0) === 0
-                    ? '等待中...'
-                    : `${Math.round(fileProgress[item.key] ?? 0)}%`
-                }}
-              </span>
-              <button
-                type="button"
-                class="ml-1 inline-flex h-6 w-6 flex-none items-center justify-center rounded-md text-slate-500 transition focus:outline-none focus:ring-4 focus:ring-slate-200 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:focus:ring-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                :disabled="splitting || splitCompleted"
-                aria-label="移除文件"
-                @click.stop="() => removePendingFile(item.key)"
-              >
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
+        <div class="container relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
+          <!-- 工作台页面标题 -->
+          <div class="mb-8 pl-2 sm:pl-0">
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+              智能录入与分析
+            </h2>
+            <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">驱动 AI 引擎，快速将试卷转化为结构化数据。</p>
           </div>
-        </div>
 
-        <div
-          class="rounded-2xl border-2 border-dashed px-6 py-10 text-center transition dark:bg-slate-950/40"
-          :class="
-            uploadHover
-              ? 'border-slate-400 bg-slate-100 dark:border-slate-600 dark:bg-slate-950/60'
-              : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-950/60'
-          "
-          @dragenter.prevent="uploadHover = true"
-          @dragover.prevent="uploadHover = true"
-          @dragleave.prevent="uploadHover = false"
-          @drop="onDrop"
-          @click="() => fileInputEl?.click()"
-          @keydown.enter.prevent="() => fileInputEl?.click()"
-          @keydown.space.prevent="() => fileInputEl?.click()"
-          role="button"
-          tabindex="0"
-        >
-          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-            <i class="fa-regular fa-file-lines text-2xl text-slate-700 dark:text-slate-200"></i>
+          <!-- 原工作区主卡片 -->
+          <div class="main-content relative rounded-3xl border border-slate-200/60 bg-white/70 p-5 shadow-xl backdrop-blur-xl sm:p-8 dark:border-white/10 dark:bg-[#0A0A0F]/60">
+            <StatusBar
+              :status-loading="statusLoading"
+              :status-error="statusError"
+              :status-pills="statusPills"
+              :provider-options="providerOptions"
+              :model-provider="modelProvider"
+              :disabled="splitting || splitCompleted"
+              @update:model-provider="(v) => modelProvider = v"
+            />
+
+            <StepIndicator :step="step" />
+
+            <FileUploader
+              :pending-files="pendingFiles"
+              :file-progress="fileProgress"
+              :waiting-keys="waitingKeys"
+              :upload-busy="uploadBusy"
+              :upload-ready="uploadReady"
+              :splitting="splitting"
+              :split-completed="splitCompleted"
+              @upload="enqueueUpload"
+              @remove-file="removePendingFile"
+            />
+
+            <QuestionList
+              ref="questionListRef"
+              :questions="questions"
+              :selected-ids="selectedIds"
+              @toggle-select="toggleQuestion"
+              @select-all="selectAll"
+              @deselect-all="deselectAll"
+              @open-image="openModal"
+              @reorder="reorderQuestions"
+            />
+
+            <ActionBar
+              :split-enabled="splitEnabled"
+              :export-enabled="exportEnabled"
+              :splitting="splitting"
+              :split-completed="splitCompleted"
+              @split="doSplit"
+              @export="doExport"
+              @reset="doReset"
+            />
+
+            <!-- 像素猫 loading 遮罩 (AI 分割中) -->
+            <CatLoading v-if="splitting" />
           </div>
-          <div class="text-base font-semibold text-slate-900 dark:text-slate-100">点击或拖拽添加文件</div>
-          <div class="mt-2 text-sm text-slate-500 dark:text-slate-300">
-            支持 PDF、PNG、JPG 等格式，可同时选择多个文件（单文件最大 50MB）
-          </div>
-          <input
-            ref="fileInputEl"
-            type="file"
-            class="hidden"
-            accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.webp"
-            multiple
-            @change="onFileInput"
-          />
-        </div>
-
-        <div ref="questionsBoxEl" class="mt-8">
-          <div v-if="questions.length" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">题目预览</h3>
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">点击卡片选择需要导出的题目</p>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  class="btn-secondary px-4 py-2"
-                  @click="selectAll"
-                >
-                  <i class="fa-solid fa-check-double"></i>
-                  全选
-                </button>
-                <button
-                  type="button"
-                  class="btn-secondary px-4 py-2"
-                  @click="deselectAll"
-                >
-                  <i class="fa-solid fa-xmark"></i>
-                  取消
-                </button>
-                <span class="ml-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {{ selectedCountLabel }}
-                </span>
-              </div>
-            </div>
-
-            <div ref="questionListEl" class="mt-5 grid gap-4" id="questionList">
-              <div
-                v-for="q in questions"
-                :key="q.question_id"
-                class="question-card relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-950/30"
-                :class="selectedIds.has(q.question_id) && 'ring-2 ring-slate-400 bg-slate-50 dark:bg-slate-950/50'"
-                @click="() => (selectedIds.has(q.question_id) ? selectedIds.delete(q.question_id) : selectedIds.add(q.question_id))"
-              >
-                <div class="mb-3 flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                    data-drag-handle="1"
-                    aria-label="拖动排序"
-                    @click.stop
-                  >
-                    <i class="fa-solid fa-grip-lines"></i>
-                  </button>
-                  <span class="text-base font-semibold text-slate-900 dark:text-slate-100">题目 {{ q.question_id }}</span>
-                  <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                    {{ q.question_type }}
-                  </span>
-                  <template v-if="q.knowledge_tags && q.knowledge_tags.length">
-                    <span
-                      v-for="tag in q.knowledge_tags"
-                      :key="`${q.question_id}-tag-${tag}`"
-                      class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                    >
-                      {{ tag }}
-                    </span>
-                  </template>
-                  <label class="ml-auto inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300" @click.stop>
-                    <input
-                      type="checkbox"
-                      class="question-select h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      :checked="selectedIds.has(q.question_id)"
-                      @change="(e) => (e.target.checked ? selectedIds.add(q.question_id) : selectedIds.delete(q.question_id))"
-                    />
-                    选择
-                  </label>
-                </div>
-
-                <div class="question-content">
-                  <template v-if="q.content_blocks && q.content_blocks.length">
-                    <template v-for="(b, i) in q.content_blocks" :key="`${q.question_id}-${i}`">
-                      <div v-if="b.block_type === 'text' && isHtml(b.content)" v-html="sanitizeHtml(b.content)" class="question-text my-2 leading-7 text-slate-800 dark:text-slate-100"></div>
-                      <p v-else-if="b.block_type === 'text'" class="my-2 whitespace-pre-line leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
-                      <img
-                        v-else-if="b.block_type === 'image' && b.content"
-                        :src="b.content"
-                        class="my-3 max-w-full cursor-zoom-in rounded-lg border border-slate-200 shadow-sm dark:border-slate-800"
-                        @click.stop="() => openModal(b.content)"
-                        alt="图片"
-                      />
-                      <p v-else-if="b.block_type === 'image'" class="my-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
-                        <i class="fa-regular fa-image mr-2"></i>图片资源
-                      </p>
-                      <p v-else class="my-2 whitespace-pre-line leading-7 text-slate-800 dark:text-slate-100">{{ b.content }}</p>
-                    </template>
-                  </template>
-                  <p v-else class="text-sm text-slate-500 dark:text-slate-300">（内容为空）</p>
-
-                  <div v-if="q.options && q.options.length" class="mt-4 grid gap-2">
-                    <div
-                      v-for="(opt, idx) in q.options"
-                      :key="`${q.question_id}-opt-${idx}`"
-                      class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                    >
-                      {{ formatOption(opt) }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            class="btn-primary px-5 py-2.5"
-            :disabled="!splitEnabled"
-            @click="doSplit"
-          >
-            <template v-if="splitting">
-              <i class="fa-solid fa-circle-notch fa-spin"></i>
-              正在分割...
-            </template>
-            <template v-else-if="splitCompleted">
-              <i class="fa-solid fa-circle-check"></i>
-              已完成分割
-            </template>
-            <template v-else>
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-              开始分割题目
-            </template>
-          </button>
-          <button
-            type="button"
-            class="btn-success px-5 py-2.5"
-            :disabled="!exportEnabled"
-            @click="doExport"
-          >
-            <i class="fa-solid fa-download"></i>
-            导出错题本
-          </button>
-          <button
-            type="button"
-            class="btn-secondary px-5 py-2.5"
-            @click="doReset"
-          >
-            <i class="fa-solid fa-arrow-rotate-right"></i>
-            重新开始
-          </button>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div
-    v-show="modalOpen"
-    role="dialog"
-    aria-modal="true"
-    class="img-modal fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-    @click="closeModal"
-    @wheel.prevent="onModalWheel"
-  >
-    <img
-      class="max-h-[90vh] w-auto max-w-full rounded-xl shadow-2xl transition-transform duration-100"
-      :style="{ transform: `scale(${modalScale})` }"
-      :src="modalSrc"
-      alt="预览"
-      @click.stop
-    />
-  </div>
+      <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
+      <Dashboard
+        v-show="currentView === 'dashboard'"
+        :theme="theme"
+        :visible="currentView === 'dashboard'"
+        @toggle-theme="toggleTheme"
+        @go-workspace="currentView = 'workspace'"
+      />
+    </main>
 
-  <div class="pointer-events-none fixed left-1/2 top-4 z-50 flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2">
-    <div
-      v-for="t in toasts"
-      :key="t.id"
-      class="pointer-events-auto rounded-xl px-4 py-3 text-sm font-medium shadow-lg ring-1"
-      :class="
-        t.type === 'success'
-          ? 'bg-emerald-600 text-white ring-emerald-700/30'
-          : t.type === 'error'
-            ? 'bg-rose-600 text-white ring-rose-700/30'
-            : 'bg-slate-900 text-white ring-slate-700/30'
-      "
-    >
-      {{ t.message }}
-    </div>
+    <!-- 全局弹窗与通知 -->
+    <Teleport to="body">
+      <ImageModal
+        :open="modalOpen"
+        :src="modalSrc"
+        :scale="modalScale"
+        @close="closeModal"
+        @update:scale="(s) => modalScale = s"
+      />
+      <ToastContainer :toasts="toasts" />
+    </Teleport>
   </div>
 </template>

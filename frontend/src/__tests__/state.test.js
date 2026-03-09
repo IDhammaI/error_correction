@@ -36,6 +36,7 @@ const mountApp = async (statusOverrides = {}) => {
         ListboxButton: true,
         ListboxOptions: true,
         ListboxOption: true,
+        teleport: true,
       },
     },
   })

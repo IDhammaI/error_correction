@@ -15,7 +15,7 @@ from typing import Optional
 
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from dotenv import load_dotenv
 
 from src.workflow import build_workflow
@@ -108,58 +108,48 @@ def _serialize_question(q: Question) -> dict:
     }
 
 
+# ============================================================
+# 前端托管（生产模式：直接返回 Vite 构建产物）
+# ============================================================
+FRONTEND_DIST = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
+
+
 @app.route('/')
 def index():
-    """主页"""
-    return vue_index()
+    """主页 - 返回介绍页"""
+    return send_from_directory(FRONTEND_DIST, 'index.html')
 
 
-def _vite_manifest():
-    manifest_path = os.path.join(PROJECT_ROOT, 'frontend', 'dist', '.vite', 'manifest.json')
-    if not os.path.exists(manifest_path):
-        return None
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+@app.route('/app')
+@app.route('/app.html')
+def app_page():
+    """工作台 - 返回 Vue SPA"""
+    return send_from_directory(FRONTEND_DIST, 'app.html')
 
 
 @app.route('/static/vue/<path:filename>')
 def serve_vue_dist(filename):
-    dist_dir = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
-    return send_from_directory(dist_dir, filename)
+    """提供 Vue 前端构建产物"""
+    return send_from_directory(FRONTEND_DIST, filename)
 
 
-def _vite_collect_imports(manifest: dict, entry_key: str):
-    seen = set()
-    stack = list((manifest.get(entry_key) or {}).get('imports', []))
-    out = []
-    while stack:
-        k = stack.pop()
-        if k in seen:
-            continue
-        seen.add(k)
-        item = manifest.get(k)
-        if not item:
-            continue
-        out.append(item['file'])
-        stack.extend(item.get('imports', []))
-    return out
+# ============================================================
+# 遗留独立页面
+# ============================================================
 
 
-@app.route('/vue')
-def vue_index():
-    manifest = _vite_manifest()
-    entry_key = 'index.html'
-    if not manifest or entry_key not in manifest:
-        return render_template('vue.html', vite=None)
+@app.route('/record')
+def record_page():
+    """错题本记录页面"""
+    record_file = os.path.join(PROJECT_ROOT, 'record.html')
+    if os.path.exists(record_file):
+        return send_from_directory(PROJECT_ROOT, 'record.html')
+    return "记录页文件不存在", 404
 
-    entry = manifest[entry_key]
-    base = '/static/vue/'
-    vite = {
-        'js': f"{base}{entry['file']}",
-        'css': [f"{base}{p}" for p in entry.get('css', [])],
-        'preload': [f"{base}{p}" for p in _vite_collect_imports(manifest, entry_key)],
-    }
-    return render_template('vue.html', vite=vite)
+
+# ============================================================
+# API 接口
+# ============================================================
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -526,6 +516,11 @@ def preview():
         return "预览文件不存在，请先分割题目", 404
 
 
+# ============================================================
+# 资源服务
+# ============================================================
+
+
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件"""
@@ -788,4 +783,7 @@ if __name__ == '__main__':
     print("访问地址: http://localhost:5001")
     print("=" * 60)
 
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(
+        host='0.0.0.0', port=5001, debug=True,
+        exclude_patterns=["*/site-packages/*"],
+    )
