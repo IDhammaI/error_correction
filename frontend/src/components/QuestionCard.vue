@@ -57,7 +57,7 @@ const emit = defineEmits(['toggle', 'open-image'])
       </template>
 
       <!-- 右侧复选框 -->
-      <label class="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-3 pr-1 text-sm font-medium text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-400 dark:hover:text-indigo-300" @click.stop>
+      <label class="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-3 pr-1 text-sm font-medium text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-400 dark:hover:text-indigo-300" @click.stop="emit('toggle', question.question_id)">
         <span :class="selected ? 'text-blue-600 dark:text-indigo-400' : ''">选择导出</span>
         <div 
           class="flex h-5 w-5 items-center justify-center rounded border transition-all"

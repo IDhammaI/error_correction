@@ -10,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['toggle-select', 'select-all', 'deselect-all', 'open-image', 'reorder'])
 
 const questionListEl = ref(null)
+const questionsBoxEl = ref(null)
 let sortable = null
 
 const selectedCountLabel = computed(() => `已选 ${props.selectedIds.size} 项`)
@@ -38,7 +39,7 @@ watch(() => props.questions, (val) => {
   if (val && val.length) initSortable()
 }, { flush: 'post' })
 
-defineExpose({ initSortable })
+defineExpose({ initSortable, questionsBoxEl })
 </script>
 
 <template>

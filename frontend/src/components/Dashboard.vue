@@ -2,7 +2,8 @@
 import { ref, onMounted, onUpdated, watch, nextTick, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
-  theme: { type: String, default: 'light' }
+  theme: { type: String, default: 'light' },
+  visible: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['toggle-theme', 'go-workspace'])
@@ -89,6 +90,14 @@ const initOrUpdateCharts = async () => {
 }
 
 watch(() => props.theme, initOrUpdateCharts)
+watch(() => props.visible, (val) => {
+  if (val) {
+    nextTick(() => {
+      initOrUpdateCharts()
+      if (window.lucide) window.lucide.createIcons()
+    })
+  }
+})
 
 // ================== AI 分析弹窗与打字机动画逻辑 ==================
 const aiModalOpen = ref(false)
@@ -243,7 +252,11 @@ onBeforeUnmount(() => {
       <!-- 右侧：核心数据与列表区 -->
       <div class="flex-1 space-y-6">
         
-        <!-- 数据看板 -->
+        <!-- 数据看板（示例数据） -->
+        <div class="mb-2 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+          <i data-lucide="info" class="h-3.5 w-3.5"></i>
+          以下为示例数据，真实数据功能即将上线（Coming Soon）
+        </div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div class="glass-panel rounded-2xl border border-slate-200 p-5 dark:border-white/5">
             <div class="mb-1 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">待复习错题 <i data-lucide="clock-4" class="h-4 w-4 text-orange-500"></i></div>
