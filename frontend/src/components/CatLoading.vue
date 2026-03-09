@@ -96,7 +96,7 @@ onMounted(() => {
   display: flex; flex-direction: column; align-items: center;
   animation: gb-float 4s ease-in-out infinite;
 }
-:root.dark .gameboy { background: #1e293b; }
+:root.dark .gameboy { background: #1e293b; box-shadow: 12px 12px 0 rgba(0,0,0,.3); }
 
 @keyframes gb-float {
   0%,100% { transform: translateY(0); }
@@ -159,10 +159,12 @@ onMounted(() => {
 .controls { width: 100%; height: 40%; position: relative; }
 .d-pad { position: absolute; left: 15px; top: 25px; width: 32px; height: 32px; }
 .d-pad::before, .d-pad::after { content: ''; position: absolute; background: #1a1a1a; border-radius: 2px; }
+:root.dark .d-pad::before, :root.dark .d-pad::after { background: #334155; }
 .d-pad::before { width: 100%; height: 10px; top: 11px; }
 .d-pad::after  { width: 10px; height: 100%; left: 11px; }
 .ab-btns { position: absolute; right: 15px; top: 25px; display: flex; gap: 12px; transform: rotate(-25deg); }
 .b-circle { width: 18px; height: 18px; background: #8b1d44; border-radius: 50%; box-shadow: 2px 2px 0 #5a122d; }
+:root.dark .b-circle { background: #be3a6a; box-shadow: 2px 2px 0 #8b1d44; }
 
 /* 屏幕内加载条 */
 .loading-ui {

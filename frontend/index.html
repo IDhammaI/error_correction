@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智卷错题本 - 下一代 AI 错题处理架构</title>
     <!-- 引入 Tailwind CSS -->
+    <!--
+      落地页独立使用 Tailwind CDN，与工作台 (app.html) 的项目内 Tailwind 构建分离。
+      原因：落地页为纯静态展示页，不参与 Vite 构建流程，CDN 方式更轻量。
+      如需统一管理，可将落地页迁入 Vue 路由体系。
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 配置 Tailwind 支持 class 模式的暗黑主题 -->
     <script>
@@ -16,6 +21,14 @@
         }
     </script>
     <!-- 引入 Lucide 图标库 -->
+    <!--
+      外部 CDN 依赖说明 & 离线降级策略
+      ─────────────────────────────────
+      1. Tailwind CSS CDN      — 降级：样式丢失，需改为项目内构建（见上方注释）
+      2. Lucide 图标           — 降级：图标不显示，不影响页面文字内容
+      3. Google Fonts (Inter)  — 降级：系统 sans-serif 字体（body 已配置 fallback）
+      如需离线部署，可将上述资源下载到本地并替换引用路径。
+    -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- 全局自定义动画与样式 -->
