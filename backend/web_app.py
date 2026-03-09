@@ -121,6 +121,7 @@ def index():
 
 
 @app.route('/app')
+@app.route('/app.html')
 def app_page():
     """工作台 - 返回 Vue SPA"""
     return send_from_directory(FRONTEND_DIST, 'app.html')
@@ -142,8 +143,7 @@ def record_page():
     """错题本记录页面"""
     record_file = os.path.join(PROJECT_ROOT, 'record.html')
     if os.path.exists(record_file):
-        with open(record_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        return send_from_directory(PROJECT_ROOT, 'record.html')
     return "记录页文件不存在", 404
 
 
@@ -785,5 +785,5 @@ if __name__ == '__main__':
 
     app.run(
         host='0.0.0.0', port=5001, debug=True,
-        exclude_patterns=["*.pyc", "*/site-packages/*"],
+        exclude_patterns=["*/site-packages/*"],
     )
