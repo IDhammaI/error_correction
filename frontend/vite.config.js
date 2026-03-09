@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [vue()],
   test: {
     environment: 'jsdom',
@@ -24,7 +24,8 @@ export default defineConfig({
       },
     },
   },
-  base: '/static/vue/',
+  // 开发模式用 /，构建时才加 /static/vue/ 前缀给 Flask 托管
+  base: command === 'build' ? '/static/vue/' : '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -37,4 +38,4 @@ export default defineConfig({
       }
     }
   },
-})
+}))
