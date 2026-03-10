@@ -72,43 +72,92 @@
 ### 技术栈
 
 - Vue 3 + `<script setup>`（Composition API，不使用 Options API）
-- Vite 构建
+- Vite 构建（多页面入口：`index.html` 介绍页 + `app.html` 工作台）
 - Tailwind CSS 3（utility-first，class-based dark mode）
 - HeadlessUI Vue（`@headlessui/vue`）用于可访问的交互组件
-- Font Awesome 图标（fa-solid / fa-regular）
+- DOMPurify（`dompurify`）用于 OCR 题目文本的 HTML 净化
 - 纯 JavaScript（不使用 TypeScript）
-- 原生 fetch API 进行网络请求（不使用 axios）
+- 原生 fetch API 进行网络请求（不使用 axios）；文件上传使用 XHR（支持进度回调）
+- CDN 外部依赖（在 `app.html` 中引入，非 npm 包）：
+  - Font Awesome 6.5 — 图标（fa-solid / fa-regular）
+  - MathJax 3 — LaTeX 公式渲染
+  - SortableJS 1.15 — 题目拖拽排序
+  - Chart.js 4 — Dashboard 图表（可选，离线降级）
+
+### 前端项目结构
+
+```
+frontend/
+├── index.html                 # 介绍落地页（纯 HTML + Tailwind CDN）
+├── app.html                   # Vue 工作台入口（含 CDN preload）
+├── vite.config.js             # 多页面构建，dev proxy → localhost:5001
+├── tailwind.config.js         # class-based dark mode
+├── src/
+│   ├── main.js                # createApp + mount
+│   ├── App.vue                # 根组件（布局 + 视图路由 + 全局状态）
+│   ├── api.js                 # fetch/XHR 封装（upload, split, export, status）
+│   ├── utils.js               # 纯函数（fileKey, sanitizeHtml, clampScale）
+│   ├── style.css              # Tailwind 指令 + 自定义样式（进度环、toast 动画等）
+│   ├── components/
+│   │   ├── StatusBar.vue      # 系统状态 + 模型选择器（HeadlessUI Listbox）
+│   │   ├── StepIndicator.vue  # 4 步工作流进度指示器
+│   │   ├── FileUploader.vue   # 文件拖放 + 进度环
+│   │   ├── QuestionList.vue   # 题目网格 + SortableJS 拖拽排序
+│   │   ├── QuestionCard.vue   # 单题卡片（题干 / 选项 / 图片）
+│   │   ├── ActionBar.vue      # 分割 / 导出 / 重置按钮组
+│   │   ├── ImageModal.vue     # 全屏图片查看器（滚轮缩放）
+│   │   ├── ToastContainer.vue # Toast 通知栈
+│   │   ├── Dashboard.vue      # 错题本数据看板（Chart.js）
+│   │   └── CatLoading.vue     # 像素猫 loading 遮罩
+│   └── __tests__/             # Vitest 测试套件
+│       ├── api.test.js        # API 交互与按钮状态测试
+│       ├── state.test.js      # 组件状态逻辑测试
+│       └── utils.test.js      # 纯函数单元测试
+```
+
+### 布局架构
+
+- **PC 端**：左侧固定侧边栏（`aside w-64`）+ 右侧主内容区
+- **移动端**：底部 Tab 导航栏（`fixed bottom-0`）+ 全宽内容区
+- 视图切换：`currentView` ref 控制 `'workspace'` / `'dashboard'` 两个视图（`v-show` 切换）
+- 返回介绍页链接使用 `href="/"`（匹配 Flask 根路由）
 
 ### 设计风格
 
-- 配色：slate 作为中性色系，blue 用于主操作，emerald 用于成功状态，rose 用于错误/危险
-- 圆角：卡片用 `rounded-2xl`，按钮用 `rounded-lg`，pill 标签用 `rounded-full`
-- 阴影：轻量 `shadow-sm`，hover 时 `shadow-md`
-- 边框：`border-slate-200`（亮色）/ `border-slate-800`（暗色）
-- 字重：标题和按钮用 `font-semibold`，正文用默认
-- 间距：容器 `max-w-5xl mx-auto`，内容区 `p-4 sm:p-6`
-- 暗色模式：所有元素必须包含 `dark:` 变体，暗色背景用 `slate-900/950`
+- 配色：slate 中性色系，blue / indigo 主操作，emerald 成功，rose 错误
+- 圆角：卡片 `rounded-2xl` / `rounded-3xl`，按钮 `rounded-xl`，pill 标签 `rounded-full`
+- 阴影：轻量 `shadow-sm`，hover `shadow-md`，主按钮 `shadow-xl`
+- 边框：`border-slate-200/60`（亮色）/ `border-white/10`（暗色），半透明风格
+- 玻璃态：`bg-white/70 backdrop-blur-xl`（亮色）/ `bg-[#0A0A0F]/60 backdrop-blur-xl`（暗色）
+- 字重：标题和按钮用 `font-bold` / `font-extrabold`，正文用默认
+- 间距：容器 `max-w-5xl mx-auto`，内容区 `p-5 sm:p-8`
+- 暗色模式：所有元素必须包含 `dark:` 变体，暗色背景用 `slate-900/950` 或 `[#0A0A0F]`
+- 主题切换：支持 View Transitions API 圆形扩散动画，降级为即时切换
 
 ### 按钮样式规范
 
-- 主按钮：`bg-blue-700 text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-200`
-- 次按钮：`border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`（暗色对应 `dark:border-slate-800 dark:bg-slate-900`）
-- 所有按钮：`inline-flex items-center justify-center gap-2 px-4/5 py-2/2.5 text-sm font-semibold transition-colors duration-200 active:scale-[0.98]`
+- 主按钮（分割）：渐变光晕 + `bg-blue-600 text-white`，`rounded-xl h-12`
+- 成功按钮（导出）：`border-emerald-500/30 bg-emerald-50/80 text-emerald-700`
+- 次按钮（重置）：`border-slate-200/60 bg-white/60 text-slate-700`
+- 所有按钮：`inline-flex items-center justify-center gap-2 text-sm font-bold transition-all duration-200/300`
 - 禁用态：`disabled:cursor-not-allowed disabled:opacity-50`
 
 ### 状态管理
 
-- 用 `ref()` 管理简单状态，`reactive()` 管理对象/数组
+- 无状态管理库（Pinia/Vuex），全局状态集中在 `App.vue`
+- 用 `ref()` 管理简单状态，`reactive()` 管理对象/数组/Set
 - 用 `computed()` 派生状态
 - 用 `watch()` 响应数据变化
+- 父子通信：props 向下传递，emits 向上通知
 
 ### 代码规范
 
 - UI 文案使用中文
-- API 路径前缀 `/api/`
+- API 路径前缀 `/api/`，dev 环境通过 Vite proxy 转发到 `localhost:5001`
 - 错误处理：`try/catch` + toast 通知用户
-- 文件上传使用 `FormData` + XHR（支持进度回调）
+- HTML 渲染使用 `DOMPurify` 净化，白名单在 `utils.js` 的 `ALLOWED_HTML_TAGS` 定义
 - 新功能优先提取为独立 `.vue` 单文件组件放在 `src/components/` 下，使用 `<script setup>` + props/emits 通信
+- 关键 DOM 元素添加语义类名（如 `.step-circle`）或 `data-testid`，供测试定位
 
 ---
 
