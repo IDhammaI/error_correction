@@ -194,7 +194,7 @@ onBeforeUnmount(() => {
         <div class="flex h-16 items-center justify-between">
           <div class="flex items-center gap-6">
             <!-- 返回官网 -->
-            <a href="index.html" class="flex items-center gap-3 transition-opacity hover:opacity-80">
+            <a href="/" class="flex items-center gap-3 transition-opacity hover:opacity-80">
               <div class="rounded-lg bg-blue-600 p-2 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-purple-600">
                 <i data-lucide="book-open" class="h-5 w-5 text-white"></i>
               </div>

@@ -440,7 +440,7 @@ onBeforeUnmount(() => {
 
         <!-- 替换为带有左箭头的返回介绍页面按钮 -->
         <a
-          href="index.html"
+          href="/"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
           <i class="fa-solid fa-arrow-left-long w-5 text-center text-lg"></i>
@@ -465,7 +465,7 @@ onBeforeUnmount(() => {
           <span class="text-[10px] font-bold">主题</span>
         </button>
         <!-- 移动端同步替换 -->
-        <a href="index.html" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
+        <a href="/" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
           <i class="fa-solid fa-arrow-left-long mb-1 text-xl"></i>
           <span class="text-[10px] font-bold">返回介绍</span>
         </a>

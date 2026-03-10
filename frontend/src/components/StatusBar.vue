@@ -20,7 +20,7 @@ const emit = defineEmits(['update:modelProvider'])
 
 <template>
   <div
-    class="mb-8 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/40 px-5 py-4 text-sm shadow-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#0A0A0F]/60"
+    class="relative z-20 mb-8 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/40 px-5 py-4 text-sm shadow-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#0A0A0F]/60"
   >
     <div class="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
       <i class="fa-solid fa-server"></i> 系统状态
