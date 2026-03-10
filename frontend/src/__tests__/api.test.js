@@ -125,7 +125,7 @@ describe('fetchStatus', () => {
 describe('doSplit', () => {
   it('未上传文件时点击分割按钮无效', async () => {
     const wrapper = await mountApp()
-    const splitBtn = wrapper.findAll('button').find((b) => b.text().includes('开始分割题目'))
+    const splitBtn = wrapper.findAll('button').find((b) => b.text().includes('启动 AI 智能分割'))
 
     // 按钮应处于禁用状态
     expect(splitBtn.attributes('disabled')).toBeDefined()
@@ -152,7 +152,7 @@ describe('doReset', () => {
     await resetBtn.trigger('click')
 
     // 分割按钮应回到禁用（因为没有上传文件）
-    const splitBtn = wrapper.findAll('button').find((b) => b.text().includes('开始分割题目'))
+    const splitBtn = wrapper.findAll('button').find((b) => b.text().includes('启动 AI 智能分割'))
     expect(splitBtn.attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })

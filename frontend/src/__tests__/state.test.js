@@ -127,8 +127,8 @@ describe('步骤指示器', () => {
     const circles = wrapper.findAll('.step-circle')
     expect(circles.length).toBe(4)
 
-    // 第一个步骤应有 blue 样式
-    expect(circles[0].classes().some((c) => c.includes('bg-blue'))).toBe(true)
+    // 第一个步骤应有 blue 高亮样式（当前步骤用 border-blue 表示）
+    expect(circles[0].classes().some((c) => c.includes('border-blue'))).toBe(true)
     wrapper.unmount()
   })
 })

@@ -31,7 +31,7 @@ const descs = ['选择 PDF 或图片', '结构化提取题干', 'AI 识别并拆
 
         <!-- 步骤圆圈 -->
         <div 
-          class="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-[3px] ring-4 ring-white transition-all duration-300 dark:ring-slate-900"
+          class="step-circle relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-[3px] ring-4 ring-white transition-all duration-300 dark:ring-slate-900"
           :class="
             n < step 
               ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-500 shadow-md shadow-blue-500/30' 
