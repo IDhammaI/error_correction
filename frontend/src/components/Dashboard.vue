@@ -61,6 +61,7 @@ const loadReviewItems = async () => {
     emit('push-toast', 'error', '加载待复习题目失败')
   } finally {
     reviewLoading.value = false
+    typesetMath()
   }
 }
 
@@ -122,7 +123,14 @@ const initCharts = async () => {
 }
 
 // ---- 题目操作 ----
-const getSummary = (q) => getQuestionSnippet(q, 100)
+const getSummary = (q) => getQuestionSnippet(q)
+
+const typesetMath = async () => {
+  await nextTick()
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    try { await window.MathJax.typesetPromise() } catch (_) {}
+  }
+}
 
 const openDetail = (q) => { detailQuestion.value = q; detailOpen.value = true }
 const closeDetail = () => { detailOpen.value = false; detailQuestion.value = null }

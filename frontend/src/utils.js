@@ -19,12 +19,11 @@ export const ALLOWED_HTML_TAGS = [
 export const sanitizeHtml = (html) =>
   DOMPurify.sanitize(html, { ALLOWED_TAGS: ALLOWED_HTML_TAGS })
 
-/** 从题目的 content_json 中提取纯文本摘要 */
-export const getQuestionSnippet = (q, maxLen = 120) => {
+/** 从题目的 content_json 中提取纯文本摘要（不截断，由 CSS line-clamp 控制显示行数） */
+export const getQuestionSnippet = (q) => {
   const blocks = q.content_json || []
   const texts = blocks.filter(b => b.block_type === 'text').map(b => b.content || '')
-  const joined = texts.join(' ').replace(/<[^>]+>/g, '')
-  return joined.length > maxLen ? joined.slice(0, maxLen) + '...' : joined
+  return texts.join(' ').replace(/<[^>]+>/g, '')
 }
 
 /** 计算滚轮缩放后的 scale 值 */

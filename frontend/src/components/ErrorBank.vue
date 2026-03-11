@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { getQuestionSnippet } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
@@ -61,6 +61,7 @@ const doQuery = async () => {
     emit('push-toast', 'error', e instanceof Error ? e.message : String(e))
   } finally {
     loading.value = false
+    typesetMath()
   }
 }
 
@@ -129,7 +130,14 @@ const onReviewStatusChanged = (id, status, updatedAt) => {
   if (q) { q.review_status = status; q.updated_at = updatedAt }
 }
 
-const getSummary = (q) => getQuestionSnippet(q, 120)
+const getSummary = (q) => getQuestionSnippet(q)
+
+const typesetMath = async () => {
+  await nextTick()
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    try { await window.MathJax.typesetPromise() } catch (_) {}
+  }
+}
 
 const pageButtons = computed(() => {
   const tp = totalPages.value; const cp = page.value
