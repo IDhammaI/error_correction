@@ -280,11 +280,17 @@ def search_questions(
     if question_type:
         query = query.filter(Question.question_type == question_type)
 
-    # 知识点标签筛选
+    # 知识点标签筛选（支持逗号分隔多选）
     if knowledge_tag:
-        query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
-            KnowledgeTag.tag_name == knowledge_tag
-        )
+        tag_list = [t.strip() for t in knowledge_tag.split(',') if t.strip()]
+        if len(tag_list) == 1:
+            query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
+                KnowledgeTag.tag_name == tag_list[0]
+            )
+        elif tag_list:
+            query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
+                KnowledgeTag.tag_name.in_(tag_list)
+            )
 
     # 获取总数（需要先去除distinct，因为join可能产生重复）
     total = query.distinct().count()
@@ -384,9 +390,15 @@ def query_questions(
         query = query.filter(Question.content_json.ilike(f"%{escaped}%"))
 
     if knowledge_tag:
-        query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
-            KnowledgeTag.tag_name == knowledge_tag
-        )
+        tag_list = [t.strip() for t in knowledge_tag.split(',') if t.strip()]
+        if len(tag_list) == 1:
+            query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
+                KnowledgeTag.tag_name == tag_list[0]
+            )
+        elif tag_list:
+            query = query.join(QuestionTagMapping).join(KnowledgeTag).filter(
+                KnowledgeTag.tag_name.in_(tag_list)
+            )
 
     if start_date:
         query = query.filter(Question.created_at >= start_date)
