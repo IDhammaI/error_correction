@@ -41,8 +41,8 @@ class Question(Base):
     ocr_issues_json = Column(Text)
     user_answer = Column(Text, nullable=True)
     updated_at = Column(DateTime, nullable=True)
-    review_status = Column(String(10), nullable=True, default='待复习')
-    created_at = Column(DateTime, default=datetime.utcnow)
+    review_status = Column(String(10), nullable=True, default='待复习', index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     batch = relationship("UploadBatch", back_populates="questions")
     tags = relationship("QuestionTagMapping", back_populates="question")

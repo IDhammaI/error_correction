@@ -866,6 +866,8 @@ def update_question_answer(question_id):
         user_answer = data.get('user_answer')
         if user_answer is None:
             return jsonify({'success': False, 'error': '缺少 user_answer 字段'}), 400
+        if len(user_answer) > 10000:
+            return jsonify({'success': False, 'error': '答案内容过长（最多 10000 字符）'}), 400
 
         with SessionLocal() as db:
             question = crud.update_user_answer(db, question_id, user_answer)
@@ -905,8 +907,8 @@ def update_question_review_status(question_id):
                 'updated_at': question.updated_at.isoformat() if question.updated_at else None,
             })
 
-    except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+    except ValueError:
+        return jsonify({'success': False, 'error': f'无效的复习状态，可选值: {", ".join(crud.VALID_REVIEW_STATUSES)}'}), 400
     except Exception as e:
         logger.exception("更新复习状态失败")
         return jsonify({'success': False, 'error': '更新复习状态失败，请稍后重试'}), 500
@@ -980,14 +982,15 @@ def save_to_db():
                 meta = json.load(f)
             subject = meta.get("subject")
 
-        batch_info = {
-            "original_filename": ", ".join(
-                session_files.get(k, {}).get("filename", "未知")
-                for k in session_file_order
-            ),
-            "subject": subject,
-            "file_path": "",
-        }
+        with session_lock:
+            batch_info = {
+                "original_filename": ", ".join(
+                    session_files.get(k, {}).get("filename", "未知")
+                    for k in session_file_order
+                ),
+                "subject": subject,
+                "file_path": "",
+            }
 
         with SessionLocal() as db:
             result = crud.save_questions_to_db(db, selected_questions, batch_info)

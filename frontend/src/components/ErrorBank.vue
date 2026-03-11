@@ -1,6 +1,7 @@
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
+import { getQuestionSnippet } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 
 const props = defineProps({
@@ -128,12 +129,7 @@ const onReviewStatusChanged = (id, status, updatedAt) => {
   if (q) { q.review_status = status; q.updated_at = updatedAt }
 }
 
-const getSummary = (q) => {
-  const blocks = q.content_json || []
-  const texts = blocks.filter(b => b.block_type === 'text').map(b => b.content || '')
-  const joined = texts.join(' ').replace(/<[^>]+>/g, '')
-  return joined.length > 120 ? joined.slice(0, 120) + '...' : joined
-}
+const getSummary = (q) => getQuestionSnippet(q, 120)
 
 const pageButtons = computed(() => {
   const tp = totalPages.value; const cp = page.value
@@ -149,13 +145,24 @@ const pageButtons = computed(() => {
 
 const loadFilters = async () => {
   try {
-    subjects.value = await api.fetchSubjects()
-    questionTypes.value = await api.fetchQuestionTypes()
-    tagNames.value = await api.fetchTagNames()
-  } catch (_) {}
+    const [s, qt, tn] = await Promise.all([
+      api.fetchSubjects(),
+      api.fetchQuestionTypes(),
+      api.fetchTagNames(),
+    ])
+    subjects.value = s
+    questionTypes.value = qt
+    tagNames.value = tn
+  } catch (e) {
+    emit('push-toast', 'error', '加载筛选项失败')
+  }
 }
 
-watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { immediate: true })
+watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } })
+
+onBeforeUnmount(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <template>
@@ -192,7 +199,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <!-- 关键词 -->
           <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">内容检索 / Keyword</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">内容检索</label>
             <div class="relative group">
               <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
               <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200 bg-white/60 pl-11 pr-4 text-sm font-medium outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/5 dark:bg-white/5 dark:text-white dark:focus:border-indigo-500/50" />
@@ -200,7 +207,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
           </div>
 
           <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">学科 / Subject</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">学科</label>
             <select v-model="filters.subject" class="h-11 w-full rounded-xl border border-slate-200 bg-white/60 px-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-blue-500 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
               <option value="">全部学科</option>
               <option v-for="s in subjects" :key="s" :value="s">{{ s }}</option>
@@ -208,7 +215,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
           </div>
 
           <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">标签 / Tags</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">知识点标签</label>
             <select v-model="filters.knowledge_tag" class="h-11 w-full rounded-xl border border-slate-200 bg-white/60 px-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-blue-500 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
               <option value="">全部知识点</option>
               <option v-for="t in tagNames" :key="t" :value="t">{{ t }}</option>
@@ -216,7 +223,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
           </div>
 
           <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">题型 / Type</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">题型</label>
             <select v-model="filters.question_type" class="h-11 w-full rounded-xl border border-slate-200 bg-white/60 px-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-blue-500 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
               <option value="">全部题型</option>
               <option v-for="t in questionTypes" :key="t" :value="t">{{ t }}</option>
@@ -227,7 +234,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
         <!-- 第二行：复习状态 + 日期范围 + 重置 -->
         <div class="flex flex-wrap items-end gap-5">
           <div class="w-40 shrink-0">
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">状态 / Status</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</label>
             <select v-model="filters.review_status" class="h-11 w-full rounded-xl border border-slate-200 bg-white/60 px-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-blue-500 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
               <option value="">全部状态</option>
               <option value="待复习">待复习</option>
@@ -236,7 +243,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
             </select>
           </div>
           <div class="min-w-0 flex-1">
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">时间跨度 / Date Range</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">时间跨度</label>
             <div class="flex items-center gap-2">
               <input v-model="filters.start_date" type="date" class="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white/60 px-3 text-xs font-bold dark:border-white/5 dark:bg-white/5 dark:text-white" />
               <span class="shrink-0 text-slate-400">-</span>
@@ -255,7 +262,7 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
           <div class="absolute inset-0 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500"></div>
           <i class="fa-solid fa-cube absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl text-blue-500"></i>
         </div>
-        <p class="mt-6 font-mono text-xs font-black uppercase tracking-[0.3em] text-slate-400">Syncing Knowledge Vault...</p>
+        <p class="mt-6 font-mono text-xs font-black uppercase tracking-[0.3em] text-slate-400">正在加载题库...</p>
       </div>
 
       <div v-else-if="!items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
@@ -311,8 +318,8 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
               
               <!-- 底部元数据 -->
               <div class="mt-6 flex items-center justify-between border-t border-slate-50 pt-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:border-white/5">
-                <span class="font-mono">Ref: #{{ q.id }}</span>
-                <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar-alt text-blue-500"></i> {{ q.created_at ? new Date(q.created_at).toLocaleDateString() : 'UNKNOWN' }}</span>
+                <span class="font-mono">编号 #{{ q.id }}</span>
+                <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar-alt text-blue-500"></i> {{ q.created_at ? new Date(q.created_at).toLocaleDateString() : '未知' }}</span>
               </div>
             </div>
           </div>
@@ -348,14 +355,14 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
             <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 font-mono text-xs font-black text-white outline outline-4 outline-blue-500/20">
               {{ selectedIds.size }}
             </div>
-            <span class="text-sm font-black tracking-widest text-white uppercase">Items Locked</span>
+            <span class="text-sm font-black tracking-widest text-white uppercase">已选中</span>
           </div>
           <div class="flex items-center gap-4">
             <button @click="doExport" class="btn-primary h-10 px-6 text-xs font-black shadow-lg shadow-blue-500/40">
               <i class="fa-solid fa-file-export mr-2"></i> 生成复习卷
             </button>
             <button @click="clearSelection" class="text-xs font-black tracking-widest text-slate-400 hover:text-white transition-colors">
-              RESET
+              清除
             </button>
           </div>
         </div>

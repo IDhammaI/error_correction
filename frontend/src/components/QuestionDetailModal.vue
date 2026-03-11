@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '../utils.js'
 import * as api from '../api.js'
 
@@ -18,6 +18,7 @@ const isSaving = ref(false)
 const isAnalyzing = ref(false)
 const aiReport = ref(null)
 const typedText = ref('')
+let typingTimer = null
 
 const typeset = async () => {
   await nextTick()
@@ -68,7 +69,6 @@ const triggerAiAnalysis = async () => {
     startTyping()
   } catch (e) {
     emit('push-toast', 'error', 'AI \u5206\u6790\u5931\u8d25: ' + (e instanceof Error ? e.message : String(e)))
-    isAnalyzing.value = false
   } finally {
     isAnalyzing.value = false
   }
@@ -81,13 +81,17 @@ const startTyping = () => {
     if (i < str.length) {
       typedText.value += str.charAt(i)
       i++
-      setTimeout(tick, 20)
+      typingTimer = setTimeout(tick, 20)
     } else {
       typeset()
     }
   }
   tick()
 }
+
+onBeforeUnmount(() => {
+  if (typingTimer) clearTimeout(typingTimer)
+})
 
 const doDelete = async () => {
   if (!window.confirm('确定要从题库中永久删除这道题吗？')) return
@@ -104,7 +108,6 @@ const changeReviewStatus = async (status) => {
   if (!props.question || props.question.review_status === status) return
   try {
     const data = await api.updateReviewStatus(props.question.id, status)
-    props.question.review_status = data.review_status
     emit('review-status-changed', props.question.id, data.review_status, data.updated_at)
     emit('push-toast', 'success', `已标记为「${status}」`)
   } catch (e) {
@@ -137,7 +140,7 @@ const reviewStatusOptions = [
               </div>
               <div>
                 <h3 class="text-lg font-black tracking-tight text-slate-900 dark:text-white">题目详情分析</h3>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Question Reference #{{ question?.id }}</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">题目编号 #{{ question?.id }}</p>
               </div>
             </div>
             
@@ -215,7 +218,7 @@ const reviewStatusOptions = [
                     <div class="mb-4 h-12 w-12 animate-bounce rounded-full bg-indigo-500/20 flex items-center justify-center">
                        <i class="fa-solid fa-brain text-indigo-500"></i>
                     </div>
-                    <p class="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse">Thinking...</p>
+                    <p class="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse">分析中...</p>
                   </div>
                   <div v-else-if="aiReport" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                     <div class="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">

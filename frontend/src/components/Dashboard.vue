@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
+import { getQuestionSnippet } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 import AiAnalysisModal from './AiAnalysisModal.vue'
 
@@ -121,12 +122,7 @@ const initCharts = async () => {
 }
 
 // ---- 题目操作 ----
-const getSummary = (q) => {
-  const blocks = q.content_json || []
-  const texts = blocks.filter(b => b.block_type === 'text').map(b => b.content || '')
-  const joined = texts.join(' ').replace(/<[^>]+>/g, '')
-  return joined.length > 100 ? joined.slice(0, 100) + '...' : joined
-}
+const getSummary = (q) => getQuestionSnippet(q, 100)
 
 const openDetail = (q) => { detailQuestion.value = q; detailOpen.value = true }
 const closeDetail = () => { detailOpen.value = false; detailQuestion.value = null }
@@ -210,7 +206,7 @@ const closeAiModal = () => {
 // ---- 生命周期 ----
 watch(() => props.visible, (v) => {
   if (v) { loadAll(); nextTick(initCharts) }
-}, { immediate: true })
+})
 
 watch(() => [props.theme, stats.value], () => {
   if (props.visible && stats.value) nextTick(initCharts)

@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -386,7 +386,7 @@ def query_questions(
     offset = (page - 1) * page_size
     questions = (
         query.distinct()
-        .options(joinedload(Question.batch), joinedload(Question.tags).joinedload(QuestionTagMapping.tag))
+        .options(selectinload(Question.batch), selectinload(Question.tags).selectinload(QuestionTagMapping.tag))
         .order_by(Question.created_at.desc())
         .offset(offset)
         .limit(page_size)
