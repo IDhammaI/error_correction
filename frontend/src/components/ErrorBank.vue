@@ -168,6 +168,8 @@ const loadFilters = async () => {
 
 watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } })
 
+defineExpose({ refresh: doQuery })
+
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
 })

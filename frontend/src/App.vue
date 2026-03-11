@@ -289,6 +289,7 @@ const handleUpload = (files) => {
 const questions = ref([])
 const selectedIds = reactive(new Set())
 const questionListRef = ref(null)
+const errorBankRef = ref(null)
 
 const toggleQuestion = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
 const selectAll = () => { for (const q of questions.value) selectedIds.add(q.question_id) }
@@ -362,6 +363,7 @@ const doSaveToDb = async () => {
   try {
     const data = await api.saveToDb(Array.from(selectedIds))
     pushToast('success', data.message || '已导入错题库')
+    errorBankRef.value?.refresh()
   } catch (e) {
     pushToast('error', '导入失败: ' + (e instanceof Error ? e.message : String(e)))
   }
@@ -582,6 +584,7 @@ onBeforeUnmount(() => {
 
       <!-- 视图 3：错题库 -->
       <ErrorBank
+        ref="errorBankRef"
         v-show="currentView === 'error-bank'"
         :theme="theme"
         :visible="currentView === 'error-bank'"
