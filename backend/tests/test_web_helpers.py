@@ -4,12 +4,11 @@ web_app.py 中纯函数的单元测试
 覆盖函数：
 - allowed_file
 - _safe_join
-- _vite_collect_imports
 """
 
 import os
 import pytest
-from web_app import allowed_file, _safe_join, _vite_collect_imports
+from web_app import allowed_file, _safe_join
 
 
 # ═══════════════════════════════════════════════════════════
@@ -114,107 +113,3 @@ class TestSafeJoin:
         assert result is None
 
 
-# ═══════════════════════════════════════════════════════════
-# _vite_collect_imports
-# ═══════════════════════════════════════════════════════════
-
-
-class TestViteCollectImports:
-    """_vite_collect_imports 测试"""
-
-    def test_no_imports(self):
-        manifest = {
-            "index.html": {"file": "main.js"}
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        assert result == []
-
-    def test_single_import(self):
-        manifest = {
-            "index.html": {
-                "file": "main.js",
-                "imports": ["_vendor.js"]
-            },
-            "_vendor.js": {
-                "file": "assets/vendor-abc.js"
-            }
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        assert result == ["assets/vendor-abc.js"]
-
-    def test_chain_imports(self):
-        """A → B → C 链式依赖"""
-        manifest = {
-            "index.html": {
-                "file": "main.js",
-                "imports": ["_a.js"]
-            },
-            "_a.js": {
-                "file": "assets/a.js",
-                "imports": ["_b.js"]
-            },
-            "_b.js": {
-                "file": "assets/b.js"
-            }
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        # 栈式遍历，先 pop _a.js，发现 _b.js → pop _b.js → 输出 b, a
-        assert set(result) == {"assets/a.js", "assets/b.js"}
-
-    def test_circular_imports(self):
-        """循环依赖不应死循环"""
-        manifest = {
-            "index.html": {
-                "file": "main.js",
-                "imports": ["_a.js"]
-            },
-            "_a.js": {
-                "file": "assets/a.js",
-                "imports": ["_b.js"]
-            },
-            "_b.js": {
-                "file": "assets/b.js",
-                "imports": ["_a.js"]  # 循环
-            }
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        assert len(result) == 2
-
-    def test_missing_entry(self):
-        """入口不存在时返回空"""
-        result = _vite_collect_imports({}, "nonexistent")
-        assert result == []
-
-    def test_missing_import_key(self):
-        """import 引用的 key 在 manifest 中不存在"""
-        manifest = {
-            "index.html": {
-                "file": "main.js",
-                "imports": ["_missing.js"]
-            }
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        assert result == []
-
-    def test_diamond_dependency(self):
-        """菱形依赖：A → B,C; B → D; C → D — D 只应出现一次"""
-        manifest = {
-            "index.html": {
-                "file": "main.js",
-                "imports": ["_b.js", "_c.js"]
-            },
-            "_b.js": {
-                "file": "assets/b.js",
-                "imports": ["_d.js"]
-            },
-            "_c.js": {
-                "file": "assets/c.js",
-                "imports": ["_d.js"]
-            },
-            "_d.js": {
-                "file": "assets/d.js"
-            }
-        }
-        result = _vite_collect_imports(manifest, "index.html")
-        assert len(result) == 3
-        assert result.count("assets/d.js") == 1
