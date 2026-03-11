@@ -44,8 +44,37 @@ class Question(Base):
     review_status = Column(String(10), nullable=True, default='待复习', index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
+    answer = Column(Text, nullable=True)
+
     batch = relationship("UploadBatch", back_populates="questions")
     tags = relationship("QuestionTagMapping", back_populates="question")
+    chat_sessions = relationship("ChatSession", back_populates="question")
+
+
+class ChatSession(Base):
+    """教学辅导对话会话"""
+    __tablename__ = "chat_sessions"
+
+    id = Column(Integer, primary_key=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    question = relationship("Question", back_populates="chat_sessions")
+    messages = relationship("ChatMessage", back_populates="session", order_by="ChatMessage.id")
+
+
+class ChatMessage(Base):
+    """对话消息"""
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # 'user' | 'assistant'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("ChatSession", back_populates="messages")
 
 
 class KnowledgeTag(Base):

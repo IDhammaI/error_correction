@@ -30,10 +30,27 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def _migrate_schema():
+    """轻量级自动迁移：为已有表补充新列"""
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.cursor()
+        # 检查 questions 表是否有 answer 列
+        cursor.execute("PRAGMA table_info(questions)")
+        columns = {row[1] for row in cursor.fetchall()}
+        if 'answer' not in columns:
+            cursor.execute("ALTER TABLE questions ADD COLUMN answer TEXT")
+            conn.commit()
+    finally:
+        conn.close()
+
+
 def init_db():
-    """应用启动时调用：建表"""
+    """应用启动时调用：建表 + 迁移"""
     from db.models import Base
     Base.metadata.create_all(bind=engine)
+    _migrate_schema()
 
 
 def get_db():

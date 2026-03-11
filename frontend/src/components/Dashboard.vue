@@ -1,16 +1,22 @@
 <script setup>
 import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
-import { getQuestionSnippet } from '../utils.js'
+import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 import AiAnalysisModal from './AiAnalysisModal.vue'
+
+// 答案内联编辑
+const answerEditId = ref(null)
+const answerEditField = ref('')   // 'answer' | 'user_answer'
+const answerEditDraft = ref('')
+const answerEditSaving = ref(false)
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
   visible: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['go-workspace', 'push-toast', 'open-image'])
+const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
 
 // ---- 统计数据 ----
 const stats = ref(null)
@@ -127,9 +133,7 @@ const getSummary = (q) => getQuestionSnippet(q)
 
 const typesetMath = async () => {
   await nextTick()
-  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    try { await window.MathJax.typesetPromise() } catch (_) {}
-  }
+  await _typesetMath()
 }
 
 const openDetail = (q) => { detailQuestion.value = q; detailOpen.value = true }
@@ -160,6 +164,34 @@ const onDeleted = (id) => {
 const onAnswerSaved = (id, answer, updatedAt) => {
   const q = reviewItems.value.find(x => x.id === id)
   if (q) { q.user_answer = answer; q.updated_at = updatedAt }
+}
+
+const startInlineEdit = (q, field) => {
+  answerEditId.value = q.id
+  answerEditField.value = field
+  answerEditDraft.value = q[field] || ''
+}
+const cancelInlineEdit = () => { answerEditId.value = null }
+const saveInlineEdit = async () => {
+  if (answerEditSaving.value) return
+  const q = reviewItems.value.find(x => x.id === answerEditId.value)
+  if (!q) return
+  answerEditSaving.value = true
+  try {
+    if (answerEditField.value === 'answer') {
+      await api.saveQuestionAnswer(q.id, answerEditDraft.value)
+      q.answer = answerEditDraft.value
+    } else {
+      await api.saveAnswer(q.id, answerEditDraft.value)
+      q.user_answer = answerEditDraft.value
+    }
+    answerEditId.value = null
+    emit('push-toast', 'success', '已保存')
+  } catch (e) {
+    emit('push-toast', 'error', '保存失败')
+  } finally {
+    answerEditSaving.value = false
+  }
 }
 
 const onReviewStatusChanged = (id, status, updatedAt) => {
@@ -356,6 +388,41 @@ onBeforeUnmount(() => {
                 <span class="ml-auto text-[10px] font-bold text-slate-400">{{ q.created_at ? new Date(q.created_at).toLocaleDateString() : '' }}</span>
               </div>
               <p class="line-clamp-2 text-sm font-bold leading-relaxed text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">{{ getSummary(q) }}</p>
+
+              <!-- 答案 / 用户答案 区域 -->
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-[10px]" @click.stop>
+                <!-- 正确答案 -->
+                <span v-if="q.answer" class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                  <i class="fa-solid fa-circle-check"></i>已录入答案
+                </span>
+                <button v-else @click="startInlineEdit(q, 'answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 px-2 py-0.5 font-bold text-emerald-500 transition-colors hover:bg-emerald-50 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10">
+                  <i class="fa-solid fa-plus"></i>录入答案
+                </button>
+                <!-- 用户笔记 -->
+                <span v-if="q.user_answer" class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                  <i class="fa-solid fa-pen-to-square"></i>已记笔记
+                </span>
+                <button v-else @click="startInlineEdit(q, 'user_answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-blue-300 px-2 py-0.5 font-bold text-blue-500 transition-colors hover:bg-blue-50 dark:border-blue-500/30 dark:hover:bg-blue-500/10">
+                  <i class="fa-solid fa-plus"></i>记笔记
+                </button>
+              </div>
+
+              <!-- 内联编辑区（展开时） -->
+              <div v-if="answerEditId === q.id" class="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-800" @click.stop>
+                <div class="mb-2 text-[10px] font-black uppercase tracking-widest" :class="answerEditField === 'answer' ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'">
+                  {{ answerEditField === 'answer' ? '正确答案' : '我的笔记' }}
+                </div>
+                <textarea v-model="answerEditDraft" rows="3" :placeholder="answerEditField === 'answer' ? '输入正确答案/解析…' : '记录错因或心得…'"
+                  class="w-full resize-none rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200"></textarea>
+                <div class="mt-2 flex justify-end gap-2">
+                  <button @click="cancelInlineEdit" class="rounded-lg px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400">取消</button>
+                  <button @click="saveInlineEdit" :disabled="answerEditSaving"
+                    class="rounded-lg px-3 py-1 text-[10px] font-bold text-white transition-colors disabled:opacity-50"
+                    :class="answerEditField === 'answer' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-500 hover:bg-blue-600'">
+                    {{ answerEditSaving ? '保存中…' : '保存' }}
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="flex shrink-0 gap-2" @click.stop>
               <button @click="quickMarkStatus(q, '复习中')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400" title="标记为复习中">
@@ -380,6 +447,7 @@ onBeforeUnmount(() => {
       @answer-saved="onAnswerSaved"
       @review-status-changed="onReviewStatusChanged"
       @push-toast="(type, msg) => emit('push-toast', type, msg)"
+      @start-chat="(q) => emit('start-chat', q)"
     />
 
     <!-- AI 分析弹窗 -->

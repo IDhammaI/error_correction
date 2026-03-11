@@ -73,11 +73,11 @@ export async function exportQuestions(selectedIds) {
   throw new Error((data && data.error) || '导出失败')
 }
 
-export async function saveToDb(selectedIds) {
+export async function saveToDb(selectedIds, answers = []) {
   const resp = await fetch('/api/save-to-db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selected_ids: selectedIds }),
+    body: JSON.stringify({ selected_ids: selectedIds, answers }),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
@@ -185,4 +185,58 @@ export async function requestAiAnalysis(questionIds) {
   const data = await resp.json()
   if (data && data.success) return data
   throw new Error((data && data.error) || 'AI 分析请求失败')
+}
+
+// ── AI 辅导对话 API ──────────────────────────────────────
+
+export async function saveQuestionAnswer(questionId, answer) {
+  const resp = await fetch(`/api/question/${questionId}/answer`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answer }),
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data
+  throw new Error((data && data.error) || '保存答案失败')
+}
+
+export async function fetchChatSessions(questionId) {
+  const resp = await fetch(`/api/question/${questionId}/chats`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.sessions
+  throw new Error((data && data.error) || '获取对话列表失败')
+}
+
+export async function createChat(questionId) {
+  const resp = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question_id: questionId }),
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.session
+  throw new Error((data && data.error) || '创建对话失败')
+}
+
+export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
+  const qs = new URLSearchParams({ limit })
+  if (beforeId) qs.set('before_id', beforeId)
+  const resp = await fetch(`/api/chat/${sessionId}/messages?${qs}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return { messages: data.messages, hasMore: data.hasMore }
+  throw new Error((data && data.error) || '获取消息失败')
+}
+
+export async function streamChat(sessionId, message, modelProvider = 'deepseek', signal) {
+  const opts = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, model_provider: modelProvider }),
+  }
+  if (signal) opts.signal = signal
+  return fetch(`/api/chat/${sessionId}/stream`, opts)
 }

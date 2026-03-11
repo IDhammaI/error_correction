@@ -1,26 +1,53 @@
 <script setup>
+import { ref } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '../utils.js'
 
-defineProps({
+const props = defineProps({
   question: { type: Object, required: true },
   selected: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['toggle', 'open-image'])
+
+// 本地答案编辑状态（工作台内存保存，入库时随 question 对象一同传递）
+const editingAnswer = ref(false)
+const editingUserAnswer = ref(false)
+const answerDraft = ref('')
+const userAnswerDraft = ref('')
+
+const startEditAnswer = () => {
+  answerDraft.value = props.question.answer || ''
+  editingAnswer.value = true
+}
+const saveAnswer = () => {
+  props.question.answer = answerDraft.value.trim() || undefined
+  editingAnswer.value = false
+}
+const cancelAnswer = () => { editingAnswer.value = false }
+
+const startEditUserAnswer = () => {
+  userAnswerDraft.value = props.question.user_answer || ''
+  editingUserAnswer.value = true
+}
+const saveUserAnswer = () => {
+  props.question.user_answer = userAnswerDraft.value.trim() || undefined
+  editingUserAnswer.value = false
+}
+const cancelUserAnswer = () => { editingUserAnswer.value = false }
 </script>
 
 <template>
   <div
     class="question-card group relative overflow-hidden rounded-2xl border bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-lg dark:bg-[#0A0A0F]/60"
     :class="
-      selected 
-        ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.1)] dark:border-indigo-500/50 dark:shadow-[0_0_30px_rgba(99,102,241,0.15)]' 
+      selected
+        ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.1)] dark:border-indigo-500/50 dark:shadow-[0_0_30px_rgba(99,102,241,0.15)]'
         : 'border-slate-200/60 dark:border-white/10 hover:border-blue-300/50 dark:hover:border-white/20'
     "
     @click="emit('toggle', question.question_id)"
   >
     <!-- 卡片背景环境光晕 (悬浮或选中时显示) -->
-    <div 
+    <div
       class="absolute inset-0 -z-10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 transition-opacity duration-500 dark:from-indigo-500/10 dark:to-fuchsia-500/5"
       :class="(selected || 'group-hover:opacity-100') && 'opacity-100'"
     ></div>
@@ -59,7 +86,7 @@ const emit = defineEmits(['toggle', 'open-image'])
       <!-- 右侧复选框 -->
       <label class="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-3 pr-1 text-sm font-medium text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-400 dark:hover:text-indigo-300" @click.stop="emit('toggle', question.question_id)">
         <span :class="selected ? 'text-blue-600 dark:text-indigo-400' : ''">选择导出</span>
-        <div 
+        <div
           class="flex h-5 w-5 items-center justify-center rounded border transition-all"
           :class="selected ? 'border-blue-500 bg-blue-500 dark:border-indigo-500 dark:bg-indigo-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'"
         >
@@ -74,7 +101,7 @@ const emit = defineEmits(['toggle', 'open-image'])
         <template v-for="(b, i) in question.content_blocks">
           <div v-if="b.block_type === 'text' && isHtml(b.content)" :key="`${question.question_id}-${i}`" v-html="sanitizeHtml(b.content)" class="question-text my-3 leading-loose text-slate-800 dark:text-slate-200"></div>
           <p v-else-if="b.block_type === 'text'" :key="`${question.question_id}-t-${i}`" class="my-3 whitespace-pre-line leading-loose text-slate-800 dark:text-slate-200">{{ b.content }}</p>
-          
+
           <img
             v-else-if="b.block_type === 'image' && b.content"
             :key="`${question.question_id}-img-${i}`"
@@ -100,6 +127,69 @@ const emit = defineEmits(['toggle', 'open-image'])
         >
           {{ formatOption(opt) }}
         </div>
+      </div>
+    </div>
+
+    <!-- 答案 / 用户答案 录入区 -->
+    <div class="mt-5 space-y-3 border-t border-slate-100/80 pt-4 dark:border-white/5" @click.stop>
+      <!-- 正确答案 -->
+      <div>
+        <div class="mb-1.5 flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+            <i class="fa-solid fa-circle-check mr-1"></i>正确答案
+          </span>
+          <button
+            v-if="!editingAnswer"
+            @click="startEditAnswer"
+            class="text-[11px] font-bold text-blue-500 transition-colors hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          >
+            {{ question.answer ? '修改' : '录入' }}
+          </button>
+        </div>
+        <div v-if="editingAnswer">
+          <textarea
+            v-model="answerDraft"
+            rows="3"
+            placeholder="输入正确答案/解析…"
+            class="w-full resize-none rounded-lg border border-slate-200/80 bg-white px-3 py-2 font-mono text-xs text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+          ></textarea>
+          <div class="mt-1.5 flex justify-end gap-2">
+            <button @click="cancelAnswer" class="rounded-lg px-3 py-1 text-[11px] font-bold text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400">取消</button>
+            <button @click="saveAnswer" class="rounded-lg bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-emerald-600">保存</button>
+          </div>
+        </div>
+        <p v-else-if="question.answer" class="whitespace-pre-wrap rounded-lg bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-slate-700 dark:bg-emerald-500/5 dark:text-slate-300">{{ question.answer }}</p>
+        <p v-else class="text-xs italic text-slate-400 dark:text-slate-500">未录入</p>
+      </div>
+
+      <!-- 用户答案 / 笔记 -->
+      <div>
+        <div class="mb-1.5 flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-pen-to-square mr-1"></i>我的答案/笔记
+          </span>
+          <button
+            v-if="!editingUserAnswer"
+            @click="startEditUserAnswer"
+            class="text-[11px] font-bold text-blue-500 transition-colors hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          >
+            {{ question.user_answer ? '修改' : '录入' }}
+          </button>
+        </div>
+        <div v-if="editingUserAnswer">
+          <textarea
+            v-model="userAnswerDraft"
+            rows="3"
+            placeholder="输入你的答案或错因笔记…"
+            class="w-full resize-none rounded-lg border border-slate-200/80 bg-white px-3 py-2 font-mono text-xs text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+          ></textarea>
+          <div class="mt-1.5 flex justify-end gap-2">
+            <button @click="cancelUserAnswer" class="rounded-lg px-3 py-1 text-[11px] font-bold text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400">取消</button>
+            <button @click="saveUserAnswer" class="rounded-lg bg-blue-500 px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-blue-600">保存</button>
+          </div>
+        </div>
+        <p v-else-if="question.user_answer" class="whitespace-pre-wrap rounded-lg bg-blue-50/60 px-3 py-2 text-xs leading-relaxed text-slate-700 dark:bg-blue-500/5 dark:text-slate-300">{{ question.user_answer }}</p>
+        <p v-else class="text-xs italic text-slate-400 dark:text-slate-500">未录入</p>
       </div>
     </div>
   </div>
