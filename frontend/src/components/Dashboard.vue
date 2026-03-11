@@ -425,12 +425,24 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="flex shrink-0 gap-2" @click.stop>
-              <button @click="quickMarkStatus(q, '复习中')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400" title="标记为复习中">
-                <i class="fa-solid fa-spinner mr-1"></i>复习中
-              </button>
-              <button @click="quickMarkStatus(q, '已掌握')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-600 transition-all hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400" title="标记为已掌握">
-                <i class="fa-solid fa-circle-check mr-1"></i>已掌握
-              </button>
+              <div class="group/tip relative">
+                <button @click="quickMarkStatus(q, '复习中')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                  <i class="fa-solid fa-spinner mr-1"></i>复习中
+                </button>
+                <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
+                  标记为复习中
+                  <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-[3px] border-transparent border-t-slate-600/90 dark:border-t-slate-700/90"></span>
+                </span>
+              </div>
+              <div class="group/tip relative">
+                <button @click="quickMarkStatus(q, '已掌握')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-600 transition-all hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+                  <i class="fa-solid fa-circle-check mr-1"></i>已掌握
+                </button>
+                <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
+                  标记为已掌握
+                  <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-[3px] border-transparent border-t-slate-600/90 dark:border-t-slate-700/90"></span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
