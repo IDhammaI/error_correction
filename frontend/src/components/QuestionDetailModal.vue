@@ -148,9 +148,9 @@ const reviewStatusOptions = [
         
         <!-- 弹窗主体 -->
         <div class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-white/10 bg-white shadow-2xl transition-all dark:bg-[#0F111A]">
-          
+
           <!-- 头部控制栏 -->
-          <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-8 py-5 dark:border-white/5 dark:bg-white/5">
+          <div class="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/50 px-8 py-5 dark:border-white/5 dark:bg-white/5">
             <div class="flex items-center gap-4">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
                 <i class="fa-solid fa-file-lines text-lg"></i>
@@ -185,7 +185,7 @@ const reviewStatusOptions = [
           </div>
 
           <!-- 内容主体 -->
-          <div class="flex flex-1 flex-col overflow-hidden md:flex-row">
+          <div class="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
             <!-- 左侧：题干内容 (滚动区) -->
             <div class="flex-1 overflow-y-auto border-r border-slate-100 p-8 dark:border-white/5">
               <!-- 核心题干 -->
@@ -206,14 +206,14 @@ const reviewStatusOptions = [
             </div>
 
             <!-- 右侧：交互与分析 (侧边栏) -->
-            <div class="w-full bg-slate-50/30 md:w-[400px] dark:bg-black/20">
+            <div class="flex w-full flex-col overflow-hidden bg-slate-50/30 md:w-[400px] dark:bg-black/20">
               <!-- Tab 切换 -->
-              <div class="flex border-b border-slate-100 dark:border-white/5">
+              <div class="flex shrink-0 border-b border-slate-100 dark:border-white/5">
                 <button @click="activeTab = 'content'" class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all" :class="activeTab === 'content' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-indigo-400' : 'text-slate-400'">我的笔记</button>
                 <button @click="activeTab = 'analysis'" class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all" :class="activeTab === 'analysis' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-indigo-400' : 'text-slate-400'">AI 深度解析</button>
               </div>
 
-              <div class="h-full overflow-y-auto p-6 pb-24">
+              <div class="min-h-0 flex-1 overflow-y-auto p-6 pb-8">
                 <!-- Tab 1: 笔记与答案 -->
                 <div v-if="activeTab === 'content'" class="space-y-6">
                   <!-- 正确答案 -->
