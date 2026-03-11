@@ -1,6 +1,6 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { fileKey } from './utils.js'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
+import { fileKey, typesetMath as _typesetMathEl } from './utils.js'
 import * as api from './api.js'
 // 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
 import StatusBar from './components/StatusBar.vue'
@@ -13,9 +13,10 @@ import ToastContainer from './components/ToastContainer.vue'
 import Dashboard from './components/Dashboard.vue'
 import CatLoading from './components/CatLoading.vue'
 import ErrorBank from './components/ErrorBank.vue'
+import ChatView from './components/ChatView.vue'
 
 // ---- 视图路由控制 ----
-const currentView = ref('workspace') // 'workspace' | 'dashboard' | 'error-bank'
+const currentView = ref('workspace') // 'workspace' | 'dashboard' | 'error-bank' | 'chat'
 
 // ---- 主题 ----
 const theme = ref('light')
@@ -111,6 +112,72 @@ const pushToast = (type, message, timeout = 2600) => {
   const id = ++toastId
   toasts.value = [{ id, type, message }, ...toasts.value].slice(0, 5)
   if (timeout > 0) window.setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, timeout)
+}
+provide('pushToast', pushToast)
+
+// ---- AI 辅导对话 ----
+const chatSessionId = ref(null)
+const chatQuestion = ref(null)
+const chatActive = ref(false)
+
+// 答案录入弹窗（AI 辅导前置）
+const answerModalOpen = ref(false)
+const answerModalTarget = ref(null)
+const answerModalText = ref('')
+const answerModalSaving = ref(false)
+
+const openChat = async (question) => {
+  chatQuestion.value = question
+  // 如果没有答案，先弹出答案录入弹窗
+  if (!question.answer) {
+    answerModalTarget.value = question
+    answerModalText.value = ''
+    answerModalOpen.value = true
+    return
+  }
+  await doOpenChatSession(question)
+}
+
+const doOpenChatSession = async (question) => {
+  try {
+    const sessions = await api.fetchChatSessions(question.id)
+    if (sessions.length) {
+      chatSessionId.value = sessions[0].id
+    } else {
+      const session = await api.createChat(question.id)
+      chatSessionId.value = session.id
+    }
+    chatActive.value = true
+    currentView.value = 'chat'
+  } catch (e) {
+    pushToast('error', '打开对话失败: ' + (e instanceof Error ? e.message : String(e)))
+  }
+}
+
+const saveAnswerAndChat = async () => {
+  if (!answerModalTarget.value || answerModalSaving.value) return
+  const text = answerModalText.value.trim()
+  if (!text) { pushToast('error', '请输入答案/解析内容'); return }
+  answerModalSaving.value = true
+  try {
+    await api.saveQuestionAnswer(answerModalTarget.value.id, text)
+    answerModalTarget.value.answer = text
+    answerModalOpen.value = false
+    pushToast('success', '答案已保存')
+    // 继续打开对话
+    await doOpenChatSession(answerModalTarget.value)
+  } catch (e) {
+    pushToast('error', '保存答案失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    answerModalSaving.value = false
+  }
+}
+
+const backToErrorBank = () => {
+  chatActive.value = false
+  chatSessionId.value = null
+  chatQuestion.value = null
+  currentView.value = 'error-bank'
 }
 
 // ---- 图片弹窗 ----
@@ -303,16 +370,8 @@ const reorderQuestions = (oldIndex, newIndex) => {
 
 const typesetMath = async () => {
   await nextTick()
-  const mj = window.MathJax
-  if (!mj || typeof mj.typesetPromise !== 'function') return
-  try {
-    const el = questionListRef.value?.questionsBoxEl
-    if (el) {
-      await mj.typesetPromise([el])
-    } else {
-      await mj.typesetPromise()
-    }
-  } catch (_) {}
+  const el = questionListRef.value?.questionsBoxEl
+  await _typesetMathEl(el || undefined)
 }
 const doSplit = async () => {
   if (!uploadReady.value || splitting.value || splitCompleted.value) return
@@ -361,7 +420,11 @@ const doExport = async () => {
 const doSaveToDb = async () => {
   if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
   try {
-    const data = await api.saveToDb(Array.from(selectedIds))
+    // 收集已录入的答案数据一并传给后端
+    const answers = questions.value
+      .filter(q => selectedIds.has(q.question_id) && (q.answer || q.user_answer))
+      .map(q => ({ question_id: q.question_id, answer: q.answer || '', user_answer: q.user_answer || '' }))
+    const data = await api.saveToDb(Array.from(selectedIds), answers)
     pushToast('success', data.message || '已导入错题库')
     errorBankRef.value?.refresh()
   } catch (e) {
@@ -591,7 +654,19 @@ onBeforeUnmount(() => {
         @go-workspace="currentView = 'workspace'"
         @push-toast="pushToast"
         @open-image="openModal"
+        @start-chat="openChat"
       />
+
+      <!-- 视图 4：AI 辅导对话 -->
+      <div v-show="currentView === 'chat'" class="h-full">
+        <ChatView
+          v-if="chatActive"
+          :session-id="chatSessionId"
+          :question="chatQuestion"
+          :model-provider="modelProvider"
+          @back="backToErrorBank"
+        />
+      </div>
     </main>
 
     <!-- 全局弹窗与通知 -->
@@ -604,6 +679,38 @@ onBeforeUnmount(() => {
         @update:scale="(s) => modalScale = s"
       />
       <ToastContainer :toasts="toasts" />
+
+      <!-- 答案录入弹窗（AI 辅导前置） -->
+      <div v-if="answerModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dark:bg-black/60" @click="answerModalOpen = false"></div>
+        <div class="relative w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+          <h3 class="mb-1 text-lg font-bold text-slate-900 dark:text-white">录入答案</h3>
+          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            AI 辅导需要正确答案作为参考。支持 Markdown 格式，数学公式使用 LaTeX（$..$ 行内，$$...$$ 独占行）
+          </p>
+          <textarea
+            v-model="answerModalText"
+            rows="10"
+            placeholder="在此粘贴或输入答案/解析..."
+            class="w-full resize-none rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+          ></textarea>
+          <div class="mt-4 flex justify-end gap-3">
+            <button
+              @click="answerModalOpen = false"
+              class="rounded-xl border border-slate-200/60 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              取消
+            </button>
+            <button
+              @click="saveAnswerAndChat"
+              :disabled="answerModalSaving"
+              class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            >
+              {{ answerModalSaving ? '保存中...' : '保存并开始辅导' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>
