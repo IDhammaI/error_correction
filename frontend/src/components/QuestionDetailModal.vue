@@ -8,11 +8,13 @@ const props = defineProps({
   question: { type: Object, default: null },
 })
 
-const emit = defineEmits(['close', 'open-image', 'deleted', 'answer-saved', 'review-status-changed', 'push-toast'])
+const emit = defineEmits(['close', 'open-image', 'deleted', 'answer-saved', 'review-status-changed', 'push-toast', 'start-chat'])
 
 const activeTab = ref('content') // 'content' | 'analysis'
 const userAnswer = ref('')
 const isSaving = ref(false)
+const answerText = ref('')
+const isAnswerSaving = ref(false)
 
 // AI 分析相关
 const isAnalyzing = ref(false)
@@ -30,6 +32,7 @@ const typeset = async () => {
 watch(() => props.open, (newVal) => {
   if (newVal && props.question) {
     userAnswer.value = props.question.user_answer || ''
+    answerText.value = props.question.answer || ''
     activeTab.value = 'content'
     aiReport.value = null
     typedText.value = ''
@@ -48,6 +51,20 @@ const saveAnswer = async () => {
     emit('push-toast', 'error', '保存失败')
   } finally {
     isSaving.value = false
+  }
+}
+
+const saveCorrectAnswer = async () => {
+  if (!props.question) return
+  isAnswerSaving.value = true
+  try {
+    await api.saveQuestionAnswer(props.question.id, answerText.value)
+    props.question.answer = answerText.value
+    emit('push-toast', 'success', '正确答案已保存')
+  } catch (e) {
+    emit('push-toast', 'error', '保存失败')
+  } finally {
+    isAnswerSaving.value = false
   }
 }
 
@@ -199,9 +216,26 @@ const reviewStatusOptions = [
               <div class="h-full overflow-y-auto p-6 pb-24">
                 <!-- Tab 1: 笔记与答案 -->
                 <div v-if="activeTab === 'content'" class="space-y-6">
+                  <!-- 正确答案 -->
                   <div>
-                    <label class="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-400">我的错因/心得笔记</label>
-                    <textarea v-model="userAnswer" rows="6" placeholder="记录下当时的解题思路，或者标记这里错在哪里了..." class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
+                    <label class="mb-3 block text-[10px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
+                      <i class="fa-solid fa-circle-check mr-1"></i>正确答案/解析
+                    </label>
+                    <textarea v-model="answerText" rows="4" placeholder="录入正确答案或标准解析…（支持 Markdown / LaTeX）" class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
+                  </div>
+                  <button @click="saveCorrectAnswer" :disabled="isAnswerSaving" class="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-50/80 py-3 text-sm font-bold text-emerald-700 transition-all hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-400 h-12">
+                    <i class="fa-solid" :class="isAnswerSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
+                    {{ isAnswerSaving ? '同步中...' : '保存正确答案' }}
+                  </button>
+
+                  <div class="my-2 border-t border-slate-100 dark:border-white/5"></div>
+
+                  <!-- 用户笔记 -->
+                  <div>
+                    <label class="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <i class="fa-solid fa-pen-to-square mr-1"></i>我的错因/心得笔记
+                    </label>
+                    <textarea v-model="userAnswer" rows="4" placeholder="记录下当时的解题思路，或者标记这里错在哪里了..." class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
                   </div>
                   <button @click="saveAnswer" :disabled="isSaving" class="btn-primary w-full h-12">
                     <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
@@ -209,6 +243,9 @@ const reviewStatusOptions = [
                   </button>
                   <button @click="triggerAiAnalysis" class="group flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/5 py-4 text-sm font-black text-blue-600 transition-all hover:bg-blue-500/10 dark:text-indigo-400">
                     <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i> 召唤 AI 助教分析
+                  </button>
+                  <button @click="emit('start-chat', question); emit('close')" class="group flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 py-4 text-sm font-black text-indigo-600 transition-all hover:bg-indigo-500/10 dark:text-indigo-300">
+                    <i class="fa-solid fa-comments"></i> AI 辅导对话
                   </button>
                 </div>
 
