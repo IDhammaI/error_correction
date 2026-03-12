@@ -13,8 +13,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-
-from config import RESULTS_DIR
+from config import settings
 from .utils import prepare_input, export_wrongbook, simplify_ocr_results, run_async
 
 load_dotenv()
@@ -334,7 +333,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     console.print("[bold yellow]步骤 2: 并行 OCR + 分割题目[/bold yellow]")
     step_start = time.time()
 
-    results_dir = RESULTS_DIR
+    results_dir = settings.results_dir
     os.makedirs(results_dir, exist_ok=True)
 
     file_paths = state["image_paths"]
@@ -509,7 +508,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
 
     # 加载原始 OCR 数据作为纠错上下文
     ocr_context = "{}"
-    agent_input_path = os.path.join(RESULTS_DIR, "agent_input.json")
+    agent_input_path = os.path.join(settings.results_dir, "agent_input.json")
     if os.path.exists(agent_input_path):
         with open(agent_input_path, 'r', encoding='utf-8') as f:
             ocr_context = f.read()
@@ -550,7 +549,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
             merged.append(q)
 
     # 更新 questions.json
-    questions_file = os.path.join(RESULTS_DIR, "questions.json")
+    questions_file = os.path.join(settings.results_dir, "questions.json")
     with open(questions_file, 'w', encoding='utf-8') as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 

@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from rich.console import Console
 
-from config import PAGES_DIR, RESULTS_DIR, ALLOWED_EXTENSIONS
+from config import settings
 
 load_dotenv()
 console = Console()
@@ -38,13 +38,13 @@ def prepare_input(file_path: str) -> List[str]:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 
-    pages_dir = PAGES_DIR
+    pages_dir = settings.pages_dir
     os.makedirs(pages_dir, exist_ok=True)
 
     file_ext = Path(file_path).suffix.lower()
     file_stem = Path(file_path).stem
 
-    supported_exts = {f".{ext}" for ext in ALLOWED_EXTENSIONS}
+    supported_exts = {f".{ext}" for ext in settings.allowed_extensions}
     if file_ext not in supported_exts:
         raise ValueError(
             f"不支持的文件格式: {file_ext}\n"
@@ -81,8 +81,8 @@ def export_wrongbook(
         str: 导出的Markdown文件路径
     """
     if output_path is None:
-        os.makedirs(RESULTS_DIR, exist_ok=True)
-        output_path = os.path.join(RESULTS_DIR, "wrongbook.md")
+        os.makedirs(settings.results_dir, exist_ok=True)
+        output_path = os.path.join(settings.results_dir, "wrongbook.md")
 
     # 过滤选中的题目
     selected_questions = [q for q in questions if q.get('question_id') in selected_ids]
@@ -110,8 +110,7 @@ def export_wrongbook(
 
                 # 将 Flask 路由路径转为 Markdown 相对路径
                 if image_path.startswith("/images/"):
-                    from config import STRUCT_DIR
-                    rel_struct_dir = os.path.relpath(STRUCT_DIR, RESULTS_DIR)
+                    rel_struct_dir = os.path.relpath(settings.struct_dir, settings.results_dir)
                     image_path = f"{rel_struct_dir}/imgs/{image_path[len('/images/') :]}"
 
                 if image_path:
@@ -127,8 +126,7 @@ def export_wrongbook(
         if remaining_images:
             for image_path in remaining_images:
                 if image_path.startswith("/images/"):
-                    from config import STRUCT_DIR
-                    rel_struct_dir = os.path.relpath(STRUCT_DIR, RESULTS_DIR)
+                    rel_struct_dir = os.path.relpath(settings.struct_dir, settings.results_dir)
                     image_path = f"{rel_struct_dir}/imgs/{image_path[len('/images/') :]}"
                 md_content += f"![图片]({image_path})\n\n"
 

@@ -9,15 +9,14 @@ import sys
 
 # 添加 backend 目录到路径以支持导入 config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DB_PATH
+from config import settings
 
 # 确保数据库目录存在
-db_dir = os.path.dirname(DB_PATH)
-if db_dir and not os.path.exists(db_dir):
-    os.makedirs(db_dir, exist_ok=True)
+db_dir = settings.db_path.parent
+db_dir.mkdir(parents=True, exist_ok=True)
 
 # 创建引擎
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+engine = create_engine(f"sqlite:///{settings.db_path}", echo=False)
 
 # 启用 SQLite 外键约束
 @event.listens_for(engine, "connect")

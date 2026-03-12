@@ -9,7 +9,7 @@ import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
-from config import RESULTS_DIR
+from config import settings
 from src.utils import simplify_ocr_results, run_async
 
 load_dotenv()
@@ -61,7 +61,7 @@ def save_questions(questions: List[Dict[str, Any]], subject: str = "", output_pa
     Args:
         questions: 题目列表，每个题目是一个字典，包含question_id、question_type、content_blocks等字段
         subject: 识别出的试卷科目（如 "高中数学"），每次调用都应传入
-        output_path: 输出文件路径，如果不提供则使用默认路径（RESULTS_DIR/questions.json）
+        output_path: 输出文件路径，如果不提供则使用默认路径（settings.results_dir/questions.json）
 
     Returns:
         保存成功的文件路径
@@ -70,8 +70,8 @@ def save_questions(questions: List[Dict[str, Any]], subject: str = "", output_pa
     try:
         # 使用默认路径
         if output_path is None:
-            os.makedirs(RESULTS_DIR, exist_ok=True)
-            output_path = os.path.join(RESULTS_DIR, "questions.json")
+            os.makedirs(settings.results_dir, exist_ok=True)
+            output_path = os.path.join(settings.results_dir, "questions.json")
 
         # 读取已有数据（支持多次调用追加）
         existing = []
@@ -88,7 +88,7 @@ def save_questions(questions: List[Dict[str, Any]], subject: str = "", output_pa
 
         # 保存元数据（科目信息供导出入库时使用）
         if subject.strip():
-            meta_path = os.path.join(RESULTS_DIR, "split_metadata.json")
+            meta_path = os.path.join(settings.results_dir, "split_metadata.json")
             meta = {}
             if os.path.exists(meta_path):
                 with open(meta_path, 'r', encoding='utf-8') as f:
@@ -124,8 +124,8 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
         记录结果消息
     """
     try:
-        os.makedirs(RESULTS_DIR, exist_ok=True)
-        log_path = os.path.join(RESULTS_DIR, "split_issues.jsonl")
+        os.makedirs(settings.results_dir, exist_ok=True)
+        log_path = os.path.join(settings.results_dir, "split_issues.jsonl")
 
         # 构建日志条目
         log_entry = {
@@ -268,8 +268,8 @@ def retry_ocr(image_paths_json: str) -> str:
         simplified = simplify_ocr_results(ocr_results)
 
         # 保存 agent_input.json
-        os.makedirs(RESULTS_DIR, exist_ok=True)
-        agent_input_path = os.path.join(RESULTS_DIR, "agent_input.json")
+        os.makedirs(settings.results_dir, exist_ok=True)
+        agent_input_path = os.path.join(settings.results_dir, "agent_input.json")
         with open(agent_input_path, 'w', encoding='utf-8') as f:
             json.dump(simplified, f, ensure_ascii=False, indent=2)
 

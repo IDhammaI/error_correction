@@ -20,16 +20,7 @@ from dotenv import load_dotenv
 
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
-from config import (
-    PROJECT_ROOT,
-    UPLOAD_DIR,
-    PAGES_DIR,
-    STRUCT_DIR,
-    RESULTS_DIR,
-    MAX_FILE_SIZE_MB,
-    ALLOWED_EXTENSIONS,
-    ensure_dirs,
-)
+from config import settings
 from db import init_db, SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
@@ -42,8 +33,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # 配置（统一从 config.py 导入）
-app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
-app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE_MB * 1024 * 1024
+app.config['UPLOAD_FOLDER'] = settings.upload_dir
+app.config['MAX_CONTENT_LENGTH'] = settings.max_file_size_mb * 1024 * 1024
 
 
 def _safe_join(base_dir: str, rel_path: str) -> str | None:
@@ -58,7 +49,7 @@ def request_entity_too_large(error):
     """文件大小超出Flask限制"""
     return jsonify({
         'success': False,
-        'error': f'文件大小超出限制，最大允许 {MAX_FILE_SIZE_MB}MB'
+        'error': f'文件大小超出限制，最大允许 {settings.max_file_size_mb}MB'
     }), 413
 
 
@@ -91,7 +82,7 @@ session_lock = threading.Lock()
 
 def allowed_file(filename):
     """检查文件扩展名是否允许"""
-    return PurePath(filename).suffix.lower().lstrip('.') in ALLOWED_EXTENSIONS
+    return PurePath(filename).suffix.lower().lstrip('.') in settings.allowed_extensions
 
 
 def _serialize_question(q: Question) -> dict:
@@ -145,7 +136,7 @@ def _serialize_question_detail(q: Question) -> dict:
 # ============================================================
 # 前端托管（生产模式：直接返回 Vite 构建产物）
 # ============================================================
-FRONTEND_DIST = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
+FRONTEND_DIST = os.path.join(settings.project_root, 'frontend', 'dist')
 
 
 @app.route('/')
@@ -175,9 +166,9 @@ def serve_vue_dist(filename):
 @app.route('/record')
 def record_page():
     """错题本记录页面"""
-    record_file = os.path.join(PROJECT_ROOT, 'record.html')
+    record_file = os.path.join(settings.project_root, 'record.html')
     if os.path.exists(record_file):
-        return send_from_directory(PROJECT_ROOT, 'record.html')
+        return send_from_directory(settings.project_root, 'record.html')
     return "记录页文件不存在", 404
 
 
@@ -210,7 +201,7 @@ def upload_file():
 
         if not allowed_file(file.filename):
             return jsonify({
-                'error': f'不支持的文件格式: {file.filename}。支持: {", ".join(ALLOWED_EXTENSIONS)}'
+                'error': f'不支持的文件格式: {file.filename}。支持: {", ".join(settings.allowed_extensions)}'
             }), 400
 
         file.seek(0, 2)
@@ -218,9 +209,9 @@ def upload_file():
         file.seek(0)
         file_size_mb = file_size / (1024 * 1024)
 
-        if file_size_mb > MAX_FILE_SIZE_MB:
+        if file_size_mb > settings.max_file_size_mb:
             return jsonify({
-                'error': f'{file.filename} 大小为 {file_size_mb:.1f}MB，超出最大限制 {MAX_FILE_SIZE_MB}MB'
+                'error': f'{file.filename} 大小为 {file_size_mb:.1f}MB，超出最大限制 {settings.max_file_size_mb}MB'
             }), 400
 
         if file_size == 0:
@@ -446,7 +437,7 @@ def export_wrongbook():
             }), 400
 
         # 检查是否已分割（通过 questions.json 存在性判断，不依赖内存中的 current_thread_id）
-        results_dir = RESULTS_DIR
+        results_dir = settings.results_dir
         questions_file = os.path.join(results_dir, "questions.json")
         if not os.path.exists(questions_file):
             return jsonify({
@@ -485,7 +476,7 @@ def get_questions():
         JSON响应，包含题目列表
     """
     try:
-        results_dir = RESULTS_DIR
+        results_dir = settings.results_dir
         questions_file = os.path.join(results_dir, "questions.json")
 
         if not os.path.exists(questions_file):
@@ -519,7 +510,7 @@ def get_questions():
 @app.route('/preview')
 def preview():
     """显示预览页面"""
-    results_dir = RESULTS_DIR
+    results_dir = settings.results_dir
     preview_file = os.path.join(results_dir, "preview.html")
 
     if os.path.exists(preview_file):
@@ -538,7 +529,7 @@ def preview():
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件"""
-    results_dir = RESULTS_DIR
+    results_dir = settings.results_dir
     file_path = _safe_join(results_dir, filename)
     if not file_path:
         return jsonify({
@@ -569,7 +560,7 @@ def download_file(filename):
 @app.route('/images/<path:filename>')
 def serve_image(filename):
     """提供 OCR 解析出的图片资源"""
-    base = os.path.join(STRUCT_DIR, "imgs")
+    base = os.path.join(settings.struct_dir, "imgs")
     file_path = _safe_join(base, filename)
     if not file_path or not os.path.exists(file_path):
         return jsonify({'success': False, 'error': '图片不存在'}), 404
@@ -613,9 +604,9 @@ def get_status():
             'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
-                'pages': PAGES_DIR,
-                'struct': STRUCT_DIR,
-                'results': RESULTS_DIR,
+                'pages': str(settings.pages_dir),
+                'struct': str(settings.struct_dir),
+                'results': str(settings.results_dir),
             }
         }
 
@@ -983,7 +974,7 @@ def save_to_db():
         if not isinstance(selected_ids, list) or not selected_ids:
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
-        results_dir = RESULTS_DIR
+        results_dir = settings.results_dir
         questions_file = os.path.join(results_dir, "questions.json")
         if not os.path.exists(questions_file):
             return jsonify({'success': False, 'error': '请先分割题目'}), 400
@@ -1372,7 +1363,7 @@ def stream_chat(session_id):
 
 if __name__ == '__main__':
     # 确保运行时目录存在
-    ensure_dirs()
+    settings.ensure_dirs()
     # 初始化数据库
     init_db()
     # 自动迁移（添加新列等）

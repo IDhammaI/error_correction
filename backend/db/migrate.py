@@ -11,7 +11,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DB_PATH
+from config import settings
 
 
 def _column_exists(cursor, table: str, column: str) -> bool:
@@ -20,11 +20,11 @@ def _column_exists(cursor, table: str, column: str) -> bool:
 
 
 def migrate():
-    if not os.path.exists(DB_PATH):
-        print(f"[migrate] 数据库文件不存在: {DB_PATH}，跳过迁移")
+    if not settings.db_path.exists():
+        print(f"[migrate] 数据库文件不存在: {settings.db_path}，跳过迁移")
         return
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(settings.db_path))
     cursor = conn.cursor()
 
     migrations = [
