@@ -184,9 +184,13 @@ def get_all_tags(db: Session, subject: Optional[str] = None) -> List[KnowledgeTa
     return query.order_by(KnowledgeTag.tag_name).all()
 
 
-def get_statistics(db: Session) -> Dict[str, Any]:
+def get_statistics(db: Session, subject: Optional[str] = None) -> Dict[str, Any]:
     """获取统计信息"""
-    total_questions = db.query(func.count(Question.id)).scalar()
+    q_query = db.query(func.count(Question.id))
+    if subject:
+        q_query = q_query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    total_questions = q_query.scalar()
+
     total_batches = db.query(func.count(UploadBatch.id)).scalar()
     total_tags = db.query(func.count(KnowledgeTag.id)).scalar()
 
@@ -303,23 +307,37 @@ def search_questions(
     return questions, total
 
 
-def get_knowledge_stats(db: Session) -> List[Dict]:
+def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optional[int] = None) -> List[Dict]:
     """
     获取知识点统计信息
+
+    Args:
+        subject: 可选，按学科筛选
+        limit: 可选，返回前 N 条
 
     Returns:
         [{"tag_name": "xxx", "count": 10}, ...]
     """
-    stats = db.query(
+    query = db.query(
         KnowledgeTag.tag_name,
         func.count(QuestionTagMapping.question_id).label("count")
     ).join(
         QuestionTagMapping, QuestionTagMapping.tag_id == KnowledgeTag.id
-    ).group_by(
+    )
+
+    if subject:
+        query = query.filter(KnowledgeTag.subject == subject)
+
+    query = query.group_by(
         KnowledgeTag.id, KnowledgeTag.tag_name
     ).order_by(
         func.count(QuestionTagMapping.question_id).desc()
-    ).all()
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    stats = query.all()
 
     return [{"tag_name": tag_name, "count": count} for tag_name, count in stats]
 
@@ -474,12 +492,16 @@ def update_review_status(db: Session, question_id: int, review_status: str) -> O
         raise
 
 
-def get_review_status_stats(db: Session) -> Dict[str, int]:
+def get_review_status_stats(db: Session, subject: Optional[str] = None) -> Dict[str, int]:
     """按复习状态分组统计数量"""
-    rows = db.query(
+    query = db.query(
         Question.review_status,
         func.count(Question.id)
-    ).group_by(Question.review_status).all()
+    )
+    if subject:
+        query = query.join(UploadBatch).filter(UploadBatch.subject == subject)
+
+    rows = query.group_by(Question.review_status).all()
 
     result = {'待复习': 0, '复习中': 0, '已掌握': 0}
     for status, count in rows:
@@ -491,26 +513,37 @@ def get_review_status_stats(db: Session) -> Dict[str, int]:
     return result
 
 
-def get_daily_counts(db: Session, days: int = 7) -> List[Dict[str, Any]]:
-    """获取最近 N 天每日新增题目数"""
+def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取最近 N 天每日新增题目数 + 每日新增已掌握数"""
     from datetime import timedelta
     cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
 
     # SQLite 兼容：使用 func.date() 提取日期字符串
     date_expr = func.date(Question.created_at)
-    rows = db.query(
+
+    # 新增题目数
+    query = db.query(
         date_expr.label('date'),
         func.count(Question.id).label('count')
-    ).filter(
-        Question.created_at >= cutoff
-    ).group_by(
-        date_expr
-    ).order_by(
-        date_expr
-    ).all()
-
-    # 构建日期→数量映射
+    ).filter(Question.created_at >= cutoff)
+    if subject:
+        query = query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    rows = query.group_by(date_expr).order_by(date_expr).all()
     date_map = {str(row.date): row.count for row in rows}
+
+    # 每日新增已掌握数（按 updated_at 统计）
+    mastered_date_expr = func.date(Question.updated_at)
+    mq = db.query(
+        mastered_date_expr.label('date'),
+        func.count(Question.id).label('count')
+    ).filter(
+        Question.updated_at >= cutoff,
+        Question.review_status == '已掌握',
+    )
+    if subject:
+        mq = mq.join(UploadBatch).filter(UploadBatch.subject == subject)
+    mastered_rows = mq.group_by(mastered_date_expr).order_by(mastered_date_expr).all()
+    mastered_map = {str(row.date): row.count for row in mastered_rows}
 
     # 填充缺失的日期
     result = []
@@ -518,9 +551,105 @@ def get_daily_counts(db: Session, days: int = 7) -> List[Dict[str, Any]]:
         d = cutoff + timedelta(days=i)
         date_key = d.strftime('%Y-%m-%d')
         date_str = d.strftime('%m-%d')
-        result.append({'date': date_str, 'count': date_map.get(date_key, 0)})
+        result.append({
+            'date': date_str,
+            'count': date_map.get(date_key, 0),
+            'mastered': mastered_map.get(date_key, 0),
+        })
 
     return result
+
+
+def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int = 10) -> List[Dict]:
+    """
+    知识点 × 掌握状态统计（堆叠柱状图用）
+
+    Returns:
+        [{"tag_name": "函数", "待复习": 3, "复习中": 2, "已掌握": 5}, ...]
+    """
+    query = db.query(
+        KnowledgeTag.tag_name,
+        Question.review_status,
+        func.count(Question.id).label('count')
+    ).join(
+        QuestionTagMapping, QuestionTagMapping.tag_id == KnowledgeTag.id
+    ).join(
+        Question, Question.id == QuestionTagMapping.question_id
+    )
+
+    if subject:
+        query = query.filter(KnowledgeTag.subject == subject)
+
+    rows = query.group_by(
+        KnowledgeTag.tag_name, Question.review_status
+    ).all()
+
+    # 按 tag 聚合
+    tag_data = {}
+    tag_totals = {}
+    for tag_name, status, count in rows:
+        if tag_name not in tag_data:
+            tag_data[tag_name] = {'tag_name': tag_name, '待复习': 0, '复习中': 0, '已掌握': 0}
+            tag_totals[tag_name] = 0
+        key = status or '待复习'
+        if key in ('待复习', '复习中', '已掌握'):
+            tag_data[tag_name][key] += count
+        else:
+            tag_data[tag_name]['待复习'] += count
+        tag_totals[tag_name] += count
+
+    # 按总数降序，取 top N
+    sorted_tags = sorted(tag_data.keys(), key=lambda t: tag_totals[t], reverse=True)[:limit]
+    return [tag_data[t] for t in sorted_tags]
+
+
+def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: int = 8) -> Dict[str, Any]:
+    """
+    知识点 × 题型交叉统计（热力图用）
+
+    Returns:
+        {"tags": ["函数", ...], "types": ["选择题", ...], "data": [[3, 1, ...], ...]}
+    """
+    query = db.query(
+        KnowledgeTag.tag_name,
+        Question.question_type,
+        func.count(Question.id).label('count')
+    ).join(
+        QuestionTagMapping, QuestionTagMapping.tag_id == KnowledgeTag.id
+    ).join(
+        Question, Question.id == QuestionTagMapping.question_id
+    ).filter(
+        Question.question_type.isnot(None),
+        Question.question_type != '',
+    )
+
+    if subject:
+        query = query.filter(KnowledgeTag.subject == subject)
+
+    rows = query.group_by(
+        KnowledgeTag.tag_name, Question.question_type
+    ).all()
+
+    # 收集所有 tag 和 type
+    tag_totals = {}
+    type_set = set()
+    cross = {}
+    for tag_name, q_type, count in rows:
+        tag_totals[tag_name] = tag_totals.get(tag_name, 0) + count
+        type_set.add(q_type)
+        cross[(tag_name, q_type)] = count
+
+    # 按总数取 top N tag
+    sorted_tags = sorted(tag_totals.keys(), key=lambda t: tag_totals[t], reverse=True)[:tag_limit]
+    sorted_types = sorted(type_set)
+
+    # 构建矩阵
+    data = []
+    for tag in sorted_tags:
+        row = [cross.get((tag, t), 0) for t in sorted_types]
+        data.append(row)
+
+    return {"tags": sorted_tags, "types": sorted_types, "data": data}
 
 
 # ============================================================
