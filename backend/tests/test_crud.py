@@ -383,6 +383,56 @@ class TestQueryQuestions:
 
 
 # ═══════════════════════════════════════════════════════════
+# query_questions — 多标签筛选
+# ═══════════════════════════════════════════════════════════
+
+
+class TestQueryQuestionsMultiTag:
+    """query_questions 逗号分隔多标签筛选（OR 语义）"""
+
+    def _seed(self, db):
+        save_questions_to_db(
+            db,
+            [make_question("1", tags=["导数", "极限"]), make_question("2", tags=["积分"])],
+            {"original_filename": "a.pdf", "subject": "高中数学"},
+        )
+        save_questions_to_db(
+            db,
+            [make_question("3", text="电场强度", tags=["电场"])],
+            {"original_filename": "b.pdf", "subject": "高中物理"},
+        )
+
+    def test_single_tag(self, db):
+        self._seed(db)
+        qs, total = query_questions(db, knowledge_tag="导数")
+        assert total == 1
+
+    def test_multi_tag_or(self, db):
+        """逗号分隔多标签应返回匹配任一标签的题目"""
+        self._seed(db)
+        qs, total = query_questions(db, knowledge_tag="导数,积分")
+        assert total == 2
+
+    def test_multi_tag_with_spaces(self, db):
+        """标签前后空格应被忽略"""
+        self._seed(db)
+        qs, total = query_questions(db, knowledge_tag=" 导数 , 电场 ")
+        assert total == 2
+
+    def test_multi_tag_no_match(self, db):
+        self._seed(db)
+        qs, total = query_questions(db, knowledge_tag="不存在的标签")
+        assert total == 0
+
+    def test_empty_after_strip(self, db):
+        """只有逗号和空格时不应报错"""
+        self._seed(db)
+        qs, total = query_questions(db, knowledge_tag=", ,")
+        # tag_list 为空，不触发过滤，应返回全部
+        assert total == 3
+
+
+# ═══════════════════════════════════════════════════════════
 # update_user_answer
 # ═══════════════════════════════════════════════════════════
 
