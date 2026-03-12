@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from llm import init_model
+from ..llm import init_model
 from .prompts import SOLVE_PROMPT
 from .schemas import SolveBatchResult
 
