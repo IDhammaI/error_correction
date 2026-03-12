@@ -14,8 +14,8 @@ const mockStatusResponse = (overrides = {}) => ({
   status: {
     paddleocr_configured: true,
     available_models: [
-      { value: 'deepseek', label: 'DeepSeek', configured: true },
-      { value: 'ernie', label: 'ERNIE', configured: false },
+      { value: 'openai', label: 'gpt-4o-mini', configured: true, status: '配置成功' },
+      { value: 'anthropic', label: 'claude-sonnet-4-20250514', configured: false, status: '未配置' },
     ],
     langsmith_enabled: false,
     ...overrides,

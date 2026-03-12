@@ -8,7 +8,7 @@ const PAGE_SIZE = 30
 const props = defineProps({
   sessionId: { type: Number, default: null },
   question: { type: Object, default: null },
-  modelProvider: { type: String, default: 'deepseek' },
+  modelProvider: { type: String, default: 'openai' },
 })
 
 const emit = defineEmits(['back'])

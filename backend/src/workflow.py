@@ -42,7 +42,7 @@ class WorkflowState(TypedDict, total=False):
     questions: List[Dict[str, Any]]      # 分割后的题目列表
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
-    model_provider: str                  # 模型供应商: "deepseek" | "ernie"
+    model_provider: str                  # 模型供应商: "openai" | "anthropic"
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -210,7 +210,7 @@ def _extract_text_sample(ocr_data: List[Dict[str, Any]]) -> str:
 def _identify_subject(
     ocr_data: List[Dict[str, Any]],
     db_subjects: List[str],
-    model_provider: str = "deepseek",
+    model_provider: str = "openai",
 ) -> str:
     """从 OCR 数据前几页识别科目（三层 fallback）
 
@@ -337,7 +337,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     os.makedirs(results_dir, exist_ok=True)
 
     file_paths = state["image_paths"]
-    model_provider = state.get("model_provider", "deepseek")
+    model_provider = state.get("model_provider", "openai")
 
     # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
@@ -516,7 +516,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
     # 调用纠错工具
     from error_correction_agent.tools import correct_batch
 
-    model_provider = state.get("model_provider", "deepseek")
+    model_provider = state.get("model_provider", "openai")
     flagged_json = json.dumps(flagged, ensure_ascii=False)
     result_str = correct_batch.invoke({
         "questions_json": flagged_json,

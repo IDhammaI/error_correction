@@ -11,7 +11,7 @@ defineProps({
   statusError: { type: String, default: '' },
   statusPills: { type: Array, default: () => [] },
   providerOptions: { type: Array, default: () => [] },
-  modelProvider: { type: String, default: 'deepseek' },
+  modelProvider: { type: String, default: 'openai' },
   disabled: { type: Boolean, default: false },
 })
 
@@ -104,10 +104,7 @@ const emit = defineEmits(['update:modelProvider'])
                     :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
                   >
                     {{ opt.label }}
-                    <span v-if="!opt.configured" class="ml-1 text-xs text-rose-500">(未配置)</span>
-                  </span>
-                  <span v-if="opt.description" class="block truncate text-xs text-slate-500 dark:text-slate-500 mt-0.5">
-                    {{ opt.description }}
+                    <span v-if="opt.status && opt.status !== '配置成功'" class="ml-1 text-xs text-rose-500">({{ opt.status }})</span>
                   </span>
                   <span
                     v-if="selected"

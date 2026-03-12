@@ -65,7 +65,7 @@ const toggleTheme = async (btnEl) => {
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
-const modelProvider = ref('deepseek')
+const modelProvider = ref('openai')
 
 const providerOptions = computed(() => {
   const s = systemStatus.value
@@ -86,7 +86,7 @@ const statusPills = computed(() => {
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
   const activeProvider = providerOptions.value.find(p => p.value === modelProvider.value)
   if (activeProvider) {
-    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? activeProvider.label : `${activeProvider.label}未配置` })
+    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? activeProvider.label : `${activeProvider.label} ${activeProvider.status}` })
   }
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
@@ -444,7 +444,7 @@ const doReset = () => {
   questions.value = []
   selectedIds.clear()
   const configured = providerOptions.value.find(m => m.configured)
-  modelProvider.value = configured ? configured.value : 'deepseek'
+  modelProvider.value = configured ? configured.value : 'openai'
   step.value = 1
   pushToast('success', '已重置')
 }

@@ -1,12 +1,12 @@
 """
 solve_agent 集成测试 — 调用真实 LLM API 验证解题能力
 
-需要配置对应的 API Key 环境变量（DEEPSEEK_API_KEY 或 ERNIE 相关变量）。
+需要配置对应的 API Key 环境变量（OPENAI_API_KEY 或 ANTHROPIC_API_KEY）。
 
 用法:
     cd backend
     python -m pytest tests/test_solve_integration.py -v -s
-    python -m pytest tests/test_solve_integration.py -v -s --model-provider ernie
+    python -m pytest tests/test_solve_integration.py -v -s --model-provider anthropic
 """
 
 import os
@@ -17,8 +17,8 @@ from benchmark.metrics import compare_answers
 load_dotenv()
 
 skip_no_api_key = pytest.mark.skipif(
-    not os.getenv("DEEPSEEK_API_KEY") and not os.getenv("ERNIE_API_KEY"),
-    reason="未配置 LLM API Key（DEEPSEEK_API_KEY 或 ERNIE_API_KEY）",
+    not os.getenv("OPENAI_API_KEY") and not os.getenv("ANTHROPIC_API_KEY"),
+    reason="未配置 LLM API Key（OPENAI_API_KEY 或 ANTHROPIC_API_KEY）",
 )
 
 

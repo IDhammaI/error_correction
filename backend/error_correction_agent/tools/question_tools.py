@@ -146,7 +146,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
 
 @tool(parse_docstring=True)
-def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "deepseek") -> str:
+def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "openai") -> str:
     """对一批OCR数据进行题目分割，返回结构化题目列表JSON
 
     将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
@@ -156,7 +156,7 @@ def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model
         ocr_data: 一批OCR数据的JSON字符串，包含1-2页的blocks数据
         subject: 试卷所属科目（如 "高中数学"、"初中物理"），用于辅助知识点标注
         existing_tags: 前面批次已使用的知识点标签，用逗号分隔（如 "复数,集合,立体几何"），用于保持标签一致性
-        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
+        model_provider: 模型供应商，"openai"（默认）或 "anthropic"
 
     Returns:
         题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
@@ -196,7 +196,7 @@ OCR数据：
 
 
 @tool(parse_docstring=True)
-def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "deepseek") -> str:
+def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "openai") -> str:
     """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
 
     将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
@@ -205,7 +205,7 @@ def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "
     Args:
         questions_json: 待纠错题目列表的JSON字符串
         ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
-        model_provider: 模型供应商，"deepseek"（默认）或 "ernie"
+        model_provider: 模型供应商，"openai"（默认）或 "anthropic"
 
     Returns:
         纠错后的题目列表JSON字符串

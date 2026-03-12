@@ -15,7 +15,7 @@ const statusOk = {
     status: {
       paddleocr_configured: true,
       available_models: [
-        { value: 'deepseek', label: 'DeepSeek', configured: true },
+        { value: 'openai', label: 'gpt-4o-mini', configured: true, status: '配置成功' },
       ],
       langsmith_enabled: false,
     },
@@ -158,7 +158,7 @@ describe('doReset', () => {
   })
 
   it('重置后选择首个已配置模型', async () => {
-    // 提供多个模型，第一个已配置的是 deepseek
+    // 提供多个模型，第一个已配置的是 openai
     const wrapper = await mountApp()
     const resetBtn = wrapper.findAll('button').find((b) => b.text().includes('重新开始'))
     await resetBtn.trigger('click')

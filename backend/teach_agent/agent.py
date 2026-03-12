@@ -41,7 +41,7 @@ def stream_teach(
     *,
     question: Dict[str, Any],
     messages: List[Dict[str, str]],
-    provider: str = "deepseek",
+    provider: str = "openai",
 ) -> Generator[str, None, None]:
     """流式教学对话
 

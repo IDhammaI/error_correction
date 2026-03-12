@@ -231,7 +231,7 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   throw new Error((data && data.error) || '获取消息失败')
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'deepseek', signal) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal) {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

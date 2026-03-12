@@ -364,8 +364,8 @@ def split_questions():
 
         # 读取请求体参数（模型供应商）
         data = request.get_json(silent=True) or {}
-        model_provider = data.get("model_provider", "deepseek")
-        if model_provider not in ("deepseek", "ernie"):
+        model_provider = data.get("model_provider", "openai")
+        if not settings.is_valid_provider(model_provider):
             return jsonify({
                 'success': False,
                 'error': f'不支持的模型供应商: {model_provider}'
@@ -578,29 +578,10 @@ def get_status():
     try:
         # 检查配置
         paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
-        deepseek_configured = bool(os.getenv('DEEPSEEK_API_KEY'))
-        ernie_configured = bool(os.getenv('ERNIE_API_KEY'))
-        
-        # 构建可用模型列表
-        available_models = [
-            {
-                'value': 'deepseek', 
-                'label': 'DeepSeek', 
-                'configured': deepseek_configured,
-                'description': 'DeepSeek V3.2'
-            },
-            {
-                'value': 'ernie', 
-                'label': '文心一言', 
-                'configured': ernie_configured,
-                'description': '百度文心大模型 4.5'
-            }
-        ]
+        available_models = settings.get_available_models()
 
         status = {
             'paddleocr_configured': paddleocr_configured,
-            'deepseek_configured': deepseek_configured,
-            'ernie_configured': ernie_configured,
             'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
@@ -1063,7 +1044,7 @@ def ai_analysis():
     TODO（后端开发者）:
         1. 从数据库查询题目详情（content_json, options_json, user_answer, knowledge_tags）
         2. 构建 prompt，将题目内容 + 用户答案 + 知识点标签传给 LLM
-        3. 调用 LLM（建议使用 llm.py 中的 init_model，支持 deepseek/ernie）
+        3. 调用 LLM（建议使用 llm.py 中的 init_model，支持 openai/anthropic）
         4. 解析 LLM 返回的结构化结果，填充 analysis 字段
         5. 可选：将分析结果缓存到数据库，避免重复分析
     """
@@ -1290,12 +1271,12 @@ def stream_chat(session_id):
     try:
         data = request.get_json(silent=True) or {}
         message = data.get('message', '').strip()
-        model_provider = data.get('model_provider', 'deepseek')
+        model_provider = data.get('model_provider', 'openai')
 
         if not message:
             return jsonify({'success': False, 'error': '消息不能为空'}), 400
 
-        if model_provider not in ('deepseek', 'ernie'):
+        if not settings.is_valid_provider(model_provider):
             return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
 
         with SessionLocal() as db:
