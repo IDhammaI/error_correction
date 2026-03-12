@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
-import { getQuestionSnippet } from '../utils.js'
+import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 
 const props = defineProps({
@@ -9,7 +9,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['go-workspace', 'push-toast', 'open-image'])
+const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
 
 // ---- 筛选条件 ----
 const filters = reactive({
@@ -134,9 +134,7 @@ const getSummary = (q) => getQuestionSnippet(q)
 
 const typesetMath = async () => {
   await nextTick()
-  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    try { await window.MathJax.typesetPromise() } catch (_) {}
-  }
+  await _typesetMath()
 }
 
 const pageButtons = computed(() => {
@@ -325,10 +323,18 @@ onBeforeUnmount(() => {
               <p class="line-clamp-3 text-sm font-bold leading-relaxed text-slate-700 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">
                 {{ getSummary(q) }}
               </p>
-              
+
               <!-- 底部元数据 -->
               <div class="mt-6 flex items-center justify-between border-t border-slate-50 pt-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:border-white/5">
-                <span class="font-mono">编号 #{{ q.id }}</span>
+                <div class="flex items-center gap-3">
+                  <span class="font-mono">编号 #{{ q.id }}</span>
+                  <span v-if="q.answer" class="flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 font-bold normal-case tracking-normal text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <i class="fa-solid fa-circle-check"></i>答案
+                  </span>
+                  <span v-if="q.user_answer" class="flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 font-bold normal-case tracking-normal text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                    <i class="fa-solid fa-pen-to-square"></i>笔记
+                  </span>
+                </div>
                 <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar-alt text-blue-500"></i> {{ q.created_at ? new Date(q.created_at).toLocaleDateString() : '未知' }}</span>
               </div>
             </div>
@@ -388,6 +394,7 @@ onBeforeUnmount(() => {
       @answer-saved="onAnswerSaved"
       @review-status-changed="onReviewStatusChanged"
       @push-toast="(type, msg) => emit('push-toast', type, msg)"
+      @start-chat="(q) => emit('start-chat', q)"
     />
   </div>
 </template>

@@ -111,3 +111,5 @@ class TestSafeJoin:
         base = str(tmp_path)
         result = _safe_join(base, "")
         assert result is None
+
+

@@ -19,11 +19,28 @@ export const ALLOWED_HTML_TAGS = [
 export const sanitizeHtml = (html) =>
   DOMPurify.sanitize(html, { ALLOWED_TAGS: ALLOWED_HTML_TAGS })
 
-/** 从题目的 content_json 中提取纯文本摘要（不截断，由 CSS line-clamp 控制显示行数） */
-export const getQuestionSnippet = (q) => {
+/** 从题目的 content_json 中提取纯文本摘要 */
+export const getQuestionSnippet = (q, maxLen = 0, fallback = '') => {
+  if (!q) return fallback
   const blocks = q.content_json || []
   const texts = blocks.filter(b => b.block_type === 'text').map(b => b.content || '')
-  return texts.join(' ').replace(/<[^>]+>/g, '')
+  const raw = texts.join(' ').replace(/<[^>]+>/g, '').trim()
+  if (!raw) return fallback
+  if (maxLen > 0 && raw.length > maxLen) return raw.slice(0, maxLen) + '…'
+  return raw
+}
+
+/** 对指定元素触发 MathJax 公式渲染 */
+export const typesetMath = async (el) => {
+  const mj = window.MathJax
+  if (!mj || typeof mj.typesetPromise !== 'function') return
+  try {
+    if (el) {
+      await mj.typesetPromise([el])
+    } else {
+      await mj.typesetPromise()
+    }
+  } catch (_) {}
 }
 
 /** 计算滚轮缩放后的 scale 值 */

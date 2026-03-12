@@ -87,6 +87,15 @@ def allowed_file(filename):
 
 def _serialize_question(q: Question) -> dict:
     """将 Question ORM 对象序列化为前端 JSON 格式"""
+    subject = None
+    if q.batch:
+        subject = q.batch.subject
+    knowledge_tags = []
+    if q.tags:
+        for mapping in q.tags:
+            if mapping.tag:
+                knowledge_tags.append(mapping.tag.tag_name)
+
     return {
         'id': q.id,
         'question_type': q.question_type,
@@ -95,16 +104,28 @@ def _serialize_question(q: Question) -> dict:
         'has_formula': q.has_formula,
         'has_image': q.has_image,
         'needs_correction': q.needs_correction,
+        'answer': q.answer,
+        'subject': subject,
+        'knowledge_tags': knowledge_tags,
         'created_at': q.created_at.isoformat() if q.created_at else None,
+    }
+
+
+def _serialize_chat_session(session) -> dict:
+    """将 ChatSession ORM 对象序列化为前端 JSON"""
+    return {
+        'id': session.id,
+        'question_id': session.question_id,
+        'created_at': session.created_at.isoformat() if session.created_at else None,
+        'updated_at': session.updated_at.isoformat() if session.updated_at else None,
     }
 
 
 def _serialize_question_detail(q: Question) -> dict:
     """将 Question ORM 对象序列化为详情 JSON（含科目、标签、答案等）"""
     base = _serialize_question(q)
-    base['subject'] = q.batch.subject if q.batch else None
+    # subject / knowledge_tags already set by _serialize_question
     base['original_filename'] = q.batch.original_filename if q.batch else None
-    base['knowledge_tags'] = [m.tag.tag_name for m in (q.tags or []) if m.tag]
     base['user_answer'] = q.user_answer
     base['updated_at'] = q.updated_at.isoformat() if q.updated_at else None
     base['review_status'] = q.review_status or '待复习'
@@ -965,6 +986,16 @@ def save_to_db():
         if not selected_questions:
             return jsonify({'success': False, 'error': '未找到选中的题目'}), 400
 
+        # 合并前端传来的 answer/user_answer（按 question_id 匹配）
+        answers_map = {a['question_id']: a for a in data.get('answers', []) if 'question_id' in a}
+        for sq in selected_questions:
+            qid = sq.get('question_id')
+            if qid and qid in answers_map:
+                if 'answer' in answers_map[qid]:
+                    sq['answer'] = answers_map[qid]['answer']
+                if 'user_answer' in answers_map[qid]:
+                    sq['user_answer'] = answers_map[qid]['user_answer']
+
         # 读取科目信息
         subject = None
         meta_path = os.path.join(results_dir, "split_metadata.json")
@@ -1132,6 +1163,202 @@ def export_from_db():
     except Exception as e:
         logger.exception("从数据库导出失败")
         return jsonify({'success': False, 'error': '导出失败，请稍后重试'}), 500
+
+
+# ============================================================
+# 教学辅导对话 API
+# ============================================================
+
+
+@app.route('/api/question/<int:question_id>/answer', methods=['PUT'])
+def save_question_answer(question_id):
+    """保存题目答案（Markdown 格式，用于 AI 辅导）"""
+    try:
+        data = request.get_json(silent=True) or {}
+        answer = data.get('answer')
+        if answer is None:
+            return jsonify({'success': False, 'error': '缺少 answer 字段'}), 400
+        if len(answer) > 50000:
+            return jsonify({'success': False, 'error': '答案内容过长（最多 50000 字符）'}), 400
+
+        with SessionLocal() as db:
+            question = crud.update_question_answer(db, question_id, answer)
+            if not question:
+                return jsonify({'success': False, 'error': '题目不存在'}), 404
+
+            return jsonify({
+                'success': True,
+                'message': '答案已保存',
+                'answer': question.answer,
+            })
+
+    except Exception as e:
+        logger.exception("保存答案失败")
+        return jsonify({'success': False, 'error': '保存答案失败，请稍后重试'}), 500
+
+
+@app.route('/api/question/<int:question_id>/chats', methods=['GET'])
+def get_question_chats(question_id):
+    """获取某道题目的所有对话会话"""
+    try:
+        with SessionLocal() as db:
+            sessions = crud.get_chat_sessions_by_question(db, question_id)
+            return jsonify({
+                'success': True,
+                'sessions': [_serialize_chat_session(s) for s in sessions],
+            })
+    except Exception as e:
+        logger.exception("获取对话列表失败")
+        return jsonify({'success': False, 'error': '获取对话列表失败'}), 500
+
+
+@app.route('/api/chat', methods=['POST'])
+def create_chat():
+    """创建新对话"""
+    try:
+        data = request.get_json(silent=True) or {}
+        question_id = data.get('question_id')
+        if not question_id:
+            return jsonify({'success': False, 'error': '缺少 question_id'}), 400
+
+        with SessionLocal() as db:
+            question = db.query(Question).filter(Question.id == question_id).first()
+            if not question:
+                return jsonify({'success': False, 'error': '题目不存在'}), 404
+
+            session = crud.create_chat_session(db, question_id)
+            return jsonify({
+                'success': True,
+                'session': _serialize_chat_session(session),
+            })
+
+    except Exception as e:
+        logger.exception("创建对话失败")
+        return jsonify({'success': False, 'error': '创建对话失败'}), 500
+
+
+@app.route('/api/chat/sessions', methods=['GET'])
+def get_chat_sessions():
+    """分页获取所有对话会话"""
+    try:
+        page = max(1, request.args.get('page', 1, type=int))
+        page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
+
+        with SessionLocal() as db:
+            sessions, total = crud.get_all_chat_sessions(db, page=page, page_size=page_size)
+            total_pages = (total + page_size - 1) // page_size
+
+            return jsonify({
+                'success': True,
+                'sessions': [_serialize_chat_session(s) for s in sessions],
+                'total': total,
+                'page': page,
+                'total_pages': total_pages,
+            })
+
+    except Exception as e:
+        logger.exception("获取对话会话列表失败")
+        return jsonify({'success': False, 'error': '获取对话会话列表失败'}), 500
+
+
+@app.route('/api/chat/<int:session_id>/messages', methods=['GET'])
+def get_chat_messages(session_id):
+    """游标分页获取对话消息"""
+    try:
+        limit = min(100, max(1, request.args.get('limit', 30, type=int)))
+        before_id = request.args.get('before_id', type=int)
+
+        with SessionLocal() as db:
+            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id)
+            return jsonify({
+                'success': True,
+                'messages': result['messages'],
+                'hasMore': result['hasMore'],
+            })
+
+    except Exception as e:
+        logger.exception("获取对话消息失败")
+        return jsonify({'success': False, 'error': '获取对话消息失败'}), 500
+
+
+@app.route('/api/chat/<int:session_id>/stream', methods=['POST'])
+def stream_chat(session_id):
+    """SSE 流式对话"""
+    from flask import Response
+    from teach_agent import stream_teach
+
+    try:
+        data = request.get_json(silent=True) or {}
+        message = data.get('message', '').strip()
+        model_provider = data.get('model_provider', 'deepseek')
+
+        if not message:
+            return jsonify({'success': False, 'error': '消息不能为空'}), 400
+
+        if model_provider not in ('deepseek', 'ernie'):
+            return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
+
+        with SessionLocal() as db:
+            from db.models import ChatSession as ChatSessionModel, QuestionTagMapping
+            from sqlalchemy.orm import selectinload
+            chat_session = db.query(ChatSessionModel).options(
+                selectinload(ChatSessionModel.question)
+                .selectinload(Question.batch),
+                selectinload(ChatSessionModel.question)
+                .selectinload(Question.tags)
+                .selectinload(QuestionTagMapping.tag),
+            ).filter(ChatSessionModel.id == session_id).first()
+            if not chat_session:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+
+            question = chat_session.question
+            if not question:
+                return jsonify({'success': False, 'error': '关联题目不存在'}), 404
+
+            # 序列化题目数据
+            q_data = _serialize_question(question)
+
+            # 加载历史消息（最近 20 条）
+            history_result = crud.get_chat_messages(db, session_id, limit=20)
+            history = [{"role": m["role"], "content": m["content"]} for m in history_result["messages"]]
+
+            # 追加用户消息
+            history.append({"role": "user", "content": message})
+            crud.add_chat_message(db, session_id, "user", message)
+
+        def generate():
+            full_response = []
+            try:
+                for token in stream_teach(
+                    question=q_data,
+                    messages=history,
+                    provider=model_provider,
+                ):
+                    full_response.append(token)
+                    yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                logger.exception("流式对话错误")
+                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+            # 保存完整的 assistant 回复
+            assistant_content = "".join(full_response)
+            if assistant_content:
+                try:
+                    with SessionLocal() as db:
+                        crud.add_chat_message(db, session_id, "assistant", assistant_content)
+                except Exception as e:
+                    logger.error(f"保存 assistant 回复失败: {e}")
+
+            yield f"data: {json.dumps({'done': True})}\n\n"
+
+        resp = Response(generate(), mimetype='text/event-stream')
+        resp.headers['Cache-Control'] = 'no-cache'
+        resp.headers['X-Accel-Buffering'] = 'no'
+        return resp
+
+    except Exception as e:
+        logger.exception("流式对话失败")
+        return jsonify({'success': False, 'error': '对话失败，请稍后重试'}), 500
 
 
 if __name__ == '__main__':
