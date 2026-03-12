@@ -25,7 +25,7 @@ class TestSaveQuestions:
         out = str(tmp_path / "questions.json")
         questions = [{"question_id": "1", "content_blocks": []}]
 
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             result = save_questions.invoke({
                 "questions": questions,
                 "output_path": out,
@@ -41,7 +41,7 @@ class TestSaveQuestions:
         q1 = [{"question_id": "1", "content_blocks": []}]
         q2 = [{"question_id": "2", "content_blocks": []}]
 
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             save_questions.invoke({"questions": q1, "output_path": out})
             save_questions.invoke({"questions": q2, "output_path": out})
 
@@ -53,7 +53,7 @@ class TestSaveQuestions:
         out = str(tmp_path / "questions.json")
         questions = [{"question_id": "1", "content_blocks": []}]
 
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             save_questions.invoke({
                 "questions": questions,
                 "subject": "高中数学",
@@ -70,7 +70,7 @@ class TestSaveQuestions:
         out = str(tmp_path / "questions.json")
         questions = [{"question_id": "1", "content_blocks": []}]
 
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             save_questions.invoke({
                 "questions": questions,
                 "subject": "",
@@ -90,7 +90,7 @@ class TestLogIssue:
     """log_issue 工具测试"""
 
     def test_basic_log(self, tmp_path):
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             result = log_issue.invoke({
                 "issue_type": "unclear_boundary",
                 "description": "第3题和第4题边界不清",
@@ -105,7 +105,7 @@ class TestLogIssue:
         assert "第3题" in line["description"]
 
     def test_with_block_info(self, tmp_path):
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             log_issue.invoke({
                 "issue_type": "missing_question_number",
                 "description": "缺少题号",
@@ -119,7 +119,7 @@ class TestLogIssue:
 
     def test_append_multiple(self, tmp_path):
         """多次调用应追加（JSONL 格式）"""
-        with patch("error_correction_agent.tools.question_tools.RESULTS_DIR", str(tmp_path)):
+        with patch("config.settings.results_dir", tmp_path):
             log_issue.invoke({"issue_type": "a", "description": "issue 1"})
             log_issue.invoke({"issue_type": "b", "description": "issue 2"})
 

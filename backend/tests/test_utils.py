@@ -12,9 +12,9 @@ from src.utils import prepare_input
 
 @pytest.fixture
 def mock_env(monkeypatch, tmp_path):
-    """设置环境变量，使用临时目录作为 PAGES_DIR"""
+    """使用临时目录作为 settings.pages_dir"""
     pages_dir = tmp_path / "pages"
-    monkeypatch.setattr("src.utils.PAGES_DIR", str(pages_dir))
+    monkeypatch.setattr("config.settings.pages_dir", pages_dir)
     return pages_dir
 
 

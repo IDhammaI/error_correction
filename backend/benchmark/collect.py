@@ -29,7 +29,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from config import PAGES_DIR, STRUCT_DIR, RESULTS_DIR
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +63,13 @@ def pdf_to_images(pdf_path: Path, max_pages: int = MAX_PAGES) -> List[str]:
     """PDF 前 max_pages 页 → 标准化 PNG，返回图片路径列表"""
     from pdf2image import convert_from_path
 
-    os.makedirs(PAGES_DIR, exist_ok=True)
+    os.makedirs(settings.pages_dir, exist_ok=True)
     images = convert_from_path(str(pdf_path), dpi=200, first_page=1, last_page=max_pages)
 
     paths = []
     stem = pdf_path.stem
     for i, img in enumerate(images):
-        out = os.path.join(PAGES_DIR, f"{stem}_page_{i + 1:03d}.png")
+        out = os.path.join(settings.pages_dir, f"{stem}_page_{i + 1:03d}.png")
         img.convert("RGB").save(out, "PNG")
         paths.append(out)
 

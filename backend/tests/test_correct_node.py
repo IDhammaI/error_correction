@@ -6,6 +6,7 @@ correct_questions_node 合并逻辑的单元测试
 
 import json
 import os
+from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
 from src.workflow import correct_questions_node
@@ -61,7 +62,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write(agent_input)
 
-        with patch("src.workflow.RESULTS_DIR", results_dir):
+        with patch("config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1, q2, q3]}
             result = correct_questions_node(state)
 
@@ -88,7 +89,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write("{}")
 
-        with patch("src.workflow.RESULTS_DIR", results_dir):
+        with patch("config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1]}
             result = correct_questions_node(state)
 
