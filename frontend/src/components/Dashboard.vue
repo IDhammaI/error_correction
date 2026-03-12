@@ -19,13 +19,13 @@ const props = defineProps({
 
 const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
 
-// ---- 学科筛选 ----
-const subjects = ref([])
-const selectedSubject = ref('')  // '' = 全部学科
-
 // ---- 统计数据 ----
 const stats = ref(null)
 const statsLoading = ref(false)
+
+// ---- 学科筛选 ----
+const selectedSubject = ref('')  // '' = 全部学科
+const subjects = computed(() => stats.value?.subjects || [])
 
 // ---- 待复习题目列表 ----
 const reviewItems = ref([])
@@ -61,7 +61,6 @@ const loadStats = async () => {
   try {
     const data = await api.fetchDashboardStats(selectedSubject.value || undefined)
     stats.value = data
-    if (data.subjects) subjects.value = data.subjects
   } catch (e) {
     emit('push-toast', 'error', '加载统计数据失败')
   } finally {
@@ -90,7 +89,6 @@ const loadAll = () => { loadStats(); loadReviewItems() }
 // ---- 学科切换 ----
 watch(selectedSubject, () => {
   loadAll()
-  nextTick(initCharts)
 })
 
 // ---- 图表初始化 ----
@@ -347,7 +345,7 @@ const closeAiModal = () => {
 
 // ---- 生命周期 ----
 watch(() => props.visible, (v) => {
-  if (v) { loadAll(); nextTick(initCharts) }
+  if (v) loadAll()
 })
 
 watch(() => [props.theme, stats.value], () => {

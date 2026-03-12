@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 from db.models import UploadBatch, Question, KnowledgeTag, QuestionTagMapping, ChatSession, ChatMessage
 
 
+def _filter_by_subject(query, subject: Optional[str]):
+    """如有学科筛选，为 Question 查询追加 JOIN UploadBatch 过滤"""
+    if subject:
+        return query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    return query
+
+
 def _parse_tag_list(knowledge_tag: str) -> List[str]:
     """将逗号分隔的标签字符串拆分为去空白的非空列表"""
     return [t.strip() for t in knowledge_tag.split(',') if t.strip()]
@@ -191,9 +198,7 @@ def get_all_tags(db: Session, subject: Optional[str] = None) -> List[KnowledgeTa
 
 def get_statistics(db: Session, subject: Optional[str] = None) -> Dict[str, Any]:
     """获取统计信息"""
-    q_query = db.query(func.count(Question.id))
-    if subject:
-        q_query = q_query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    q_query = _filter_by_subject(db.query(func.count(Question.id)), subject)
     total_questions = q_query.scalar()
 
     total_batches = db.query(func.count(UploadBatch.id)).scalar()
@@ -505,16 +510,14 @@ def update_review_status(db: Session, question_id: int, review_status: str) -> O
 
 def get_review_status_stats(db: Session, subject: Optional[str] = None) -> Dict[str, int]:
     """按复习状态分组统计数量"""
-    query = db.query(
+    query = _filter_by_subject(db.query(
         Question.review_status,
         func.count(Question.id)
-    )
-    if subject:
-        query = query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    ), subject)
 
     rows = query.group_by(Question.review_status).all()
 
-    result = {'待复习': 0, '复习中': 0, '已掌握': 0}
+    result = {s: 0 for s in VALID_REVIEW_STATUSES}
     for status, count in rows:
         key = status or '待复习'
         if key in result:
@@ -533,26 +536,22 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) 
     date_expr = func.date(Question.created_at)
 
     # 新增题目数
-    query = db.query(
+    query = _filter_by_subject(db.query(
         date_expr.label('date'),
         func.count(Question.id).label('count')
-    ).filter(Question.created_at >= cutoff)
-    if subject:
-        query = query.join(UploadBatch).filter(UploadBatch.subject == subject)
+    ).filter(Question.created_at >= cutoff), subject)
     rows = query.group_by(date_expr).order_by(date_expr).all()
     date_map = {str(row.date): row.count for row in rows}
 
     # 每日新增已掌握数（按 updated_at 统计）
     mastered_date_expr = func.date(Question.updated_at)
-    mq = db.query(
+    mq = _filter_by_subject(db.query(
         mastered_date_expr.label('date'),
         func.count(Question.id).label('count')
     ).filter(
         Question.updated_at >= cutoff,
         Question.review_status == '已掌握',
-    )
-    if subject:
-        mq = mq.join(UploadBatch).filter(UploadBatch.subject == subject)
+    ), subject)
     mastered_rows = mq.group_by(mastered_date_expr).order_by(mastered_date_expr).all()
     mastered_map = {str(row.date): row.count for row in mastered_rows}
 
@@ -600,10 +599,10 @@ def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int 
     tag_totals = {}
     for tag_name, status, count in rows:
         if tag_name not in tag_data:
-            tag_data[tag_name] = {'tag_name': tag_name, '待复习': 0, '复习中': 0, '已掌握': 0}
+            tag_data[tag_name] = {'tag_name': tag_name, **{s: 0 for s in VALID_REVIEW_STATUSES}}
             tag_totals[tag_name] = 0
         key = status or '待复习'
-        if key in ('待复习', '复习中', '已掌握'):
+        if key in VALID_REVIEW_STATUSES:
             tag_data[tag_name][key] += count
         else:
             tag_data[tag_name]['待复习'] += count
