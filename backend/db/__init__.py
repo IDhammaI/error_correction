@@ -32,7 +32,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def _migrate_schema():
     """轻量级自动迁移：为已有表补充新列"""
     import sqlite3
-    conn = sqlite3.connect(settings.db_path)
+    conn = sqlite3.connect(str(settings.db_path))
     try:
         cursor = conn.cursor()
         # 检查 questions 表是否有 answer 列

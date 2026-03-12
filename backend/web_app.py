@@ -735,8 +735,9 @@ def get_stats():
     获取知识点统计信息
     """
     try:
+        subject = request.args.get('subject', type=str) or None
         with SessionLocal() as db:
-            stats = crud.get_knowledge_stats(db)
+            stats = crud.get_knowledge_stats(db, subject=subject)
             return jsonify({
                 'success': True,
                 'stats': stats,

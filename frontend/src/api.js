@@ -115,8 +115,10 @@ export async function fetchQuestionTypes() {
   throw new Error((data && data.error) || '获取题型列表失败')
 }
 
-export async function fetchTagNames() {
-  const resp = await fetch('/api/stats')
+export async function fetchTagNames(subject) {
+  const qs = new URLSearchParams()
+  if (subject) qs.set('subject', subject)
+  const resp = await fetch(`/api/stats?${qs}`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
   if (data && data.success) return (data.stats || []).map(s => s.tag_name)
