@@ -4,6 +4,7 @@ import * as api from '../api.js'
 import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 import AiAnalysisModal from './AiAnalysisModal.vue'
+import CustomSelect from './CustomSelect.vue'
 
 // 答案内联编辑
 const answerEditId = ref(null)
@@ -87,11 +88,10 @@ const loadReviewItems = async () => {
 const loadAll = () => { loadStats(); loadReviewItems() }
 
 // ---- 学科切换 ----
-const onSubjectChange = (val) => {
-  selectedSubject.value = val
+watch(selectedSubject, () => {
   loadAll()
   nextTick(initCharts)
-}
+})
 
 // ---- 图表初始化 ----
 const initCharts = async () => {
@@ -383,18 +383,8 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex items-center gap-3">
           <!-- 学科筛选器 -->
-          <div v-if="subjects.length" class="relative">
-            <select
-              :value="selectedSubject"
-              @change="onSubjectChange($event.target.value)"
-              class="h-10 appearance-none rounded-xl border border-slate-200/60 bg-white/80 pl-3 pr-8 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-xl transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-[#0A0A0F]/60 dark:text-slate-300"
-            >
-              <option value="">全部学科</option>
-              <option v-for="s in subjects" :key="s" :value="s">{{ s }}</option>
-            </select>
-            <i class="fa-solid fa-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400"></i>
-          </div>
-          <button @click="emit('go-workspace')" class="btn-primary group h-12 px-8 shadow-xl shadow-blue-500/20">
+          <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+          <button @click="emit('go-workspace')" class="btn-primary group h-11 px-8 shadow-xl shadow-blue-500/20">
             <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
           </button>
         </div>
