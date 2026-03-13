@@ -29,6 +29,11 @@ const snippet = computed(() => getQuestionSnippet(props.question, 0, '未知题�
 
 let abortCtrl = null
 let scrollRafId = null
+const mdCache = new Map()
+const cachedRenderMarkdown = (text) => {
+  if (!mdCache.has(text)) mdCache.set(text, renderMarkdown(text))
+  return mdCache.get(text)
+}
 const scrollToBottom = async () => {
   await nextTick()
   if (scrollRafId) return
@@ -155,12 +160,10 @@ const onKeydown = (e) => {
   }
 }
 
-onMounted(() => {
-  loadHistory()
-  typesetMath(snippetEl.value)
-})
+onMounted(loadHistory)
 watch(() => props.sessionId, () => {
   abortCtrl?.abort()
+  mdCache.clear()
   loadHistory()
 })
 watch(snippet, async () => {
@@ -268,7 +271,7 @@ onBeforeUnmount(() => {
                 : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
             "
           >
-            <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap" v-html="renderMarkdown(msg.content)"></div>
+            <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap" v-html="cachedRenderMarkdown(msg.content)"></div>
             <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
 
             <!-- 流式加载指示器 -->
