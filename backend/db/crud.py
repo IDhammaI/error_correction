@@ -775,6 +775,9 @@ def get_chat_sessions_by_question(db: Session, question_id: int, limit: int = 50
 # ============================================================
 
 
+MAX_SPLIT_RECORDS = 20
+
+
 def save_split_record(
     db: Session,
     subject: Optional[str],
@@ -782,7 +785,7 @@ def save_split_record(
     file_names: List[str],
     questions: List[Dict],
 ) -> SplitRecord:
-    """保存一次分割操作的完整结果"""
+    """保存一次分割操作的完整结果，超过上限自动清理最旧记录"""
     record = SplitRecord(
         subject=subject,
         model_provider=model_provider,
@@ -794,11 +797,34 @@ def save_split_record(
     try:
         db.commit()
         db.refresh(record)
+        _cleanup_old_split_records(db)
         return record
     except Exception as e:
         db.rollback()
         logger.error(f"保存分割记录失败: {e}")
         raise
+
+
+def _cleanup_old_split_records(db: Session):
+    """删除超出上限的最旧分割记录"""
+    count = db.query(func.count(SplitRecord.id)).scalar()
+    if count <= MAX_SPLIT_RECORDS:
+        return
+    overflow = count - MAX_SPLIT_RECORDS
+    old_ids = [
+        row[0] for row in
+        db.query(SplitRecord.id)
+        .order_by(SplitRecord.created_at.asc())
+        .limit(overflow)
+        .all()
+    ]
+    try:
+        db.query(SplitRecord).filter(SplitRecord.id.in_(old_ids)).delete(synchronize_session=False)
+        db.commit()
+        logger.info(f"已清理 {overflow} 条过期分割记录")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"清理分割记录失败: {e}")
 
 
 def get_recent_split_records(db: Session, limit: int = 10) -> List[SplitRecord]:
