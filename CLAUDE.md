@@ -74,6 +74,7 @@ cd frontend && npm install               # 前端（Node 18+）
 - **`backend/src/workflow.py`** — LangGraph StateGraph 主工作流，串联所有处理步骤
 - **`backend/error_correction_agent/`** — 题目分割 + OCR 纠错 Agent（`create_agent` 工厂函数）
 - **`backend/solve_agent/`** — 独立的解题 Agent
+- **`backend/teach_agent/`** — 教学讲解 Agent，用于 AI 分析功能
 - **`backend/web_app.py`** — Flask 主应用，路由 + 全局会话状态（`session_lock` 保护）
 - **`backend/config.py`** — 所有运行时路径集中管理，`ensure_dirs()` 显式初始化
 - **`backend/llm.py`** — `init_model()` 统一 LLM 初始化，支持 deepseek / ernie
@@ -83,8 +84,11 @@ cd frontend && npm install               # 前端（Node 18+）
 ### Flask 路由
 
 - `GET /` → 介绍页 | `GET /app` → Vue 工作台
-- `POST /api/upload` / `/api/split` / `/api/export` / `/api/cancel_file` — 业务 API
+- `POST /api/upload` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API
 - `GET /api/status` — 系统状态（OCR 配置、可用模型列表）
+- `/api/error-bank` / `/api/subjects` / `/api/question-types` / `/api/stats` — 错题库 CRUD + 统计
+- `/api/chat` / `/api/chat/<id>/messages` / `/api/chat/<id>/stream` — AI 对话（SSE 流式）
+- `/api/ai-analysis` — AI 分析（teach_agent）
 
 ---
 
