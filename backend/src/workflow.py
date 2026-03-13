@@ -43,6 +43,7 @@ class WorkflowState(TypedDict, total=False):
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
     model_provider: str                  # 模型供应商: "deepseek" | "ernie"
+    warnings: List[str]                  # 步骤警告信息（供前端展示）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -356,7 +357,10 @@ def split_questions_node(state: WorkflowState) -> dict:
     if not ocr_data:
         logger.error("OCR 解析失败，无数据返回")
         console.print("[red]⚠ OCR 解析失败[/red]")
-        return {"questions": []}
+        return {
+            "questions": [],
+            "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
+        }
 
     # 保存 agent_input.json（供纠错节点使用）
     agent_input_path = os.path.join(results_dir, "agent_input.json")
@@ -474,11 +478,14 @@ def split_questions_node(state: WorkflowState) -> dict:
     if deduped:
         logger.info(f"分割完成: 共 {len(deduped)} 道题目, 总耗时 {total_elapsed:.2f}s")
         console.print(f"[bold green]✓ 成功分割 {len(deduped)} 道题目 (总耗时 {total_elapsed:.1f}s)[/bold green]")
+        return {"questions": deduped}
     else:
         logger.warning("未生成任何题目，请检查执行日志")
         console.print("[yellow]⚠ 未生成任何题目[/yellow]")
-
-    return {"questions": deduped}
+        return {
+            "questions": [],
+            "warnings": ["步骤 3（分割题目）失败：AI 未能从图片中识别出题目，请确认图片内容包含试题"],
+        }
 
 
 def correct_questions_node(state: WorkflowState) -> dict:
