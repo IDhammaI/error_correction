@@ -44,6 +44,7 @@ class WorkflowState(TypedDict, total=False):
     output_path: str                     # 导出文件路径
     model_provider: str                  # 模型供应商: "openai" | "anthropic"
     model_name: str                      # 用户选择的具体模型名称（可选，None 时使用 provider 默认）
+    warnings: List[str]                  # 步骤警告信息（供前端展示）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -84,7 +85,7 @@ def _run_ocr_and_simplify(file_paths: List[str]) -> List[Dict[str, Any]]:
     image_paths = [p for p in file_paths if not p.lower().endswith(".pdf")]
 
     max_retries = 3
-    retry_delays = [15, 30, 60]
+    retry_delays = [3, 5, 10]
     ocr_results = []
     last_error = None
 
@@ -358,7 +359,10 @@ def split_questions_node(state: WorkflowState) -> dict:
     if not ocr_data:
         logger.error("OCR 解析失败，无数据返回")
         console.print("[red]⚠ OCR 解析失败[/red]")
-        return {"questions": []}
+        return {
+            "questions": [],
+            "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
+        }
 
     # 保存 agent_input.json（供纠错节点使用）
     agent_input_path = os.path.join(results_dir, "agent_input.json")
@@ -479,11 +483,14 @@ def split_questions_node(state: WorkflowState) -> dict:
     if deduped:
         logger.info(f"分割完成: 共 {len(deduped)} 道题目, 总耗时 {total_elapsed:.2f}s")
         console.print(f"[bold green]✓ 成功分割 {len(deduped)} 道题目 (总耗时 {total_elapsed:.1f}s)[/bold green]")
+        return {"questions": deduped}
     else:
         logger.warning("未生成任何题目，请检查执行日志")
         console.print("[yellow]⚠ 未生成任何题目[/yellow]")
-
-    return {"questions": deduped}
+        return {
+            "questions": [],
+            "warnings": ["步骤 3（分割题目）失败：AI 未能从图片中识别出题目，请确认图片内容包含试题"],
+        }
 
 
 def correct_questions_node(state: WorkflowState) -> dict:

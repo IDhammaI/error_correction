@@ -391,10 +391,17 @@ const doSplit = async () => {
     const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
     questions.value = data.questions || []
     selectedIds.clear()
-    splitCompleted.value = true
-    step.value = 4
-    pushToast('success', `成功分割 ${questions.value.length} 道题目`)
-    await typesetMath()
+    if (data.warnings && data.warnings.length) {
+      for (const w of data.warnings) pushToast('warning', w, 6000)
+    }
+    if (questions.value.length > 0) {
+      splitCompleted.value = true
+      step.value = 4
+      if (!data.warnings || !data.warnings.length) {
+        pushToast('success', `成功分割 ${questions.value.length} 道题目`)
+      }
+      await typesetMath()
+    }
   } catch (e) {
     pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
