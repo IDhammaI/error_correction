@@ -414,6 +414,7 @@ def split_questions():
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
+        warnings = state.get('warnings', [])
 
         # 自动保存分割记录
         try:
@@ -433,7 +434,8 @@ def split_questions():
         return jsonify({
             'success': True,
             'message': f'成功分割 {len(questions)} 道题目',
-            'questions': questions
+            'questions': questions,
+            'warnings': warnings,
         })
 
     except Exception as e:
