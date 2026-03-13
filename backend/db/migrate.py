@@ -42,6 +42,30 @@ def migrate():
             applied += 1
             print(f"[migrate] 已添加 {table}.{column}")
 
+    # 新建表迁移
+    new_tables = [
+        ("split_records", """
+            CREATE TABLE split_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject VARCHAR(50),
+                model_provider VARCHAR(20),
+                file_names_json TEXT,
+                questions_json TEXT,
+                question_count INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """),
+    ]
+
+    for table_name, create_sql in new_tables:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        if cursor.fetchone():
+            print(f"[migrate] 表 {table_name} 已存在，跳过")
+        else:
+            cursor.execute(create_sql)
+            applied += 1
+            print(f"[migrate] 已创建表 {table_name}")
+
     conn.commit()
     conn.close()
     print(f"[migrate] 迁移完成，应用 {applied} 项变更")
