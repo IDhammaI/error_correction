@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import {
   Listbox,
   ListboxButton,
@@ -6,16 +7,41 @@ import {
   ListboxOption,
 } from '@headlessui/vue'
 
-defineProps({
+const props = defineProps({
   statusLoading: { type: Boolean, default: true },
   statusError: { type: String, default: '' },
   statusPills: { type: Array, default: () => [] },
   providerOptions: { type: Array, default: () => [] },
-  modelProvider: { type: String, default: 'openai' },
+  selectedModel: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelProvider'])
+const emit = defineEmits(['update:selectedModel'])
+
+// 构建扁平模型列表，按 provider 分组
+const modelOptions = computed(() => {
+  const items = []
+  for (const p of props.providerOptions) {
+    if (!p.models || !p.models.length) continue
+    // 添加分组标题
+    items.push({ type: 'group', label: p.label, provider: p.value })
+    for (const model of p.models) {
+      items.push({
+        type: 'model',
+        provider: p.value,
+        providerLabel: p.label,
+        model,
+        configured: p.configured,
+        isDefault: model === p.default_model,
+      })
+    }
+  }
+  return items
+})
+
+const selectedLabel = computed(() => {
+  return props.selectedModel || '选择模型'
+})
 </script>
 
 <template>
@@ -63,16 +89,16 @@ const emit = defineEmits(['update:modelProvider'])
       {{ p.label }}
     </span>
 
-    <!-- 模型下拉选择器 (玻璃态) -->
+    <!-- 模型下拉选择器 (按 provider 分组) -->
     <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
-      <Listbox :model-value="modelProvider" @update:model-value="(v) => emit('update:modelProvider', v)" :disabled="disabled">
+      <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled">
         <div class="relative">
           <ListboxButton
             class="group relative flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white/80 py-2 pl-4 pr-3 text-left text-xs font-bold text-slate-700 shadow-sm backdrop-blur-sm transition-all hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-slate-900/80 dark:text-indigo-100 dark:hover:border-indigo-500/50 dark:hover:shadow-[0_0_15px_rgba(99,102,241,0.2)]"
           >
             <div class="flex items-center gap-2">
               <i class="fa-solid fa-microchip text-blue-500 dark:text-indigo-400"></i>
-              <span class="block truncate">{{ providerOptions.find(p => p.value === modelProvider)?.label || '选择AI引擎' }}</span>
+              <span class="block max-w-[180px] truncate">{{ selectedLabel }}</span>
             </div>
             <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform group-hover:text-blue-500"></i>
           </ListboxButton>
@@ -82,38 +108,48 @@ const emit = defineEmits(['update:modelProvider'])
             leave-to-class="opacity-0"
           >
             <ListboxOptions
-              class="absolute right-0 z-50 mt-2 max-h-60 w-56 overflow-auto rounded-xl border border-slate-200/80 bg-white/95 py-2 text-base shadow-xl backdrop-blur-xl focus:outline-none sm:text-sm dark:border-white/10 dark:bg-[#0A0A0F]/95"
+              class="absolute right-0 z-50 mt-2 max-h-72 w-64 overflow-auto rounded-xl border border-slate-200/80 bg-white/95 py-2 text-base shadow-xl backdrop-blur-xl focus:outline-none sm:text-sm dark:border-white/10 dark:bg-[#0A0A0F]/95"
             >
-              <ListboxOption
-                v-for="opt in providerOptions"
-                :key="opt.value"
-                :value="opt.value"
-                :disabled="!opt.configured"
-                as="template"
-                v-slot="{ active, selected, disabled: optDisabled }"
-              >
+              <template v-for="(item, idx) in modelOptions" :key="idx">
+                <!-- 分组标题 -->
                 <li
-                  class="relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors"
-                  :class="[
-                    active ? 'bg-blue-50 dark:bg-indigo-500/10' : '',
-                    optDisabled ? 'opacity-40 cursor-not-allowed' : ''
-                  ]"
+                  v-if="item.type === 'group'"
+                  class="select-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500"
+                  :class="idx > 0 ? 'mt-1 border-t border-slate-100 pt-2 dark:border-white/5' : ''"
                 >
-                  <span 
-                    class="block truncate text-sm transition-colors" 
-                    :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
-                  >
-                    {{ opt.label }}
-                    <span v-if="opt.status && opt.status !== '配置成功'" class="ml-1 text-xs text-rose-500">({{ opt.status }})</span>
-                  </span>
-                  <span
-                    v-if="selected"
-                    class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-indigo-400"
-                  >
-                    <i class="fa-solid fa-check text-sm shadow-blue-500"></i>
-                  </span>
+                  {{ item.label }}
                 </li>
-              </ListboxOption>
+                <!-- 模型选项 -->
+                <ListboxOption
+                  v-else
+                  :value="item.model"
+                  :disabled="!item.configured"
+                  as="template"
+                  v-slot="{ active, selected, disabled: optDisabled }"
+                >
+                  <li
+                    class="relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors"
+                    :class="[
+                      active ? 'bg-blue-50 dark:bg-indigo-500/10' : '',
+                      optDisabled ? 'opacity-40 cursor-not-allowed' : ''
+                    ]"
+                  >
+                    <span
+                      class="block truncate text-sm transition-colors"
+                      :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
+                    >
+                      {{ item.model }}
+                      <span v-if="item.isDefault" class="ml-1 text-[10px] text-slate-400 dark:text-slate-500">默认</span>
+                    </span>
+                    <span
+                      v-if="selected"
+                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-indigo-400"
+                    >
+                      <i class="fa-solid fa-check text-sm shadow-blue-500"></i>
+                    </span>
+                  </li>
+                </ListboxOption>
+              </template>
             </ListboxOptions>
           </transition>
         </div>

@@ -146,7 +146,7 @@ def log_issue(issue_type: str, description: str, block_info: Dict[str, Any] = No
 
 
 @tool(parse_docstring=True)
-def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "openai") -> str:
+def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model_provider: str = "openai", model_name: str = "") -> str:
     """对一批OCR数据进行题目分割，返回结构化题目列表JSON
 
     将1-2页的OCR数据发送给内层分割智能体（create_agent + ToolStrategy），
@@ -157,11 +157,12 @@ def split_batch(ocr_data: str, subject: str = "", existing_tags: str = "", model
         subject: 试卷所属科目（如 "高中数学"、"初中物理"），用于辅助知识点标注
         existing_tags: 前面批次已使用的知识点标签，用逗号分隔（如 "复数,集合,立体几何"），用于保持标签一致性
         model_provider: 模型供应商，"openai"（默认）或 "anthropic"
+        model_name: 指定模型名称（可选），为空时使用 provider 默认模型
 
     Returns:
         题目列表的JSON字符串，如 '[{"question_id": "1", ...}, ...]'
     """
-    logger.info(f"split_batch called (provider={model_provider})")
+    logger.info(f"split_batch called (provider={model_provider}, model={model_name or 'default'})")
 
     tags_instruction = ""
     if subject.strip() or existing_tags.strip():
@@ -185,8 +186,13 @@ OCR数据：
 
     from ..agent import invoke_split
 
+    effective_model = model_name if model_name else None
+
     try:
-        structured = _retry_invoke(invoke_split, prompt, model_provider, "split_batch")
+        structured = _retry_invoke(
+            lambda p, provider: invoke_split(p, provider=provider, model_name=effective_model),
+            prompt, model_provider, "split_batch",
+        )
         questions = [q.model_dump() for q in structured.questions]
         logger.info(f"split_batch done: {len(questions)} questions")
         return json.dumps(questions, ensure_ascii=False)
@@ -196,7 +202,7 @@ OCR数据：
 
 
 @tool(parse_docstring=True)
-def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "openai") -> str:
+def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "openai", model_name: str = "") -> str:
     """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
 
     将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
@@ -206,13 +212,16 @@ def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "
         questions_json: 待纠错题目列表的JSON字符串
         ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
         model_provider: 模型供应商，"openai"（默认）或 "anthropic"
+        model_name: 指定模型名称（可选），为空时使用 provider 默认模型
 
     Returns:
         纠错后的题目列表JSON字符串
     """
-    logger.info(f"correct_batch called (provider={model_provider})")
+    logger.info(f"correct_batch called (provider={model_provider}, model={model_name or 'default'})")
 
     from ..agent import invoke_correction
+
+    effective_model = model_name if model_name else None
 
     prompt = f"""请修复以下题目中的 OCR 错误。
 
@@ -226,7 +235,10 @@ def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "
 请逐题修复标记的 OCR 问题，输出纠错后的结构化数据。"""
 
     try:
-        structured = _retry_invoke(invoke_correction, prompt, model_provider, "correct_batch")
+        structured = _retry_invoke(
+            lambda p, provider: invoke_correction(p, provider=provider, model_name=effective_model),
+            prompt, model_provider, "correct_batch",
+        )
         corrected = [q.model_dump() for q in structured.corrected_questions]
         logger.info(f"correct_batch done: {len(corrected)} questions corrected")
         return json.dumps(corrected, ensure_ascii=False)

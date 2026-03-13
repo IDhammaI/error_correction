@@ -1,4 +1,7 @@
 import logging
+import os
+import re
+import threading
 import time
 from pathlib import Path
 
@@ -42,9 +45,28 @@ class LLMProviderConfig(BaseSettings):
     def configured(self) -> bool:
         return bool(self.api_key)
 
-    def _ping(self):
-        """发起轻量 API 请求验证连通性（子类实现），成功无异常，失败抛异常"""
+    def _build_client_kwargs(self, timeout: int = 10) -> dict:
+        """构建 SDK 客户端参数（子类共用）"""
+        kwargs = {"api_key": self.api_key, "timeout": timeout}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        return kwargs
+
+    def _create_raw_client(self, timeout: int = 10):
+        """创建原生 SDK 客户端（子类实现）"""
         raise NotImplementedError
+
+    def list_models(self) -> list[str]:
+        """通过 API 获取可用模型列表，失败时返回空列表"""
+        if not self.api_key:
+            return []
+        try:
+            client = self._create_raw_client(timeout=10)
+            result = client.models.list()
+            return sorted([m.id for m in result.data])
+        except Exception as e:
+            logger.warning("%s 获取模型列表失败: %s", type(self).__name__, e)
+            return []
 
     def check_connection(self) -> str:
         """测试 API 连通性（带缓存）
@@ -61,7 +83,7 @@ class LLMProviderConfig(BaseSettings):
             return cache[0]
 
         try:
-            self._ping()
+            self._create_raw_client(timeout=5)
             result = "配置成功"
         except Exception as e:
             logger.warning("%s 连通性检测失败: %s", type(self).__name__, e)
@@ -95,12 +117,9 @@ class OpenAICompatibleConfig(LLMProviderConfig):
     model_config = SettingsConfigDict(env_prefix="OPENAI_", env_file=_ENV_FILE, extra="ignore")
     model_name: str = "gpt-4o-mini"
 
-    def _ping(self):
+    def _create_raw_client(self, timeout: int = 10):
         from openai import OpenAI
-        kwargs = {"api_key": self.api_key, "timeout": 5}
-        if self.base_url:
-            kwargs["base_url"] = self.base_url
-        OpenAI(**kwargs).models.list(limit=1)
+        return OpenAI(**self._build_client_kwargs(timeout))
 
     def create_llm(self, *, model: str, temperature: float):
         from langchain_openai import ChatOpenAI
@@ -115,12 +134,9 @@ class AnthropicCompatibleConfig(LLMProviderConfig):
     model_config = SettingsConfigDict(env_prefix="ANTHROPIC_", env_file=_ENV_FILE, extra="ignore")
     model_name: str = "claude-sonnet-4-20250514"
 
-    def _ping(self):
+    def _create_raw_client(self, timeout: int = 10):
         from anthropic import Anthropic
-        kwargs = {"api_key": self.api_key, "timeout": 5}
-        if self.base_url:
-            kwargs["base_url"] = self.base_url
-        Anthropic(**kwargs).models.list(limit=1)
+        return Anthropic(**self._build_client_kwargs(timeout))
 
     def create_llm(self, *, model: str, temperature: float):
         from langchain_anthropic import ChatAnthropic
@@ -207,23 +223,128 @@ class Settings(BaseSettings):
     def is_valid_provider(self, name: str) -> bool:
         return self._normalize_provider(name) in self.llm_providers
 
+    def reload_providers(self) -> None:
+        """热重载 LLM 供应商配置（从更新后的环境变量重新读取）
+
+        就地替换 llm_providers 字典值，保持 settings 对象引用不变。
+        同时清除 agent 缓存和连接缓存。
+        """
+        self.llm_providers["openai"] = OpenAICompatibleConfig()
+        self.llm_providers["anthropic"] = AnthropicCompatibleConfig()
+
+        # 清除 agent 缓存
+        try:
+            from error_correction_agent.agent import _agent_cache, _agent_cache_lock
+            with _agent_cache_lock:
+                _agent_cache.clear()
+        except ImportError:
+            pass
+
+    def get_config_for_ui(self) -> dict:
+        """返回可编辑配置项（API key 脱敏），供前端设置界面使用"""
+        openai_cfg = self.llm_providers["openai"]
+        anthropic_cfg = self.llm_providers["anthropic"]
+
+        return {
+            "openai": {
+                "api_key_set": bool(openai_cfg.api_key),
+                "api_key_hint": _mask_secret(openai_cfg.api_key),
+                "base_url": openai_cfg.base_url or "",
+                "model_name": openai_cfg.model_name or "",
+                "light_model_name": openai_cfg.light_model_name or "",
+            },
+            "anthropic": {
+                "api_key_set": bool(anthropic_cfg.api_key),
+                "api_key_hint": _mask_secret(anthropic_cfg.api_key),
+                "base_url": anthropic_cfg.base_url or "",
+                "model_name": anthropic_cfg.model_name or "",
+            },
+            "paddleocr": {
+                "api_url": os.getenv("PADDLEOCR_API_URL", ""),
+                "api_token_set": bool(os.getenv("PADDLEOCR_API_TOKEN")),
+                "api_token_hint": _mask_secret(os.getenv("PADDLEOCR_API_TOKEN", "")),
+                "model": os.getenv("PADDLEOCR_MODEL", "PaddleOCR-VL-1.5"),
+                "use_doc_orientation": os.getenv("PADDLEOCR_USE_DOC_ORIENTATION", "false").lower() == "true",
+                "use_doc_unwarping": os.getenv("PADDLEOCR_USE_DOC_UNWARPING", "false").lower() == "true",
+                "use_chart_recognition": os.getenv("PADDLEOCR_USE_CHART_RECOGNITION", "false").lower() == "true",
+            },
+        }
+
     def get_available_models(self) -> list[dict]:
-        """返回可用模型列表，供 /api/status 等接口使用（含连通性检测）"""
+        """返回可用模型列表，供 /api/status 等接口使用（含连通性检测 + 模型列表）"""
         from concurrent.futures import ThreadPoolExecutor
 
         items = list(self.llm_providers.items())
+
+        def _check_and_list(kv):
+            key, cfg = kv
+            status = cfg.check_connection()
+            models = cfg.list_models() if status == "配置成功" else []
+            return status, models
+
         with ThreadPoolExecutor(max_workers=len(items)) as pool:
-            statuses = list(pool.map(lambda kv: kv[1].check_connection(), items))
+            results = list(pool.map(_check_and_list, items))
+
+        provider_labels = {"openai": "OpenAI", "anthropic": "Anthropic"}
 
         return [
             {
                 "value": key,
-                "label": cfg.model_name,
+                "label": provider_labels.get(key, key),
                 "configured": status == "配置成功",
                 "status": status or "未配置",
+                "default_model": cfg.model_name,
+                "models": models if models else [cfg.model_name],
             }
-            for (key, cfg), status in zip(items, statuses)
+            for (key, cfg), (status, models) in zip(items, results)
         ]
+
+
+def _mask_secret(value: str, visible: int = 4) -> str:
+    """脱敏显示密钥：仅保留末尾几位"""
+    if not value:
+        return ""
+    if len(value) <= visible:
+        return "*" * len(value)
+    return "*" * 4 + value[-visible:]
+
+
+_env_file_lock = threading.Lock()
+
+
+def update_env_file(updates: dict[str, str]) -> None:
+    """安全写入 .env 文件
+
+    读取现有内容 → 按行匹配 KEY= 替换 → 不存在的键追加 → 写回文件。
+    写入后调用 load_dotenv(override=True) 刷新 os.environ。
+    使用锁保护并发写入。
+    """
+    from dotenv import load_dotenv
+
+    env_path = _ENV_FILE
+    with _env_file_lock:
+        lines = []
+        if env_path.exists():
+            lines = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+        remaining = dict(updates)
+
+        new_lines = []
+        for line in lines:
+            stripped = line.strip()
+            match = re.match(r'^#?\s*([A-Z_][A-Z0-9_]*)=', stripped)
+            if match and match.group(1) in remaining:
+                key = match.group(1)
+                val = remaining.pop(key)
+                new_lines.append(f"{key}={val}\n")
+            else:
+                new_lines.append(line if line.endswith("\n") else line + "\n")
+
+        for key, val in remaining.items():
+            new_lines.append(f"{key}={val}\n")
+
+        env_path.write_text("".join(new_lines), encoding="utf-8")
+        load_dotenv(env_path, override=True)
 
 
 settings = Settings()

@@ -43,6 +43,7 @@ class WorkflowState(TypedDict, total=False):
     selected_ids: List[str]              # 用户选中的题目 ID
     output_path: str                     # 导出文件路径
     model_provider: str                  # 模型供应商: "openai" | "anthropic"
+    model_name: str                      # 用户选择的具体模型名称（可选，None 时使用 provider 默认）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -338,6 +339,7 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     file_paths = state["image_paths"]
     model_provider = state.get("model_provider", "openai")
+    model_name = state.get("model_name")
 
     # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
@@ -409,12 +411,15 @@ def split_questions_node(state: WorkflowState) -> dict:
         """在线程中调用 split_batch 并存储结果（含重试）"""
         for attempt in range(1, max_batch_retries + 1):
             try:
-                result_str = split_batch.invoke({
+                invoke_kwargs = {
                     "ocr_data": json.dumps(batch_data, ensure_ascii=False),
                     "subject": subject,
                     "existing_tags": existing_tags_str,
                     "model_provider": model_provider,
-                })
+                }
+                if model_name:
+                    invoke_kwargs["model_name"] = model_name
+                result_str = split_batch.invoke(invoke_kwargs)
                 # split_batch 内部捕获异常并返回 "分割失败: ..." 字符串，
                 # 需要检测这种情况并触发重试
                 if not result_str or not result_str.startswith("["):
@@ -517,12 +522,16 @@ def correct_questions_node(state: WorkflowState) -> dict:
     from error_correction_agent.tools import correct_batch
 
     model_provider = state.get("model_provider", "openai")
+    model_name = state.get("model_name")
     flagged_json = json.dumps(flagged, ensure_ascii=False)
-    result_str = correct_batch.invoke({
+    correct_kwargs = {
         "questions_json": flagged_json,
         "ocr_context": ocr_context,
         "model_provider": model_provider,
-    })
+    }
+    if model_name:
+        correct_kwargs["model_name"] = model_name
+    result_str = correct_batch.invoke(correct_kwargs)
 
     # 解析纠错结果
     try:
