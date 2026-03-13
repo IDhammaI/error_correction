@@ -84,7 +84,7 @@ def _run_ocr_and_simplify(file_paths: List[str]) -> List[Dict[str, Any]]:
     image_paths = [p for p in file_paths if not p.lower().endswith(".pdf")]
 
     max_retries = 3
-    retry_delays = [15, 30, 60]
+    retry_delays = [3, 5, 10]
     ocr_results = []
     last_error = None
 
