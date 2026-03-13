@@ -451,7 +451,7 @@ def get_split_records():
     """获取最近 N 次分割历史记录，limit 由前端通过查询参数指定"""
     try:
         limit = request.args.get('limit', 10, type=int)
-        limit = max(1, min(limit, 100))  # 限制范围 1~100
+        limit = max(1, min(limit, crud.MAX_SPLIT_RECORDS))  # 上限与保留条数一致
 
         with SessionLocal() as db:
             records = crud.get_recent_split_records(db, limit)
