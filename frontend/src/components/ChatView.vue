@@ -25,7 +25,7 @@ const snippetEl = ref(null)
 const hasMore = ref(false)
 const loadingMore = ref(false)
 
-const snippet = computed(() => getQuestionSnippet(props.question, 50, '未知题目'))
+const snippet = computed(() => getQuestionSnippet(props.question, 0, '未知题目'))
 
 let abortCtrl = null
 let scrollRafId = null
