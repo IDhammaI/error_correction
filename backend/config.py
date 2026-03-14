@@ -11,6 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger(__name__)
 
 _CONNECTION_CACHE_TTL = 60  # 连通性检测缓存有效期（秒）
+_providers_lock = threading.Lock()  # 保护 llm_providers 并发读写
 
 _BACKEND_ROOT = Path(__file__).resolve().parent
 _PROJECT_ROOT = _BACKEND_ROOT.parent
@@ -215,13 +216,15 @@ class Settings(BaseSettings):
     def get_provider(self, name: str) -> LLMProviderConfig:
         """按名称获取供应商配置，不存在则抛出 ValueError"""
         key = self._normalize_provider(name)
-        if key not in self.llm_providers:
-            known = ", ".join(self.llm_providers.keys())
-            raise ValueError(f"不支持的模型供应商: {key}（可选: {known}）")
-        return self.llm_providers[key]
+        with _providers_lock:
+            if key not in self.llm_providers:
+                known = ", ".join(self.llm_providers.keys())
+                raise ValueError(f"不支持的模型供应商: {key}（可选: {known}）")
+            return self.llm_providers[key]
 
     def is_valid_provider(self, name: str) -> bool:
-        return self._normalize_provider(name) in self.llm_providers
+        with _providers_lock:
+            return self._normalize_provider(name) in self.llm_providers
 
     def reload_providers(self) -> None:
         """热重载 LLM 供应商配置（从更新后的环境变量重新读取）
@@ -229,8 +232,12 @@ class Settings(BaseSettings):
         就地替换 llm_providers 字典值，保持 settings 对象引用不变。
         同时清除 agent 缓存和连接缓存。
         """
-        self.llm_providers["openai"] = OpenAICompatibleConfig()
-        self.llm_providers["anthropic"] = AnthropicCompatibleConfig()
+        new_openai = OpenAICompatibleConfig()
+        new_anthropic = AnthropicCompatibleConfig()
+
+        with _providers_lock:
+            self.llm_providers["openai"] = new_openai
+            self.llm_providers["anthropic"] = new_anthropic
 
         # 清除 agent 缓存
         try:
@@ -252,6 +259,7 @@ class Settings(BaseSettings):
                 "base_url": openai_cfg.base_url or "",
                 "model_name": openai_cfg.model_name or "",
                 "light_model_name": openai_cfg.light_model_name or "",
+                "supports_function_calling": openai_cfg.supports_function_calling,
             },
             "anthropic": {
                 "api_key_set": bool(anthropic_cfg.api_key),

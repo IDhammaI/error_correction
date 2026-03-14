@@ -42,6 +42,7 @@ def stream_teach(
     question: Dict[str, Any],
     messages: List[Dict[str, str]],
     provider: str = "openai",
+    model_name: str | None = None,
 ) -> Generator[str, None, None]:
     """流式教学对话
 
@@ -50,6 +51,7 @@ def stream_teach(
                   subject, knowledge_tags 等字段）
         messages: 对话历史 [{"role": "user"|"assistant", "content": "..."}]
         provider: 模型供应商
+        model_name: 指定模型名称，为 None 时使用 provider 默认模型
 
     Yields:
         逐 token 的文本片段
@@ -74,7 +76,7 @@ def stream_teach(
         elif msg["role"] == "assistant":
             lc_messages.append(AIMessage(content=msg["content"]))
 
-    model = init_model(temperature=0.4, provider=provider)
+    model = init_model(temperature=0.4, provider=provider, model_name=model_name)
 
     for chunk in model.stream(lc_messages):
         token = chunk.content

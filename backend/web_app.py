@@ -635,6 +635,7 @@ def update_config():
                 'base_url': 'OPENAI_BASE_URL',
                 'model_name': 'OPENAI_MODEL_NAME',
                 'light_model_name': 'OPENAI_LIGHT_MODEL_NAME',
+                'supports_function_calling': 'OPENAI_SUPPORTS_FUNCTION_CALLING',
             },
             'anthropic': {
                 'api_key': 'ANTHROPIC_API_KEY',
@@ -1359,6 +1360,7 @@ def stream_chat(session_id):
         data = request.get_json(silent=True) or {}
         message = data.get('message', '').strip()
         model_provider = data.get('model_provider', 'openai')
+        model_name = data.get('model_name') or None
 
         if not message:
             return jsonify({'success': False, 'error': '消息不能为空'}), 400
@@ -1401,6 +1403,7 @@ def stream_chat(session_id):
                     question=q_data,
                     messages=history,
                     provider=model_provider,
+                    model_name=model_name,
                 ):
                     full_response.append(token)
                     yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"

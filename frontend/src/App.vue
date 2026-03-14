@@ -78,7 +78,9 @@ const selectedProvider = computed(() => {
   for (const p of providerOptions.value) {
     if (p.models && p.models.includes(selectedModel.value)) return p.value
   }
-  return 'openai'
+  // 找不到时回退到首个已配置的 provider，而非硬编码 'openai'
+  const configured = providerOptions.value.find(p => p.configured)
+  return configured ? configured.value : (providerOptions.value[0]?.value ?? 'openai')
 })
 
 watch(systemStatus, (newVal) => {

@@ -15,7 +15,7 @@ const saving = ref(false)
 
 // 表单数据
 const form = ref({
-  openai: { api_key: '', base_url: '', model_name: '', light_model_name: '' },
+  openai: { api_key: '', base_url: '', model_name: '', light_model_name: '', supports_function_calling: true },
   anthropic: { api_key: '', base_url: '', model_name: '' },
   paddleocr: { api_url: '', api_token: '', model: '', use_doc_orientation: false, use_doc_unwarping: false, use_chart_recognition: false },
 })
@@ -35,6 +35,7 @@ const loadConfig = async () => {
     form.value.openai.base_url = cfg.openai?.base_url || ''
     form.value.openai.model_name = cfg.openai?.model_name || ''
     form.value.openai.light_model_name = cfg.openai?.light_model_name || ''
+    form.value.openai.supports_function_calling = cfg.openai?.supports_function_calling ?? true
     form.value.openai.api_key = ''
 
     form.value.anthropic.base_url = cfg.anthropic?.base_url || ''
@@ -70,6 +71,7 @@ const saveConfig = async () => {
     oa.base_url = form.value.openai.base_url
     oa.model_name = form.value.openai.model_name
     oa.light_model_name = form.value.openai.light_model_name
+    oa.supports_function_calling = form.value.openai.supports_function_calling
     payload.openai = oa
 
     // Anthropic
@@ -178,6 +180,26 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
                 class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
               />
             </div>
+          </div>
+          <!-- Function Calling 开关 -->
+          <div class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">
+            <label class="flex cursor-pointer items-center justify-between">
+              <div>
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">支持 Function Calling</span>
+                <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">文心一言、通义千问等不支持时需关闭，否则会陷入无限循环</p>
+              </div>
+              <button
+                type="button"
+                @click="form.openai.supports_function_calling = !form.openai.supports_function_calling"
+                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                :class="form.openai.supports_function_calling ? 'bg-blue-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
+              >
+                <span
+                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
+                  :class="form.openai.supports_function_calling ? 'translate-x-5' : 'translate-x-0'"
+                ></span>
+              </button>
+            </label>
           </div>
         </div>
 
