@@ -334,25 +334,53 @@ def gram_matrix(x):
 
 # 全量Loss计算类
 class EnsExamLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, loss_config=None):
         super().__init__()
+        if loss_config is None:
+            loss_config = {}
         self.vgg_feat = VGG16Feature()
-        # LR Loss权重：Ic4, Ic2, Ic1, Ire
-        self.lambda_n = [5, 6, 8, 10]  # 原[5,6,8,10] → 缩小10倍
-        self.beta_n = [0.8, 0.8, 0.8, 2]  # 原[0.8,0.8,0.8,2] → 缩小10倍
-        # 总损失权重
-        self.lambda_lr = 1.0
-        self.lambda_p = 0.05  # 感知损失权重降低（原0.05）
-        self.lambda_style = 120  # 风格损失权重降低（原120）
-        self.lambda_sn = 1  # SN损失权重降低（原1.0）
-        self.lambda_b = 0.4  # Block损失权重降低（原0.4）
+        self.lambda_n = loss_config.get('lambda_n', [5, 6, 8, 10])
+        self.beta_n = loss_config.get('beta_n', [0.8, 0.8, 0.8, 2])
+        self.lambda_lr = loss_config.get('lambda_lr', 1.0)
+        self.lambda_p = loss_config.get('lambda_p', 0.05)
+        self.lambda_style = loss_config.get('lambda_style', 120)
+        self.lambda_sn = loss_config.get('lambda_sn', 1)
+        self.lambda_b = loss_config.get('lambda_b', 0.4)
 
     def sn_loss(self, Ms, Ms_gt):
         """SN损失"""
-        l1_sum = torch.sum(torch.abs(Ms - Ms_gt), dim=[1, 2, 3])
-        # 这里的归一化是为了解决笔迹稀疏问题
-        normalization = torch.min(torch.sum(Ms, dim=[1, 2, 3]), torch.sum(Ms_gt, dim=[1, 2, 3]))
-        return (l1_sum / (normalization + 1e-6)).mean()
+        Ms = Ms.float()
+        Ms_gt = Ms_gt.float()
+
+        # 1. 计算每个样本的 GT 字迹总面积 (Batch 维度)
+        # shape: [B]
+        sum_gt = torch.sum(Ms_gt, dim=tuple(range(1, Ms.dim())))
+
+        # 2. 创建掩码：只选择 GT 中有字迹的样本 (阈值设为 1，避免浮点误差)
+        # 如果 sum_gt > 0，则 valid_mask 为 1，否则为 0
+        valid_mask = (sum_gt > 1.0).float()
+
+        # 如果整个 Batch 都没有字迹，直接返回 0，避免除零或无效计算
+        if valid_mask.sum() == 0:
+            # 返回与输入无关的零梯度，但保持可训练
+            return Ms.sum() * 0  # 利用输入创建，保持计算图连接
+
+        # 3. 计算 L1 误差总和 [B]
+        l1_sum = torch.sum(torch.abs(Ms - Ms_gt), dim=tuple(range(1, Ms.dim())))
+
+        # 4. 计算归一化分母 [B]
+        sum_pred = torch.sum(Ms, dim=tuple(range(1, Ms.dim())))
+        normalization = torch.min(sum_pred, sum_gt)
+
+        # 5. 计算单样本 Loss
+        # 注意：这里 epsilon 可以改回 1e-6，因为 valid_mask 已经保证了 sum_gt 不为 0
+        loss_batch = l1_sum / (normalization + 1e-6)
+
+        # 6. 只对有字迹的样本求平均
+        # 乘以 valid_mask 将无字样本 loss 置零，除以 valid_mask.sum() 保证梯度尺度稳定
+        L_sn = (loss_batch * valid_mask).sum() / (valid_mask.sum() + 1e-6)
+
+        return L_sn
 
     def block_loss(self, Mb, Mb_gt):
         # 逐样本计算

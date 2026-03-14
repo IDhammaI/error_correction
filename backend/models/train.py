@@ -1,6 +1,7 @@
 # 设备
 import math
 import os
+import argparse
 
 import numpy as np
 import torch
@@ -11,6 +12,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from src.adcj.EnsExam.model import Generator, Discriminator, EnsExamLoss
+from src.adcj.EnsExam.config import config
 
 import os
 import torch
@@ -319,19 +321,62 @@ class EnsExamRealDataset(Dataset):
         # 返回：Iin, Ms_gt, Mb_gt, Igt4, Igt2, Igt1, Igt
         return Iin, Ms_gt, Mb_gt, Igt4, Igt2, Igt1, Igt
 
+
 # ====================== 3. 核心训练函数 ======================
 def train_ensexam(
-        epochs=100,
-        batch_size=4,
-        lr=0.0001,
-        device='cuda',
-        save_dir='./checkpoints',
-        resume=False,  # 是否断点续训
-        resume_path='./checkpoints/latest.pth',
-        data_root='./data',
-):
+        epochs=None,
+        batch_size=None,
+        lr=None,
+        data_root=None,
+        img_size=512,
+        save_dir=None,
+        resume_path=None,
+        resume=False,
+        num_workers=None,
+        device=None,
+        use_wandb=None):
+    train_cfg = config.train
+    loss_cfg = config.loss
+    wandb_cfg = config.wandb
+
+    epochs = epochs if epochs is not None else train_cfg.get('epochs', 100)
+    batch_size = batch_size if batch_size is not None else train_cfg.get('batch_size', 4)
+    lr = lr if lr is not None else train_cfg.get('lr', 0.0001)
+    data_root = data_root if data_root is not None else train_cfg.get('data_root', './data')
+    save_dir = save_dir if save_dir is not None else train_cfg.get('save_dir', './ensexam_checkpoints')
+    resume_path = resume_path if resume_path is not None else train_cfg.get('resume_path',
+                                                                            './ensexam_checkpoints/latest.pth')
+    num_workers = num_workers if num_workers is not None else train_cfg.get('num_workers', 4)
+    device = device if device is not None else train_cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+    use_wandb = use_wandb if use_wandb is not None else wandb_cfg.get('enabled', True)
     # 0. 初始化目录
     os.makedirs(save_dir, exist_ok=True)
+
+    wandb_run = None
+    if use_wandb:
+        try:
+            import wandb
+            wandb_cfg = config.wandb
+            if wandb_cfg.get('offline', True):
+                os.environ['WANDB_MODE'] = 'offline'
+                wandb_dir = wandb_cfg.get('dir', './wandb')
+                os.makedirs(wandb_dir, exist_ok=True)
+
+            wandb_run = wandb.init(
+                project=wandb_cfg.get('project', 'ensexam'),
+                name=wandb_cfg.get('name'),
+                entity=wandb_cfg.get('entity'),
+                dir=wandb_cfg.get('dir', './wandb'),
+                config={
+                    'train': train_cfg,
+                    'loss': loss_cfg
+                }
+            )
+            print(f"WandB 初始化成功 (离线模式: {wandb_cfg.get('offline', True)})")
+        except ImportError:
+            print("Warning: wandb 未安装，跳过 wandb 记录")
+        except Exception as e:
+            print(f"Warning: wandb 初始化失败: {e}")
 
     # 1. 数据加载
     train_dataset = EnsExamRealDataset(data_root=data_root)
@@ -346,7 +391,7 @@ def train_ensexam(
     # 2. 模型初始化
     G = Generator().to(device)
     D = Discriminator().to(device)
-    criterion = EnsExamLoss().to(device)
+    criterion = EnsExamLoss(loss_cfg).to(device)
 
     # 3. 优化器
     optimizer_G = optim.Adam(G.parameters(), lr=lr, betas=(0.5, 0.9))
@@ -369,6 +414,14 @@ def train_ensexam(
     for epoch in range(start_epoch, epochs):
         epoch_loss_G = 0.0  # 生成器总损失
         epoch_loss_D = 0.0  # 判别器总损失
+        epoch_loss_parts = {
+            'adv': 0.0,
+            'lr': 0.0,
+            'per': 0.0,
+            'style': 0.0,
+            'sn': 0.0,
+            'block': 0.0
+        }
         pbar = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs}")
 
         for batch_idx, (Iin, Ms_gt, Mb_gt, Igt4, Igt2, Igt1, Igt) in enumerate(pbar):
@@ -414,6 +467,12 @@ def train_ensexam(
             # ---------------------- 步骤3：日志记录 ----------------------
             epoch_loss_G += loss_G.item()
             epoch_loss_D += loss_D.item()
+            epoch_loss_parts['adv'] += loss_parts[0].item()
+            epoch_loss_parts['lr'] += loss_parts[1].item()
+            epoch_loss_parts['per'] += loss_parts[2].item()
+            epoch_loss_parts['style'] += loss_parts[3].item()
+            epoch_loss_parts['sn'] += loss_parts[4].item()
+            epoch_loss_parts['block'] += loss_parts[5].item()
 
             # 进度条显示
             pbar.set_postfix({
@@ -422,12 +481,30 @@ def train_ensexam(
                 'Loss_G_adv': f"{loss_parts[0].item():.4f}",
                 'Loss_G_lr': f"{loss_parts[1].item():.4f}"
             })
+            if wandb_run is not None:
+                wandb.log({
+                    'batch_loss_G': loss_G.item(),
+                    'batch_loss_D': loss_D.item(),
+                    'batch_loss_G_adv': loss_parts[0].item(),
+                    'batch_loss_G_lr': loss_parts[1].item(),
+                    'batch_loss_G_per': loss_parts[2].item(),
+                    'batch_loss_G_style': loss_parts[3].item(),
+                    'batch_loss_G_sn': loss_parts[4].item(),
+                    'batch_loss_G_block': loss_parts[5].item()
+                })
 
         # ---------------------- 步骤4：Epoch结束处理 ----------------------
         # 计算Epoch平均损失
         avg_loss_G = epoch_loss_G / len(train_loader)
         avg_loss_D = epoch_loss_D / len(train_loader)
+        avg_loss_parts = {k: v / len(train_loader) for k, v in epoch_loss_parts.items()}
         print(f"Epoch {epoch + 1} 平均损失：Loss_G={avg_loss_G:.4f}, Loss_D={avg_loss_D:.4f}")
+        if wandb_run is not None:
+            wandb.log({
+                'epoch': epoch + 1,
+                'avg_loss_G': avg_loss_G,
+                'avg_loss_D': avg_loss_D
+            })
 
         # 保存模型（每5个Epoch保存一次，同时保存最新模型）
         if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
@@ -446,20 +523,34 @@ def train_ensexam(
             torch.save(checkpoint, os.path.join(save_dir, f'ensexam_epoch_{epoch + 1}.pth'))
             print(f"模型已保存：{os.path.join(save_dir, f'ensexam_epoch_{epoch + 1}.pth')}")
 
+    if wandb_run is not None:
+        wandb.finish()
+    print("训练完成！")
+
 
 # ====================== 4. 启动训练 ======================
 if __name__ == "__main__":
-    # 设备选择
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"使用设备：{device}")
+    parser = argparse.ArgumentParser(description='EnsExam 训练')
+    parser.add_argument('--epochs', type=int, default=None, help='训练轮数')
+    parser.add_argument('--batch_size', type=int, default=None, help='批次大小')
+    parser.add_argument('--lr', type=float, default=None, help='学习率')
+    parser.add_argument('--device', type=str, default=None, help='设备 (cuda/cpu)')
+    parser.add_argument('--data_root', type=str, default=None, help='数据集路径')
+    parser.add_argument('--save_dir', type=str, default=None, help='模型保存目录')
+    parser.add_argument('--resume', action='store_true', help='断点续训')
+    parser.add_argument('--no_wandb', action='store_true', help='禁用 wandb')
+    args = parser.parse_args()
 
-    # 启动训练
+    use_wandb = not args.no_wandb
+    device = args.device
+
     train_ensexam(
-        epochs=100,
-        batch_size=4,
-        lr=0.0001,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        lr=args.lr,
         device=device,
-        save_dir='./ensexam_checkpoints',
-        resume=False,
-        data_root=r"D:\PythonProject1\LLM\adcj\src\adcj\EnsExam\SCUT-EnsExam\SCUT-EnsExam",
+        data_root=args.data_root,
+        save_dir=args.save_dir,
+        resume=args.resume,
+        use_wandb=use_wandb
     )
