@@ -53,7 +53,7 @@ def detect_subject_via_llm(ocr_text_sample: str, db_subjects: list, provider: st
     return result
 
 
-def create_inner_split_agent(provider: str = "openai"):
+def create_inner_split_agent(provider: str = "openai", model_name: str | None = None):
     """创建内层题目分割智能体
 
     使用 create_agent + ToolStrategy，保证结构化输出。
@@ -63,11 +63,12 @@ def create_inner_split_agent(provider: str = "openai"):
 
     Args:
         provider: 模型供应商，"openai" 或 "anthropic"
+        model_name: 指定模型名称，为 None 时使用 provider 默认模型
 
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
-    model = _init_model(temperature=0.1, provider=provider)
+    model = _init_model(temperature=0.1, provider=provider, model_name=model_name)
 
     return create_agent(
         model=model,
@@ -80,7 +81,7 @@ def create_inner_split_agent(provider: str = "openai"):
     )
 
 
-def create_correction_agent(provider: str = "openai"):
+def create_correction_agent(provider: str = "openai", model_name: str | None = None):
     """创建内层 OCR 纠错智能体
 
     使用 create_agent + ToolStrategy，保证结构化输出。
@@ -90,11 +91,12 @@ def create_correction_agent(provider: str = "openai"):
 
     Args:
         provider: 模型供应商，"openai" 或 "anthropic"
+        model_name: 指定模型名称，为 None 时使用 provider 默认模型
 
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
-    model = _init_model(temperature=0.0, provider=provider)
+    model = _init_model(temperature=0.0, provider=provider, model_name=model_name)
 
     return create_agent(
         model=model,
@@ -107,12 +109,13 @@ def create_correction_agent(provider: str = "openai"):
     )
 
 
-def invoke_split(prompt: str, provider: str = "openai"):
+def invoke_split(prompt: str, provider: str = "openai", model_name: str | None = None):
     """统一调用分割，屏蔽 ToolStrategy vs with_structured_output 差异
 
     Args:
         prompt: 用户 prompt
         provider: 模型供应商
+        model_name: 指定模型名称，为 None 时使用 provider 默认模型
 
     Returns:
         QuestionSplitResult 或 None
@@ -120,18 +123,18 @@ def invoke_split(prompt: str, provider: str = "openai"):
     cfg = settings.get_provider(provider)
 
     if not cfg.supports_function_calling:
-        model = _init_model(temperature=0.1, provider=provider)
+        model = _init_model(temperature=0.1, provider=provider, model_name=model_name)
         structured_model = model.with_structured_output(QuestionSplitResult)
         return structured_model.invoke([
             SystemMessage(content=SPLIT_PROMPT_LITE),
             HumanMessage(content=prompt),
         ])
     else:
-        cache_key = f"split_{provider}"
+        cache_key = f"split_{provider}_{model_name or 'default'}"
         with _agent_cache_lock:
             if cache_key not in _agent_cache:
-                logger.info(f"创建分割 Agent 实例 (provider={provider})")
-                _agent_cache[cache_key] = create_inner_split_agent(provider=provider)
+                logger.info(f"创建分割 Agent 实例 (provider={provider}, model={model_name or 'default'})")
+                _agent_cache[cache_key] = create_inner_split_agent(provider=provider, model_name=model_name)
             agent = _agent_cache[cache_key]
         response = agent.invoke(
             {"messages": [{"role": "user", "content": prompt}]},
@@ -140,12 +143,13 @@ def invoke_split(prompt: str, provider: str = "openai"):
         return response.get("structured_response")
 
 
-def invoke_correction(prompt: str, provider: str = "openai"):
+def invoke_correction(prompt: str, provider: str = "openai", model_name: str | None = None):
     """统一调用纠错，屏蔽 ToolStrategy vs with_structured_output 差异
 
     Args:
         prompt: 用户 prompt
         provider: 模型供应商
+        model_name: 指定模型名称，为 None 时使用 provider 默认模型
 
     Returns:
         CorrectionResult 或 None
@@ -153,18 +157,18 @@ def invoke_correction(prompt: str, provider: str = "openai"):
     cfg = settings.get_provider(provider)
 
     if not cfg.supports_function_calling:
-        model = _init_model(temperature=0.0, provider=provider)
+        model = _init_model(temperature=0.0, provider=provider, model_name=model_name)
         structured_model = model.with_structured_output(CorrectionResult)
         return structured_model.invoke([
             SystemMessage(content=CORRECTION_PROMPT),
             HumanMessage(content=prompt),
         ])
     else:
-        cache_key = f"correction_{provider}"
+        cache_key = f"correction_{provider}_{model_name or 'default'}"
         with _agent_cache_lock:
             if cache_key not in _agent_cache:
-                logger.info(f"创建纠错 Agent 实例 (provider={provider})")
-                _agent_cache[cache_key] = create_correction_agent(provider=provider)
+                logger.info(f"创建纠错 Agent 实例 (provider={provider}, model={model_name or 'default'})")
+                _agent_cache[cache_key] = create_correction_agent(provider=provider, model_name=model_name)
             agent = _agent_cache[cache_key]
         response = agent.invoke(
             {"messages": [{"role": "user", "content": prompt}]},

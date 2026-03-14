@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
-from config import settings
+from config import settings, update_env_file
 from db import init_db, SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
@@ -362,9 +362,10 @@ def split_questions():
     try:
         global workflow_graph, current_thread_id, session_files, session_file_order
 
-        # 读取请求体参数（模型供应商）
+        # 读取请求体参数（模型供应商 + 模型名称）
         data = request.get_json(silent=True) or {}
         model_provider = data.get("model_provider", "openai")
+        model_name = data.get("model_name")  # 可选，None 时使用 provider 默认模型
         if not settings.is_valid_provider(model_provider):
             return jsonify({
                 'success': False,
@@ -389,15 +390,17 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider}, config=config)
+        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider, "model_name": model_name}, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
+        warnings = state.get('warnings', [])
 
         return jsonify({
             'success': True,
             'message': f'成功分割 {len(questions)} 道题目',
-            'questions': questions
+            'questions': questions,
+            'warnings': warnings,
         })
 
     except Exception as e:
@@ -602,6 +605,76 @@ def get_status():
             'success': False,
             'error': '获取系统状态失败，请稍后重试'
         }), 500
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """获取当前可编辑配置（API key 脱敏）"""
+    try:
+        return jsonify({'success': True, 'config': settings.get_config_for_ui()})
+    except Exception as e:
+        logger.exception("获取配置失败")
+        return jsonify({'success': False, 'error': '获取配置失败'}), 500
+
+
+@app.route('/api/config', methods=['PUT'])
+def update_config():
+    """更新配置并热重载
+
+    接收 JSON body，结构与 GET /api/config 返回的 config 一致。
+    密钥字段不发送或发送 null 则跳过，发送空字符串则清空。
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        updates = {}
+
+        # 字段→环境变量映射
+        field_map = {
+            'openai': {
+                'api_key': 'OPENAI_API_KEY',
+                'base_url': 'OPENAI_BASE_URL',
+                'model_name': 'OPENAI_MODEL_NAME',
+                'light_model_name': 'OPENAI_LIGHT_MODEL_NAME',
+            },
+            'anthropic': {
+                'api_key': 'ANTHROPIC_API_KEY',
+                'base_url': 'ANTHROPIC_BASE_URL',
+                'model_name': 'ANTHROPIC_MODEL_NAME',
+            },
+            'paddleocr': {
+                'api_url': 'PADDLEOCR_API_URL',
+                'api_token': 'PADDLEOCR_API_TOKEN',
+                'model': 'PADDLEOCR_MODEL',
+                'use_doc_orientation': 'PADDLEOCR_USE_DOC_ORIENTATION',
+                'use_doc_unwarping': 'PADDLEOCR_USE_DOC_UNWARPING',
+                'use_chart_recognition': 'PADDLEOCR_USE_CHART_RECOGNITION',
+            },
+        }
+
+        for section, mapping in field_map.items():
+            section_data = data.get(section)
+            if not isinstance(section_data, dict):
+                continue
+            for field, env_key in mapping.items():
+                if field not in section_data:
+                    continue
+                val = section_data[field]
+                if val is None:
+                    continue
+                # 布尔值转字符串
+                if isinstance(val, bool):
+                    val = 'true' if val else 'false'
+                updates[env_key] = str(val)
+
+        if updates:
+            update_env_file(updates)
+            settings.reload_providers()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        logger.exception("更新配置失败")
+        return jsonify({'success': False, 'error': '更新配置失败，请检查日志'}), 500
 
 
 @app.route('/api/history', methods=['GET'])
@@ -910,27 +983,40 @@ def update_question_review_status(question_id):
 
 @app.route('/api/dashboard-stats', methods=['GET'])
 def get_dashboard_stats():
-    """获取 Dashboard 所需的完整统计数据"""
+    """获取 Dashboard 所需的完整统计数据，支持 ?subject= 学科筛选"""
     try:
+        subject = request.args.get('subject') or None
         with SessionLocal() as db:
+            # 可用学科列表（始终返回完整列表供筛选器使用）
+            subjects = crud.get_existing_subjects(db)
+
             # 复习状态统计
-            review_stats = crud.get_review_status_stats(db)
+            review_stats = crud.get_review_status_stats(db, subject=subject)
 
             # 总体统计
-            statistics = crud.get_statistics(db)
+            statistics = crud.get_statistics(db, subject=subject)
 
-            # 知识点标签统计 top 8
-            tag_stats = crud.get_knowledge_stats(db)[:8]
+            # 知识点标签统计 top 10（横向条形图）
+            tag_stats = crud.get_knowledge_stats(db, subject=subject, limit=10)
 
-            # 最近7天每日新增
-            daily_counts = crud.get_daily_counts(db, days=7)
+            # 知识点 × 掌握状态（堆叠柱状图）
+            tag_status_stats = crud.get_tag_status_stats(db, subject=subject, limit=10)
+
+            # 知识点 × 题型（热力图）
+            tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8)
+
+            # 最近30天每日新增 + 已掌握趋势
+            daily_counts = crud.get_daily_counts(db, days=30, subject=subject)
 
             return jsonify({
                 'success': True,
+                'subjects': subjects,
                 'review_stats': review_stats,
                 'total_questions': statistics['total_questions'],
                 'by_subject': statistics['by_subject'],
                 'tag_stats': tag_stats,
+                'tag_status_stats': tag_status_stats,
+                'tag_type_stats': tag_type_stats,
                 'daily_counts': daily_counts,
             })
 

@@ -2,6 +2,26 @@
  * API 调用层 — 集中管理所有 fetch 请求
  */
 
+export async function fetchAppConfig() {
+  const resp = await fetch('/api/config')
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.config
+  throw new Error((data && data.error) || '获取配置失败')
+}
+
+export async function updateAppConfig(config) {
+  const resp = await fetch('/api/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data
+  throw new Error((data && data.error) || '更新配置失败')
+}
+
 export async function fetchStatus() {
   const resp = await fetch('/api/status')
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -49,11 +69,13 @@ export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort 
   return xhr
 }
 
-export async function splitQuestions(modelProvider) {
+export async function splitQuestions(modelProvider, modelName) {
+  const body = { model_provider: modelProvider }
+  if (modelName) body.model_name = modelName
   const resp = await fetch('/api/split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model_provider: modelProvider }),
+    body: JSON.stringify(body),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
@@ -169,8 +191,9 @@ export async function updateReviewStatus(questionId, reviewStatus) {
   throw new Error((data && data.error) || '更新复习状态失败')
 }
 
-export async function fetchDashboardStats() {
-  const resp = await fetch('/api/dashboard-stats')
+export async function fetchDashboardStats(subject) {
+  const qs = subject ? `?subject=${encodeURIComponent(subject)}` : ''
+  const resp = await fetch(`/api/dashboard-stats${qs}`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
   if (data && data.success) return data
@@ -233,11 +256,13 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   throw new Error((data && data.error) || '获取消息失败')
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'openai', signal) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName) {
+  const body = { message, model_provider: modelProvider }
+  if (modelName) body.model_name = modelName
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, model_provider: modelProvider }),
+    body: JSON.stringify(body),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)

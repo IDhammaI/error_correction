@@ -14,6 +14,7 @@ import Dashboard from './components/Dashboard.vue'
 import CatLoading from './components/CatLoading.vue'
 import ErrorBank from './components/ErrorBank.vue'
 import ChatView from './components/ChatView.vue'
+import SettingsView from './components/SettingsView.vue'
 
 // ---- 视图路由控制 ----
 const currentView = ref('workspace') // 'workspace' | 'dashboard' | 'error-bank' | 'chat'
@@ -65,17 +66,25 @@ const toggleTheme = async (btnEl) => {
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
-const modelProvider = ref('openai')
+const selectedModel = ref('')  // 选中的具体模型名称（如 "gpt-4o-mini"）
 
 const providerOptions = computed(() => {
   const s = systemStatus.value
   return s && s.available_models ? s.available_models : []
 })
 
+// 从 selectedModel 反查 provider
+const selectedProvider = computed(() => {
+  for (const p of providerOptions.value) {
+    if (p.models && p.models.includes(selectedModel.value)) return p.value
+  }
+  return 'openai'
+})
+
 watch(systemStatus, (newVal) => {
   if (newVal && newVal.available_models) {
     const configured = newVal.available_models.find(m => m.configured)
-    if (configured) modelProvider.value = configured.value
+    if (configured) selectedModel.value = configured.default_model
   }
 })
 
@@ -84,9 +93,9 @@ const statusPills = computed(() => {
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  const activeProvider = providerOptions.value.find(p => p.value === modelProvider.value)
+  const activeProvider = providerOptions.value.find(p => p.value === selectedProvider.value)
   if (activeProvider) {
-    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? activeProvider.label : `${activeProvider.label} ${activeProvider.status}` })
+    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? selectedModel.value : `${activeProvider.label} ${activeProvider.status}` })
   }
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
@@ -379,13 +388,20 @@ const doSplit = async () => {
   step.value = 3
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
-    const data = await api.splitQuestions(modelProvider.value)
+    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
     questions.value = data.questions || []
     selectedIds.clear()
-    splitCompleted.value = true
-    step.value = 4
-    pushToast('success', `成功分割 ${questions.value.length} 道题目`)
-    await typesetMath()
+    if (data.warnings && data.warnings.length) {
+      for (const w of data.warnings) pushToast('warning', w, 6000)
+    }
+    if (questions.value.length > 0) {
+      splitCompleted.value = true
+      step.value = 4
+      if (!data.warnings || !data.warnings.length) {
+        pushToast('success', `成功分割 ${questions.value.length} 道题目`)
+      }
+      await typesetMath()
+    }
   } catch (e) {
     pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -444,7 +460,7 @@ const doReset = () => {
   questions.value = []
   selectedIds.clear()
   const configured = providerOptions.value.find(m => m.configured)
-  modelProvider.value = configured ? configured.value : 'openai'
+  selectedModel.value = configured ? configured.default_model : ''
   step.value = 1
   pushToast('success', '已重置')
 }
@@ -516,6 +532,15 @@ onBeforeUnmount(() => {
       <!-- 底部控制与返回栏 -->
       <div class="space-y-2 border-t border-slate-100 p-4 dark:border-white/5">
         <button
+          @click="currentView = 'settings'"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all"
+          :class="currentView === 'settings' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+        >
+          <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
+          系统设置
+        </button>
+
+        <button
           @click="(e) => toggleTheme(e.currentTarget)"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
@@ -523,7 +548,6 @@ onBeforeUnmount(() => {
           <span>{{ theme === 'dark' ? '浅色模式' : '深色模式' }}</span>
         </button>
 
-        <!-- 替换为带有左箭头的返回介绍页面按钮 -->
         <a
           href="/"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
@@ -549,15 +573,14 @@ onBeforeUnmount(() => {
           <i class="fa-solid fa-database mb-1 text-xl"></i>
           <span class="text-[10px] font-bold">错题库</span>
         </button>
+        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'settings' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-gear mb-1 text-xl"></i>
+          <span class="text-[10px] font-bold">设置</span>
+        </button>
         <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
           <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon'"></i>
           <span class="text-[10px] font-bold">主题</span>
         </button>
-        <!-- 移动端同步替换 -->
-        <a href="/" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
-          <i class="fa-solid fa-arrow-left-long mb-1 text-xl"></i>
-          <span class="text-[10px] font-bold">返回介绍</span>
-        </a>
       </div>
     </nav>
 
@@ -588,9 +611,9 @@ onBeforeUnmount(() => {
               :status-error="statusError"
               :status-pills="statusPills"
               :provider-options="providerOptions"
-              :model-provider="modelProvider"
+              :selected-model="selectedModel"
               :disabled="splitting || splitCompleted"
-              @update:model-provider="(v) => modelProvider = v"
+              @update:selected-model="(v) => selectedModel = v"
             />
 
             <StepIndicator :step="step" />
@@ -658,13 +681,21 @@ onBeforeUnmount(() => {
         @start-chat="openChat"
       />
 
-      <!-- 视图 4：AI 辅导对话 -->
+      <!-- 视图 4：系统设置 -->
+      <SettingsView
+        v-show="currentView === 'settings'"
+        :visible="currentView === 'settings'"
+        @saved="doFetchStatus"
+      />
+
+      <!-- 视图 5：AI 辅导对话 -->
       <div v-show="currentView === 'chat'" class="h-full">
         <ChatView
           v-if="chatActive"
           :session-id="chatSessionId"
           :question="chatQuestion"
-          :model-provider="modelProvider"
+          :model-provider="selectedProvider"
+          :model-name="selectedModel"
           @back="backToErrorBank"
         />
       </div>

@@ -15,7 +15,9 @@ defineProps({
           ? 'bg-emerald-600 text-white ring-emerald-700/30'
           : t.type === 'error'
             ? 'bg-rose-600 text-white ring-rose-700/30'
-            : 'bg-slate-900 text-white ring-slate-700/30'
+            : t.type === 'warning'
+              ? 'bg-amber-500 text-white ring-amber-600/30'
+              : 'bg-slate-900 text-white ring-slate-700/30'
       "
     >
       {{ t.message }}

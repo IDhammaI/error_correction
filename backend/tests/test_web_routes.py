@@ -384,6 +384,9 @@ class TestDashboardStatsRoute:
         assert "total_questions" in data
         assert "daily_counts" in data
         assert "tag_stats" in data
+        assert "tag_status_stats" in data
+        assert "tag_type_stats" in data
+        assert "subjects" in data
 
     def test_with_data(self, client, test_db):
         from db.crud import save_questions_to_db
@@ -397,7 +400,34 @@ class TestDashboardStatsRoute:
         resp = client.get("/api/dashboard-stats")
         data = resp.get_json()
         assert data["total_questions"] == 1
-        assert len(data["daily_counts"]) == 7
+        assert len(data["daily_counts"]) == 30
+        assert "mastered" in data["daily_counts"][0]
+        assert data["subjects"] == ["数学"]
+        assert any(t["tag_name"] == "导数" for t in data["tag_status_stats"])
+
+    def test_subject_filter(self, client, test_db):
+        from db.crud import save_questions_to_db
+        save_questions_to_db(test_db, [{
+            "question_id": "1",
+            "question_type": "选择题",
+            "content_blocks": [{"block_type": "text", "content": "数学题"}],
+            "has_formula": False, "has_image": False,
+            "knowledge_tags": ["函数"],
+        }], {"original_filename": "a.pdf", "subject": "数学"})
+        save_questions_to_db(test_db, [{
+            "question_id": "2",
+            "question_type": "选择题",
+            "content_blocks": [{"block_type": "text", "content": "英语题"}],
+            "has_formula": False, "has_image": False,
+            "knowledge_tags": ["语法"],
+        }], {"original_filename": "b.pdf", "subject": "英语"})
+        resp = client.get("/api/dashboard-stats")
+        data = resp.get_json()
+        assert data["total_questions"] == 2
+        resp = client.get("/api/dashboard-stats?subject=数学")
+        data = resp.get_json()
+        assert data["total_questions"] == 1
+        assert any(t["tag_name"] == "函数" for t in data["tag_stats"])
 
 
 # ── GET /api/error-bank?review_status ────────────────

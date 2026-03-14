@@ -47,17 +47,17 @@ const select = (val) => {
       <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300" :class="{ '-rotate-180': open }"></i>
     </div>
     <Transition name="dropdown">
-      <div v-if="open" class="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-black/10 dark:border-slate-600 dark:bg-slate-800">
+      <div v-if="open" class="absolute left-0 top-full z-50 mt-2 min-w-full w-max overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-black/10 dark:border-slate-600 dark:bg-slate-800">
         <div class="no-scrollbar max-h-56 space-y-1 overflow-y-auto pr-1">
           <!-- 全部（空值）选项 -->
           <div @click.stop="select('')"
-               class="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-blue-600 hover:shadow-sm dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+               class="cursor-pointer whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-blue-600 hover:shadow-sm dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
                :class="{ 'bg-blue-50 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-300': modelValue === '' }">
             <i v-if="icon" class="fa-solid fa-layer-group mr-1.5 text-slate-400"></i>{{ placeholder }}
           </div>
           <!-- 选项列表 -->
           <div v-for="opt in options" :key="opt" @click.stop="select(opt)"
-               class="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-blue-600 hover:shadow-sm dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+               class="cursor-pointer whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-blue-600 hover:shadow-sm dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
                :class="{ 'bg-blue-50 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-300': modelValue === opt }">
             <i v-if="icon" class="fa-solid mr-1.5" :class="icon(opt)"></i>{{ opt }}
           </div>
