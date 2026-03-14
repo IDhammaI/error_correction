@@ -100,7 +100,7 @@ class OpenAICompatibleConfig(LLMProviderConfig):
         kwargs = {"api_key": self.api_key, "timeout": 5}
         if self.base_url:
             kwargs["base_url"] = self.base_url
-        OpenAI(**kwargs).models.list(limit=1)
+        OpenAI(**kwargs).models.list()
 
     def create_llm(self, *, model: str, temperature: float):
         from langchain_openai import ChatOpenAI
