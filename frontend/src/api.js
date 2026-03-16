@@ -111,6 +111,25 @@ export async function saveToDb(selectedIds, answers = []) {
   throw new Error((data && data.error) || '导入错题库失败')
 }
 
+// ── 分割历史 API ────────────────────────────────────────
+
+export async function fetchSplitRecords(limit = 10) {
+  const qs = new URLSearchParams({ limit })
+  const resp = await fetch(`/api/split-records?${qs}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.records
+  throw new Error((data && data.error) || '获取分割历史失败')
+}
+
+export async function fetchSplitRecordDetail(recordId) {
+  const resp = await fetch(`/api/split-records/${recordId}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.record
+  throw new Error((data && data.error) || '获取分割记录详情失败')
+}
+
 // ── 错题库 API ──────────────────────────────────────────
 
 export async function fetchErrorBank(params = {}) {

@@ -16,9 +16,10 @@ import CatLoading from './components/CatLoading.vue'
 import ErrorBank from './components/ErrorBank.vue'
 import ChatView from './components/ChatView.vue'
 import SettingsView from './components/SettingsView.vue'
+import SplitHistory from './components/SplitHistory.vue'
 
 // ---- 视图路由控制 ----
-const currentView = ref('workspace') // 'workspace' | 'workspace_review' | 'dashboard' | 'error-bank' | 'chat'
+const currentView = ref('workspace') // 'workspace' | 'workspace_review' | 'dashboard' | 'error-bank' | 'split-history' | 'chat'
 
 // ---- 主题 ----
 const theme = ref('light')
@@ -462,6 +463,16 @@ const doSaveToDb = async () => {
   }
 }
 
+const handleLoadRecord = (qs, record) => {
+  questions.value = qs || []
+  selectedIds.clear()
+  splitCompleted.value = true
+  step.value = 4
+  currentView.value = 'workspace_review'
+  pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
+  nextTick(() => typesetMath())
+}
+
 const doReset = () => {
   uploadBusy.value = false
   uploadReady.value = false
@@ -554,6 +565,7 @@ onBeforeUnmount(() => {
             <span>错题库</span>
             <div v-if="currentView === 'error-bank'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
+
         </nav>
       </div>
 
@@ -641,6 +653,13 @@ onBeforeUnmount(() => {
                     智能录入与分析
                   </h2>
                 </div>
+                <button
+                  @click="currentView = 'split-history'"
+                  class="group inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm font-bold text-slate-600 backdrop-blur-md transition-all hover:border-blue-500/40 hover:bg-white hover:text-blue-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
+                >
+                  <i class="fa-solid fa-clock-rotate-left text-sm transition-transform group-hover:scale-110"></i>
+                  分割历史
+                </button>
               </div>
 
               <div class="main-content relative flex flex-1 flex-col bg-transparent">
@@ -773,7 +792,18 @@ onBeforeUnmount(() => {
         @start-chat="openChat"
       />
 
-      <!-- 视图 4：系统设置 -->
+      <!-- 视图 4：分割历史 -->
+      <SplitHistory
+        v-show="currentView === 'split-history'"
+        :theme="theme"
+        :visible="currentView === 'split-history'"
+        @push-toast="pushToast"
+        @open-image="openModal"
+        @load-record="handleLoadRecord"
+        @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+      />
+
+      <!-- 视图 5：系统设置 -->
       <SettingsView
         v-show="currentView === 'settings'"
         :visible="currentView === 'settings'"
