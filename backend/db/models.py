@@ -10,17 +10,35 @@ from datetime import datetime
 Base = declarative_base()
 
 
+class User(Base):
+    """用户表"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(50), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    questions = relationship("Question", back_populates="user")
+    upload_batches = relationship("UploadBatch", back_populates="user")
+    split_records = relationship("SplitRecord", back_populates="user")
+
+
 class UploadBatch(Base):
     """上传批次表"""
     __tablename__ = "upload_batches"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     original_filename = Column(String(255), nullable=False)
     subject = Column(String(50))
     file_path = Column(Text)
     upload_time = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    user = relationship("User", back_populates="upload_batches")
     questions = relationship("Question", back_populates="batch")
 
 
@@ -29,10 +47,11 @@ class Question(Base):
     __tablename__ = "questions"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     batch_id = Column(Integer, ForeignKey("upload_batches.id"))
-    content_hash = Column(String(64), unique=True, nullable=False)  # SHA256
+    content_hash = Column(String(64), nullable=False)
     question_type = Column(String(20))
-    content_json = Column(Text)  # JSON 序列化 content_blocks
+    content_json = Column(Text)
     options_json = Column(Text)
     has_formula = Column(Boolean, default=False)
     has_image = Column(Boolean, default=False)
@@ -43,9 +62,13 @@ class Question(Base):
     updated_at = Column(DateTime, nullable=True)
     review_status = Column(String(10), nullable=True, default='待复习', index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-
     answer = Column(Text, nullable=True)
 
+    __table_args__ = (
+        UniqueConstraint('content_hash', 'user_id', name='uq_question_hash_user'),
+    )
+
+    user = relationship("User", back_populates="questions")
     batch = relationship("UploadBatch", back_populates="questions")
     tags = relationship("QuestionTagMapping", back_populates="question")
     chat_sessions = relationship("ChatSession", back_populates="question")
@@ -70,7 +93,7 @@ class ChatMessage(Base):
 
     id = Column(Integer, primary_key=True)
     session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False, index=True)
-    role = Column(String(20), nullable=False)  # 'user' | 'assistant'
+    role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -82,12 +105,15 @@ class SplitRecord(Base):
     __tablename__ = "split_records"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     subject = Column(String(50))
     model_provider = Column(String(20))
-    file_names_json = Column(Text)        # JSON 数组，多文件名
-    questions_json = Column(Text)         # JSON，完整分割结果
+    file_names_json = Column(Text)
+    questions_json = Column(Text)
     question_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", back_populates="split_records")
 
 
 class KnowledgeTag(Base):

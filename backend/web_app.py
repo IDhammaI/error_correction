@@ -15,9 +15,10 @@ from typing import Optional
 
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
-from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, session
 from dotenv import load_dotenv
 
+from werkzeug.security import generate_password_hash, check_password_hash
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
 from config import settings, update_env_file
@@ -31,6 +32,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-change-in-production')
 
 # 配置（统一从 config.py 导入）
 app.config['UPLOAD_FOLDER'] = settings.upload_dir
@@ -160,14 +162,101 @@ def _serialize_question_detail(q: Question) -> dict:
 FRONTEND_DIST = os.path.join(settings.project_root, 'frontend', 'dist')
 
 
+
+
+# ============================================================
+# 认证工具
+# ============================================================
+
+@app.before_request
+def require_login():
+    """所有 /api/ 路由（除 /api/auth/ 和 /api/status）要求登录"""
+    if request.path.startswith('/api/'):
+        if request.path.startswith('/api/auth/') or request.path == '/api/status':
+            return None
+        if 'user_id' not in session:
+            return jsonify({'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401
+    return None
+
+
+@app.route('/api/auth/register', methods=['POST'])
+def auth_register():
+    """用户注册"""
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+
+    if not email or '@' not in email:
+        return jsonify({'error': '邮箱格式不正确'}), 400
+    if not username:
+        return jsonify({'error': '用户名不能为空'}), 400
+    if len(password) < 6:
+        return jsonify({'error': '密码至少 6 位'}), 400
+
+    with SessionLocal() as db:
+        if crud.get_user_by_email(db, email):
+            return jsonify({'error': '该邮箱已注册'}), 409
+        pwd_hash = generate_password_hash(password)
+        user = crud.create_user(db, email=email, password_hash=pwd_hash, username=username)
+        session['user_id'] = user.id
+        session['username'] = user.username
+        return jsonify({'user': {'id': user.id, 'email': user.email, 'username': user.username, 'is_admin': user.is_admin}}), 201
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """用户登录（支持邮箱或用户名）"""
+    data = request.get_json() or {}
+    identifier = (data.get('email') or data.get('identifier') or '').strip()
+    password = data.get('password') or ''
+
+    if not identifier:
+        return jsonify({'error': '请输入邮箱或用户名'}), 400
+
+    with SessionLocal() as db:
+        user = crud.get_user_by_login(db, identifier)
+        if not user or not check_password_hash(user.password_hash, password):
+            return jsonify({'error': '账号或密码错误'}), 401
+        session['user_id'] = user.id
+        session['username'] = user.username
+        return jsonify({'user': {'id': user.id, 'email': user.email, 'username': user.username, 'is_admin': user.is_admin}})
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    """退出登录"""
+    session.clear()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    """获取当前登录用户"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': '未登录', 'code': 'UNAUTHORIZED'}), 401
+    with SessionLocal() as db:
+        user = crud.get_user_by_id(db, user_id)
+        if not user:
+            session.clear()
+            return jsonify({'error': '用户不存在', 'code': 'UNAUTHORIZED'}), 401
+        return jsonify({'user': {'id': user.id, 'email': user.email, 'username': user.username, 'is_admin': user.is_admin}})
+
+
 @app.route('/')
 def index():
     """主页 - 返回介绍页"""
     return send_from_directory(FRONTEND_DIST, 'index.html')
 
 
-@app.route('/app')
 @app.route('/app.html')
+def app_page_redirect():
+    """旧路径重定向到规范 URL"""
+    return redirect('/app', code=301)
+
+
+@app.route('/app')
 def app_page():
     """工作台 - 返回 Vue SPA"""
     return send_from_directory(FRONTEND_DIST, 'app.html')
@@ -428,7 +517,7 @@ def split_questions():
                 ]
 
             with SessionLocal() as db:
-                crud.save_split_record(db, subject, model_provider, file_names, questions)
+                crud.save_split_record(db, subject, model_provider, file_names, questions, user_id=session.get('user_id'))
         except Exception:
             logger.warning("保存分割记录失败，不影响主流程", exc_info=True)
 
@@ -455,7 +544,7 @@ def get_split_records():
         limit = max(1, min(limit, crud.MAX_SPLIT_RECORDS))  # 上限与保留条数一致
 
         with SessionLocal() as db:
-            records = crud.get_recent_split_records(db, limit)
+            records = crud.get_recent_split_records(db, limit, user_id=session.get('user_id'))
             result = [_serialize_split_record(r) for r in records]
 
         return jsonify({"success": True, "records": result})
@@ -865,7 +954,7 @@ def get_stats():
     try:
         subject = request.args.get('subject', type=str) or None
         with SessionLocal() as db:
-            stats = crud.get_knowledge_stats(db, subject=subject)
+            stats = crud.get_knowledge_stats(db, subject=subject, user_id=session.get('user_id'))
             return jsonify({
                 'success': True,
                 'stats': stats,
@@ -944,7 +1033,8 @@ def get_error_bank():
 
         with SessionLocal() as db:
             questions, total = crud.query_questions(
-                db,
+            db,
+            user_id=session.get('user_id'),
                 subject=subject,
                 knowledge_tag=knowledge_tag,
                 question_type=question_type,
@@ -980,7 +1070,7 @@ def get_subjects():
     """获取所有科目列表"""
     try:
         with SessionLocal() as db:
-            subjects = crud.get_existing_subjects(db)
+            subjects = crud.get_existing_subjects(db, user_id=session.get('user_id'))
             return jsonify({'success': True, 'subjects': subjects})
     except Exception as e:
         logger.exception("获取科目列表失败")
@@ -992,7 +1082,7 @@ def get_question_types():
     """获取所有题型列表"""
     try:
         with SessionLocal() as db:
-            types = crud.get_existing_question_types(db)
+            types = crud.get_existing_question_types(db, user_id=session.get('user_id'))
             return jsonify({'success': True, 'question_types': types})
     except Exception as e:
         logger.exception("获取题型列表失败")
@@ -1060,27 +1150,28 @@ def get_dashboard_stats():
     """获取 Dashboard 所需的完整统计数据，支持 ?subject= 学科筛选"""
     try:
         subject = request.args.get('subject') or None
+        uid = session.get('user_id')
         with SessionLocal() as db:
-            # 可用学科列表（始终返回完整列表供筛选器使用）
-            subjects = crud.get_existing_subjects(db)
+            # 可用学科列表（按当前用户隔离）
+            subjects = crud.get_existing_subjects(db, user_id=uid)
 
             # 复习状态统计
-            review_stats = crud.get_review_status_stats(db, subject=subject)
+            review_stats = crud.get_review_status_stats(db, subject=subject, user_id=uid)
 
             # 总体统计
-            statistics = crud.get_statistics(db, subject=subject)
+            statistics = crud.get_statistics(db, subject=subject, user_id=uid)
 
             # 知识点标签统计 top 10（横向条形图）
-            tag_stats = crud.get_knowledge_stats(db, subject=subject, limit=10)
+            tag_stats = crud.get_knowledge_stats(db, subject=subject, limit=10, user_id=uid)
 
             # 知识点 × 掌握状态（堆叠柱状图）
-            tag_status_stats = crud.get_tag_status_stats(db, subject=subject, limit=10)
+            tag_status_stats = crud.get_tag_status_stats(db, subject=subject, limit=10, user_id=uid)
 
             # 知识点 × 题型（热力图）
-            tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8)
+            tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8, user_id=uid)
 
             # 最近30天每日新增 + 已掌握趋势
-            daily_counts = crud.get_daily_counts(db, days=30, subject=subject)
+            daily_counts = crud.get_daily_counts(db, days=30, subject=subject, user_id=uid)
 
             return jsonify({
                 'success': True,
@@ -1152,7 +1243,7 @@ def save_to_db():
             }
 
         with SessionLocal() as db:
-            result = crud.save_questions_to_db(db, selected_questions, batch_info)
+            result = crud.save_questions_to_db(db, selected_questions, batch_info, user_id=session.get('user_id'))
 
         return jsonify({
             'success': True,

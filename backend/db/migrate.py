@@ -1,75 +1,52 @@
 """
-数据库迁移脚本 — SQLite ALTER TABLE
+数据库重建脚本 — 清空并重建所有表，创建默认 Admin 用户
 
 用法：
     cd backend
     python -m db.migrate
 """
 
-import sqlite3
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from werkzeug.security import generate_password_hash
 from config import settings
-
-
-def _column_exists(cursor, table: str, column: str) -> bool:
-    cursor.execute(f"PRAGMA table_info({table})")
-    return any(row[1] == column for row in cursor.fetchall())
+from db import engine, SessionLocal
+from db.models import Base
+from db import crud
 
 
 def migrate():
-    if not settings.db_path.exists():
-        print(f"[migrate] 数据库文件不存在: {settings.db_path}，跳过迁移")
-        return
+    """增量迁移：仅创建缺失的表，并确保 Admin 用户存在。每次启动自动调用，安全幂等。"""
+    Base.metadata.create_all(bind=engine)  # checkfirst=True by default，已存在的表不动
 
-    conn = sqlite3.connect(str(settings.db_path))
-    cursor = conn.cursor()
-
-    migrations = [
-        ("questions", "user_answer", "ALTER TABLE questions ADD COLUMN user_answer TEXT"),
-        ("questions", "updated_at", "ALTER TABLE questions ADD COLUMN updated_at DATETIME"),
-        ("questions", "review_status", "ALTER TABLE questions ADD COLUMN review_status VARCHAR(10) DEFAULT '待复习'"),
+    default_users = [
+        {"email": "admin@admin.com",  "username": "Admin",  "password": "123456", "is_admin": True},
+        {"email": "admin2@admin.com", "username": "Admin2", "password": "123456", "is_admin": True},
     ]
+    with SessionLocal() as db:
+        for u in default_users:
+            if not crud.get_user_by_email(db, u["email"]):
+                crud.create_user(
+                    db,
+                    email=u["email"],
+                    password_hash=generate_password_hash(u["password"]),
+                    username=u["username"],
+                    is_admin=u["is_admin"],
+                )
+                print(f"[migrate] 已创建默认用户: {u['username']} ({u['email']})")
 
-    applied = 0
-    for table, column, sql in migrations:
-        if _column_exists(cursor, table, column):
-            print(f"[migrate] {table}.{column} 已存在，跳过")
-        else:
-            cursor.execute(sql)
-            applied += 1
-            print(f"[migrate] 已添加 {table}.{column}")
 
-    # 新建表迁移
-    new_tables = [
-        ("split_records", """
-            CREATE TABLE split_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                subject VARCHAR(50),
-                model_provider VARCHAR(20),
-                file_names_json TEXT,
-                questions_json TEXT,
-                question_count INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """),
-    ]
-
-    for table_name, create_sql in new_tables:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
-        if cursor.fetchone():
-            print(f"[migrate] 表 {table_name} 已存在，跳过")
-        else:
-            cursor.execute(create_sql)
-            applied += 1
-            print(f"[migrate] 已创建表 {table_name}")
-
-    conn.commit()
-    conn.close()
-    print(f"[migrate] 迁移完成，应用 {applied} 项变更")
+def rebuild():
+    """危险：删除所有表并重建。仅用于开发环境手动重置。"""
+    print("[migrate] 正在删除所有表...")
+    Base.metadata.drop_all(bind=engine)
+    print("[migrate] 正在重建所有表...")
+    migrate()
+    print("[migrate] 重建完成")
 
 
 if __name__ == "__main__":
-    migrate()
+    rebuild()

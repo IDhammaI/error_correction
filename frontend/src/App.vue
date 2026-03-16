@@ -17,6 +17,23 @@ import ErrorBank from './components/ErrorBank.vue'
 import ChatView from './components/ChatView.vue'
 import SettingsView from './components/SettingsView.vue'
 import SplitHistory from './components/SplitHistory.vue'
+import AuthView from './components/AuthView.vue'
+
+// ---- 认证状态 ----
+const currentUser = ref(null)
+const authChecked = ref(false)
+
+const handleLoggedIn = (user) => {
+  currentUser.value = user
+  doFetchStatus()
+}
+
+const handleLogout = async () => {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' })
+  } catch (_) {}
+  currentUser.value = null
+}
 
 // ---- 视图路由控制 ----
 const currentView = ref('workspace') // 'workspace' | 'workspace_review' | 'dashboard' | 'error-bank' | 'split-history' | 'chat'
@@ -501,12 +518,23 @@ watch(currentView, async (newView) => {
 })
 
 // ---- 生命周期 ----
-onMounted(() => {
+onMounted(async () => {
   const saved = localStorage.getItem('theme')
   const initial = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   applyTheme(initial)
-  doFetchStatus()
   document.addEventListener('keydown', onKeydown)
+
+  // 检查登录态
+  try {
+    const res = await fetch('/api/auth/me')
+    if (res.ok) {
+      const data = await res.json()
+      currentUser.value = data.user
+    }
+  } catch (_) {}
+  authChecked.value = true
+
+  if (currentUser.value) doFetchStatus()
 })
 
 onBeforeUnmount(() => {
@@ -516,7 +544,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
+  <!-- 未检查完登录态时：空白占位（避免闪屏） -->
+  <div v-if="!authChecked" class="min-h-screen bg-slate-50 dark:bg-[#0A0A0F]"></div>
+
+  <!-- 未登录：显示登录/注册页 -->
+  <AuthView v-else-if="!currentUser" @logged-in="handleLoggedIn" />
+
+  <!-- 已登录：主界面 -->
+  <div v-else class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
     
     <!-- ================== PC端：左侧边栏导航 ================== -->
     <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
@@ -571,6 +606,24 @@ onBeforeUnmount(() => {
 
       <!-- 底部控制与返回栏 -->
       <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
+        <!-- 用户信息 -->
+        <div class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-1 bg-slate-50/80 dark:bg-white/5">
+          <div class="h-8 w-8 shrink-0 rounded-full bg-blue-100 dark:bg-indigo-500/20 flex items-center justify-center text-blue-700 dark:text-indigo-300 text-sm font-extrabold">
+            {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate leading-tight">{{ currentUser?.username }}</p>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
+          </div>
+          <button
+            @click="handleLogout"
+            title="退出登录"
+            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+          >
+            <i class="fas fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+
         <button
           @click="currentView = 'settings'"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
@@ -871,7 +924,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Teleport>
-  </div>
+  </div><!-- end v-else main app -->
 </template>
 
 <style>
