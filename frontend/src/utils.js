@@ -46,12 +46,30 @@ export const renderMarkdown = (text) => {
   })
 }
 
+/** 等待 MathJax 加载就绪（最多等 10 秒） */
+const waitForMathJax = () => new Promise((resolve) => {
+  const mj = window.MathJax
+  if (mj && typeof mj.typesetPromise === 'function') return resolve(mj)
+  let tries = 0
+  const timer = setInterval(() => {
+    const mj = window.MathJax
+    if (mj && typeof mj.typesetPromise === 'function') {
+      clearInterval(timer)
+      resolve(mj)
+    } else if (++tries > 100) {
+      clearInterval(timer)
+      resolve(null)
+    }
+  }, 100)
+})
+
 /** 对指定元素触发 MathJax 公式渲染 */
 export const typesetMath = async (el) => {
-  const mj = window.MathJax
-  if (!mj || typeof mj.typesetPromise !== 'function') return
+  const mj = await waitForMathJax()
+  if (!mj) return
   try {
     if (el) {
+      mj.typesetClear?.([el])
       await mj.typesetPromise([el])
     } else {
       await mj.typesetPromise()

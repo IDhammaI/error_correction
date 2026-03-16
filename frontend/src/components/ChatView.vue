@@ -51,6 +51,8 @@ const loadHistory = async () => {
     messages.value = data.messages.map(toMsg)
     hasMore.value = data.hasMore
     scrollToBottom()
+    await nextTick()
+    await typesetMath(listEl.value)
   } catch (e) {
     pushToast('error', '加载对话历史失败')
   }
@@ -81,6 +83,7 @@ const loadOlder = async () => {
     if (el) {
       el.scrollTop = el.scrollHeight - prevHeight
     }
+    await typesetMath(listEl.value)
   } catch (e) {
     pushToast('error', '加载更早消息失败')
   }
@@ -161,7 +164,11 @@ const onKeydown = (e) => {
   }
 }
 
-onMounted(loadHistory)
+onMounted(async () => {
+  await loadHistory()
+  await nextTick()
+  typesetMath(snippetEl.value)
+})
 watch(() => props.sessionId, () => {
   abortCtrl?.abort()
   mdCache.clear()
@@ -192,9 +199,8 @@ onBeforeUnmount(() => {
       </button>
 
       <div class="min-w-0 flex-1">
-        <p ref="snippetEl" class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">
-          {{ snippet }}
-        </p>
+        <p ref="snippetEl" class="truncate text-sm font-bold text-slate-800 dark:text-slate-200"
+           v-html="snippet"></p>
         <div class="mt-0.5 flex items-center gap-2">
           <span
             v-if="question?.subject"
