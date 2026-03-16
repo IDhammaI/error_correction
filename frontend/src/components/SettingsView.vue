@@ -109,12 +109,6 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
 
 <template>
   <div class="relative h-full overflow-y-auto">
-    <!-- 背景光晕 -->
-    <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div class="absolute -top-[10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-violet-300/10 mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-violet-600/10 dark:mix-blend-screen"></div>
-      <div class="absolute -bottom-[10%] left-[-10%] h-[30vw] w-[30vw] rounded-full bg-blue-200/20 mix-blend-multiply blur-[80px] transition-colors duration-1000 dark:bg-blue-600/10 dark:mix-blend-screen"></div>
-    </div>
-
     <div class="container relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
       <!-- 页面标题 -->
       <div class="mb-8 pl-2 sm:pl-0">
