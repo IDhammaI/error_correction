@@ -108,7 +108,7 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
 </script>
 
 <template>
-  <div class="relative min-h-full">
+  <div class="relative h-full overflow-y-auto">
     <!-- 背景光晕 -->
     <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <div class="absolute -top-[10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-violet-300/10 mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-violet-600/10 dark:mix-blend-screen"></div>

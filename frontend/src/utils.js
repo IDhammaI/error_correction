@@ -22,7 +22,7 @@ export const sanitizeHtml = (html) =>
 /** 从题目的 content_json 中提取纯文本摘要 */
 export const getQuestionSnippet = (q, maxLen = 0, fallback = '') => {
   if (!q) return fallback
-  const blocks = q.content_json || []
+  const blocks = q.content_blocks || q.content_json || []
   const texts = blocks.filter(b => b.block_type === 'text').map(b => b.content || '')
   const raw = texts.join(' ').replace(/<[^>]+>/g, '').trim()
   if (!raw) return fallback
