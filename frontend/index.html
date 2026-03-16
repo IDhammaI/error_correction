@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -83,6 +83,9 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             box-shadow: none;
         }
+
+        /* 平滑滚动时补偿固定导航栏高度 */
+        html { scroll-padding-top: 80px; }
 
         /* 禁用浏览器默认 View Transitions 淡出，防止主题切换时模糊 */
         ::view-transition-old(root),
