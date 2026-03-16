@@ -408,6 +408,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     existing_tags_str = ",".join(db_tags) if db_tags else ""
     max_workers = min(len(batches), 3)
     batch_results: List[List[Dict[str, Any]]] = [[] for _ in range(len(batches))]
+    batch_errors: List[str] = []  # 记录失败原因，供 warning 使用
 
     max_batch_retries = 2
 
@@ -441,6 +442,7 @@ def split_questions_node(state: WorkflowState) -> dict:
                 else:
                     logger.error(f"批次 {batch_idx} 分割失败（已重试 {max_batch_retries} 次）: {e}")
                     console.print(f"[red]  ✗ 批次 {batch_idx} 失败: {e}[/red]")
+                    batch_errors.append(str(e))
 
     if len(batches) == 1:
         _invoke_split(0, batches[0])
@@ -487,9 +489,18 @@ def split_questions_node(state: WorkflowState) -> dict:
     else:
         logger.warning("未生成任何题目，请检查执行日志")
         console.print("[yellow]⚠ 未生成任何题目[/yellow]")
+        err_str = " ".join(batch_errors).lower()
+        if "401" in err_str or "authentication" in err_str or "invalid" in err_str and "api key" in err_str:
+            warning_msg = f"步骤 3（分割题目）失败：LLM API Key 认证错误，请检查 {model_provider.upper()} API Key 配置"
+        elif "429" in err_str or "rate limit" in err_str or "quota" in err_str:
+            warning_msg = "步骤 3（分割题目）失败：LLM API 请求频率超限，请稍后重试"
+        elif batch_errors:
+            warning_msg = f"步骤 3（分割题目）失败：{batch_errors[0][:80]}"
+        else:
+            warning_msg = "步骤 3（分割题目）失败：AI 未能从图片中识别出题目，请确认图片内容包含试题"
         return {
             "questions": [],
-            "warnings": ["步骤 3（分割题目）失败：AI 未能从图片中识别出题目，请确认图片内容包含试题"],
+            "warnings": [warning_msg],
         }
 
 
