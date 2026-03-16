@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
             <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">内容检索</label>
             <div class="relative group">
               <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
-              <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm font-bold shadow-sm backdrop-blur-sm outline-none transition-all hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white/70 hover:shadow-md focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-indigo-500/30 dark:hover:bg-white/10 dark:focus:border-indigo-500/50" />
+              <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm font-bold shadow-sm backdrop-blur-sm outline-none hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white/70 hover:shadow-md focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-indigo-500/30 dark:hover:bg-white/10 dark:focus:border-indigo-500/50" />
             </div>
           </div>
 
@@ -329,7 +329,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
           
-          <button @click="resetFilters" class="btn-secondary h-11 shrink-0 px-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" title="重置筛选">
+          <button @click="resetFilters" class="btn-secondary h-11 shrink-0 px-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md" title="重置筛选">
             <i class="fa-solid fa-arrow-rotate-right"></i>
           </button>
         </div>
@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
             <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-500">点击标签筛选对应错题，支持多选</p>
           </div>
           <button v-if="hasMoreTagBatches" @click="refreshTagBatch"
-            class="group flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-400">
+            class="group flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-400">
             <svg class="h-3.5 w-3.5 transition-transform duration-500 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
         <div class="flex flex-wrap gap-2.5" :class="{ 'tag-batch-active': tagBatchAnimating }">
           <button v-for="(tag, idx) in currentTagBatch" :key="tag"
             @click="toggleTagSelect(tag)"
-            class="bento-tag relative overflow-hidden rounded-2xl px-4 py-2.5 text-sm font-bold transition-all duration-200 hover:scale-[0.97] hover:brightness-105 active:scale-95"
+            class="bento-tag relative overflow-hidden rounded-2xl px-4 py-2.5 text-sm font-bold hover:scale-[0.97] hover:brightness-105 active:scale-95"
             :class="[
               tagColor(tagBatchIndex * TAG_BATCH_SIZE + idx).bg,
               tagColor(tagBatchIndex * TAG_BATCH_SIZE + idx).text,
@@ -428,7 +428,7 @@ onBeforeUnmount(() => {
           v-for="q in items"
           :key="q.id"
           @click="openDetail(q)"
-          class="group relative cursor-pointer overflow-hidden rounded-[2rem] border bg-white/80 p-6 shadow-sm backdrop-blur-md transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl dark:bg-[#0A0A0F]/60"
+          class="group relative cursor-pointer overflow-hidden rounded-[2rem] border bg-white/80 p-6 shadow-sm backdrop-blur-md hover:-translate-y-1.5 hover:shadow-2xl dark:bg-[#0A0A0F]/60"
           :class="selectedIds.has(q.id) ? 'border-blue-500 ring-1 ring-blue-500/50 shadow-blue-500/10' : 'border-slate-200/60 dark:border-white/10 hover:border-blue-400/40'"
         >
           <!-- 学科状态条 -->
@@ -439,7 +439,7 @@ onBeforeUnmount(() => {
           <div class="flex items-start gap-5">
             <!-- 勾选框：科技感微动效 -->
             <button class="mt-1 shrink-0" @click.stop="toggleSelect(q.id)">
-              <div class="flex h-6 w-6 items-center justify-center rounded-lg border-2 transition-all duration-300"
+              <div class="flex h-6 w-6 items-center justify-center rounded-lg border-2"
                 :class="selectedIds.has(q.id) ? 'border-blue-500 bg-blue-500 text-white rotate-12 scale-110 shadow-lg shadow-blue-500/40' : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'">
                 <i v-show="selectedIds.has(q.id)" class="fa-solid fa-check text-[11px] font-black"></i>
               </div>
@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
               </div>
               
               <!-- 题目摘要 -->
-              <p class="line-clamp-3 text-sm font-bold leading-relaxed text-slate-700 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">
+              <p class="line-clamp-3 text-sm font-bold leading-relaxed text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">
                 {{ getSummary(q) }}
               </p>
 
@@ -493,7 +493,7 @@ onBeforeUnmount(() => {
           <template v-for="(p, i) in pageButtons" :key="i">
             <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
             <button v-else @click="goPage(p)" 
-              class="h-9 min-w-[36px] rounded-xl text-xs font-black transition-all"
+              class="h-9 min-w-[36px] rounded-xl text-xs font-black"
               :class="p === page ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-white dark:hover:bg-white/10'">
               {{ p }}
             </button>

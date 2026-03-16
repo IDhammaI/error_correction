@@ -18,20 +18,20 @@ const descs = ['选择 PDF 或图片', '结构化提取题干', 'AI 识别并拆
         <!-- 桌面端连接线 (优化定位，避免穿过圆圈) -->
         <div 
           v-if="n < 4" 
-          class="hidden sm:block absolute left-[calc(50%+1.25rem)] top-5 w-[calc(100%-2.5rem)] h-[2px] -translate-y-1/2 transition-all duration-700 ease-in-out"
+          class="hidden sm:block absolute left-[calc(50%+1.25rem)] top-5 w-[calc(100%-2.5rem)] h-[2px] -translate-y-1/2"
           :class="n < step ? 'bg-slate-400 dark:bg-slate-600' : 'bg-slate-200 dark:bg-slate-800'"
         ></div>
         
         <!-- 移动端连接线 -->
         <div 
           v-if="n < 4" 
-          class="sm:hidden absolute left-5 top-12 bottom-[-1.5rem] w-[2px] -translate-x-1/2 transition-all duration-700 ease-in-out"
+          class="sm:hidden absolute left-5 top-12 bottom-[-1.5rem] w-[2px] -translate-x-1/2"
           :class="n < step ? 'bg-slate-400 dark:bg-slate-600' : 'bg-slate-200 dark:bg-slate-800'"
         ></div>
 
         <!-- 步骤圆圈 (白/灰黑玻璃风格) -->
         <div 
-          class="step-circle relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-500 backdrop-blur-sm"
+          class="step-circle relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border backdrop-blur-sm"
           :class="
             n < step
               ? 'border-transparent bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
@@ -52,7 +52,7 @@ const descs = ['选择 PDF 或图片', '结构化提取题干', 'AI 识别并拆
         <!-- 文本描述 (字号微调) -->
         <div class="flex flex-col sm:items-center sm:text-center">
           <h3 
-            class="text-[11px] font-black tracking-tight transition-colors duration-500"
+            class="text-[11px] font-black tracking-tight"
             :class="n <= step ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-600'"
           >
             {{ labels[n - 1] }}

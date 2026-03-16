@@ -82,14 +82,14 @@ defineExpose({ initSortable, questionsBoxEl, triggerTypeset })
           <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
             <button 
               type="button" 
-              class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 transition-all hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300" 
+              class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300" 
               @click="emit('select-all')"
             >
               全选
             </button>
             <button 
               type="button" 
-              class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 transition-all hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400" 
+              class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400" 
               @click="emit('deselect-all')"
             >
               清空

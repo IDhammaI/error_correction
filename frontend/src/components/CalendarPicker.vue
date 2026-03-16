@@ -103,7 +103,7 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
 
 <template>
   <div class="custom-cal-wrapper relative w-full min-w-0">
-    <div class="group flex h-11 w-full cursor-pointer items-center rounded-full border border-slate-200/60 bg-white/50 px-4 shadow-sm backdrop-blur-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:border-blue-400/60 hover:bg-white/80 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:border-indigo-500/40 dark:hover:bg-white/10"
+    <div class="group flex h-11 w-full cursor-pointer items-center rounded-full border border-slate-200/60 bg-white/50 px-4 shadow-sm backdrop-blur-sm ease-out hover:-translate-y-1 hover:border-blue-400/60 hover:bg-white/80 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:border-indigo-500/40 dark:hover:bg-white/10"
          :class="{ 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500': open }"
          @click.stop="toggle">
       <i class="fa-regular fa-calendar mr-2.5 text-sm text-slate-400 transition-colors group-hover:text-blue-500 dark:text-slate-500 dark:group-hover:text-indigo-400"></i>
@@ -131,7 +131,7 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
         <!-- 日期网格 -->
         <div class="grid grid-cols-7 place-items-center gap-y-0.5">
           <button v-for="(d, i) in calDays" :key="i" @click.stop="selectDate(d)"
-            class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all"
+            class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
             :class="[
               !d.cur ? 'text-slate-300 dark:text-slate-600' : 'text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700',
               isDaySel(d) ? '!bg-blue-500 !text-white shadow-md shadow-blue-500/30' : '',

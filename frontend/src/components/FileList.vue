@@ -25,7 +25,7 @@ const emit = defineEmits(['remove-file'])
         <div
           v-for="item in pendingFiles"
           :key="item.key"
-          class="file-chip relative flex items-center gap-3 overflow-hidden rounded-xl border border-slate-900/10 bg-slate-900/[0.04] p-2.5 shadow-sm backdrop-blur-sm transition-all dark:border-white/5 dark:bg-white/5"
+          class="file-chip relative flex items-center gap-3 overflow-hidden rounded-xl border border-slate-900/10 bg-slate-900/[0.04] p-2.5 shadow-sm backdrop-blur-sm dark:border-white/5 dark:bg-white/5"
           :class="(uploadBusy || uploadReady) && 'file-chip--progress'"
         >
           <!-- 进度条背景 -->

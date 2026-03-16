@@ -32,7 +32,7 @@ const onLeave = (el) => {
       <div
         v-for="t in toasts"
         :key="t.id"
-        class="pointer-events-auto relative flex min-w-[320px] max-w-md items-center gap-4 overflow-hidden rounded-[1.25rem] border px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+        class="pointer-events-auto relative flex min-w-[320px] max-w-md items-center gap-4 overflow-hidden rounded-[1.25rem] border px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)] backdrop-blur-md dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
         :class="
           t.type === 'success'
             ? 'border-emerald-500/20 bg-emerald-50/90 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'

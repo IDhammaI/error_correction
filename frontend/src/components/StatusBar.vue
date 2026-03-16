@@ -89,7 +89,7 @@ const modelStatusError = computed(() => {
 
 <template>
   <div
-    class="relative z-20 flex flex-wrap items-center gap-4 py-2 text-sm transition-all shrink-0"
+    class="relative z-20 flex flex-wrap items-center gap-4 py-2 text-sm shrink-0"
   >
     <div class="flex items-center gap-2.5">
       <div class="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300 bg-white text-blue-600 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-indigo-400">
@@ -117,7 +117,7 @@ const modelStatusError = computed(() => {
       <span
         v-for="p in statusPills"
         :key="p.key"
-        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-all duration-500 ease-in-out"
+        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] font-bold"
         :class="
           p.loading
             ? 'border-amber-200 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400'
@@ -146,7 +146,7 @@ const modelStatusError = computed(() => {
       <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled">
         <div class="relative w-48">
           <ListboxButton
-            class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm transition-all hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"
+            class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"
             :disabled="disabled"
           >
             <div class="flex items-center gap-2.5">
@@ -164,7 +164,7 @@ const modelStatusError = computed(() => {
                 <!-- 状态指示点 -->
                 <div
                   v-if="currentProvider || statusLoading"
-                  class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white transition-all duration-500 ease-in-out dark:border-[#0A0A0F]"
+                  class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white dark:border-[#0A0A0F]"
                   :class="(statusLoading || isChecking) ? 'bg-amber-400 animate-pulse' : (!currentProvider.configured || currentProvider.key_valid === false) ? 'bg-rose-500' : 'bg-emerald-500'"
                 ></div>
               </div>
