@@ -6,8 +6,8 @@
 用法:
     cd backend
     python -m benchmark.evaluate                          # 默认评测全部模型
-    python -m benchmark.evaluate --provider deepseek      # 只评测 deepseek
-    python -m benchmark.evaluate --provider ernie         # 只评测文心
+    python -m benchmark.evaluate --provider openai        # 只评测 openai
+    python -m benchmark.evaluate --provider anthropic     # 只评测 anthropic
 """
 
 import os
@@ -56,7 +56,7 @@ def run_evaluation(provider: str, targets: List[Dict[str, Any]]) -> Dict[str, An
     """对指定模型进行评测
 
     Args:
-        provider: 模型供应商 "deepseek" 或 "ernie"
+        provider: 模型供应商 "openai" 或 "anthropic"
         targets: 标准答案列表
 
     Returns:
@@ -151,14 +151,14 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description="解题模型评测")
-    parser.add_argument("--provider", choices=["deepseek", "ernie"], default=None,
+    parser.add_argument("--provider", choices=["openai", "anthropic"], default=None,
                         help="指定评测模型，不指定则评测全部")
     parser.add_argument("--subject", "-s", default=None,
                         help="筛选科目关键词（如 '高中数学'），不指定则全部")
     args = parser.parse_args()
 
     targets = load_targets(subject=args.subject)
-    providers = [args.provider] if args.provider else ["deepseek", "ernie"]
+    providers = [args.provider] if args.provider else ["openai", "anthropic"]
 
     for provider in providers:
         try:

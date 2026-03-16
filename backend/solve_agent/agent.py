@@ -18,12 +18,12 @@ from .schemas import SolveBatchResult
 logger = logging.getLogger(__name__)
 
 
-def invoke_solve(questions: List[Dict[str, Any]], provider: str = "deepseek", max_retries: int = 3) -> SolveBatchResult:
+def invoke_solve(questions: List[Dict[str, Any]], provider: str = "openai", max_retries: int = 3) -> SolveBatchResult:
     """对一批题目进行解答
 
     Args:
         questions: 题目列表（Question schema 格式的 dict）
-        provider: 模型供应商，"deepseek" 或 "ernie"
+        provider: 模型供应商，"openai" 或 "anthropic"
         max_retries: 最大重试次数
 
     Returns:

@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
-from config import settings
+from config import settings, update_env_file
 from db import init_db, SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
@@ -383,10 +383,11 @@ def split_questions():
     try:
         global workflow_graph, current_thread_id, session_files, session_file_order
 
-        # 读取请求体参数（模型供应商）
+        # 读取请求体参数（模型供应商 + 模型名称）
         data = request.get_json(silent=True) or {}
-        model_provider = data.get("model_provider", "deepseek")
-        if model_provider not in ("deepseek", "ernie"):
+        model_provider = data.get("model_provider", "openai")
+        model_name = data.get("model_name")  # 可选，None 时使用 provider 默认模型
+        if not settings.is_valid_provider(model_provider):
             return jsonify({
                 'success': False,
                 'error': f'不支持的模型供应商: {model_provider}'
@@ -410,7 +411,7 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider}, config=config)
+        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider, "model_name": model_name}, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -653,29 +654,10 @@ def get_status():
     try:
         # 检查配置
         paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
-        deepseek_configured = bool(os.getenv('DEEPSEEK_API_KEY'))
-        ernie_configured = bool(os.getenv('ERNIE_API_KEY'))
-        
-        # 构建可用模型列表
-        available_models = [
-            {
-                'value': 'deepseek', 
-                'label': 'DeepSeek', 
-                'configured': deepseek_configured,
-                'description': 'DeepSeek V3.2'
-            },
-            {
-                'value': 'ernie', 
-                'label': '文心一言', 
-                'configured': ernie_configured,
-                'description': '百度文心大模型 4.5'
-            }
-        ]
+        available_models = settings.get_available_models()
 
         status = {
             'paddleocr_configured': paddleocr_configured,
-            'deepseek_configured': deepseek_configured,
-            'ernie_configured': ernie_configured,
             'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {
@@ -696,6 +678,77 @@ def get_status():
             'success': False,
             'error': '获取系统状态失败，请稍后重试'
         }), 500
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """获取当前可编辑配置（API key 脱敏）"""
+    try:
+        return jsonify({'success': True, 'config': settings.get_config_for_ui()})
+    except Exception as e:
+        logger.exception("获取配置失败")
+        return jsonify({'success': False, 'error': '获取配置失败'}), 500
+
+
+@app.route('/api/config', methods=['PUT'])
+def update_config():
+    """更新配置并热重载
+
+    接收 JSON body，结构与 GET /api/config 返回的 config 一致。
+    密钥字段不发送或发送 null 则跳过，发送空字符串则清空。
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        updates = {}
+
+        # 字段→环境变量映射
+        field_map = {
+            'openai': {
+                'api_key': 'OPENAI_API_KEY',
+                'base_url': 'OPENAI_BASE_URL',
+                'model_name': 'OPENAI_MODEL_NAME',
+                'light_model_name': 'OPENAI_LIGHT_MODEL_NAME',
+                'supports_function_calling': 'OPENAI_SUPPORTS_FUNCTION_CALLING',
+            },
+            'anthropic': {
+                'api_key': 'ANTHROPIC_API_KEY',
+                'base_url': 'ANTHROPIC_BASE_URL',
+                'model_name': 'ANTHROPIC_MODEL_NAME',
+            },
+            'paddleocr': {
+                'api_url': 'PADDLEOCR_API_URL',
+                'api_token': 'PADDLEOCR_API_TOKEN',
+                'model': 'PADDLEOCR_MODEL',
+                'use_doc_orientation': 'PADDLEOCR_USE_DOC_ORIENTATION',
+                'use_doc_unwarping': 'PADDLEOCR_USE_DOC_UNWARPING',
+                'use_chart_recognition': 'PADDLEOCR_USE_CHART_RECOGNITION',
+            },
+        }
+
+        for section, mapping in field_map.items():
+            section_data = data.get(section)
+            if not isinstance(section_data, dict):
+                continue
+            for field, env_key in mapping.items():
+                if field not in section_data:
+                    continue
+                val = section_data[field]
+                if val is None:
+                    continue
+                # 布尔值转字符串
+                if isinstance(val, bool):
+                    val = 'true' if val else 'false'
+                updates[env_key] = str(val)
+
+        if updates:
+            update_env_file(updates)
+            settings.reload_providers()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        logger.exception("更新配置失败")
+        return jsonify({'success': False, 'error': '更新配置失败，请检查日志'}), 500
 
 
 @app.route('/api/history', methods=['GET'])
@@ -1147,7 +1200,7 @@ def ai_analysis():
     TODO（后端开发者）:
         1. 从数据库查询题目详情（content_json, options_json, user_answer, knowledge_tags）
         2. 构建 prompt，将题目内容 + 用户答案 + 知识点标签传给 LLM
-        3. 调用 LLM（建议使用 llm.py 中的 init_model，支持 deepseek/ernie）
+        3. 调用 LLM（建议使用 llm.py 中的 init_model，支持 openai/anthropic）
         4. 解析 LLM 返回的结构化结果，填充 analysis 字段
         5. 可选：将分析结果缓存到数据库，避免重复分析
     """
@@ -1374,12 +1427,13 @@ def stream_chat(session_id):
     try:
         data = request.get_json(silent=True) or {}
         message = data.get('message', '').strip()
-        model_provider = data.get('model_provider', 'deepseek')
+        model_provider = data.get('model_provider', 'openai')
+        model_name = data.get('model_name') or None
 
         if not message:
             return jsonify({'success': False, 'error': '消息不能为空'}), 400
 
-        if model_provider not in ('deepseek', 'ernie'):
+        if not settings.is_valid_provider(model_provider):
             return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
 
         with SessionLocal() as db:
@@ -1417,6 +1471,7 @@ def stream_chat(session_id):
                     question=q_data,
                     messages=history,
                     provider=model_provider,
+                    model_name=model_name,
                 ):
                     full_response.append(token)
                     yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"

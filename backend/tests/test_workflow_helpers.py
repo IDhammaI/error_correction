@@ -691,9 +691,9 @@ class TestIdentifySubjectLLM:
     def test_llm_receives_provider(self, mock_llm):
         """model_provider 应正确传递到 LLM 函数"""
         ocr = self._make_ocr("普通内容")
-        _identify_subject(ocr, ["高中数学"], model_provider="ernie")
+        _identify_subject(ocr, ["高中数学"], model_provider="anthropic")
         _, kwargs = mock_llm.call_args
-        assert kwargs.get("provider") == "ernie"
+        assert kwargs.get("provider") == "anthropic"
 
 
 # ── _merge_pages 测试 ─────────────────────────────────────────

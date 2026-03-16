@@ -10,7 +10,7 @@ Benchmark 数据批量采集
     python -m benchmark.collect                        # 采集全部科目
     python -m benchmark.collect --subject 高中数学     # 只采集指定科目
     python -m benchmark.collect --dry-run              # 只扫描 PDF
-    python -m benchmark.collect --provider ernie       # 指定分割模型
+    python -m benchmark.collect --provider anthropic   # 指定分割模型
     python -m benchmark.collect --workers 4            # 并行数（默认 4）
 """
 
@@ -80,7 +80,7 @@ def pdf_to_images(pdf_path: Path, max_pages: int = MAX_PAGES) -> List[str]:
 # 2. OCR + Agent 分割（复用现有流水线）
 # ═══════════════════════════════════════════════════════════════
 
-def ocr_and_split(image_paths: List[str], provider: str = "deepseek") -> List[Dict]:
+def ocr_and_split(image_paths: List[str], provider: str = "openai") -> List[Dict]:
     """对一组图片执行 OCR → Agent 分割，返回结构化题目列表"""
     from src.workflow import _run_ocr_and_simplify, _build_overlapping_batches, _dedup_questions
 
@@ -203,7 +203,7 @@ def process_one_pdf(
 def collect(
     subject: str = None,
     dry_run: bool = False,
-    provider: str = "deepseek",
+    provider: str = "openai",
     max_workers: int = 4,
 ):
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
@@ -266,8 +266,8 @@ def main():
                         help="筛选科目关键词（如 '高中数学'、'化学'），不指定则全部")
     parser.add_argument("--dry-run", action="store_true",
                         help="只扫描 PDF 列表，不执行 OCR 和分割")
-    parser.add_argument("--provider", "-p", default="deepseek", choices=["deepseek", "ernie"],
-                        help="分割用的模型供应商（默认 deepseek）")
+    parser.add_argument("--provider", "-p", default="openai", choices=["openai", "anthropic"],
+                        help="分割用的模型供应商（默认 openai）")
     parser.add_argument("--workers", "-w", type=int, default=4,
                         help="并行线程数（默认 4）")
     args = parser.parse_args()

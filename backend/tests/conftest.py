@@ -21,9 +21,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--model-provider",
         action="store",
-        default="deepseek",
-        choices=["deepseek", "ernie"],
-        help="指定测试使用的模型供应商: deepseek (默认) 或 ernie",
+        default="openai",
+        choices=["openai", "anthropic"],
+        help="指定测试使用的模型供应商: openai (默认) 或 anthropic",
     )
 
 

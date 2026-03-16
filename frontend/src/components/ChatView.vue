@@ -8,7 +8,8 @@ const PAGE_SIZE = 30
 const props = defineProps({
   sessionId: { type: Number, default: null },
   question: { type: Object, default: null },
-  modelProvider: { type: String, default: 'deepseek' },
+  modelProvider: { type: String, default: 'openai' },
+  modelName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['back'])
@@ -109,7 +110,7 @@ const sendMessage = async () => {
 
   abortCtrl = new AbortController()
   try {
-    const resp = await streamChat(props.sessionId, text, props.modelProvider, abortCtrl.signal)
+    const resp = await streamChat(props.sessionId, text, props.modelProvider, abortCtrl.signal, props.modelName)
     if (!resp.ok) {
       const err = await resp.json().catch(() => null)
       throw new Error((err && err.error) || `HTTP ${resp.status}`)

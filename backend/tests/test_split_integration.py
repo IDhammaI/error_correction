@@ -2,14 +2,14 @@
 集成测试 — 验证大模型能否正常分割题目
 
 用法:
-    # 默认使用 deepseek
+    # 默认使用 openai
     pytest tests/test_split_integration.py -v -s
 
     # 指定模型
-    pytest tests/test_split_integration.py -v -s --model-provider ernie
-    pytest tests/test_split_integration.py -v -s --model-provider deepseek
+    pytest tests/test_split_integration.py -v -s --model-provider anthropic
+    pytest tests/test_split_integration.py -v -s --model-provider openai
 
-需要配置对应的环境变量（DEEPSEEK_API_KEY 或 ERNIE_API_KEY）。
+需要配置对应的环境变量（OPENAI_API_KEY 或 ANTHROPIC_API_KEY）。
 """
 
 import os
@@ -22,8 +22,8 @@ load_dotenv()
 # ── 跳过条件 ───────────────────────────────────────────────
 
 skip_no_api_key = pytest.mark.skipif(
-    not os.getenv("DEEPSEEK_API_KEY") and not os.getenv("ERNIE_API_KEY"),
-    reason="未配置 LLM API Key（DEEPSEEK_API_KEY 或 ERNIE_API_KEY）",
+    not os.getenv("OPENAI_API_KEY") and not os.getenv("ANTHROPIC_API_KEY"),
+    reason="未配置 LLM API Key（OPENAI_API_KEY 或 ANTHROPIC_API_KEY）",
 )
 
 # ── 测试数据路径 ───────────────────────────────────────────
@@ -69,7 +69,7 @@ def split_result(ocr_data, model_provider):
 
 
 @skip_no_api_key
-@pytest.mark.xfail(reason="LangChain ToolStrategy 与 DeepSeek API 兼容性问题，待上游修复")
+@pytest.mark.xfail(reason="LangChain ToolStrategy 与部分 API 兼容性问题，待上游修复")
 class TestSplitIntegration:
     """集成测试：验证 split_batch 能否通过大模型正确分割题目"""
 
