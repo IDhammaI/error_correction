@@ -20,6 +20,15 @@
             }
         }
     </script>
+    <!-- MathJax（效果演示区 LaTeX 公式渲染） -->
+    <script>
+      MathJax = {
+        tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
     <!-- 引入 Lucide 图标库 -->
     <!--
       外部 CDN 依赖说明 & 离线降级策略
