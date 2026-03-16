@@ -109,69 +109,55 @@ def create_correction_agent(provider: str = "openai", model_name: str | None = N
     )
 
 
-def invoke_split(prompt: str, provider: str = "openai", model_name: str | None = None):
-    """统一调用分割，屏蔽 ToolStrategy vs with_structured_output 差异
-
-    Args:
-        prompt: 用户 prompt
-        provider: 模型供应商
-        model_name: 指定模型名称，为 None 时使用 provider 默认模型
-
-    Returns:
-        QuestionSplitResult 或 None
-    """
+def _invoke_structured(
+    *,
+    prompt: str,
+    provider: str,
+    model_name: str | None,
+    temperature: float,
+    schema,
+    system_prompt_fallback: str,
+    cache_key: str,
+    agent_factory,
+):
+    """通用结构化输出调用，屏蔽 ToolStrategy vs with_structured_output 差异"""
     cfg = settings.get_provider(provider)
 
     if not cfg.supports_function_calling:
-        model = _init_model(temperature=0.1, provider=provider, model_name=model_name)
-        structured_model = model.with_structured_output(QuestionSplitResult)
-        return structured_model.invoke([
-            SystemMessage(content=SPLIT_PROMPT_LITE),
+        model = _init_model(temperature=temperature, provider=provider, model_name=model_name)
+        return model.with_structured_output(schema).invoke([
+            SystemMessage(content=system_prompt_fallback),
             HumanMessage(content=prompt),
         ])
-    else:
-        cache_key = f"split_{provider}_{model_name or 'default'}"
-        with _agent_cache_lock:
-            if cache_key not in _agent_cache:
-                logger.info(f"创建分割 Agent 实例 (provider={provider}, model={model_name or 'default'})")
-                _agent_cache[cache_key] = create_inner_split_agent(provider=provider, model_name=model_name)
-            agent = _agent_cache[cache_key]
-        response = agent.invoke(
-            {"messages": [{"role": "user", "content": prompt}]},
-            config={"recursion_limit": 100},
-        )
-        return response.get("structured_response")
+
+    full_key = f"{cache_key}_{provider}_{model_name or 'default'}"
+    with _agent_cache_lock:
+        if full_key not in _agent_cache:
+            logger.info(f"创建 Agent 实例 (key={full_key})")
+            _agent_cache[full_key] = agent_factory(provider=provider, model_name=model_name)
+        agent = _agent_cache[full_key]
+    response = agent.invoke(
+        {"messages": [{"role": "user", "content": prompt}]},
+        config={"recursion_limit": 100},
+    )
+    return response.get("structured_response")
+
+
+def invoke_split(prompt: str, provider: str = "openai", model_name: str | None = None):
+    """统一调用分割，屏蔽 ToolStrategy vs with_structured_output 差异"""
+    return _invoke_structured(
+        prompt=prompt, provider=provider, model_name=model_name,
+        temperature=0.1, schema=QuestionSplitResult,
+        system_prompt_fallback=SPLIT_PROMPT_LITE,
+        cache_key="split", agent_factory=create_inner_split_agent,
+    )
 
 
 def invoke_correction(prompt: str, provider: str = "openai", model_name: str | None = None):
-    """统一调用纠错，屏蔽 ToolStrategy vs with_structured_output 差异
-
-    Args:
-        prompt: 用户 prompt
-        provider: 模型供应商
-        model_name: 指定模型名称，为 None 时使用 provider 默认模型
-
-    Returns:
-        CorrectionResult 或 None
-    """
-    cfg = settings.get_provider(provider)
-
-    if not cfg.supports_function_calling:
-        model = _init_model(temperature=0.0, provider=provider, model_name=model_name)
-        structured_model = model.with_structured_output(CorrectionResult)
-        return structured_model.invoke([
-            SystemMessage(content=CORRECTION_PROMPT),
-            HumanMessage(content=prompt),
-        ])
-    else:
-        cache_key = f"correction_{provider}_{model_name or 'default'}"
-        with _agent_cache_lock:
-            if cache_key not in _agent_cache:
-                logger.info(f"创建纠错 Agent 实例 (provider={provider}, model={model_name or 'default'})")
-                _agent_cache[cache_key] = create_correction_agent(provider=provider, model_name=model_name)
-            agent = _agent_cache[cache_key]
-        response = agent.invoke(
-            {"messages": [{"role": "user", "content": prompt}]},
-            config={"recursion_limit": 100},
-        )
-        return response.get("structured_response")
+    """统一调用纠错，屏蔽 ToolStrategy vs with_structured_output 差异"""
+    return _invoke_structured(
+        prompt=prompt, provider=provider, model_name=model_name,
+        temperature=0.0, schema=CorrectionResult,
+        system_prompt_fallback=CORRECTION_PROMPT,
+        cache_key="correction", agent_factory=create_correction_agent,
+    )

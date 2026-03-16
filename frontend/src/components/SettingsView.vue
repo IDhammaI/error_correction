@@ -181,25 +181,34 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
               />
             </div>
           </div>
-          <!-- Function Calling 开关 -->
+          <!-- 能力开关 -->
           <div class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">
-            <label class="flex cursor-pointer items-center justify-between">
-              <div>
-                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">支持 Function Calling</span>
-                <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">文心一言、通义千问等不支持时需关闭，否则会陷入无限循环</p>
-              </div>
-              <button
-                type="button"
-                @click="form.openai.supports_function_calling = !form.openai.supports_function_calling"
-                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                :class="form.openai.supports_function_calling ? 'bg-blue-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
+            <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">能力开关</p>
+            <div class="space-y-3">
+              <label
+                v-for="toggle in [
+                  { key: 'supports_function_calling', label: '支持 Function Calling', description: '文心一言、通义千问等不支持时需关闭，否则会陷入无限循环' },
+                ]"
+                :key="toggle.key"
+                class="flex cursor-pointer items-center justify-between"
               >
-                <span
-                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
-                  :class="form.openai.supports_function_calling ? 'translate-x-5' : 'translate-x-0'"
-                ></span>
-              </button>
-            </label>
+                <div>
+                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
+                  <p v-if="toggle.description" class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{{ toggle.description }}</p>
+                </div>
+                <button
+                  type="button"
+                  @click="form.openai[toggle.key] = !form.openai[toggle.key]"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  :class="form.openai[toggle.key] ? 'bg-blue-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
+                    :class="form.openai[toggle.key] ? 'translate-x-5' : 'translate-x-0'"
+                  ></span>
+                </button>
+              </label>
+            </div>
           </div>
         </div>
 

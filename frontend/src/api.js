@@ -2,6 +2,12 @@
  * API 调用层 — 集中管理所有 fetch 请求
  */
 
+function _buildModelBody(modelProvider, modelName, extra = {}) {
+  const body = { model_provider: modelProvider, ...extra }
+  if (modelName) body.model_name = modelName
+  return body
+}
+
 export async function fetchAppConfig() {
   const resp = await fetch('/api/config')
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -70,12 +76,10 @@ export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort 
 }
 
 export async function splitQuestions(modelProvider, modelName) {
-  const body = { model_provider: modelProvider }
-  if (modelName) body.model_name = modelName
   const resp = await fetch('/api/split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName)),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
@@ -257,12 +261,10 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
 }
 
 export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName) {
-  const body = { message, model_provider: modelProvider }
-  if (modelName) body.model_name = modelName
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message })),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)
