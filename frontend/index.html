@@ -117,6 +117,14 @@
 </head>
 <body class="min-h-screen transition-colors duration-500 bg-slate-50 text-slate-900 dark:bg-[#05050A] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 overflow-x-hidden relative">
 
+    <!-- 右侧 Section 导航 -->
+    <nav id="section-nav" class="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-6 px-2 rounded-full border border-slate-200/60 bg-white/60 backdrop-blur-md dark:border-white/5 dark:bg-white/[0.02] scale-90 md:scale-100 transition-colors">
+        <!-- 垂直轨道 -->
+        <div class="absolute top-8 bottom-8 w-px bg-slate-200 dark:bg-white/10 pointer-events-none"></div>
+        <!-- 激活指示器 -->
+        <div id="section-nav-indicator" class="absolute w-2 h-2 bg-blue-600 dark:bg-indigo-400 rounded-full pointer-events-none z-10 transition-all duration-500 shadow-[0_0_10px_rgba(37,99,235,0.7)] dark:shadow-[0_0_10px_rgba(129,140,248,0.8)]" style="top: 44px; transform: translateY(-50%)"></div>
+    </nav>
+
     <!-- 动态背景环境光 (仅首屏透出) -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 h-screen">
         <div class="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-300/30 dark:bg-indigo-600/20 mix-blend-multiply dark:mix-blend-screen filter blur-[100px] animate-blob transition-colors duration-1000"></div>
@@ -162,7 +170,7 @@
     </nav>
 
     <!-- 首屏区块 -->
-    <section class="relative pt-40 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10">
+    <section id="hero" class="relative pt-40 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10">
         <div class="flex-1 text-center lg:text-left">
             <div class="hero-anim">
                 <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-transparent dark:glass-panel dark:border-indigo-500/30 dark:text-indigo-300 text-sm font-medium mb-8 transition-colors">
@@ -522,6 +530,71 @@
             setTimeout(() => {
                 document.querySelectorAll('.hero-anim').forEach(el => el.classList.add('is-visible'));
             }, 100);
+
+            // ---- 右侧 Section 导航 ----
+            const SECTIONS = [
+                { id: 'hero',     label: '首页' },
+                { id: 'features', label: '核心功能' },
+                { id: 'workflow', label: '工作流' },
+                { id: 'demo',     label: '效果演示' },
+            ];
+            const nav = document.getElementById('section-nav');
+            const indicator = document.getElementById('section-nav-indicator');
+            const DOT_SIZE = 40; // 每个按钮高度 px
+
+            // 动态生成导航按钮
+            SECTIONS.forEach((s, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'section-nav-btn relative flex items-center justify-center w-10 h-10 focus:outline-none group';
+                btn.title = s.label;
+                btn.dataset.id = s.id;
+                btn.innerHTML = `
+                    <div class="section-dot w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/20 transition-all duration-300 group-hover:bg-blue-400 dark:group-hover:bg-indigo-300"></div>
+                    <span class="absolute right-14 px-3 py-1.5 rounded-xl bg-white dark:bg-[#070a10] border border-slate-200 dark:border-white/10 text-[11px] font-black text-slate-700 dark:text-white whitespace-nowrap transition-all duration-300 pointer-events-none opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 shadow-xl">
+                        <span class="opacity-40 mr-2">${String(i + 1).padStart(2, '0')}</span>${s.label}
+                    </span>`;
+                btn.addEventListener('click', () => {
+                    const el = document.getElementById(s.id);
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                });
+                nav.appendChild(btn);
+            });
+
+            let activeSection = 'hero';
+            const updateNav = () => {
+                const { scrollY, innerHeight } = window;
+                const scrollHeight = document.documentElement.scrollHeight;
+                const probe = scrollY + innerHeight / 3;
+                let next = SECTIONS[0].id;
+
+                if (innerHeight + scrollY >= scrollHeight - 100) {
+                    next = SECTIONS[SECTIONS.length - 1].id;
+                } else {
+                    for (let i = SECTIONS.length - 1; i >= 0; i--) {
+                        const el = document.getElementById(SECTIONS[i].id);
+                        if (el && probe >= el.getBoundingClientRect().top + scrollY) {
+                            next = SECTIONS[i].id; break;
+                        }
+                    }
+                }
+
+                if (next === activeSection) return;
+                activeSection = next;
+                const idx = SECTIONS.findIndex(s => s.id === activeSection);
+
+                // 移动指示器：top = 容器 padding(24px) + 按钮中心偏移(20px) + idx * 40px
+                indicator.style.top = `${idx * DOT_SIZE + 44}px`;
+
+                // 更新各点样式
+                nav.querySelectorAll('.section-nav-btn').forEach((btn, i) => {
+                    const dot = btn.querySelector('.section-dot');
+                    if (i === idx) dot.className = 'section-dot w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-indigo-400 scale-125 transition-all duration-300';
+                    else dot.className = 'section-dot w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/20 transition-all duration-300 group-hover:bg-blue-400 dark:group-hover:bg-indigo-300';
+                });
+            };
+
+            window.addEventListener('scroll', updateNav, { passive: true });
+            updateNav();
 
             let activeStep = 0;
             const totalSteps = 4;
