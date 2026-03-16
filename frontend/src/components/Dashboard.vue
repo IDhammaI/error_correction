@@ -166,8 +166,9 @@ const initBarChart = (isDark, textColor, gridColor) => {
         backgroundColor: colors.map(c => c + '99'),
         borderColor: colors,
         borderWidth: 1,
-        borderRadius: 4,
-        barThickness: 22,
+        borderRadius: 2,
+        barPercentage: 0.85,
+        categoryPercentage: 1.0,
       }]
     },
     options: {

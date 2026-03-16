@@ -30,6 +30,22 @@ export const getQuestionSnippet = (q, maxLen = 0, fallback = '') => {
   return raw
 }
 
+/** 将 Markdown 文本渲染为净化后的 HTML（用于聊天消息） */
+export const renderMarkdown = (text) => {
+  if (!text) return ''
+  const parse = window.marked?.parse ?? ((s) => s)
+  const html = parse(text, { breaks: true })
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      ...ALLOWED_HTML_TAGS,
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'hr',
+      'a',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+  })
+}
+
 /** 对指定元素触发 MathJax 公式渲染 */
 export const typesetMath = async (el) => {
   const mj = window.MathJax

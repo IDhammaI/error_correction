@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch, inject } from 'vue'
 import { fetchMessages, streamChat } from '../api.js'
-import { getQuestionSnippet, sanitizeHtml, typesetMath } from '../utils.js'
+import { getQuestionSnippet, renderMarkdown, typesetMath } from '../utils.js'
 
 const PAGE_SIZE = 30
 
@@ -21,13 +21,19 @@ const messages = ref([])
 const inputText = ref('')
 const streaming = ref(false)
 const listEl = ref(null)
+const snippetEl = ref(null)
 const hasMore = ref(false)
 const loadingMore = ref(false)
 
-const snippet = computed(() => getQuestionSnippet(props.question, 50, '未知题目'))
+const snippet = computed(() => getQuestionSnippet(props.question, 0, '未知题目'))
 
 let abortCtrl = null
 let scrollRafId = null
+const mdCache = new Map()
+const cachedRenderMarkdown = (text) => {
+  if (!mdCache.has(text)) mdCache.set(text, renderMarkdown(text))
+  return mdCache.get(text)
+}
 const scrollToBottom = async () => {
   await nextTick()
   if (scrollRafId) return
@@ -157,7 +163,12 @@ const onKeydown = (e) => {
 onMounted(loadHistory)
 watch(() => props.sessionId, () => {
   abortCtrl?.abort()
+  mdCache.clear()
   loadHistory()
+})
+watch(snippet, async () => {
+  await nextTick()
+  typesetMath(snippetEl.value)
 })
 onBeforeUnmount(() => {
   abortCtrl?.abort()
@@ -180,7 +191,7 @@ onBeforeUnmount(() => {
       </button>
 
       <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">
+        <p ref="snippetEl" class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">
           {{ snippet }}
         </p>
         <div class="mt-0.5 flex items-center gap-2">
@@ -260,7 +271,7 @@ onBeforeUnmount(() => {
                 : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
             "
           >
-            <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap" v-html="sanitizeHtml(msg.content)"></div>
+            <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap" v-html="cachedRenderMarkdown(msg.content)"></div>
             <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
 
             <!-- 流式加载指示器 -->

@@ -170,8 +170,9 @@ export async function updateReviewStatus(questionId, reviewStatus) {
 }
 
 export async function fetchDashboardStats(subject) {
-  const qs = subject ? `?subject=${encodeURIComponent(subject)}` : ''
-  const resp = await fetch(`/api/dashboard-stats${qs}`)
+  const qs = new URLSearchParams()
+  if (subject) qs.set('subject', subject)
+  const resp = await fetch(`/api/dashboard-stats?${qs}`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
   if (data && data.success) return data
