@@ -1,6 +1,16 @@
 # 错题本生成系统
 
-基于 PaddleOCR + LangChain Agent 的智能错题本生成系统。上传试卷 PDF 或图片，自动识别文档结构、智能分割题目，导出为 Markdown 错题本。
+基于 PaddleOCR + LangChain Agent 的智能错题本生成系统。上传试卷 PDF 或图片，自动识别文档结构、智能分割题目、OCR 纠错，导出为 Markdown 错题本并存入错题库，支持 AI 解题与教学讲解。
+
+## 功能
+
+- **智能分割**：LLM Agent 自动识别题目边界，支持批次并行处理
+- **OCR 纠错**：LLM 对识别结果进行结构化纠错，还原原题格式
+- **错题库**：SQLite 持久化存储，支持按科目、题型、日期筛选和统计
+- **AI 解题**：独立解题 Agent，逐步给出解题过程
+- **AI 分析**：教学讲解 Agent，深度分析题目知识点
+- **AI 对话**：多轮对话，支持 SSE 流式输出
+- **导出**：导出为 Markdown 文件
 
 ## 项目结构
 
@@ -11,16 +21,17 @@
 │   ├── web_app.py                   # Flask 主应用（路由 + 会话状态）
 │   ├── src/                         # 核心模块（LangGraph workflow、OCR 客户端、工具函数）
 │   ├── error_correction_agent/      # LangChain Agent（题目分割、OCR 纠错、科目识别）
-│   ├── solve_agent/                 # 解题智能体
+│   ├── solve_agent/                 # 解题 Agent
+│   ├── teach_agent/                 # 教学讲解 Agent（AI 分析功能）
 │   ├── benchmark/                   # 模型评测（数据采集、评测运行、指标计算）
 │   ├── db/                          # SQLite 数据库（ORM 模型、CRUD）
-│   └── tests/                       # 后端测试（13 个测试模块）
+│   └── tests/                       # 后端测试（19 个测试模块）
 ├── frontend/                        # Vue 3 + Vite + Tailwind CSS 前端
 │   ├── index.html                   # 介绍落地页
 │   ├── app.html                     # Vue 工作台入口
 │   └── src/
 │       ├── App.vue                  # 根组件（侧边栏布局 + 视图路由）
-│       ├── components/              # 9 个功能组件
+│       ├── components/              # 18 个功能组件
 │       └── __tests__/               # 前端测试（Vitest）
 ├── example_uploads/                 # 示例测试文件（图片 + PDF）
 ├── .env.example                     # 环境变量模板
@@ -50,15 +61,13 @@ copy .env.example .env
 编辑 `.env`，填写以下必需项：
 
 ```dotenv
-# LLM API（Agent 智能分割题目，二选一即可）
-# DeepSeek
-DEEPSEEK_API_KEY=your_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
+# LLM API（OpenAI 兼容接口，支持 OpenAI / DeepSeek / Qwen / Moonshot 等）
+OPENAI_API_KEY=your_key
+# OPENAI_BASE_URL=https://api.deepseek.com   # 留空则使用 OpenAI 官方；填写后可切换 DeepSeek 等供应商
+# OPENAI_MODEL_NAME=gpt-4o-mini              # 默认模型（可选）
 
-# 文心一言（百度 AIStudio OpenAI 兼容接口）
-ERNIE_API_KEY=your_key
-ERNIE_BASE_URL=https://aistudio.baidu.com/llm/lmapi/v3
-ERNIE_MODEL_NAME=ernie-4.5-turbo-128k-preview
+# Anthropic API（可选，与 OpenAI 兼容接口二选一或同时配置）
+# ANTHROPIC_API_KEY=your_key
 
 # PaddleOCR API（文档结构解析，V2 异步任务接口）
 PADDLEOCR_API_URL=https://paddleocr.aistudio-app.com/api/v2/ocr/jobs
@@ -66,7 +75,7 @@ PADDLEOCR_API_TOKEN=your_token
 PADDLEOCR_MODEL=PaddleOCR-VL-1.5
 ```
 
-> DeepSeek 和文心二选一配置即可，前端会自动检测已配置的模型供选择。轻量模型、LangSmith 等可选配置见 `.env.example`。
+> LLM 至少配置一种（OpenAI 兼容接口或 Anthropic），前端会自动检测可用模型。轻量模型、LangSmith 追踪、PaddleOCR 特性开关等可选配置见 `.env.example`。
 
 ### 3. 启动
 
