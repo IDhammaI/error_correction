@@ -565,14 +565,24 @@ onBeforeUnmount(() => {
     <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
       <div>
         <!-- Logo 标题区 -->
-        <div class="flex h-20 items-center gap-3 border-b border-slate-100 px-6 dark:border-white/5">
-          <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-indigo-500/20">
-            <i class="fa-solid fa-file-circle-check text-xl relative z-10"></i>
-            <div class="absolute inset-0 animate-pulse rounded-xl bg-blue-400/20 blur-md"></div>
-          </div>
-          <span class="text-xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:to-indigo-200">
-            智卷系统
-          </span>
+        <div class="flex h-20 items-center gap-2 border-b border-slate-100 px-4 dark:border-white/5">
+          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" title="返回介绍页">
+            <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 dark:shadow-indigo-500/20">
+              <img src="/logo.svg" class="w-6 h-6 brightness-0 invert relative z-10" alt="logo" />
+              <div class="absolute inset-0 animate-pulse rounded-xl bg-blue-400/20 blur-md"></div>
+            </div>
+            <span class="text-xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:to-indigo-200">
+              智卷系统
+            </span>
+          </button>
+          <button
+            @click="(e) => toggleTheme(e.currentTarget)"
+            class="shrink-0 p-2 rounded-full text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
+            title="切换主题"
+          >
+            <i class="fa-solid fa-sun text-[18px] hidden dark:block"></i>
+            <i class="fa-solid fa-moon text-[18px] block dark:hidden"></i>
+          </button>
         </div>
 
         <!-- 视图切换菜单 -->
@@ -581,7 +591,7 @@ onBeforeUnmount(() => {
 
           <button
             @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -591,7 +601,7 @@ onBeforeUnmount(() => {
 
           <button
             @click="currentView = 'dashboard'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -601,7 +611,7 @@ onBeforeUnmount(() => {
 
           <button
             @click="currentView = 'error-bank'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'error-bank' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-database w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -634,29 +644,13 @@ onBeforeUnmount(() => {
 
         <button
           @click="currentView = 'settings'"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
           :class="currentView === 'settings' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
         >
           <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
           系统设置
         </button>
 
-        <button
-          @click="(e) => toggleTheme(e.currentTarget)"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
-        >
-          <i class="fa-solid w-5 text-center text-lg transition-transform" :class="theme === 'dark' ? 'fa-sun text-amber-400 rotate-12' : 'fa-moon'"></i>
-          <span>{{ theme === 'dark' ? '浅色模式' : '深色模式' }}</span>
-        </button>
-
-        <a
-          href="/"
-          @click.prevent="navigateToHome"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-indigo-300"
-        >
-          <i class="fa-solid fa-arrow-left-long w-5 text-center text-lg"></i>
-          <span>返回介绍</span>
-        </a>
       </div>
     </aside>
 
