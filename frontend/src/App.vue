@@ -92,13 +92,20 @@ watch(systemStatus, (newVal) => {
 })
 
 const statusPills = computed(() => {
-  if (statusLoading.value) return [{ key: 'paddle', loading: true, label: 'PaddleOCR' }]
+  if (statusLoading.value) return [
+    { key: 'paddle', loading: true, label: 'PaddleOCR' },
+    { key: 'ensexam', loading: true, label: 'EnsExam (未接入)' },
+    { key: 'langsmith', loading: true, label: 'LangSmith (未接入)' },
+  ]
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
   pills.push({ key: 'ensexam', ok: false, label: 'EnsExam (未接入)', isPlaceholder: true })
-  if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
+  pills.push(s.langsmith_enabled
+    ? { key: 'langsmith', ok: true, label: 'LangSmith追踪' }
+    : { key: 'langsmith', ok: false, label: 'LangSmith (未接入)', isPlaceholder: true }
+  )
   return pills
 })
 
