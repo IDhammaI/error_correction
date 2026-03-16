@@ -516,10 +516,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-500 dark:bg-[#05050A] dark:text-slate-300">
+  <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
     
     <!-- ================== PC端：左侧边栏导航 ================== -->
-    <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white transition-colors md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
+    <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
       <div>
         <!-- Logo 标题区 -->
         <div class="flex h-20 items-center gap-3 border-b border-slate-100 px-6 dark:border-white/5">
@@ -538,7 +538,7 @@ onBeforeUnmount(() => {
           
           <button
             @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
             :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
 
           <button
             @click="currentView = 'dashboard'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
             :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -558,7 +558,7 @@ onBeforeUnmount(() => {
 
           <button
             @click="currentView = 'error-bank'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
             :class="currentView === 'error-bank' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-database w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
@@ -573,7 +573,7 @@ onBeforeUnmount(() => {
       <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
         <button
           @click="currentView = 'settings'"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
           :class="currentView === 'settings' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
         >
           <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
@@ -582,7 +582,7 @@ onBeforeUnmount(() => {
 
         <button
           @click="(e) => toggleTheme(e.currentTarget)"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
           <i class="fa-solid w-5 text-center text-lg transition-transform" :class="theme === 'dark' ? 'fa-sun text-amber-400 rotate-12' : 'fa-moon'"></i>
           <span>{{ theme === 'dark' ? '浅色模式' : '深色模式' }}</span>
@@ -590,7 +590,7 @@ onBeforeUnmount(() => {
 
         <a
           href="/"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 transition-all hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-indigo-300"
+          class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
           <i class="fa-solid fa-arrow-left-long w-5 text-center text-lg"></i>
           <span>返回介绍</span>
@@ -601,23 +601,23 @@ onBeforeUnmount(() => {
     <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
     <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/90 pb-2 pt-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#0A0A0F]/90">
       <div class="flex justify-around">
-        <button @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
-          <i class="fa-solid fa-wand-magic-sparkles mb-1 text-xl"></i>
-          <span class="text-[10px] font-bold">工作台</span>
+        <button @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'" class="flex flex-col items-center p-2" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-file-arrow-up text-lg"></i>
+          <span class="mt-1 text-[10px] font-bold">录题</span>
         </button>
-        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
-          <i class="fa-solid fa-chart-pie mb-1 text-xl"></i>
-          <span class="text-[10px] font-bold">错题本</span>
+        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-chart-pie text-lg"></i>
+          <span class="mt-1 text-[10px] font-bold">仪表盘</span>
         </button>
-        <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'error-bank' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
-          <i class="fa-solid fa-database mb-1 text-xl"></i>
-          <span class="text-[10px] font-bold">错题库</span>
+        <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-layer-group text-lg"></i>
+          <span class="mt-1 text-[10px] font-bold">错题本</span>
         </button>
-        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'settings' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
-          <i class="fa-solid fa-gear mb-1 text-xl"></i>
-          <span class="text-[10px] font-bold">设置</span>
+        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2" :class="currentView === 'settings' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-sliders text-lg"></i>
+          <span class="mt-1 text-[10px] font-bold">设置</span>
         </button>
-        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 transition-colors dark:text-slate-400">
+        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 dark:text-slate-400">
           <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon'"></i>
           <span class="text-[10px] font-bold">主题</span>
         </button>
@@ -631,9 +631,9 @@ onBeforeUnmount(() => {
       <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
         <!-- 专属背景光晕 (动态漂浮 - 极致柔和的高级感) -->
         <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] transition-colors duration-1000 dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
-          <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-fuchsia-600/20 dark:mix-blend-screen"></div>
-          <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] transition-colors duration-1000 dark:bg-blue-500/10 dark:mix-blend-screen"></div>
+          <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
+          <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-600/20 dark:mix-blend-screen"></div>
+          <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/10 dark:mix-blend-screen"></div>
         </div>
 
         <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">

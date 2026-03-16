@@ -33,7 +33,7 @@ const onDrop = (e) => {
   <div :class="{ 'flex flex-col flex-1': expand }">
     <!-- Drop zone (拖拽上传区域) -->
     <div
-      class="group relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border transition-all duration-500 backdrop-blur-md"
+      class="group relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border backdrop-blur-md"
       :class="[
         uploadHover
           ? 'border-blue-500/50 bg-slate-900/10 shadow-2xl shadow-blue-500/20 dark:border-indigo-500/50 dark:bg-white/10'

@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
                   <td class="sticky left-0 z-10 max-w-[120px] truncate bg-white/80 px-2 py-1.5 text-left font-bold text-slate-600 backdrop-blur-sm dark:bg-[#0A0A0F]/80 dark:text-slate-300">{{ tag }}</td>
                   <td v-for="(t, ci) in heatmapData.types" :key="t" class="px-1 py-1">
                     <div
-                      class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold transition-colors"
+                      class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold"
                       :style="{ backgroundColor: heatmapCellColor(heatmapData.data[ri]?.[ci] || 0) }"
                       :class="heatmapData.data[ri]?.[ci] ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-300 dark:text-slate-600'"
                     >{{ heatmapData.data[ri]?.[ci] || 0 }}</div>
@@ -498,17 +498,17 @@ onBeforeUnmount(() => {
         </h3>
         <div v-if="reviewItems.length" class="flex items-center gap-2">
           <button @click="toggleSelectMode"
-            class="rounded-lg border px-3 py-1.5 text-xs font-bold transition-all"
+            class="rounded-lg border px-3 py-1.5 text-xs font-bold"
             :class="selectMode ? 'border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-400/30 dark:bg-blue-500/10 dark:text-blue-400' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-400'">
             <i class="fa-solid mr-1" :class="selectMode ? 'fa-xmark' : 'fa-list-check'"></i>
             {{ selectMode ? '取消选择' : '选择题目' }}
           </button>
           <template v-if="selectMode">
-            <button @click="selectAllReview" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+            <button @click="selectAllReview" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
               全选
             </button>
             <button @click="startAiAnalysis" :disabled="!selectedIds.size || aiAnalyzing"
-              class="rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+              class="rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
               <i class="fa-solid fa-wand-magic-sparkles mr-1" :class="{ 'animate-spin': aiAnalyzing }"></i>
               AI 错题分析 <span v-if="selectedIds.size">({{ selectedIds.size }})</span>
             </button>
@@ -529,12 +529,12 @@ onBeforeUnmount(() => {
       <div v-else class="space-y-4">
         <div v-for="q in reviewItems" :key="q.id"
           @click="selectMode ? toggleSelect(q.id) : openDetail(q)"
-          class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-[#0A0A0F]/60"
+          class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-[#0A0A0F]/60"
           :class="{ 'ring-2 ring-indigo-500/50 border-indigo-300 dark:border-indigo-500/40': selectMode && selectedIds.has(q.id) }">
           <div class="flex items-start gap-4">
             <!-- 选择复选框 -->
             <div v-if="selectMode" class="flex shrink-0 items-center pt-1" @click.stop="toggleSelect(q.id)">
-              <div class="flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all"
+              <div class="flex h-5 w-5 items-center justify-center rounded-md border-2"
                 :class="selectedIds.has(q.id) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 dark:border-slate-600'">
                 <i v-if="selectedIds.has(q.id)" class="fa-solid fa-check text-[10px]"></i>
               </div>
@@ -554,14 +554,14 @@ onBeforeUnmount(() => {
                 <span v-if="q.answer" class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
                   <i class="fa-solid fa-circle-check"></i>已录入答案
                 </span>
-                <button v-else @click="startInlineEdit(q, 'answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 px-2 py-0.5 font-bold text-emerald-500 transition-colors hover:bg-emerald-50 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10">
+                <button v-else @click="startInlineEdit(q, 'answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 px-2 py-0.5 font-bold text-emerald-500 hover:bg-emerald-50 dark:border-emerald-500/30 dark:hover:bg-emerald-500/10">
                   <i class="fa-solid fa-plus"></i>录入答案
                 </button>
                 <!-- 用户笔记 -->
                 <span v-if="q.user_answer" class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                   <i class="fa-solid fa-pen-to-square"></i>已记笔记
                 </span>
-                <button v-else @click="startInlineEdit(q, 'user_answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-blue-300 px-2 py-0.5 font-bold text-blue-500 transition-colors hover:bg-blue-50 dark:border-blue-500/30 dark:hover:bg-blue-500/10">
+                <button v-else @click="startInlineEdit(q, 'user_answer')" class="inline-flex items-center gap-1 rounded-md border border-dashed border-blue-300 px-2 py-0.5 font-bold text-blue-500 hover:bg-blue-50 dark:border-blue-500/30 dark:hover:bg-blue-500/10">
                   <i class="fa-solid fa-plus"></i>记笔记
                 </button>
               </div>
@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
                 <div class="mt-2 flex justify-end gap-2">
                   <button @click="cancelInlineEdit" class="rounded-lg px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400">取消</button>
                   <button @click="saveInlineEdit" :disabled="answerEditSaving"
-                    class="rounded-lg px-3 py-1 text-[10px] font-bold text-white transition-colors disabled:opacity-50"
+                    class="rounded-lg px-3 py-1 text-[10px] font-bold text-white disabled:opacity-50"
                     :class="answerEditField === 'answer' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-500 hover:bg-blue-600'">
                     {{ answerEditSaving ? '保存中…' : '保存' }}
                   </button>
@@ -585,7 +585,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="flex shrink-0 gap-2" @click.stop>
               <div class="group/tip relative">
-                <button @click="quickMarkStatus(q, '复习中')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                <button @click="quickMarkStatus(q, '复习中')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600 hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
                   <i class="fa-solid fa-spinner mr-1"></i>复习中
                 </button>
                 <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
@@ -594,7 +594,7 @@ onBeforeUnmount(() => {
                 </span>
               </div>
               <div class="group/tip relative">
-                <button @click="quickMarkStatus(q, '已掌握')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-600 transition-all hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <button @click="quickMarkStatus(q, '已掌握')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-600 hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
                   <i class="fa-solid fa-circle-check mr-1"></i>已掌握
                 </button>
                 <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
