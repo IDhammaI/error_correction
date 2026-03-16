@@ -560,6 +560,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
+    <!-- ================== 全局固定背景光晕 (支持长页面滚动) ================== -->
+    <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
+      <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-600/20 dark:mix-blend-screen"></div>
+      <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/10 dark:mix-blend-screen"></div>
+    </div>
 
     <!-- ================== PC端：左侧边栏导航 ================== -->
     <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
@@ -686,13 +692,6 @@ onBeforeUnmount(() => {
       <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
       <Transition name="view-fade">
       <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
-        <!-- 专属背景光晕 (动态漂浮 - 极致柔和的高级感) -->
-        <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
-          <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-600/20 dark:mix-blend-screen"></div>
-          <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/10 dark:mix-blend-screen"></div>
-        </div>
-
         <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">
           <Transition name="flip" mode="out-in">
             <!-- 第一页：录题与分析 -->

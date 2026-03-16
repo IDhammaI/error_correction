@@ -362,12 +362,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
-    <!-- 动态光晕 -->
-    <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div class="absolute -top-[5%] right-[-5%] h-[45vw] w-[45vw] rounded-full bg-indigo-500/10 mix-blend-multiply blur-[120px] dark:bg-indigo-600/15 dark:mix-blend-screen"></div>
-      <div class="absolute -bottom-[10%] left-[-10%] h-[35vw] w-[35vw] rounded-full bg-cyan-400/10 mix-blend-multiply blur-[100px] dark:bg-cyan-600/10 dark:mix-blend-screen"></div>
-    </div>
-
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题 + 学科筛选 -->
       <div class="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
