@@ -44,8 +44,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
         body {
             font-family: 'Inter', sans-serif;
+            animation: pageEnter 0.3s ease forwards;
         }
 
         @keyframes blob {
@@ -171,7 +176,7 @@
                         <i data-lucide="sun" id="theme-icon-sun" class="w-5 h-5 hidden dark:block"></i>
                         <i data-lucide="moon" id="theme-icon-moon" class="w-5 h-5 block dark:hidden"></i>
                     </button>
-                    <a href="app.html" class="relative inline-flex h-11 active:scale-95 transition-transform">
+                    <a href="/auth" class="relative inline-flex h-11 active:scale-95 transition-transform">
                         <div class="absolute inset-0 bg-blue-600 dark:bg-gradient-to-r dark:from-indigo-500 dark:via-purple-500 dark:to-fuchsia-500 rounded-full blur opacity-40 dark:opacity-70"></div>
                         <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-blue-600 dark:bg-[#0A0A0F] rounded-full dark:border dark:border-white/10 hover:bg-blue-700 dark:hover:bg-transparent shadow-md">
                             进入工作台
@@ -209,7 +214,7 @@
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center lg:justify-start" style="transition-delay: 450ms;">
                     <!-- 指向 app.html -->
-                    <a href="app.html" class="relative inline-flex group h-14 w-full sm:w-auto">
+                    <a href="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
                         <div class="absolute opacity-0 dark:opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-full blur-lg group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
                         <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-slate-900 rounded-full dark:border dark:border-white/10 gap-3 shadow-xl dark:shadow-none">
                             <i data-lucide="upload-cloud" class="w-6 h-6"></i>
@@ -474,7 +479,7 @@
             <p class="reveal text-blue-100 dark:text-indigo-200 text-xl mb-12 max-w-2xl mx-auto font-light" style="transition-delay: 150ms;">告别低效抄录，让 AI 成为你的超级助教。注册即享完整试卷解析体验。</p>
             <!-- 指向 app.html -->
             <div class="reveal" style="transition-delay: 300ms;">
-                <a href="app.html" class="relative inline-flex group h-16 sm:w-auto w-full">
+                <a href="/auth" class="relative inline-flex group h-16 sm:w-auto w-full">
                     <div class="hidden dark:block absolute opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-full blur-xl group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
                     <span class="relative inline-flex items-center justify-center w-full px-12 py-4 text-xl font-bold text-blue-700 bg-white hover:bg-slate-50 dark:text-white dark:bg-[#05050A] rounded-full focus:outline-none dark:border dark:border-white/20 dark:hover:bg-transparent cursor-pointer shadow-xl dark:shadow-none transform hover:-translate-y-1 dark:hover:translate-y-0">
                         免费创建错题库
@@ -689,6 +694,20 @@
                     updateSteps(parseInt(el.getAttribute('data-index')));
                     startInterval();
                 });
+            });
+        });
+    </script>
+
+    <script>
+        // 点击跳转到工作台时，先淡出当前页面再导航
+        document.querySelectorAll('a[href="/auth"]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var target = this.href;
+                document.body.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+                document.body.style.opacity = '0';
+                document.body.style.transform = 'translateY(-6px)';
+                setTimeout(function() { window.location.href = target; }, 260);
             });
         });
     </script>

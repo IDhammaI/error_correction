@@ -33,6 +33,13 @@ const handleLogout = async () => {
   router.push('/auth')
 }
 
+const navigateToHome = () => {
+  document.body.style.transition = 'opacity 0.25s ease, transform 0.25s ease'
+  document.body.style.opacity = '0'
+  document.body.style.transform = 'translateY(-6px)'
+  setTimeout(() => { window.location.href = '/' }, 260)
+}
+
 // ---- 视图路由控制 ----
 const VIEW_TO_PATH = {
   workspace: '/app/workspace',
@@ -644,6 +651,7 @@ onBeforeUnmount(() => {
 
         <a
           href="/"
+          @click.prevent="navigateToHome"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-indigo-300"
         >
           <i class="fa-solid fa-arrow-left-long w-5 text-center text-lg"></i>
@@ -682,6 +690,7 @@ onBeforeUnmount(() => {
     <main class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-0">
 
       <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
+      <Transition name="view-fade">
       <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
         <!-- 专属背景光晕 (动态漂浮 - 极致柔和的高级感) -->
         <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -824,62 +833,77 @@ onBeforeUnmount(() => {
           </Transition>
         </div>
       </div>
+      </Transition>
 
       <!-- AI 分割任务全局遮罩 -->
       <CatLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
 
       <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
-      <Dashboard
-        v-show="currentView === 'dashboard'"
-        :theme="theme"
-        :visible="currentView === 'dashboard'"
-        @go-workspace="currentView = 'workspace'"
-        @push-toast="pushToast"
-        @open-image="openModal"
-        @start-chat="openChat"
-      />
+      <Transition name="view-fade">
+        <div v-show="currentView === 'dashboard'" class="h-full">
+          <Dashboard
+            :theme="theme"
+            :visible="currentView === 'dashboard'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @start-chat="openChat"
+          />
+        </div>
+      </Transition>
 
       <!-- 视图 3：错题库 -->
-      <ErrorBank
-        ref="errorBankRef"
-        v-show="currentView === 'error-bank'"
-        :theme="theme"
-        :visible="currentView === 'error-bank'"
-        @go-workspace="currentView = 'workspace'"
-        @push-toast="pushToast"
-        @open-image="openModal"
-        @start-chat="openChat"
-      />
+      <Transition name="view-fade">
+        <div v-show="currentView === 'error-bank'" class="h-full">
+          <ErrorBank
+            ref="errorBankRef"
+            :theme="theme"
+            :visible="currentView === 'error-bank'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @start-chat="openChat"
+          />
+        </div>
+      </Transition>
 
       <!-- 视图 4：分割历史 -->
-      <SplitHistory
-        v-show="currentView === 'split-history'"
-        :theme="theme"
-        :visible="currentView === 'split-history'"
-        @push-toast="pushToast"
-        @open-image="openModal"
-        @load-record="handleLoadRecord"
-        @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-      />
+      <Transition name="view-fade">
+        <div v-show="currentView === 'split-history'" class="h-full">
+          <SplitHistory
+            :theme="theme"
+            :visible="currentView === 'split-history'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @load-record="handleLoadRecord"
+            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+          />
+        </div>
+      </Transition>
 
       <!-- 视图 5：系统设置 -->
-      <SettingsView
-        v-show="currentView === 'settings'"
-        :visible="currentView === 'settings'"
-        @saved="doFetchStatus"
-      />
+      <Transition name="view-fade">
+        <div v-show="currentView === 'settings'" class="h-full">
+          <SettingsView
+            :visible="currentView === 'settings'"
+            @saved="doFetchStatus"
+          />
+        </div>
+      </Transition>
 
       <!-- 视图 6：AI 辅导对话 -->
-      <div v-show="currentView === 'chat'" class="h-full">
-        <ChatView
-          v-if="chatActive"
-          :session-id="chatSessionId"
-          :question="chatQuestion"
-          :model-provider="selectedProvider"
-          :model-name="selectedModel"
-          @back="backToErrorBank"
-        />
-      </div>
+      <Transition name="view-fade">
+        <div v-show="currentView === 'chat'" class="h-full">
+          <ChatView
+            v-if="chatActive"
+            :session-id="chatSessionId"
+            :question="chatQuestion"
+            :model-provider="selectedProvider"
+            :model-name="selectedModel"
+            @back="backToErrorBank"
+          />
+        </div>
+      </Transition>
     </main>
 
     <!-- 全局弹窗与通知 -->
@@ -954,6 +978,18 @@ onBeforeUnmount(() => {
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+
+/* 侧边栏视图切换：交叉淡入淡出 */
+.view-fade-enter-active {
+  transition: opacity 0.22s ease;
+}
+.view-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
 }
 
 /* 翻页动画效果 */
