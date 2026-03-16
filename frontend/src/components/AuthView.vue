@@ -175,8 +175,11 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth.js'
 
-const emit = defineEmits(['logged-in'])
+const router = useRouter()
+const { currentUser } = useAuth()
 
 const activeTab = ref('login')
 const loading = ref(false)
@@ -202,7 +205,8 @@ async function handleLogin() {
     if (!res.ok) {
       loginError.value = data.error || '登录失败'
     } else {
-      emit('logged-in', data.user)
+      currentUser.value = data.user
+      router.push('/app')
     }
   } catch {
     loginError.value = '网络错误，请重试'
@@ -234,7 +238,8 @@ async function handleRegister() {
       registerError.value = data.error || '注册失败'
     } else {
       registerSuccess.value = '注册成功！正在登录...'
-      emit('logged-in', data.user)
+      currentUser.value = data.user
+      router.push('/app')
     }
   } catch {
     registerError.value = '网络错误，请重试'
