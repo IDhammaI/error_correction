@@ -33,11 +33,11 @@ const descs = ['选择 PDF 或图片', '结构化提取题干', 'AI 识别并拆
         <div 
           class="step-circle relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-500 backdrop-blur-sm"
           :class="
-            n < step 
-              ? 'border-transparent bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
-              : n === step 
-                ? 'border-slate-900/20 bg-slate-900/10 text-blue-600 shadow-xl shadow-blue-500/10 dark:border-white/20 dark:bg-white/10 dark:text-indigo-400' 
-                : 'border-slate-900/10 bg-slate-900/5 text-slate-600 dark:border-white/5 dark:bg-white/5 dark:text-slate-600'
+            n < step
+              ? 'border-transparent bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+              : n === step
+                ? 'border-slate-200 bg-white text-blue-600 shadow-xl shadow-blue-500/10 dark:border-white/20 dark:bg-white/10 dark:text-indigo-400'
+                : 'border-slate-200 bg-white text-slate-400 dark:border-white/5 dark:bg-white/5 dark:text-slate-600'
           "
         >
           <Transition name="scale" mode="out-in">
