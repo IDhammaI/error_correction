@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative min-h-full">
+  <div class="relative h-full overflow-y-auto custom-scrollbar">
     <!-- 专属动态光晕 -->
     <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <div class="absolute -top-[5%] right-[-5%] h-[45vw] w-[45vw] rounded-full bg-blue-500/10 mix-blend-multiply blur-[120px] dark:bg-indigo-600/15 dark:mix-blend-screen"></div>
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
           <h2 class="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl dark:text-white">
             错题知识图谱
           </h2>
-          <p class="mt-2 flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p class="mt-2 flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400">
             <i class="fa-solid fa-chart-line text-blue-500"></i> {{ totalText }} · 记录每一次认知的突破
           </p>
         </div>
@@ -303,10 +303,10 @@ onBeforeUnmount(() => {
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <!-- 关键词 -->
           <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">内容检索</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">内容检索</label>
             <div class="relative group">
-              <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-              <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm font-medium shadow-sm backdrop-blur-sm outline-none transition-all hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white/70 hover:shadow-md focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-indigo-500/30 dark:hover:bg-white/10 dark:focus:border-indigo-500/50" />
+              <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+              <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm font-bold shadow-sm backdrop-blur-sm outline-none transition-all hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white/70 hover:shadow-md focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-indigo-500/30 dark:hover:bg-white/10 dark:focus:border-indigo-500/50" />
             </div>
           </div>
 
@@ -321,10 +321,10 @@ onBeforeUnmount(() => {
 
           <!-- 时间跨度 -->
           <div class="min-w-0 flex-1">
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">时间跨度</label>
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
             <div class="flex items-center gap-3">
               <CalendarPicker v-model="filters.start_date" label="开始日期" align="left" />
-              <span class="shrink-0 text-slate-300 dark:text-slate-600 font-black">—</span>
+              <span class="shrink-0 text-slate-400 dark:text-slate-600 font-black">—</span>
               <CalendarPicker v-model="filters.end_date" label="结束日期" align="right" />
             </div>
           </div>
@@ -339,13 +339,13 @@ onBeforeUnmount(() => {
       <div v-if="tagNames.length" class="mb-8 rounded-3xl border border-slate-200/60 bg-white/40 p-5 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0F]/60 sm:p-6">
         <div class="mb-4 flex items-end justify-between">
           <div>
-            <h3 class="flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
+            <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 dark:text-slate-300">
               <i class="fa-solid fa-cubes text-indigo-500"></i> 知识点快速检索
             </h3>
-            <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">点击标签筛选对应错题，支持多选</p>
+            <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-500">点击标签筛选对应错题，支持多选</p>
           </div>
           <button v-if="hasMoreTagBatches" @click="refreshTagBatch"
-            class="group flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-400">
+            class="group flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-400">
             <svg class="h-3.5 w-3.5 transition-transform duration-500 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>

@@ -96,8 +96,8 @@ const initCharts = async () => {
   await nextTick()
   if (!window.Chart || !stats.value) return
   const isDark = props.theme === 'dark'
-  const textColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'
-  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)'
+  const textColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.8)'
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'
 
   initTrendChart(isDark, textColor, gridColor)
   initBarChart(isDark, textColor, gridColor)
@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative min-h-full">
+  <div class="relative h-full overflow-y-auto custom-scrollbar">
     <!-- 动态光晕 -->
     <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <div class="absolute -top-[5%] right-[-5%] h-[45vw] w-[45vw] rounded-full bg-indigo-500/10 mix-blend-multiply blur-[120px] dark:bg-indigo-600/15 dark:mix-blend-screen"></div>
@@ -376,7 +376,7 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-chart-pie animate-pulse"></i> 学习数据中心
           </div>
           <h2 class="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl dark:text-white">我的错题本</h2>
-          <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p class="mt-2 text-sm font-bold text-slate-600 dark:text-slate-400">
             <i class="fa-solid fa-brain text-indigo-500"></i> 追踪复习进度，掌握薄弱环节
           </p>
         </div>
@@ -395,7 +395,7 @@ onBeforeUnmount(() => {
       </div>
       <div v-else class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+          <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
             总错题 <i class="fa-solid fa-layer-group text-indigo-500"></i>
           </div>
           <div class="text-2xl font-black text-slate-900 dark:text-white">
@@ -403,25 +403,27 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-            待复习 <i class="fa-solid fa-clock text-orange-500"></i>
-          </div>
-          <div class="text-2xl font-black text-slate-900 dark:text-white">
-            {{ stats?.review_stats?.['待复习'] || 0 }} <span class="ml-0.5 text-xs font-medium text-slate-400">道</span>
-          </div>
-        </div>
-        <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-            复习中 <i class="fa-solid fa-spinner text-amber-500"></i>
-          </div>
-          <div class="text-2xl font-black text-slate-900 dark:text-white">
-            {{ stats?.review_stats?.['复习中'] || 0 }} <span class="ml-0.5 text-xs font-medium text-slate-400">道</span>
-          </div>
-        </div>
-        <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-            已掌握 <i class="fa-solid fa-circle-check text-emerald-500"></i>
-          </div>
+           <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
+             待复习 <i class="fa-solid fa-clock text-orange-500"></i>
+           </div>
+           <div class="flex items-baseline gap-1">
+             <span class="text-2xl font-black text-slate-900 dark:text-white">{{ stats?.review_status_stats?.['待复习'] || 0 }}</span>
+             <span class="text-[10px] font-bold text-slate-500">道</span>
+           </div>
+         </div>
+         <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
+           <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
+             已掌握 <i class="fa-solid fa-circle-check text-emerald-500"></i>
+           </div>
+           <div class="flex items-baseline gap-1">
+             <span class="text-2xl font-black text-slate-900 dark:text-white">{{ stats?.review_status_stats?.['已掌握'] || 0 }}</span>
+             <span class="text-[10px] font-bold text-slate-500">道</span>
+           </div>
+         </div>
+         <div class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
+           <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
+             今日掌握 <i class="fa-solid fa-bolt text-amber-500"></i>
+           </div>
           <div class="text-2xl font-black text-slate-900 dark:text-white">
             {{ stats?.review_stats?.['已掌握'] || 0 }} <span class="ml-0.5 text-xs font-medium text-slate-400">道</span>
           </div>
