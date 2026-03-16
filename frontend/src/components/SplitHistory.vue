@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
 import * as api from '../api.js'
-import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
+import { isHtml, sanitizeHtml, typesetMath as _typesetMath } from '../utils.js'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -43,15 +43,15 @@ const openDetail = async (record) => {
   try {
     const detail = await api.fetchSplitRecordDetail(record.id)
     activeQuestions.value = detail.questions || []
-    await nextTick()
-    const el = document.querySelector('.split-history-questions')
-    if (el) await _typesetMath(el)
   } catch (e) {
     emit('push-toast', 'error', '加载记录详情失败')
     activeRecord.value = null
   } finally {
     detailLoading.value = false
   }
+  await nextTick()
+  const el = document.querySelector('.split-history-questions')
+  if (el) await _typesetMath(el)
 }
 
 const closeDetail = () => {
@@ -349,10 +349,15 @@ defineExpose({ refresh: loadRecords })
                           <i class="fa-solid fa-image text-[8px]"></i>
                         </span>
                       </div>
-                      <!-- 题目摘要 -->
-                      <p class="line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                        {{ getQuestionSnippet(q, 100, '（无文本内容）') }}
-                      </p>
+                      <!-- 题目内容 -->
+                      <div class="line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                        <template v-if="(q.content_blocks || q.content_json)?.length">
+                          <template v-for="(b, i) in (q.content_blocks || q.content_json)" :key="i">
+                            <span v-if="b.block_type === 'text'" v-html="isHtml(b.content) ? sanitizeHtml(b.content) : b.content"></span>
+                          </template>
+                        </template>
+                        <span v-else class="italic text-slate-400 dark:text-slate-500">（无文本内容）</span>
+                      </div>
                       <!-- 知识点标签 -->
                       <div v-if="q.knowledge_tags?.length" class="mt-2 flex flex-wrap gap-1">
                         <span
