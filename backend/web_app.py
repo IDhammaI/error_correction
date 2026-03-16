@@ -85,6 +85,27 @@ def allowed_file(filename):
     return PurePath(filename).suffix.lower().lstrip('.') in settings.allowed_extensions
 
 
+def _read_split_subject() -> Optional[str]:
+    """从 split_metadata.json 读取学科信息"""
+    meta_path = os.path.join(str(settings.results_dir), "split_metadata.json")
+    if os.path.exists(meta_path):
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            return json.load(f).get("subject")
+    return None
+
+
+def _serialize_split_record(r) -> dict:
+    """将 SplitRecord ORM 对象序列化为前端 JSON 格式"""
+    return {
+        "id": r.id,
+        "subject": r.subject,
+        "model_provider": r.model_provider,
+        "file_names": json.loads(r.file_names_json) if r.file_names_json else [],
+        "question_count": r.question_count,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
 def _serialize_question(q: Question) -> dict:
     """将 Question ORM 对象序列化为前端 JSON 格式"""
     subject = None
@@ -395,6 +416,21 @@ def split_questions():
         questions = state.get('questions', [])
         warnings = state.get('warnings', [])
 
+        # 自动保存分割记录
+        try:
+            subject = _read_split_subject()
+
+            with session_lock:
+                file_names = [
+                    session_files.get(k, {}).get("filename", "未知")
+                    for k in session_file_order
+                ]
+
+            with SessionLocal() as db:
+                crud.save_split_record(db, subject, model_provider, file_names, questions)
+        except Exception:
+            logger.warning("保存分割记录失败，不影响主流程", exc_info=True)
+
         return jsonify({
             'success': True,
             'message': f'成功分割 {len(questions)} 道题目',
@@ -408,6 +444,43 @@ def split_questions():
             'success': False,
             'error': '题目分割失败，请稍后重试'
         }), 500
+
+
+@app.route('/api/split-records', methods=['GET'])
+def get_split_records():
+    """获取最近 N 次分割历史记录，limit 由前端通过查询参数指定"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        limit = max(1, min(limit, crud.MAX_SPLIT_RECORDS))  # 上限与保留条数一致
+
+        with SessionLocal() as db:
+            records = crud.get_recent_split_records(db, limit)
+            result = [_serialize_split_record(r) for r in records]
+
+        return jsonify({"success": True, "records": result})
+
+    except Exception as e:
+        logger.exception("获取分割记录失败")
+        return jsonify({"success": False, "error": "获取分割记录失败"}), 500
+
+
+@app.route('/api/split-records/<int:record_id>', methods=['GET'])
+def get_split_record_detail(record_id):
+    """获取单条分割记录的完整数据（含 questions）"""
+    try:
+        with SessionLocal() as db:
+            record = crud.get_split_record_by_id(db, record_id)
+            if not record:
+                return jsonify({"success": False, "error": "记录不存在"}), 404
+
+            result = _serialize_split_record(record)
+            result["questions"] = json.loads(record.questions_json) if record.questions_json else []
+
+        return jsonify({"success": True, "record": result})
+
+    except Exception as e:
+        logger.exception("获取分割记录详情失败")
+        return jsonify({"success": False, "error": "获取分割记录详情失败"}), 500
 
 
 @app.route('/api/export', methods=['POST'])
@@ -1013,12 +1086,7 @@ def save_to_db():
                     sq['user_answer'] = answers_map[qid]['user_answer']
 
         # 读取科目信息
-        subject = None
-        meta_path = os.path.join(results_dir, "split_metadata.json")
-        if os.path.exists(meta_path):
-            with open(meta_path, 'r', encoding='utf-8') as f:
-                meta = json.load(f)
-            subject = meta.get("subject")
+        subject = _read_split_subject()
 
         with session_lock:
             batch_info = {

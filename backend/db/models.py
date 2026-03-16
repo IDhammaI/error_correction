@@ -77,6 +77,19 @@ class ChatMessage(Base):
     session = relationship("ChatSession", back_populates="messages")
 
 
+class SplitRecord(Base):
+    """分割历史记录表"""
+    __tablename__ = "split_records"
+
+    id = Column(Integer, primary_key=True)
+    subject = Column(String(50))
+    model_provider = Column(String(20))
+    file_names_json = Column(Text)        # JSON 数组，多文件名
+    questions_json = Column(Text)         # JSON，完整分割结果
+    question_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class KnowledgeTag(Base):
     """知识点标签表"""
     __tablename__ = "knowledge_tags"
