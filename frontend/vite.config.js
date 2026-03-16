@@ -4,7 +4,22 @@ import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // 开发模式：将 /auth 和 /app 路径重写到 app.html（SPA 入口）
+    {
+      name: 'spa-html-rewrite',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url?.split('?')[0]
+          if (url === '/auth' || url === '/app' || url?.startsWith('/app/')) {
+            req.url = '/app.html'
+          }
+          next()
+        })
+      },
+    },
+  ],
   test: {
     environment: 'jsdom',
   },

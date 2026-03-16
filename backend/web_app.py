@@ -257,8 +257,15 @@ def app_page_redirect():
 
 
 @app.route('/app')
-def app_page():
-    """工作台 - 返回 Vue SPA"""
+@app.route('/app/<path:subpath>')
+def app_page(subpath=''):
+    """工作台及子路由 - 返回 Vue SPA"""
+    return send_from_directory(FRONTEND_DIST, 'app.html')
+
+
+@app.route('/auth')
+def auth_page():
+    """登录/注册页 - 返回 Vue SPA"""
     return send_from_directory(FRONTEND_DIST, 'app.html')
 
 
