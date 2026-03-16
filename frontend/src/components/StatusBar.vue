@@ -142,15 +142,15 @@ const modelStatusError = computed(() => {
     </div>
 
     <!-- 模型下拉选择器 (按 provider 分组) -->
-    <div v-if="!statusLoading && !statusError" class="ml-auto flex items-center gap-2">
+    <div v-if="!statusError" class="ml-auto flex items-center gap-2">
       <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled">
-        <div class="relative">
+        <div class="relative w-48">
           <ListboxButton
             class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm transition-all hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"
             :disabled="disabled"
           >
             <div class="flex items-center gap-2.5">
-              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-blue-600 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-indigo-400">
+              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-600 dark:bg-white/5 dark:text-indigo-400">
                 <Transition name="fade" mode="out-in">
                   <img
                     v-if="currentProvider && modelLogos[currentProvider.value]"
@@ -163,9 +163,9 @@ const modelStatusError = computed(() => {
                 </Transition>
                 <!-- 状态指示点 -->
                 <div
-                  v-if="currentProvider"
+                  v-if="currentProvider || statusLoading"
                   class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white transition-all duration-500 ease-in-out dark:border-[#0A0A0F]"
-                  :class="(!currentProvider.configured || currentProvider.key_valid === false) ? 'bg-rose-500' : 'bg-emerald-500'"
+                  :class="(statusLoading || isChecking) ? 'bg-amber-400 animate-pulse' : (!currentProvider.configured || currentProvider.key_valid === false) ? 'bg-rose-500' : 'bg-emerald-500'"
                 ></div>
               </div>
               <span class="block max-w-[180px] truncate text-[11px] font-black tracking-tight text-slate-700 dark:text-slate-200">
@@ -175,7 +175,7 @@ const modelStatusError = computed(() => {
             <div class="flex items-center gap-2">
               <div class="relative h-2.5 w-2.5 shrink-0">
                 <Transition name="icon-pop">
-                  <i v-if="isChecking" key="checking" class="fa-solid fa-spinner animate-spin absolute inset-0 flex items-center justify-center text-[10px] text-blue-500 dark:text-indigo-400"></i>
+                  <i v-if="isChecking || statusLoading" key="checking" class="fa-solid fa-spinner animate-spin absolute inset-0 flex items-center justify-center text-[10px] text-amber-500"></i>
                   <i v-else-if="currentProvider && (!currentProvider.configured || currentProvider.key_valid === false)" key="error" class="fa-solid fa-xmark absolute inset-0 flex items-center justify-center text-[10px] text-rose-500"></i>
                   <i v-else-if="currentProvider" key="ok" class="fa-solid fa-check absolute inset-0 flex items-center justify-center text-[10px] text-emerald-500"></i>
                 </Transition>
