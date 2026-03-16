@@ -97,10 +97,7 @@ const statusPills = computed(() => {
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  const activeProvider = providerOptions.value.find(p => p.value === selectedProvider.value)
-  if (activeProvider) {
-    pills.push({ key: 'model', ok: activeProvider.configured, label: activeProvider.configured ? selectedModel.value : `${activeProvider.label} ${activeProvider.status}` })
-  }
+  pills.push({ key: 'ensexam', ok: false, label: 'EnsExam (未接入)', isPlaceholder: true })
   if (s.langsmith_enabled) pills.push({ key: 'langsmith', ok: true, label: 'LangSmith追踪' })
   return pills
 })
@@ -405,9 +402,11 @@ const doSplit = async () => {
         pushToast('success', `成功分割 ${questions.value.length} 道题目`)
       }
       await typesetMath()
-      // 分割完成后自动翻页到核对页面
+      // 分割完成后自动翻页到核对页面（仅在用户仍在工作台时跳转）
       setTimeout(() => {
-        currentView.value = 'workspace_review'
+        if (currentView.value === 'workspace') {
+          currentView.value = 'workspace_review'
+        }
       }, 800)
     }
   } catch (e) {
@@ -520,7 +519,7 @@ onBeforeUnmount(() => {
           <div class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
           
           <button
-            @click="currentView = 'workspace'"
+            @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
             class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300"
             :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
@@ -583,7 +582,7 @@ onBeforeUnmount(() => {
     <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
     <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/90 pb-2 pt-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#0A0A0F]/90">
       <div class="flex justify-around">
-        <button @click="currentView = 'workspace'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'" class="flex flex-col items-center p-2 transition-colors" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-wand-magic-sparkles mb-1 text-xl"></i>
           <span class="text-[10px] font-bold">工作台</span>
         </button>
@@ -621,7 +620,7 @@ onBeforeUnmount(() => {
         <div class="container relative z-10 mx-auto flex h-full max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">
           <Transition name="flip" mode="out-in">
             <!-- 第一页：录题与分析 -->
-            <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col overflow-hidden">
+            <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col">
               <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
                 <div>
                   <div class="mb-1 flex items-center gap-2">
@@ -637,17 +636,17 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-          <!-- 原工作区主卡片 -->
-          <div class="main-content relative rounded-3xl border border-slate-200/60 bg-white/70 p-5 shadow-xl backdrop-blur-xl sm:p-8 dark:border-white/10 dark:bg-[#0A0A0F]/60">
-            <StatusBar
-              :status-loading="statusLoading"
-              :status-error="statusError"
-              :status-pills="statusPills"
-              :provider-options="providerOptions"
-              :selected-model="selectedModel"
-              :disabled="splitting || splitCompleted"
-              @update:selected-model="(v) => selectedModel = v"
-            />
+              <div class="main-content relative flex flex-1 flex-col bg-transparent">
+                <StatusBar
+                  class="border-b border-slate-200/60 pb-6 dark:border-white/5"
+                  :status-loading="statusLoading"
+                  :status-error="statusError"
+                  :status-pills="statusPills"
+                  :provider-options="providerOptions"
+                  :selected-model="selectedModel"
+                  :disabled="splitting || splitCompleted"
+                  @update:selected-model="(v) => selectedModel = v"
+                />
 
                 <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
                   <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
@@ -742,7 +741,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- AI 分割任务全局遮罩 -->
-      <CatLoading v-if="splitting" />
+      <CatLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
 
       <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
       <Dashboard

@@ -21,7 +21,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
 })
 
-const modelLogos = { deepseek: deepseekLogo, ernie: ernieLogo }
+const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
 
 // 构建扁平模型列表，按 provider 分组
 const modelOptions = computed(() => {
@@ -77,7 +77,7 @@ watch(() => props.selectedModel, () => {
       }
     }
   }, 1000)
-}, { immediate: true })
+})
 
 const modelStatusError = computed(() => {
   if (!showResult.value || !currentProvider.value) return ''
