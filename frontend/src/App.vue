@@ -642,12 +642,17 @@ onBeforeUnmount(() => {
             <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
               <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
                 <div>
-                  <div class="mb-1 flex items-center gap-2">
-                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-                      Baidu Powered
-                    </span>
-                    <span class="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">v2.0</span>
+                  <div class="mb-3.5 flex items-center">
+                    <div class="relative flex items-center gap-2 py-1 text-[10px] font-black tracking-widest text-blue-600/80 dark:text-indigo-300/80">
+                      <div class="relative flex h-4 w-4 items-center justify-center">
+                        <i class="fa-solid fa-bolt-lightning absolute animate-pulse text-[10px] text-amber-500 dark:text-indigo-400"></i>
+                        <div class="absolute h-full w-full animate-ping rounded-full bg-amber-400/10 dark:bg-indigo-400/10"></div>
+                      </div>
+                      
+                      <span class="relative z-10 uppercase pb-0.5">
+                        新一代 AI 错题处理架构 <span class="ml-1 font-extrabold text-blue-600 dark:text-indigo-300">V2.0</span>
+                      </span>
+                    </div>
                   </div>
                   <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
                     智能录入与分析
