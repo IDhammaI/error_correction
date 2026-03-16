@@ -636,10 +636,10 @@ onBeforeUnmount(() => {
           <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] transition-colors duration-1000 dark:bg-blue-500/10 dark:mix-blend-screen"></div>
         </div>
 
-        <div class="container relative z-10 mx-auto flex h-full max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">
+        <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">
           <Transition name="flip" mode="out-in">
             <!-- 第一页：录题与分析 -->
-            <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col">
+            <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
               <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
                 <div>
                   <div class="mb-1 flex items-center gap-2">
@@ -662,7 +662,7 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <div class="main-content relative flex flex-1 flex-col bg-transparent">
+              <div class="main-content relative flex flex-1 flex-col min-h-0 bg-transparent">
                 <StatusBar
                   class="border-b border-slate-200/60 pb-6 dark:border-white/5"
                   :status-loading="statusLoading"
