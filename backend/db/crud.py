@@ -14,7 +14,7 @@ from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
-from db.models import UploadBatch, Question, KnowledgeTag, QuestionTagMapping, ChatSession, ChatMessage, SplitRecord
+from db.models import UploadBatch, Question, KnowledgeTag, QuestionTagMapping, ChatSession, ChatMessage, SplitRecord, User
 
 
 def _filter_by_subject(query, subject: Optional[str]):
@@ -22,6 +22,48 @@ def _filter_by_subject(query, subject: Optional[str]):
     if subject:
         return query.join(UploadBatch).filter(UploadBatch.subject == subject)
     return query
+
+
+
+def _filter_by_user(query, user_id):
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return query
+
+
+# ============================================================
+# 用户认证 CRUD
+# ============================================================
+
+def create_user(db, email, password_hash, username, is_admin=False):
+    """创建用户"""
+    user = User(email=email, password_hash=password_hash, username=username, is_admin=is_admin)
+    db.add(user)
+    try:
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception as e:
+        db.rollback()
+        raise
+
+
+def get_user_by_email(db, email):
+    """按邮箱查询用户"""
+    return db.query(User).filter(User.email == email).first()
+
+
+def get_user_by_id(db, user_id):
+    """按 ID 查询用户"""
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def get_user_by_login(db, identifier):
+    """按邮箱或用户名查询用户（登录用，大小写不敏感邮箱）"""
+    identifier = identifier.strip()
+    return db.query(User).filter(
+        (func.lower(User.email) == identifier.lower()) | (User.username == identifier)
+    ).first()
 
 
 def _parse_tag_list(knowledge_tag: str) -> List[str]:
@@ -47,13 +89,15 @@ def compute_content_hash(content_blocks: List[Dict]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def get_existing_subjects(db: Session) -> List[str]:
+def get_existing_subjects(db, user_id=None):
     """获取数据库中已有的所有科目名称（去重）"""
-    rows = db.query(UploadBatch.subject).distinct().filter(
+    query = db.query(UploadBatch.subject).distinct().filter(
         UploadBatch.subject.isnot(None),
         UploadBatch.subject != "",
-    ).all()
-    return [r[0] for r in rows]
+    )
+    if user_id is not None:
+        query = query.filter(UploadBatch.user_id == user_id)
+    return [r[0] for r in query.all()]
 
 
 def get_existing_tag_names(db: Session, subject: Optional[str] = None) -> List[str]:
@@ -80,15 +124,19 @@ def get_or_create_tag(db: Session, tag_name: str, subject: str) -> KnowledgeTag:
     return tag
 
 
-def question_exists(db: Session, content_hash: str) -> Optional[Question]:
-    """检查题目是否已存在（通过内容哈希）"""
-    return db.query(Question).filter_by(content_hash=content_hash).first()
+def question_exists(db, content_hash, user_id=None):
+    """检查题目是否已存在（通过内容哈希 + 用户隔离）"""
+    q = db.query(Question).filter(Question.content_hash == content_hash)
+    if user_id is not None:
+        q = q.filter(Question.user_id == user_id)
+    return q.first()
 
 
 def save_questions_to_db(
     db: Session,
     questions: List[Dict],
-    batch_info: Dict[str, Any]
+    batch_info: Dict[str, Any],
+    user_id=None,
 ) -> Dict[str, int]:
     """
     批量入库题目
@@ -106,6 +154,7 @@ def save_questions_to_db(
 
     # 创建批次记录
     batch = UploadBatch(
+        user_id=user_id,
         original_filename=batch_info.get("original_filename", "未知"),
         subject=subject,
         file_path=batch_info.get("file_path", ""),
@@ -125,12 +174,13 @@ def save_questions_to_db(
         content_hash = compute_content_hash(content_blocks)
 
         # 检查是否已存在
-        if question_exists(db, content_hash):
+        if question_exists(db, content_hash, user_id=user_id):
             duplicates += 1
             continue
 
         # 创建题目记录
         question = Question(
+            user_id=user_id,
             batch_id=batch.id,
             content_hash=content_hash,
             question_type=q.get("question_type"),
@@ -196,19 +246,25 @@ def get_all_tags(db: Session, subject: Optional[str] = None) -> List[KnowledgeTa
     return query.order_by(KnowledgeTag.tag_name).all()
 
 
-def get_statistics(db: Session, subject: Optional[str] = None) -> Dict[str, Any]:
+def get_statistics(db: Session, subject: Optional[str] = None, user_id=None) -> Dict[str, Any]:
     """获取统计信息"""
     q_query = _filter_by_subject(db.query(func.count(Question.id)), subject)
+    if user_id is not None:
+        q_query = q_query.filter(Question.user_id == user_id)
     total_questions = q_query.scalar()
 
-    total_batches = db.query(func.count(UploadBatch.id)).scalar()
+    batch_query = db.query(func.count(UploadBatch.id))
+    if user_id is not None:
+        batch_query = batch_query.filter(UploadBatch.user_id == user_id)
+    total_batches = batch_query.scalar()
+
     total_tags = db.query(func.count(KnowledgeTag.id)).scalar()
 
     # 按科目统计
-    subject_stats = db.query(
-        UploadBatch.subject,
-        func.count(Question.id)
-    ).join(Question).group_by(UploadBatch.subject).all()
+    subject_q = db.query(UploadBatch.subject, func.count(Question.id)).join(Question)
+    if user_id is not None:
+        subject_q = subject_q.filter(Question.user_id == user_id)
+    subject_stats = subject_q.group_by(UploadBatch.subject).all()
 
     return {
         "total_questions": total_questions or 0,
@@ -320,13 +376,14 @@ def search_questions(
     return questions, total
 
 
-def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optional[int] = None) -> List[Dict]:
+def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optional[int] = None, user_id=None) -> List[Dict]:
     """
     获取知识点统计信息
 
     Args:
         subject: 可选，按学科筛选
         limit: 可选，返回前 N 条
+        user_id: 可选，按用户隔离
 
     Returns:
         [{"tag_name": "xxx", "count": 10}, ...]
@@ -337,6 +394,11 @@ def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optio
     ).join(
         QuestionTagMapping, QuestionTagMapping.tag_id == KnowledgeTag.id
     )
+
+    if user_id is not None:
+        query = query.join(Question, Question.id == QuestionTagMapping.question_id).filter(
+            Question.user_id == user_id
+        )
 
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
@@ -396,6 +458,7 @@ def query_questions(
     review_status: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
+    user_id=None,
 ) -> Tuple[List[Question], int]:
     """
     统一查询题目（合并 get_history_questions 和 search_questions 的能力）
@@ -403,6 +466,9 @@ def query_questions(
     支持所有筛选条件任意组合。
     """
     query = db.query(Question).join(UploadBatch)
+
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
 
     if subject:
         query = query.filter(UploadBatch.subject == subject)
@@ -463,13 +529,15 @@ def update_user_answer(db: Session, question_id: int, user_answer: str) -> Optio
         raise
 
 
-def get_existing_question_types(db: Session) -> List[str]:
+def get_existing_question_types(db: Session, user_id=None) -> List[str]:
     """获取数据库中已有的所有题型（去重）"""
-    rows = db.query(Question.question_type).distinct().filter(
+    query = db.query(Question.question_type).distinct().filter(
         Question.question_type.isnot(None),
         Question.question_type != "",
-    ).all()
-    return [r[0] for r in rows]
+    )
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return [r[0] for r in query.all()]
 
 
 def get_questions_by_ids(db: Session, question_ids: List[int]) -> List[Question]:
@@ -508,12 +576,14 @@ def update_review_status(db: Session, question_id: int, review_status: str) -> O
         raise
 
 
-def get_review_status_stats(db: Session, subject: Optional[str] = None) -> Dict[str, int]:
+def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=None) -> Dict[str, int]:
     """按复习状态分组统计数量"""
     query = _filter_by_subject(db.query(
         Question.review_status,
         func.count(Question.id)
     ), subject)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
 
     rows = query.group_by(Question.review_status).all()
 
@@ -527,7 +597,7 @@ def get_review_status_stats(db: Session, subject: Optional[str] = None) -> Dict[
     return result
 
 
-def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, user_id=None) -> List[Dict[str, Any]]:
     """获取最近 N 天每日新增题目数 + 每日新增已掌握数"""
     from datetime import timedelta
     cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
@@ -540,6 +610,8 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) 
         date_expr.label('date'),
         func.count(Question.id).label('count')
     ).filter(Question.created_at >= cutoff), subject)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
     rows = query.group_by(date_expr).order_by(date_expr).all()
     date_map = {str(row.date): row.count for row in rows}
 
@@ -552,6 +624,8 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) 
         Question.updated_at >= cutoff,
         Question.review_status == '已掌握',
     ), subject)
+    if user_id is not None:
+        mq = mq.filter(Question.user_id == user_id)
     mastered_rows = mq.group_by(mastered_date_expr).order_by(mastered_date_expr).all()
     mastered_map = {str(row.date): row.count for row in mastered_rows}
 
@@ -570,7 +644,7 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None) 
     return result
 
 
-def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int = 10) -> List[Dict]:
+def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int = 10, user_id=None) -> List[Dict]:
     """
     知识点 × 掌握状态统计（堆叠柱状图用）
 
@@ -587,6 +661,8 @@ def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int 
         Question, Question.id == QuestionTagMapping.question_id
     )
 
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
 
@@ -613,7 +689,7 @@ def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int 
     return [tag_data[t] for t in sorted_tags]
 
 
-def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: int = 8) -> Dict[str, Any]:
+def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: int = 8, user_id=None) -> Dict[str, Any]:
     """
     知识点 × 题型交叉统计（热力图用）
 
@@ -633,6 +709,8 @@ def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: in
         Question.question_type != '',
     )
 
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
 
@@ -784,9 +862,11 @@ def save_split_record(
     model_provider: str,
     file_names: List[str],
     questions: List[Dict],
+    user_id=None,
 ) -> SplitRecord:
     """保存一次分割操作的完整结果，超过上限自动清理最旧记录"""
     record = SplitRecord(
+        user_id=user_id,
         subject=subject,
         model_provider=model_provider,
         file_names_json=json.dumps(file_names, ensure_ascii=False),
@@ -827,7 +907,7 @@ def _cleanup_old_split_records(db: Session):
         logger.error(f"清理分割记录失败: {e}")
 
 
-def get_recent_split_records(db: Session, limit: int = 10) -> List[SplitRecord]:
+def get_recent_split_records(db, limit: int = 10, user_id=None):
     """获取最近 N 条分割记录（不加载 questions_json 大字段）"""
     from sqlalchemy.orm import defer
     return (
