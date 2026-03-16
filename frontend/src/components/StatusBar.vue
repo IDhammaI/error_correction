@@ -150,7 +150,7 @@ const modelStatusError = computed(() => {
             :disabled="disabled"
           >
             <div class="flex items-center gap-2.5">
-              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-blue-600 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-indigo-400">
+              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-600 dark:bg-white/5 dark:text-indigo-400">
                 <Transition name="fade" mode="out-in">
                   <img
                     v-if="currentProvider && modelLogos[currentProvider.value]"
