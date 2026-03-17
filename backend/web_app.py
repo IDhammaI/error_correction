@@ -246,8 +246,8 @@ def auth_me():
 
 @app.route('/')
 def index():
-    """主页 - 返回介绍页"""
-    return send_from_directory(FRONTEND_DIST, 'index.html')
+    """主页 - 返回 Vue SPA（落地页由前端路由 / 渲染）"""
+    return send_from_directory(FRONTEND_DIST, 'app.html')
 
 
 @app.route('/app.html')

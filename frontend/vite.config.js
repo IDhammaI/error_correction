@@ -12,7 +12,7 @@ export default defineConfig(({ command }) => ({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const url = req.url?.split('?')[0]
-          if (url === '/auth' || url === '/app' || url?.startsWith('/app/')) {
+          if (url === '/' || url === '/auth' || url === '/app' || url?.startsWith('/app/')) {
             req.url = '/app.html'
           }
           next()
@@ -48,8 +48,7 @@ export default defineConfig(({ command }) => ({
     // 新增多页面入口配置
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'), // 你的酷炫落地页
-        app: resolve(__dirname, 'app.html')     // 真正的 Vue 工作台
+        app: resolve(__dirname, 'app.html')     // Vue SPA 入口（含落地页路由）
       }
     }
   },
