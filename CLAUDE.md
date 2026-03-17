@@ -120,22 +120,79 @@ cd frontend && npm install               # 前端（Node 18+）
 - **移动端**：底部 Tab 导航栏（`fixed bottom-0`）+ 全宽内容区
 - `currentView` ref 控制 `'workspace'` / `'dashboard'` 视图（`v-show` 切换）
 
+### 间距节奏（8pt Grid）
+
+**所有 padding / margin / gap 只允许使用 4 的倍数**，对应 Tailwind 档位：
+
+| 用途 | 允许值 |
+|------|--------|
+| 微间距（图标、标签内边距） | `p-1` `p-2` `gap-1` `gap-2` |
+| 小间距（按钮、行内元素） | `p-3` `p-4` `gap-3` `gap-4` |
+| 中间距（卡片内边距、区块间距） | `p-6` `p-8` `gap-6` `gap-8` |
+| 大间距（页面边距、区域分割） | `p-10` `p-12` `gap-10` `gap-12` |
+
+禁止使用 `p-5` `p-7` `p-9` `gap-5` `gap-7` 等非 4 倍数值，禁止任意 `px-[17px]` 之类魔法数字。
+
+### 排版层级（Typography）
+
+字号只允许以下 7 档，**禁止使用其他值**（包括 `text-[13px]`、`text-[11px]` 等任意值）：
+
+| 层级 | Tailwind | 像素 | 行高 | 用途 |
+|------|----------|------|------|------|
+| 超大标题 | `text-4xl` | 36px | `leading-tight`（1.25） | 落地页 Hero、各区块主标题 |
+| 大标题 | `text-3xl` | 30px | `leading-tight`（1.25） | 页面主标题、工作台区块标题 |
+| 标题 | `text-2xl` | 24px | `leading-snug`（1.375） | 区块标题、Modal 标题 |
+| 副标题 | `text-xl` | 20px | `leading-snug` | 卡片标题、侧边栏项 |
+| 正文 | `text-base` | 16px | `leading-relaxed`（1.625） | 题目内容、说明文字 |
+| 辅助 | `text-sm` | 14px | `leading-relaxed` | 标签、次要信息 |
+| 标注 | `text-xs` | 12px | `leading-normal`（1.5） | 元数据、时间戳、徽标 |
+
+**信息密度原则**：每张 Card 只允许 1 个主信息 + 2 个辅信息，禁止堆砌超过 3 层文字层级。
+
 ### 设计风格
 
-- 配色：slate 中性色系，blue/indigo 主操作，emerald 成功，rose 错误
-- 圆角：卡片 `rounded-2xl`/`rounded-3xl`，按钮 `rounded-xl`，pill `rounded-full`
-- 玻璃态：`bg-white/70 backdrop-blur-xl`（亮色）/ `bg-[#0A0A0F]/60 backdrop-blur-xl`（暗色）
-- 边框：`border-slate-200/60`（亮色）/ `border-white/10`（暗色）
-- **所有元素必须包含 `dark:` 变体**，暗色背景用 `slate-900/950` 或 `[#0A0A0F]`
+**配色 Token（只允许以下色系，禁止随意引入彩虹色）：**
+
+| 语义 | 亮色 | 暗色 |
+|------|------|------|
+| 背景 | `white` / `slate-50` | `slate-900` / `slate-950` / `[#0A0A0F]` |
+| 卡片面 | `white/70` + `backdrop-blur-xl` | `[#0A0A0F]/60` + `backdrop-blur-xl` |
+| 边框 | `border-slate-200/60` | `border-white/10` |
+| 主操作 | `blue-600` / `indigo-600` | `indigo-500` |
+| 成功 | `emerald-600` | `emerald-400` |
+| 错误 | `rose-600` | `rose-400` |
+| 中性文字 | `slate-900` / `slate-700` / `slate-500` / `slate-400` | `white` / `slate-200` / `slate-400` / `slate-500` |
+
+**圆角 Token：**
+
+| 元素 | 值 |
+|------|-----|
+| 大卡片、Modal | `rounded-2xl` / `rounded-3xl` |
+| 按钮、输入框、小卡片 | `rounded-xl` |
+| 标签、Badge、Pill | `rounded-full` |
+| 图标容器、小元素 | `rounded-lg` |
+
+**阴影层级（只允许 2 层，禁止滥用大投影）：**
+
+| 状态 | 值 |
+|------|-----|
+| 默认 | `shadow-sm` |
+| Hover / 激活 | `shadow-md` 或品牌色光晕 `shadow-blue-500/20` |
+
+- **所有元素必须包含 `dark:` 变体**
 - 主题切换支持 View Transitions API 圆形扩散动画
 
 ### 按钮样式
 
-- 主按钮：`bg-blue-600 text-white rounded-xl h-12` + 渐变光晕
-- 成功按钮：`border-emerald-500/30 bg-emerald-50/80 text-emerald-700`
-- 次按钮：`border-slate-200/60 bg-white/60 text-slate-700`
-- 通用：`inline-flex items-center justify-center gap-2 text-sm font-bold transition-all`
-- 禁用：`disabled:cursor-not-allowed disabled:opacity-50`
+| 类型 | 样式 |
+|------|------|
+| 主按钮 | `h-10 rounded-xl bg-blue-600 text-white text-sm font-bold` + hover 光晕 |
+| 成功按钮 | `h-10 rounded-xl border border-emerald-500/30 bg-emerald-50/80 text-emerald-700 text-sm font-bold` |
+| 次按钮 | `h-10 rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 text-sm font-bold` |
+| 通用属性 | `inline-flex items-center justify-center gap-2 transition-all` |
+| 禁用 | `disabled:cursor-not-allowed disabled:opacity-50` |
+
+按钮高度统一 `h-10`（40px），图标尺寸统一 `size-4`（16px）或 `size-5`（20px）。
 
 ### 状态管理与代码规范
 
