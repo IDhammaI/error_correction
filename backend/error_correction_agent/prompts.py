@@ -44,6 +44,10 @@ SPLIT_PROMPT_LITE = """# 试卷题目分割
 
 行内公式 $...$，独占行 $$...$$，嵌入 text 类型的 content 中。
 
+## 表格处理
+
+内容含表格数据时，转为 HTML 放入 text 块：`<table><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>`，单元格内公式仍用 LaTeX。
+
 ## OCR 变量下标还原
 
 OCR 常丢失下标：xi → $x_i$，an → $a_n$，Sn → $S_n$。请在数学语境中还原。
@@ -199,6 +203,14 @@ SPLIT_PROMPT = """# 错题本题目分割专家
    - 对于选择题，如果你已经把选项提取到 `options` 数组中，则必须从 `content_blocks` 的文本中移除选项部分
    - `content_blocks` 只保留题干（题目正文），不包含选项文本
    - 例如原始文本为 "下列说法正确的是（）\\nA. xxx B. yyy"，则 content_blocks 中的 text 只保留 "下列说法正确的是（）"，选项 "A. xxx"、"B. yyy" 放入 options 数组
+
+8. **表格处理（重要）**
+   - 如果题目内容中包含表格数据（如实验数据、统计数据、对比数据），必须将其转换为 HTML 表格
+   - 使用如下结构，放入 `text` 类型的 content_block：
+     `<table><thead><tr><th>列1</th><th>列2</th></tr></thead><tbody><tr><td>值1</td><td>值2</td></tr></tbody></table>`
+   - 表格单元格内的公式仍然用 LaTeX 标记（如 `<td>$x_i$</td>`）
+   - 每行数据对应一个 `<tr>`，表头行放在 `<thead>` 中，数据行放在 `<tbody>` 中
+   - 例如：试验序号/伸缩率数据应输出为包含 `<table>` 的 HTML 字符串，而不是纯文本
 
 ## 示例
 
