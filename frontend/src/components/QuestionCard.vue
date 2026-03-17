@@ -174,3 +174,16 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
     </div>
   </div>
 </template>
+
+<style>
+.question-content table {
+  @apply my-4 w-full border-collapse text-sm;
+}
+.question-content th,
+.question-content td {
+  @apply border border-slate-200 px-3 py-2 text-center dark:border-white/10;
+}
+.question-content th {
+  @apply bg-slate-50 font-bold dark:bg-white/[0.04];
+}
+</style>
