@@ -51,6 +51,8 @@
         }
         body {
             font-family: 'Inter', sans-serif;
+        }
+        .page-enter {
             animation: pageEnter 0.3s ease forwards;
         }
 
@@ -132,36 +134,20 @@
         }
     </script>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#05050A] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 overflow-x-hidden relative">
-
-    <!-- 右侧 Section 导航 -->
-    <nav id="section-nav" class="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-6 px-2 rounded-full border border-slate-200/60 bg-white/60 backdrop-blur-md dark:border-white/5 dark:bg-white/[0.02] scale-90 md:scale-100">
-        <!-- 垂直轨道 -->
-        <div class="absolute top-8 bottom-8 w-px bg-slate-200 dark:bg-white/10 pointer-events-none"></div>
-        <!-- 激活指示器 -->
-        <div id="section-nav-indicator" class="absolute w-2 h-2 bg-blue-600 dark:bg-indigo-400 rounded-full pointer-events-none z-10 transition-all duration-500 shadow-[0_0_10px_rgba(37,99,235,0.7)] dark:shadow-[0_0_10px_rgba(129,140,248,0.8)]" style="top: 44px; transform: translateY(-50%)"></div>
-    </nav>
-
-    <!-- 动态背景环境光 (仅首屏透出) -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 h-screen">
-        <div class="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-300/30 dark:bg-indigo-600/20 mix-blend-multiply dark:mix-blend-screen filter blur-[100px] animate-blob"></div>
-        <div class="absolute top-[20%] right-[-10%] w-[35vw] h-[35vw] rounded-full bg-indigo-200/40 dark:bg-fuchsia-600/20 mix-blend-multiply dark:mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
-        <div class="absolute bottom-[-20%] left-[20%] w-[50vw] h-[50vw] rounded-full bg-cyan-200/40 dark:bg-cyan-600/10 mix-blend-multiply dark:mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000"></div>
-        <div class="absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-[0.03] dark:opacity-20 mix-blend-overlay"></div>
-    </div>
+<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30">
 
     <!-- 导航栏 -->
-    <nav class="fixed top-0 w-full glass-panel z-50">
+    <nav id="top-nav" class="fixed top-0 left-0 w-full z-50 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
+            <div id="nav-container" class="flex justify-between items-center h-20 transition-all duration-300">
                 <div class="flex items-center gap-3">
                     <div class="relative group">
                         <div class="absolute inset-0 bg-blue-500 dark:bg-indigo-500 blur-lg opacity-30 dark:opacity-50 group-hover:opacity-100 transition duration-500"></div>
-                        <div class="relative bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-purple-600 p-2.5 rounded-xl">
+                        <div class="relative bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 p-3 rounded-xl">
                             <img src="/logo.svg" class="w-6 h-6 brightness-0 invert" alt="logo" />
                         </div>
                     </div>
-                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:via-indigo-200 dark:to-purple-200 tracking-wide">
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:via-indigo-200 dark:to-indigo-200 tracking-wide">
                         智卷错题本
                     </span>
                 </div>
@@ -177,9 +163,9 @@
                         <i data-lucide="sun" id="theme-icon-sun" class="w-5 h-5 hidden dark:block"></i>
                         <i data-lucide="moon" id="theme-icon-moon" class="w-5 h-5 block dark:hidden"></i>
                     </button>
-                    <a href="/auth" class="relative inline-flex h-11 active:scale-95 transition-transform">
-                        <div class="absolute inset-0 bg-blue-600 dark:bg-gradient-to-r dark:from-indigo-500 dark:via-purple-500 dark:to-fuchsia-500 rounded-full blur opacity-40 dark:opacity-70"></div>
-                        <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-blue-600 dark:bg-[#0A0A0F] rounded-full dark:border dark:border-white/10 hover:bg-blue-700 dark:hover:bg-transparent shadow-md">
+                    <a href="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
+                        <div class="absolute opacity-0 dark:opacity-60 -inset-px bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full blur group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-slate-900 rounded-full dark:border dark:border-white/10 shadow-md dark:shadow-none">
                             进入工作台
                         </span>
                     </a>
@@ -187,6 +173,28 @@
             </div>
         </div>
     </nav>
+
+    <!-- 右侧 Section 导航 -->
+    <nav id="section-nav" class="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center py-6 px-2 rounded-full border border-slate-200/60 bg-white/60 backdrop-blur-md dark:border-white/5 dark:bg-white/[0.02] scale-90 md:scale-100">
+        <!-- 垂直轨道 -->
+        <div class="absolute top-8 bottom-8 w-px bg-slate-200 dark:bg-white/10 pointer-events-none"></div>
+        <!-- 激活指示器 -->
+        <div id="section-nav-indicator" class="absolute w-2 h-2 bg-blue-600 dark:bg-indigo-400 rounded-full pointer-events-none z-10 transition-all duration-500 shadow-blue-600/70 dark:shadow-indigo-400/80" style="top: 44px; transform: translateY(-50%)"></div>
+    </nav>
+
+    <!-- 主内容包裹层（overflow-x-hidden + 入场动画放这里，不影响 fixed 定位） -->
+    <div class="overflow-x-hidden relative page-enter">
+
+    <!-- 动态背景环境光 (仅首屏透出) -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 h-screen">
+        <div class="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-300/30 dark:bg-indigo-600/20 mix-blend-multiply dark:mix-blend-screen filter blur-[100px] animate-blob"></div>
+        <div class="absolute top-[20%] right-[-10%] w-[35vw] h-[35vw] rounded-full bg-indigo-200/40 dark:bg-indigo-600/20 mix-blend-multiply dark:mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-[-20%] left-[20%] w-[50vw] h-[50vw] rounded-full bg-cyan-200/40 dark:bg-cyan-600/10 mix-blend-multiply dark:mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000"></div>
+        <div class="absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-[0.03] dark:opacity-20 mix-blend-overlay"></div>
+    </div>
+
+    <!-- 电路板背景动画 -->
+    <canvas id="circuit-canvas" class="absolute inset-0 pointer-events-none z-0" style="height:100vh;width:100%;opacity:0;transition:opacity 1.2s ease;"></canvas>
 
     <!-- 首屏区块 -->
     <section id="hero" class="relative pt-40 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10">
@@ -204,25 +212,25 @@
                             </span>
                         </div>
                     </div>
-                    <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6 text-slate-900 dark:text-white">
+                    <h1 class="text-4xl font-extrabold tracking-tight leading-[1.1] mb-6 text-slate-900 dark:text-white">
                     重塑错题整理 <br />
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-cyan-400 dark:via-indigo-400 dark:to-fuchsia-400 animate-pulse">
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-cyan-400 dark:via-indigo-400 dark:to-indigo-400 animate-pulse">
                         一键生成知识图谱
                     </span>
                 </h1>
-                <p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                <p class="text-base md:text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
                     专为中学生与大学生研发。上传凌乱试卷，AI 自动完成图片分割、OCR 纠错及 LaTeX 公式还原。释放你的双手，将时间交还给真正的思考。
                 </p>
-                <div class="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center lg:justify-start" style="transition-delay: 450ms;">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start" style="transition-delay: 450ms;">
                     <!-- 指向 app.html -->
                     <a href="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
-                        <div class="absolute opacity-0 dark:opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-full blur-lg group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
-                        <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-slate-900 rounded-full dark:border dark:border-white/10 gap-3 shadow-xl dark:shadow-none">
+                        <div class="absolute opacity-0 dark:opacity-60 -inset-px bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full blur-lg group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
+                        <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-slate-900 rounded-full dark:border dark:border-white/10 gap-3 shadow-md dark:shadow-none">
                             <i data-lucide="upload-cloud" class="w-6 h-6"></i>
                             上传试卷分析
                         </span>
                     </a>
-                    <a href="#demo" class="bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 dark:bg-transparent dark:glass-panel dark:text-white px-8 py-4 rounded-full font-bold text-lg flex items-center justify-center gap-2 dark:hover:border-white/20 shadow-sm dark:shadow-none">
+                    <a href="#demo" class="bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 dark:bg-transparent dark:glass-panel dark:text-white px-8 py-4 rounded-full font-bold text-base flex items-center justify-center gap-2 dark:hover:border-white/20 shadow-sm dark:shadow-none">
                         查看实时演示
                         <i data-lucide="arrow-right" class="w-5 h-5"></i>
                     </a>
@@ -232,16 +240,37 @@
         
         <!-- 右侧酷炫代码状态图 -->
         <div class="hero-anim flex-1 relative w-full max-w-xl lg:max-w-none" style="transition-delay: 200ms;">
-            <div class="relative animate-float">
-                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-200 to-indigo-200 dark:from-indigo-500 dark:to-fuchsia-500 rounded-3xl transform rotate-6 scale-105 opacity-60 dark:opacity-20 blur-xl"></div>
+            <div class="relative animate-float group">
+
+                <!-- 后层：空窗口（无内容，仅框架） -->
+                <div class="absolute inset-0 translate-x-6 -translate-y-5 z-0 opacity-80 dark:opacity-60 pointer-events-none transition-transform duration-500 ease-out group-hover:translate-x-10 group-hover:-translate-y-8">
+                    <div class="relative bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 border border-slate-200 dark:border-indigo-500/40 shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.2)] h-full">
+                        <div class="bg-slate-50 dark:bg-[#0A0A0F]/80 backdrop-blur-md rounded-t-xl p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
+                            <div class="flex gap-2">
+                                <div class="w-3 h-3 rounded-full bg-red-400 dark:bg-[#FF5F57]"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-[#FFBD2E]"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-[#28C840]"></div>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-mono text-slate-400 dark:text-slate-600">
+                                <i data-lucide="terminal" class="w-3 h-3"></i>
+                                error_bank.py
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-[#0A0A0F]/90 rounded-b-xl h-[340px]"></div>
+                    </div>
+                </div>
+
+                <!-- 前层：有内容的卡片 -->
+                <!-- 光晕 + 卡片包在 overflow-hidden 内，防止光晕下溢盖住倒影 -->
+                <div class="relative overflow-hidden rounded-2xl z-10 transition-transform duration-500 ease-out group-hover:-translate-x-2 group-hover:translate-y-1">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-200 to-indigo-200 dark:from-indigo-500 dark:to-indigo-500 rounded-3xl transform rotate-6 scale-105 opacity-60 dark:opacity-20 blur-xl"></div>
                     <div class="absolute inset-0 bg-gradient-to-bl from-cyan-200 to-blue-200 dark:from-cyan-500 dark:to-blue-500 rounded-3xl transform -rotate-3 scale-105 opacity-60 dark:opacity-20 blur-xl"></div>
-                
-                <div class="bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 relative overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl">
+                <div class="bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 relative overflow-hidden border border-slate-200 dark:border-indigo-500/40 shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.2)]">
                     <div class="bg-slate-50 dark:bg-[#0A0A0F]/80 backdrop-blur-md rounded-t-xl p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
                         <div class="flex gap-2">
-                            <div class="w-3 h-3 rounded-full bg-red-400 dark:bg-slate-600"></div>
-                            <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-slate-600"></div>
-                            <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-slate-600"></div>
+                            <div class="w-3 h-3 rounded-full bg-red-400 dark:bg-[#FF5F57]"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-[#FFBD2E]"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-[#28C840]"></div>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
                             <i data-lucide="terminal" class="w-3 h-3"></i>
@@ -249,7 +278,7 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white dark:bg-[#05050A]/90 p-6 rounded-b-xl font-mono text-sm space-y-5 h-[340px] overflow-hidden relative">
+                    <div class="bg-white dark:bg-[#0A0A0F]/90 p-6 rounded-b-xl font-mono text-sm space-y-5 h-[340px] overflow-hidden relative">
                         <div class="flex items-start gap-3">
                             <span class="text-blue-500 dark:text-cyan-500 mt-0.5">❯</span>
                             <div>
@@ -264,12 +293,12 @@
                         </div>
                         
                         <div class="flex items-start gap-3 relative">
-                            <div class="absolute -left-2 top-0 w-0.5 h-full bg-indigo-500 shadow-[0_0_10px_#6366f1]"></div>
+                            <div class="absolute -left-2 top-0 w-0.5 h-full bg-indigo-500 shadow-indigo-500/50"></div>
                             <i data-lucide="sparkles" class="w-4 h-4 mt-0.5 text-indigo-500 dark:text-indigo-400"></i>
                             <div class="flex-1">
                                 <p class="text-indigo-600 dark:text-indigo-300 mb-2 font-semibold">LangGraph.invoke(solve_agent)...</p>
                                 <div class="bg-slate-50 dark:bg-[#0A0A0F] border border-slate-200 dark:border-white/5 rounded-lg p-3 text-xs text-slate-500 dark:text-slate-400">
-                                    <p class="text-purple-600 dark:text-fuchsia-400 mb-1"># Fixing OCR artifacts & converting to LaTeX</p>
+                                    <p class="text-indigo-600 dark:text-indigo-400 mb-1"># Fixing OCR artifacts & converting to LaTeX</p>
                                     <p>original: <span class="text-red-500/80 dark:text-red-400/70 line-through">f(x)=sin(wx+φ)</span></p>
                                     <p>fixed: &nbsp;&nbsp;<span class="text-emerald-600 dark:text-green-400">$f(x) = \sin(\omega x + \varphi)$</span></p>
                                 </div>
@@ -281,140 +310,56 @@
                             Generating Markdown structured output_
                         </div>
 
-                        <!-- 扫描线效果 (白天模式隐藏) -->
-                        <div class="hidden dark:block absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent h-20 -translate-y-full animate-scan"></div>
                     </div>
                 </div>
+                </div><!-- /光晕裁切层 -->
             </div>
         </div>
     </section>
 
     <!-- 核心功能区 (采用深色底与局部渐变隔离) -->
-    <section id="features" class="relative z-10 overflow-hidden border-y border-slate-200 bg-white py-24 dark:border-white/5 dark:bg-[#0A0B14]">
+    <section id="features" class="relative z-10 overflow-hidden border-y border-slate-200 bg-white py-24 dark:border-white/5 dark:bg-slate-900">
         <!-- 独立的渐变背景隔离层 (阻断全局光晕，建立区块专属光感) -->
         <div class="pointer-events-none absolute inset-0 z-0">
-            <div class="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-[#05050A] dark:via-[#0E101A] dark:to-[#05050A]"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-[#0A0A0F] dark:via-slate-900 dark:to-[#0A0A0F]"></div>
             <div class="absolute left-[-10%] top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-blue-400/10 blur-[120px] dark:bg-indigo-600/15"></div>
             <div class="absolute right-[-10%] top-0 h-[400px] w-[400px] rounded-full bg-cyan-400/5 blur-[100px] dark:bg-cyan-600/10"></div>
         </div>
 
         <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="mb-20 text-center">
-                <h2 class="reveal mb-6 text-3xl font-bold text-slate-900 md:text-5xl dark:text-white">驱动学习效率的 <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-cyan-400">核心引擎</span></h2>
-                <p class="reveal mx-auto max-w-2xl text-lg text-slate-600 dark:text-slate-400">不仅是简单的图像识别，而是真正理解学科内在逻辑的 AI 智能体系统。</p>
+                <h2 class="reveal mb-6 text-3xl font-bold text-slate-900  dark:text-white">驱动学习效率的 <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-cyan-400">核心引擎</span></h2>
+                <p class="reveal mx-auto max-w-2xl text-base text-slate-600 dark:text-slate-400">不仅是简单的图像识别，而是真正理解学科内在逻辑的 AI 智能体系统。</p>
             </div>
-            <div class="grid gap-8 md:grid-cols-3">
-                <div class="reveal group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:-translate-y-2 hover:shadow-xl dark:border-white/10 dark:bg-[#13141C] dark:shadow-none dark:hover:shadow-[0_10px_40px_-10px_rgba(99,102,241,0.2)]">
-                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/5 opacity-0 group-hover:opacity-10 dark:from-cyan-500/10 dark:to-blue-500/5 dark:group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div class="absolute inset-x-0 -top-px mx-auto h-px w-1/2 bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent opacity-0 group-hover:opacity-100 hidden dark:block transition-opacity duration-500"></div>
-                    <div class="relative z-10">
-                        <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-blue-500 shadow-sm group-hover:scale-110 dark:border-white/10 dark:bg-[#1A1C28] dark:text-cyan-400 dark:shadow-lg transition-transform duration-500">
-                            <i data-lucide="camera" class="h-7 w-7"></i>
-                        </div>
-                        <h3 class="mb-4 text-2xl font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-indigo-300">极速录入，告别手抄</h3>
-                        <p class="text-base leading-relaxed text-slate-600 dark:text-slate-400">支持 PDF/多图并行处理。单文件最高 50MB，将几十页试卷秒变结构化数据，把时间留给思考。</p>
-                    </div>
-                </div>
-                <div class="reveal group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:-translate-y-2 hover:shadow-xl dark:border-white/10 dark:bg-[#13141C] dark:shadow-none dark:hover:shadow-[0_10px_40px_-10px_rgba(99,102,241,0.2)]" style="transition-delay: 150ms;">
-                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/5 opacity-0 group-hover:opacity-10 dark:from-indigo-500/10 dark:to-purple-500/5 dark:group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div class="absolute inset-x-0 -top-px mx-auto h-px w-1/2 bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent opacity-0 group-hover:opacity-100 hidden dark:block transition-opacity duration-500"></div>
-                    <div class="relative z-10">
-                        <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-blue-500 shadow-sm group-hover:scale-110 dark:border-white/10 dark:bg-[#1A1C28] dark:text-cyan-400 dark:shadow-lg transition-transform duration-500">
-                            <i data-lucide="cpu" class="h-7 w-7"></i>
-                        </div>
-                        <h3 class="mb-4 text-2xl font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-indigo-300">双引擎 OCR 极致精准</h3>
-                        <p class="text-base leading-relaxed text-slate-600 dark:text-slate-400">PaddleOCR + DeepSeek/文心一言 双重保障。自动纠错并完美还原复杂数学公式及变量下标。</p>
-                    </div>
-                </div>
-                <div class="reveal group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:-translate-y-2 hover:shadow-xl dark:border-white/10 dark:bg-[#13141C] dark:shadow-none dark:hover:shadow-[0_10px_40px_-10px_rgba(99,102,241,0.2)]" style="transition-delay: 300ms;">
-                    <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-500/20 to-pink-500/5 opacity-0 group-hover:opacity-10 dark:from-fuchsia-500/10 dark:to-pink-500/5 dark:group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div class="absolute inset-x-0 -top-px mx-auto h-px w-1/2 bg-gradient-to-r from-transparent via-fuchsia-400/50 to-transparent opacity-0 group-hover:opacity-100 hidden dark:block transition-opacity duration-500"></div>
-                    <div class="relative z-10">
-                        <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-blue-500 shadow-sm group-hover:scale-110 dark:border-white/10 dark:bg-[#1A1C28] dark:text-cyan-400 dark:shadow-lg transition-transform duration-500">
-                            <i data-lucide="database" class="h-7 w-7"></i>
-                        </div>
-                        <h3 class="mb-4 text-2xl font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-indigo-300">智能图谱与一键导出</h3>
-                        <p class="text-base leading-relaxed text-slate-600 dark:text-slate-400">AI 自动提取知识点标签。自由剔除无用题目，一键导出排版精美的 Markdown / PDF 错题本。</p>
-                    </div>
-                </div>
-            </div>
+            <div class="grid gap-8 md:grid-cols-3" id="features-grid"></div>
         </div>
     </section>
 
     <!-- 工作流演示区 -->
-    <section id="workflow" class="relative z-10 bg-slate-50 py-24 dark:bg-[#05050A]">
+    <section id="workflow" class="relative z-10 bg-slate-50 py-24 dark:bg-[#0A0A0F]">
         <div class="reveal max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-20">
-                <h2 class="text-3xl md:text-5xl font-bold mb-6 text-slate-900 dark:text-white">极简四步，自动运转</h2>
-                <p class="text-slate-600 dark:text-slate-400 text-lg">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
+                <h2 class="text-3xl md:text-4xl font-bold mb-6 text-slate-900 dark:text-white">极简四步，自动运转</h2>
+                <p class="text-slate-600 dark:text-slate-400 text-base">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
             </div>
             
             <div class="relative max-w-5xl mx-auto">
                 <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-slate-200 dark:bg-white/5 -translate-y-1/2 z-0 rounded-full">
-                    <div id="progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 dark:bg-gradient-to-r dark:from-cyan-500 dark:via-indigo-500 dark:to-fuchsia-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] dark:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-700 ease-in-out" style="width: 0%"></div>
+                    <div id="progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 dark:bg-gradient-to-r dark:from-cyan-500 dark:via-indigo-500 dark:to-indigo-500 shadow-blue-500/50 dark:shadow-indigo-500/50 transition-all duration-700 ease-in-out" style="width: 0%"></div>
                 </div>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10" id="steps-container">
-                    <div class="reveal workflow-step" data-index="0">
-                        <div class="flex flex-col items-center text-center">
-                            <div class="step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative">
-                                <div class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20 hidden"></div>
-                                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="step-title text-xl font-bold mb-2">
-                                <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">01</span> 上传试卷
-                            </h4>
-                            <p class="step-desc text-sm">支持PDF/多图并行处理</p>
-                        </div>
-                    </div>
-                    <div class="reveal workflow-step" data-index="1" style="transition-delay: 150ms;">
-                        <div class="flex flex-col items-center text-center">
-                            <div class="step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative">
-                                <div class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20 hidden"></div>
-                                <i data-lucide="brain-circuit" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="step-title text-xl font-bold mb-2">
-                                <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">02</span> AI 解析拆题
-                            </h4>
-                            <p class="step-desc text-sm">智能排版与图文切分</p>
-                        </div>
-                    </div>
-                    <div class="reveal workflow-step" data-index="2" style="transition-delay: 300ms;">
-                        <div class="flex flex-col items-center text-center">
-                            <div class="step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative">
-                                <div class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20 hidden"></div>
-                                <i data-lucide="sparkles" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="step-title text-xl font-bold mb-2">
-                                <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">03</span> 纠错与打标
-                            </h4>
-                            <p class="step-desc text-sm">公式还原与知识点关联</p>
-                        </div>
-                    </div>
-                    <div class="reveal workflow-step" data-index="3" style="transition-delay: 450ms;">
-                        <div class="flex flex-col items-center text-center">
-                            <div class="step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative">
-                                <div class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20 hidden"></div>
-                                <i data-lucide="file-down" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="step-title text-xl font-bold mb-2">
-                                <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">04</span> 一键导出
-                            </h4>
-                            <p class="step-desc text-sm">生成 Markdown/PDF</p>
-                        </div>
-                    </div>
-                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10" id="steps-container"></div>
             </div>
         </div>
     </section>
 
     <!-- 效果对比区 -->
-    <section id="demo" class="py-32 bg-white dark:bg-[#0A0B14] relative z-10 border-t border-slate-100 dark:border-transparent">
+    <section id="demo" class="py-32 bg-white dark:bg-slate-900 relative z-10 border-t border-slate-100 dark:border-transparent">
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-blue-50/50 dark:via-indigo-950/10 to-transparent pointer-events-none"></div>
         <div class="reveal max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div class="text-center mb-20">
-                <h2 class="text-3xl md:text-5xl font-bold mb-6 text-slate-900 dark:text-white">眼见为实的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-fuchsia-400 dark:to-pink-400">魔法转变</span></h2>
-                <p class="text-slate-600 dark:text-slate-400 text-lg">复杂的公式、凌乱的涂改，在强大的 AI 引擎面前都不值一提。</p>
+                <h2 class="text-3xl md:text-4xl font-bold mb-6 text-slate-900 dark:text-white">眼见为实的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-indigo-400 dark:to-rose-400">魔法转变</span></h2>
+                <p class="text-slate-600 dark:text-slate-400 text-base">复杂的公式、凌乱的涂改，在强大的 AI 引擎面前都不值一提。</p>
             </div>
 
             <div class="flex flex-col lg:flex-row gap-6 items-center justify-center">
@@ -423,8 +368,8 @@
                     <div class="absolute top-5 left-6 text-xs font-bold tracking-widest text-slate-500 uppercase">Input / 原生图像</div>
                     <div class="bg-white dark:bg-[#EAEAEA] p-8 rounded-xl transform -rotate-2 opacity-90 dark:opacity-80 mt-8 blur-[0.5px] text-slate-800 shadow-sm dark:shadow-inner filter dark:sepia-[0.2] relative">
                         <div class="hidden dark:block absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-40 mix-blend-multiply"></div>
-                        <p class="font-[cursive] text-lg mb-3">3. 巳知函数f(x)=2sin(wx+φ)(w&gt;0,|φ|&lt;π/2)的图像...</p>
-                        <p class="font-[cursive] text-lg">A. w=2, φ=π/6</p>
+                        <p class="font-[cursive] text-base mb-3">3. 巳知函数f(x)=2sin(wx+φ)(w&gt;0,|φ|&lt;π/2)的图像...</p>
+                        <p class="font-[cursive] text-base">A. w=2, φ=π/6</p>
                         <div class="mt-4 w-1/2 h-4 bg-red-400/30 dark:bg-red-400/20 rounded-full blur-[2px] transform -rotate-3"></div>
                         <p class="font-[cursive] text-sm mt-4 text-red-500 dark:text-red-600/60 font-bold transform -rotate-6">看不清，选C吧</p>
                     </div>
@@ -440,8 +385,8 @@
                 </div>
 
                 <!-- 右侧：AI 结果 -->
-                <div class="reveal flex-1 w-full max-w-md bg-slate-900 dark:bg-[#0A0A0F] border border-blue-500/20 dark:border-indigo-500/30 p-6 md:p-10 rounded-3xl relative overflow-hidden text-left shadow-2xl dark:shadow-[0_0_40px_rgba(99,102,241,0.15)] group hover:shadow-blue-500/20 dark:hover:shadow-[0_0_60px_rgba(99,102,241,0.25)] transition-shadow duration-500" style="transition-delay: 200ms;">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-cyan-500 dark:via-indigo-500 dark:to-purple-500"></div>
+                <div class="reveal flex-1 w-full max-w-md bg-slate-900 dark:bg-[#0A0A0F] border border-blue-500/20 dark:border-indigo-500/30 p-6 md:p-10 rounded-3xl relative overflow-hidden text-left shadow-md dark:shadow-md group hover:shadow-blue-500/20 dark:hover:shadow-indigo-500/30 transition-shadow duration-500" style="transition-delay: 200ms;">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-indigo-500 dark:from-cyan-500 dark:via-indigo-500 dark:to-indigo-500"></div>
                     <div class="absolute top-5 left-6 text-xs font-bold tracking-widest text-blue-400 dark:text-indigo-400 uppercase flex items-center gap-2">
                         <i data-lucide="sparkles" class="w-3 h-3"></i> Output / 结构化数据
                     </div>
@@ -451,7 +396,7 @@
                             <span class="bg-blue-500/20 dark:bg-cyan-500/10 text-blue-400 dark:text-cyan-400 px-3 py-1 rounded-full text-xs border border-blue-500/30 dark:border-cyan-500/20">选择题</span>
                             <span class="bg-indigo-500/20 dark:bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full text-xs border border-indigo-500/30 dark:border-indigo-500/20">三角函数</span>
                         </div>
-                        <p class="text-base"><span class="text-blue-500 dark:text-indigo-500 mr-2">## 3.</span> 已知函数 <span class="text-purple-300 dark:text-fuchsia-300 bg-purple-500/20 dark:bg-fuchsia-500/10 px-1 rounded">$f(x) = 2\sin(\omega x + \varphi)$</span> <span class="text-purple-300 dark:text-fuchsia-300 bg-purple-500/20 dark:bg-fuchsia-500/10 px-1 rounded">$(\omega &gt; 0, |\varphi| &lt; \frac{\pi}{2})$</span> 的图像...</p>
+                        <p class="text-base"><span class="text-blue-500 dark:text-indigo-500 mr-2">## 3.</span> 已知函数 <span class="text-indigo-300 dark:text-indigo-300 bg-indigo-500/20 dark:bg-indigo-500/10 px-1 rounded">$f(x) = 2\sin(\omega x + \varphi)$</span> <span class="text-indigo-300 dark:text-indigo-300 bg-indigo-500/20 dark:bg-indigo-500/10 px-1 rounded">$(\omega &gt; 0, |\varphi| &lt; \frac{\pi}{2})$</span> 的图像...</p>
                         <div class="mt-5 pl-4 border-l-2 border-blue-500/50 dark:border-indigo-500/50 space-y-3">
                             <p class="flex gap-3"><span class="text-slate-400 dark:text-slate-500">A.</span> <span class="text-slate-200 dark:text-slate-300">$\omega = 2, \varphi = \frac{\pi}{6}$</span></p>
                             <p class="flex gap-3"><span class="text-slate-400 dark:text-slate-500">B.</span> <span class="text-slate-200 dark:text-slate-300">$\omega = 2, \varphi = -\frac{\pi}{6}$</span></p>
@@ -471,18 +416,18 @@
     </section>
 
     <!-- CTA 区块 -->
-    <section class="py-32 relative overflow-hidden z-10 bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-[#05050A] dark:to-transparent border-t border-transparent dark:border-white/5">
+    <section class="py-32 relative overflow-hidden z-10 bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-[#0A0A0F] dark:to-transparent border-t border-transparent dark:border-white/5">
         <div class="hidden dark:block absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-20 mix-blend-overlay z-0"></div>
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-white/10 dark:bg-indigo-600/10 rounded-full filter blur-[100px] pointer-events-none"></div>
         
         <div class="max-w-4xl mx-auto px-4 relative z-10 text-center">
-            <h2 class="reveal text-4xl md:text-6xl font-extrabold mb-8 text-white">即刻开启高效学习模式</h2>
+            <h2 class="reveal text-4xl font-extrabold mb-8 text-white">即刻开启高效学习模式</h2>
             <p class="reveal text-blue-100 dark:text-indigo-200 text-xl mb-12 max-w-2xl mx-auto font-light" style="transition-delay: 150ms;">告别低效抄录，让 AI 成为你的超级助教。注册即享完整试卷解析体验。</p>
             <!-- 指向 app.html -->
             <div class="reveal" style="transition-delay: 300ms;">
-                <a href="/auth" class="relative inline-flex group h-16 sm:w-auto w-full">
-                    <div class="hidden dark:block absolute opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] via-[#FF44EC] to-[#FF675E] rounded-full blur-xl group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
-                    <span class="relative inline-flex items-center justify-center w-full px-12 py-4 text-xl font-bold text-blue-700 bg-white hover:bg-slate-50 dark:text-white dark:bg-[#05050A] rounded-full focus:outline-none dark:border dark:border-white/20 dark:hover:bg-transparent cursor-pointer shadow-xl dark:shadow-none transform hover:-translate-y-1 dark:hover:translate-y-0">
+                <a href="/auth" class="relative inline-flex group h-14 sm:w-auto w-full">
+                    <div class="absolute opacity-0 dark:opacity-60 -inset-px bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full blur-lg group-hover:opacity-100 group-hover:-inset-1 transition-opacity duration-1000 group-hover:duration-200"></div>
+                    <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-slate-900 rounded-full dark:border dark:border-white/10 gap-3 shadow-md dark:shadow-none">
                         免费创建错题库
                     </span>
                 </a>
@@ -491,11 +436,11 @@
     </section>
 
     <!-- 页脚 -->
-    <footer class="bg-slate-900 dark:bg-[#030305] text-slate-400 dark:text-slate-500 py-16 border-t border-slate-800 dark:border-white/5 relative z-10">
+    <footer class="bg-slate-900 dark:bg-slate-950 text-slate-400 dark:text-slate-500 py-16 border-t border-slate-800 dark:border-white/5 relative z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center gap-8">
                 <div class="flex items-center gap-3">
-                    <div class="bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-purple-600 p-2 rounded-lg">
+                    <div class="bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 p-2 rounded-lg">
                         <img src="/logo.svg" class="w-5 h-5 brightness-0 invert" alt="logo" />
                     </div>
                     <span class="text-xl font-bold text-slate-200 dark:text-slate-300 tracking-wide">智卷错题本</span>
@@ -510,10 +455,332 @@
         </div>
     </footer>
 
+    </div><!-- /主内容包裹层 -->
+
+    <!-- 回到顶部按钮 -->
+    <button
+        id="back-to-top"
+        class="fixed bottom-8 right-8 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/60 bg-white/80 text-slate-500 shadow-md backdrop-blur-md transition-all duration-300 hover:bg-white hover:text-blue-600 hover:border-blue-300/60 hover:shadow-[0_0_16px_4px_rgba(59,130,246,0.35)] dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-indigo-400 dark:hover:border-indigo-500/40 dark:hover:shadow-[0_0_16px_4px_rgba(99,102,241,0.5)]"
+        style="opacity:0;transform:translateY(12px);pointer-events:none;"
+        aria-label="回到顶部"
+        onclick="window.scrollTo({top:0,behavior:'smooth'})"
+    >
+        <i data-lucide="arrow-up" class="h-4 w-4"></i>
+    </button>
+
+    <!-- 神经网络背景动画 -->
+    <script>
+    (function () {
+        const canvas = document.getElementById('circuit-canvas');
+        const ctx = canvas.getContext('2d');
+        const NODE_COUNT = 72;
+        const CONNECT_DIST = 180;
+        const MAX_CONNECTIONS = 4;
+        let W, H, nodes, edges, pulses, raf;
+
+        function isDark() { return document.documentElement.classList.contains('dark'); }
+
+        function resize() {
+            W = canvas.width = canvas.offsetWidth;
+            H = canvas.height = canvas.offsetHeight;
+            init();
+        }
+
+        function init() {
+            // 神经元节点：随机分布，带漂移速度
+            nodes = Array.from({ length: NODE_COUNT }, () => ({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                r: 2 + Math.random() * 2,        // 基础半径
+                activation: 0,                    // 激活亮度 0~1
+            }));
+
+            pulses = [];
+            // 初始随机发射一批脉冲
+            for (let i = 0; i < 18; i++) spawnPulse();
+        }
+
+        function buildEdges() {
+            edges = [];
+            const used = new Array(NODE_COUNT).fill(0);
+            for (let i = 0; i < NODE_COUNT; i++) {
+                // 找距离最近的邻居
+                const neighbors = [];
+                for (let j = 0; j < NODE_COUNT; j++) {
+                    if (i === j) continue;
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < CONNECT_DIST) neighbors.push({ j, d });
+                }
+                neighbors.sort((a, b) => a.d - b.d);
+                neighbors.slice(0, MAX_CONNECTIONS).forEach(({ j, d }) => {
+                    if (used[i] < MAX_CONNECTIONS && used[j] < MAX_CONNECTIONS) {
+                        // 去重（无向边）
+                        if (!edges.find(e => (e.a === i && e.b === j) || (e.a === j && e.b === i))) {
+                            edges.push({ a: i, b: j, alpha: 1 - d / CONNECT_DIST });
+                            used[i]++;
+                            used[j]++;
+                        }
+                    }
+                });
+            }
+        }
+
+        function spawnPulse() {
+            if (!edges || edges.length === 0) return;
+            const edge = edges[Math.floor(Math.random() * edges.length)];
+            pulses.push({
+                edge,
+                progress: 0,
+                speed: 0.012 + Math.random() * 0.012,
+            });
+        }
+
+        let lastSpawn = 0;
+        function update(ts) {
+            // 节点漂移 + 边界反弹
+            nodes.forEach(n => {
+                n.x += n.vx;
+                n.y += n.vy;
+                if (n.x < 0 || n.x > W) n.vx *= -1;
+                if (n.y < 0 || n.y > H) n.vy *= -1;
+                n.activation *= 0.94; // 激活衰减
+            });
+
+            // 重建连接（每帧）
+            buildEdges();
+
+            // 推进脉冲
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                const p = pulses[i];
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    // 到达目标节点 → 激活它，并从该节点再发射
+                    const targetIdx = p.edge.b;
+                    nodes[targetIdx].activation = 1;
+                    pulses.splice(i, 1);
+                    // 从激活节点随机传播到邻居
+                    const outEdges = edges.filter(e => e.a === targetIdx || e.b === targetIdx);
+                    if (outEdges.length && Math.random() < 0.7) {
+                        const next = outEdges[Math.floor(Math.random() * outEdges.length)];
+                        // 确保方向是从 targetIdx 出发
+                        const fwd = next.a === targetIdx ? next : { a: next.b, b: next.a, alpha: next.alpha };
+                        pulses.push({ edge: fwd, progress: 0, speed: 0.012 + Math.random() * 0.012 });
+                    }
+                }
+            }
+
+            // 定期补充脉冲
+            if (ts - lastSpawn > 800) {
+                spawnPulse();
+                lastSpawn = ts;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            const dark = isDark();
+
+            // 连接线
+            edges.forEach(({ a, b, alpha }) => {
+                const na = nodes[a], nb = nodes[b];
+                const act = Math.max(na.activation, nb.activation);
+                const baseAlpha = dark ? 0.08 : 0.06;
+                const lineAlpha = baseAlpha + act * (dark ? 0.25 : 0.2);
+                ctx.beginPath();
+                ctx.moveTo(na.x, na.y);
+                ctx.lineTo(nb.x, nb.y);
+                ctx.strokeStyle = dark
+                    ? `rgba(99,102,241,${(lineAlpha * alpha).toFixed(3)})`
+                    : `rgba(59,130,246,${(lineAlpha * alpha).toFixed(3)})`;
+                ctx.lineWidth = 0.8 + act * 0.6;
+                ctx.stroke();
+            });
+
+            // 神经元节点
+            nodes.forEach(n => {
+                const act = n.activation;
+                const baseR = n.r;
+                const r = baseR + act * 4;
+
+                if (act > 0.05) {
+                    // 激活光晕
+                    const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 4);
+                    grd.addColorStop(0, dark ? `rgba(165,180,252,${act * 0.5})` : `rgba(59,130,246,${act * 0.4})`);
+                    grd.addColorStop(1, 'transparent');
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
+                    ctx.fillStyle = grd;
+                    ctx.fill();
+                }
+
+                // 节点本体
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = dark
+                    ? `rgba(${act > 0.1 ? '165,180,252' : '99,102,241'},${0.2 + act * 0.7})`
+                    : `rgba(${act > 0.1 ? '59,130,246' : '148,163,184'},${0.25 + act * 0.6})`;
+                ctx.fill();
+            });
+
+            // 脉冲光点
+            pulses.forEach(p => {
+                const na = nodes[p.edge.a], nb = nodes[p.edge.b];
+                const x = na.x + (nb.x - na.x) * p.progress;
+                const y = na.y + (nb.y - na.y) * p.progress;
+
+                // 外层大光晕
+                const grd2 = ctx.createRadialGradient(x, y, 0, x, y, 22);
+                grd2.addColorStop(0, dark ? 'rgba(99,102,241,0.45)' : 'rgba(59,130,246,0.35)');
+                grd2.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.arc(x, y, 22, 0, Math.PI * 2);
+                ctx.fillStyle = grd2;
+                ctx.fill();
+
+                // 内层光晕
+                const grd = ctx.createRadialGradient(x, y, 0, x, y, 10);
+                grd.addColorStop(0, dark ? 'rgba(224,231,255,1)' : 'rgba(59,130,246,0.95)');
+                grd.addColorStop(0.35, dark ? 'rgba(99,102,241,0.7)' : 'rgba(99,102,241,0.55)');
+                grd.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = dark ? 'rgba(224,231,255,1)' : 'rgba(59,130,246,1)';
+                ctx.fill();
+            });
+        }
+
+        function loop(ts) {
+            update(ts);
+            draw();
+            raf = requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        raf = requestAnimationFrame(loop);
+        requestAnimationFrame(() => { canvas.style.opacity = '1'; });
+    })();
+    </script>
+
     <!-- JavaScript 交互逻辑 -->
     <script>
+        // ── 特性卡片数据 ──
+        const FEATURES = [
+            {
+                icon: 'camera',
+                glow: 'from-cyan-500/20 to-blue-500/5 dark:from-cyan-500/10 dark:to-blue-500/5',
+                topLine: 'via-cyan-400/50',
+                title: '极速录入，告别手抄',
+                desc: '支持 PDF/多图并行处理。单文件最高 50MB，将几十页试卷秒变结构化数据，把时间留给思考。',
+                delay: 0,
+            },
+            {
+                icon: 'cpu',
+                glow: 'from-indigo-500/20 to-indigo-500/5 dark:from-indigo-500/10 dark:to-indigo-500/5',
+                topLine: 'via-indigo-400/50',
+                title: '双引擎 OCR 极致精准',
+                desc: 'PaddleOCR + DeepSeek/文心一言 双重保障。自动纠错并完美还原复杂数学公式及变量下标。',
+                delay: 150,
+            },
+            {
+                icon: 'database',
+                glow: 'from-indigo-500/20 to-rose-500/5 dark:from-indigo-500/10 dark:to-rose-500/5',
+                topLine: 'via-indigo-400/50',
+                title: '智能图谱与一键导出',
+                desc: 'AI 自动提取知识点标签。自由剔除无用题目，一键导出排版精美的 Markdown / PDF 错题本。',
+                delay: 300,
+            },
+        ];
+
+        document.getElementById('features-grid').innerHTML = FEATURES.map(f => `
+            <div class="reveal group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:-translate-y-2 hover:shadow-md dark:border-white/10 dark:bg-slate-900 dark:shadow-none dark:hover:shadow-md"
+                 style="${f.delay ? `transition-delay:${f.delay}ms` : ''}">
+                <div class="absolute inset-0 bg-gradient-to-br ${f.glow} opacity-0 group-hover:opacity-10 dark:group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="absolute inset-x-0 -top-px mx-auto h-px w-1/2 bg-gradient-to-r from-transparent ${f.topLine} to-transparent opacity-0 group-hover:opacity-100 hidden dark:block transition-opacity duration-500"></div>
+                <div class="relative z-10">
+                    <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-blue-500 shadow-sm group-hover:scale-110 dark:border-white/10 dark:bg-slate-800 dark:text-cyan-400 dark:shadow-md transition-transform duration-500">
+                        <i data-lucide="${f.icon}" class="h-7 w-7"></i>
+                    </div>
+                    <h3 class="mb-4 text-2xl font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-indigo-300">${f.title}</h3>
+                    <p class="text-base leading-relaxed text-slate-600 dark:text-slate-400">${f.desc}</p>
+                </div>
+            </div>
+        `).join('');
+
+        // ── 工作流步骤数据 ──
+        const STEPS = [
+            { icon: 'upload-cloud', num: '01', title: '上传试卷',   desc: '支持PDF/多图并行处理',  delay: 0 },
+            { icon: 'brain-circuit', num: '02', title: 'AI 解析拆题', desc: '智能排版与图文切分',    delay: 150 },
+            { icon: 'sparkles',     num: '03', title: '纠错与打标', desc: '公式还原与知识点关联',   delay: 300 },
+            { icon: 'file-down',    num: '04', title: '一键导出',   desc: '生成 Markdown/PDF',      delay: 450 },
+        ];
+
+        document.getElementById('steps-container').innerHTML = STEPS.map((s, i) => `
+            <div class="reveal workflow-step" data-index="${i}" style="${s.delay ? `transition-delay:${s.delay}ms` : ''}">
+                <div class="flex flex-col items-center text-center">
+                    <div class="step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative">
+                        <div class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20 hidden"></div>
+                        <i data-lucide="${s.icon}" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="step-title text-xl font-bold mb-2">
+                        <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">${s.num}</span> ${s.title}
+                    </h4>
+                    <p class="step-desc text-sm">${s.desc}</p>
+                </div>
+            </div>
+        `).join('');
+
         lucide.createIcons();
-        document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener('DOMContentLoaded', () => {
+
+            // ── 智能导航栏：滚动时增加背景效果 ──
+            const topNav = document.getElementById('top-nav');
+            const navContainer = document.getElementById('nav-container');
+            const backToTop = document.getElementById('back-to-top');
+            let ticking = false;
+
+            function onScroll() {
+                const y = window.scrollY;
+
+                // 回到顶部按钮
+                const showBtn = y > 400;
+                backToTop.style.opacity = showBtn ? '1' : '0';
+                backToTop.style.transform = showBtn ? 'translateY(0)' : 'translateY(12px)';
+                backToTop.style.pointerEvents = showBtn ? 'auto' : 'none';
+
+                // 导航栏效果切换
+                if (y > 20) {
+                    topNav.classList.add('glass-panel');
+                    topNav.style.borderColor = '';
+                    navContainer.classList.remove('h-20');
+                    navContainer.classList.add('h-16');
+                } else {
+                    topNav.classList.remove('glass-panel');
+                    topNav.style.border = 'none';
+                    navContainer.classList.remove('h-16');
+                    navContainer.classList.add('h-20');
+                }
+
+                ticking = false;
+            }
+
+            window.addEventListener('scroll', () => {
+                if (!ticking) { requestAnimationFrame(onScroll); ticking = true; }
+            }, { passive: true });
+
+            lucide.createIcons({ nodes: [backToTop] });
+
+            // ── 主题切换 ──
             const themeToggleBtn = document.getElementById('theme-toggle');
             const htmlElement = document.documentElement;
             
@@ -603,7 +870,7 @@
                 btn.dataset.id = s.id;
                 btn.innerHTML = `
                     <div class="section-dot w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/20 group-hover:bg-blue-400 dark:group-hover:bg-indigo-300 transition-transform duration-300"></div>
-                    <span class="absolute right-14 px-3 py-1.5 rounded-xl bg-white dark:bg-[#070a10] border border-slate-200 dark:border-white/10 text-[11px] font-black text-slate-700 dark:text-white whitespace-nowrap pointer-events-none opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 shadow-xl transition-all duration-300">
+                    <span class="absolute right-14 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-black text-slate-700 dark:text-white whitespace-nowrap pointer-events-none opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 shadow-md transition-all duration-300">
                         <span class="opacity-40 mr-2">${String(i + 1).padStart(2, '0')}</span>${s.label}
                     </span>`;
                 btn.addEventListener('click', () => {
@@ -641,7 +908,7 @@
                 // 更新各点样式
                 nav.querySelectorAll('.section-nav-btn').forEach((btn, i) => {
                     const dot = btn.querySelector('.section-dot');
-                    if (i === idx) dot.className = 'section-dot w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-indigo-400 scale-125 transition-transform duration-300';
+                    if (i === idx) dot.className = 'section-dot w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-indigo-400 scale-125 transition-all duration-300 shadow-[0_0_8px_3px_rgba(99,102,241,0.7)] dark:shadow-[0_0_10px_4px_rgba(99,102,241,0.9)]';
                     else dot.className = 'section-dot w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/20 group-hover:bg-blue-400 dark:group-hover:bg-indigo-300 transition-transform duration-300';
                 });
             };
@@ -664,19 +931,19 @@
                     const ping = el.querySelector('.step-ping');
 
                     el.className = 'workflow-step relative p-6 rounded-2xl cursor-pointer bg-transparent border border-transparent hover:bg-slate-100 dark:hover:bg-white/5';
-                    iconContainer.className = 'step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative bg-slate-200 text-slate-500 border border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/10';
+                    iconContainer.className = 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-slate-200 text-slate-500 border border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/10';
                     title.className = 'step-title text-xl font-bold mb-2 text-slate-500 dark:text-slate-400';
                     desc.className = 'step-desc text-sm text-slate-500 dark:text-slate-500';
                     if(ping) ping.classList.add('hidden');
 
                     if (idx === activeStep) {
-                        el.className = 'workflow-step relative p-6 rounded-2xl cursor-pointer bg-white border border-blue-500 shadow-xl scale-105 dark:bg-transparent dark:glass-panel dark:border-indigo-500/50 dark:shadow-[0_0_30px_rgba(99,102,241,0.15)]';
-                        iconContainer.className = 'step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-lg shadow-blue-500/30 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-purple-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]';
+                        el.className = 'workflow-step relative p-6 rounded-2xl cursor-pointer bg-white border border-blue-500 shadow-md scale-105 dark:bg-transparent dark:glass-panel dark:border-indigo-500/50 dark:shadow-[0_0_30px_rgba(99,102,241,0.15)]';
+                        iconContainer.className = 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-md shadow-blue-500/30 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]';
                         title.className = 'step-title text-xl font-bold mb-2 text-slate-900 dark:text-white';
                         desc.className = 'step-desc text-sm text-blue-600 dark:text-indigo-200';
                         if(ping) ping.classList.remove('hidden');
                     } else if (idx < activeStep) {
-                        iconContainer.className = 'step-icon w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-md dark:bg-gradient-to-br dark:from-indigo-500 dark:to-purple-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]';
+                        iconContainer.className = 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-md dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]';
                     }
                 });
                 if (progressBar) progressBar.style.width = `${(activeStep / (totalSteps - 1)) * 100}%`;
