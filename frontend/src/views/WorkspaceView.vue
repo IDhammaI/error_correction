@@ -11,6 +11,7 @@ import FileList from '../components/FileList.vue'
 import FileUploader from '../components/FileUploader.vue'
 import QuestionList from '../components/QuestionList.vue'
 import ActionBar from '../components/ActionBar.vue'
+import SplitLoading from '../components/SplitLoading.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
@@ -790,6 +791,7 @@ onBeforeUnmount(() => {
                   :split-completed="splitCompleted"
                   @split="doSplit"
                 />
+
               </div>
             </div>
 
@@ -842,6 +844,9 @@ onBeforeUnmount(() => {
             </div>
           </Transition>
         </div>
+
+        <!-- AI 分割任务全局遮罩 -->
+        <SplitLoading v-if="splitting" />
       </div>
       </Transition>
 
