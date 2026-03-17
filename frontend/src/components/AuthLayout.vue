@@ -1,10 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 const transitionName = ref('auth-slide-left')
+
+const loading = ref(true)
+
+onMounted(() => {
+  setTimeout(() => {
+    loading.value = false
+  }, 2000)
+})
 
 router.beforeEach((to, from) => {
   const toOrder = to.meta.order ?? 0
@@ -23,6 +31,23 @@ const FEATURES = [
 <template>
   <div class="min-h-screen flex bg-slate-50 dark:bg-[#0A0A0F]">
 
+    <!-- Loading overlay -->
+    <Transition name="loading-fade">
+      <div v-if="loading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
+        <div class="relative">
+          <div class="absolute inset-0 rounded-2xl bg-indigo-500/40 blur-xl"></div>
+          <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 p-3.5 rounded-2xl shadow-lg border border-white/10">
+            <img src="/logo.svg" class="w-9 h-9 brightness-0 invert" alt="logo" />
+          </div>
+        </div>
+        <div class="w-48">
+          <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-400 loading-bar"></div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 左侧品牌区（大屏显示） -->
     <div class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-indigo-950 dark:to-[#0A0A0F] p-12">
       <!-- 背景装饰光晕 -->
@@ -35,13 +60,13 @@ const FEATURES = [
 
       <!-- 顶部 Logo -->
       <div class="relative flex items-center gap-3">
-        <div class="relative">
-          <div class="absolute inset-0 bg-white/30 blur-lg rounded-xl"></div>
-          <div class="relative bg-white/20 backdrop-blur-md border border-white/30 p-2 rounded-xl">
-            <img src="/logo.svg" class="w-6 h-6 brightness-0 invert" alt="logo" />
+        <div class="relative group">
+          <div class="absolute inset-0 bg-blue-500/60 dark:bg-indigo-500/60 blur-xl opacity-0 group-hover:opacity-100 transition duration-500 rounded-2xl"></div>
+          <div class="relative bg-gradient-to-br from-blue-500 to-indigo-700 dark:from-indigo-500 dark:to-indigo-800 p-2.5 rounded-2xl shadow-md shadow-indigo-500/30 border border-white/10">
+            <img src="/logo.svg" class="w-7 h-7 brightness-0 invert" alt="logo" />
           </div>
         </div>
-        <span class="text-xl font-bold text-white tracking-wide">智卷错题本</span>
+        <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-200 tracking-wide">智卷错题本</span>
       </div>
 
       <!-- 中部主文案 -->
@@ -76,17 +101,23 @@ const FEATURES = [
     </div>
 
     <!-- 右侧表单区 -->
-    <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-16">
+    <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-16 relative">
+
+      <!-- 返回主页 -->
+      <a href="/" class="absolute top-6 right-6 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/15 backdrop-blur-md border border-slate-200/60 dark:border-white/10 hover:bg-white dark:hover:bg-white/25 transition-all shadow-sm">
+        <i class="fas fa-arrow-left text-xs"></i>
+        返回主页
+      </a>
 
       <!-- 移动端 Logo（小屏显示） -->
       <div class="lg:hidden text-center mb-8">
-        <div class="relative inline-flex mb-4">
-          <div class="absolute inset-0 bg-blue-500 dark:bg-indigo-500 blur-lg opacity-40 dark:opacity-60 rounded-xl"></div>
-          <div class="relative bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 p-3 rounded-xl shadow-md">
-            <img src="/logo.svg" class="w-8 h-8 brightness-0 invert" alt="logo" />
+        <div class="relative inline-flex mb-4 group">
+          <div class="absolute inset-0 bg-blue-500/60 dark:bg-indigo-500/60 blur-xl opacity-0 group-hover:opacity-100 transition duration-500 rounded-2xl"></div>
+          <div class="relative bg-gradient-to-br from-blue-500 to-indigo-700 dark:from-indigo-500 dark:to-indigo-800 p-2.5 rounded-2xl shadow-md shadow-indigo-500/30 border border-white/10">
+            <img src="/logo.svg" class="w-7 h-7 brightness-0 invert" alt="logo" />
           </div>
         </div>
-        <h1 class="text-2xl font-bold text-slate-800 dark:text-white">智卷错题本</h1>
+        <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:via-indigo-200 dark:to-indigo-200 tracking-wide">智卷错题本</h1>
       </div>
 
       <div class="w-full max-w-sm">
@@ -141,11 +172,27 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   transition: background-color 9999s ease;
-  -webkit-text-fill-color: inherit;
+  -webkit-text-fill-color: #f1f5f9;
+  caret-color: #f1f5f9;
 }
 </style>
 
 <style scoped>
+.loading-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+.loading-fade-leave-to {
+  opacity: 0;
+}
+
+.loading-bar {
+  animation: loadProgress 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes loadProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 /* 向左滑（登录 → 注册） */
 .auth-slide-left-enter-active,
 .auth-slide-left-leave-active {

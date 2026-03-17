@@ -21,17 +21,15 @@ onMounted(() => {
 
 <style>
 .page-fade-enter-active {
-  transition: opacity 0.28s ease, transform 0.28s ease;
+  transition: opacity 0.28s ease;
 }
 .page-fade-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.18s ease;
 }
 .page-fade-enter-from {
   opacity: 0;
-  transform: translateY(10px);
 }
 .page-fade-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
 }
 </style>
