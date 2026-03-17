@@ -4,7 +4,12 @@ import { useAuth } from '../composables/useAuth.js'
 const routes = [
   {
     path: '/auth',
-    component: () => import('../components/AuthView.vue'),
+    component: () => import('../components/AuthLayout.vue'),
+    redirect: '/auth/login',
+    children: [
+      { path: 'login',    component: () => import('../components/LoginView.vue'),    meta: { order: 0 } },
+      { path: 'register', component: () => import('../components/RegisterView.vue'), meta: { order: 1 } },
+    ],
   },
   {
     path: '/app/:view?/:subview?',
@@ -38,10 +43,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAuth && !currentUser.value) {
-    return '/auth'
+    return '/auth/login'
   }
 
-  if (to.path === '/auth' && currentUser.value) {
+  if (to.path.startsWith('/auth') && currentUser.value) {
     return '/app/workspace'
   }
 })

@@ -3,21 +3,24 @@
     <div class="w-full max-w-md">
       <!-- Logo / Title -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white text-2xl mb-4 shadow-lg shadow-blue-500/30">
-          <i class="fas fa-book-open"></i>
+        <div class="relative inline-flex mb-4">
+          <div class="absolute inset-0 bg-blue-500 dark:bg-indigo-500 blur-lg opacity-40 dark:opacity-60 rounded-xl"></div>
+          <div class="relative bg-blue-600 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 p-3 rounded-xl shadow-md">
+            <img src="/logo.svg" class="w-8 h-8 brightness-0 invert" alt="logo" />
+          </div>
         </div>
         <h1 class="text-2xl font-bold text-slate-800 dark:text-white">错题本</h1>
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">智能错题管理系统</p>
       </div>
 
       <!-- Card -->
-      <div class="bg-white/70 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-xl p-8">
+      <div class="bg-white/70 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-md p-8">
         <!-- Tabs -->
         <div class="flex rounded-xl bg-slate-100/80 dark:bg-white/5 p-1 mb-6">
           <button
             @click="activeTab = 'login'"
             :class="[
-              'flex-1 py-2 text-sm font-bold rounded-lg transition-all',
+              'flex-1 py-2 text-sm font-bold rounded-xl transition-all',
               activeTab === 'login'
                 ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -28,7 +31,7 @@
           <button
             @click="activeTab = 'register'"
             :class="[
-              'flex-1 py-2 text-sm font-bold rounded-lg transition-all',
+              'flex-1 py-2 text-sm font-bold rounded-xl transition-all',
               activeTab === 'register'
                 ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -41,18 +44,18 @@
         <!-- Login Form -->
         <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">邮箱或用户名</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">邮箱或用户名</label>
             <input
               v-model="loginForm.email"
               type="text"
               required
               autocomplete="username"
               placeholder="邮箱 或 用户名"
-              class="w-full h-11 px-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+              class="w-full h-10 px-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">密码</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">密码</label>
             <div class="relative">
               <input
                 v-model="loginForm.password"
@@ -60,7 +63,7 @@
                 required
                 autocomplete="current-password"
                 placeholder="请输入密码"
-                class="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+                class="w-full h-10 px-4 pr-11 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -72,14 +75,14 @@
             </div>
           </div>
 
-          <p v-if="loginError" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
+          <p v-if="loginError" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2">
             <i class="fas fa-circle-exclamation"></i>{{ loginError }}
           </p>
 
           <button
             type="submit"
             :disabled="loading"
-            class="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 text-sm"
+            class="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/30 hover:shadow-blue-500/50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 text-sm"
           >
             <i v-if="loading" class="fas fa-spinner fa-spin"></i>
             <span>{{ loading ? '登录中...' : '登录' }}</span>
@@ -89,7 +92,7 @@
         <!-- Register Form -->
         <form v-if="activeTab === 'register'" @submit.prevent="handleRegister" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">用户名</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">用户名</label>
             <input
               v-model="registerForm.username"
               type="text"
@@ -97,22 +100,22 @@
               autocomplete="username"
               placeholder="您的昵称"
               maxlength="50"
-              class="w-full h-11 px-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+              class="w-full h-10 px-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">邮箱</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">邮箱</label>
             <input
               v-model="registerForm.email"
               type="email"
               required
               autocomplete="email"
               placeholder="your@email.com"
-              class="w-full h-11 px-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+              class="w-full h-10 px-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">密码</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">密码</label>
             <div class="relative">
               <input
                 v-model="registerForm.password"
@@ -121,7 +124,7 @@
                 autocomplete="new-password"
                 placeholder="至少 6 位"
                 minlength="6"
-                class="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+                class="w-full h-10 px-4 pr-11 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -133,14 +136,14 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">确认密码</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">确认密码</label>
             <input
               v-model="registerForm.confirm"
               type="password"
               required
               autocomplete="new-password"
               placeholder="再次输入密码"
-              class="w-full h-11 px-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
+              class="w-full h-10 px-4 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-sm"
               :class="{ 'border-rose-400 dark:border-rose-500': registerForm.confirm && registerForm.password !== registerForm.confirm }"
             />
             <p v-if="registerForm.confirm && registerForm.password !== registerForm.confirm" class="text-xs text-rose-500 mt-1">
@@ -148,17 +151,17 @@
             </p>
           </div>
 
-          <p v-if="registerError" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
+          <p v-if="registerError" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2">
             <i class="fas fa-circle-exclamation"></i>{{ registerError }}
           </p>
-          <p v-if="registerSuccess" class="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+          <p v-if="registerSuccess" class="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <i class="fas fa-circle-check"></i>{{ registerSuccess }}
           </p>
 
           <button
             type="submit"
             :disabled="loading || (registerForm.confirm && registerForm.password !== registerForm.confirm)"
-            class="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 text-sm"
+            class="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/30 hover:shadow-blue-500/50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 text-sm"
           >
             <i v-if="loading" class="fas fa-spinner fa-spin"></i>
             <span>{{ loading ? '注册中...' : '创建账户' }}</span>
