@@ -258,7 +258,7 @@ onUnmounted(() => {
 
     <LandingBackToTop
       :visible="backToTopVisible"
-      @click="window.scrollTo({top:0,behavior:'smooth'})"
+      @click="scrollToY(0, 1000)"
     />
 
   </div>
@@ -268,8 +268,8 @@ onUnmounted(() => {
 /* Landing page always uses dark mode class - set in onMounted */
 
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .page-enter {

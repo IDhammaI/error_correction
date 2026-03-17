@@ -2,48 +2,12 @@
 import { Camera, Cpu, Database, BrainCircuit, Sparkles, Layers } from 'lucide-vue-next'
 
 const FEATURES = [
-  {
-    icon: 'camera',
-    topLine: 'via-cyan-400/50',
-    title: '极速录入，告别手抄',
-    desc: '支持 PDF/多图并行处理。单文件最高 50MB，将几十页试卷秒变结构化数据，把时间留给思考。',
-    delay: 0,
-  },
-  {
-    icon: 'cpu',
-    topLine: 'via-indigo-400/50',
-    title: '双引擎 OCR 极致精准',
-    desc: 'PaddleOCR + DeepSeek/文心一言 双重保障。自动纠错并完美还原复杂数学公式及变量下标。',
-    delay: 80,
-  },
-  {
-    icon: 'database',
-    topLine: 'via-violet-400/50',
-    title: '智能图谱与一键导出',
-    desc: 'AI 自动提取知识点标签。自由剔除无用题目，一键导出排版精美的 Markdown / PDF 错题本。',
-    delay: 160,
-  },
-  {
-    icon: 'brain-circuit',
-    topLine: 'via-emerald-400/50',
-    title: 'LangGraph Agent 拆题',
-    desc: '基于 LangGraph 的多步骤 Agent 流水线，智能识别题目边界、拆分子问题，精度超越单次 LLM 调用。',
-    delay: 240,
-  },
-  {
-    icon: 'sparkles',
-    topLine: 'via-rose-400/50',
-    title: 'LaTeX 公式无损还原',
-    desc: '深度理解数学符号语义，自动将手写或印刷公式转换为标准 LaTeX，支持分式、积分、矩阵等复杂结构。',
-    delay: 320,
-  },
-  {
-    icon: 'layers',
-    topLine: 'via-blue-300/50',
-    title: '多科目知识点打标',
-    desc: '覆盖数学、物理、化学、英语等主流学科。每道题自动关联知识点树，构建可视化个人薄弱点图谱。',
-    delay: 400,
-  },
+  { icon: 'camera',        title: '极速录入，告别手抄',       desc: '支持 PDF/多图并行处理。单文件最高 50MB，将几十页试卷秒变结构化数据，把时间留给思考。', delay: 0 },
+  { icon: 'cpu',           title: '双引擎 OCR 极致精准',      desc: 'PaddleOCR + DeepSeek/文心一言 双重保障。自动纠错并完美还原复杂数学公式及变量下标。', delay: 80 },
+  { icon: 'database',      title: '智能图谱与一键导出',       desc: 'AI 自动提取知识点标签。自由剔除无用题目，一键导出排版精美的 Markdown / PDF 错题本。', delay: 160 },
+  { icon: 'brain-circuit', title: 'LangGraph Agent 拆题',    desc: '基于 LangGraph 的多步骤 Agent 流水线，智能识别题目边界、拆分子问题，精度超越单次 LLM 调用。', delay: 240 },
+  { icon: 'sparkles',      title: 'LaTeX 公式无损还原',       desc: '深度理解数学符号语义，自动将手写或印刷公式转换为标准 LaTeX，支持分式、积分、矩阵等复杂结构。', delay: 320 },
+  { icon: 'layers',        title: '多科目知识点打标',         desc: '覆盖数学、物理、化学、英语等主流学科。每道题自动关联知识点树，构建可视化个人薄弱点图谱。', delay: 400 },
 ]
 
 const iconMap = {
@@ -75,10 +39,9 @@ const iconMap = {
         <div
           v-for="f in FEATURES"
           :key="f.title"
-          class="reveal group relative overflow-hidden rounded-3xl border border-white/15 bg-white/10 backdrop-blur-md p-8 hover:-translate-y-2 hover:bg-white/15 hover:border-white/25 transition-all duration-300"
+          class="reveal group relative rounded-3xl border border-white/15 bg-white/10 backdrop-blur-md p-8 hover:-translate-y-2 hover:bg-white/15 hover:border-white/25 transition-all duration-300"
           :style="f.delay ? `transition-delay:${f.delay}ms` : ''"
         >
-          <div :class="`absolute inset-x-0 -top-px mx-auto h-px w-1/2 bg-gradient-to-r from-transparent ${f.topLine} to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300`"></div>
           <div class="relative z-10">
             <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm group-hover:scale-110 transition-transform duration-300">
               <component :is="iconMap[f.icon]" class="h-7 w-7" />
