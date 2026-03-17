@@ -65,10 +65,7 @@ const currentView = computed({
 })
 
 // ---- 主题 ----
-const theme = ref(
-  localStorage.getItem('theme') ||
-  (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-)
+const theme = ref('dark')
 const applyTheme = (nextTheme) => {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light'
   const root = document.documentElement
@@ -548,6 +545,7 @@ watch(currentView, async (newView) => {
 
 // ---- 生命周期 ----
 onMounted(() => {
+  applyTheme('dark')
   document.addEventListener('keydown', onKeydown)
   doFetchStatus()
 })
@@ -583,7 +581,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             @click="(e) => toggleTheme(e.currentTarget)"
-            class="shrink-0 p-2 rounded-full text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
+            class="hidden"
             title="切换主题"
           >
             <i class="fa-solid fa-sun text-[18px] hidden dark:block"></i>
@@ -679,7 +677,7 @@ onBeforeUnmount(() => {
           <i class="fa-solid fa-sliders text-lg"></i>
           <span class="mt-1 text-[10px] font-bold">设置</span>
         </button>
-        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 dark:text-slate-400">
+        <button @click="(e) => toggleTheme(e.currentTarget)" class="hidden">
           <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon'"></i>
           <span class="text-[10px] font-bold">主题</span>
         </button>
