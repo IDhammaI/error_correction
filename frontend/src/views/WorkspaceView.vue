@@ -14,7 +14,6 @@ import ActionBar from '../components/ActionBar.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
-import CatLoading from '../components/CatLoading.vue'
 import ErrorBank from '../components/ErrorBank.vue'
 import ChatView from '../components/ChatView.vue'
 import SettingsView from '../components/SettingsView.vue'
@@ -543,11 +542,15 @@ watch(currentView, async (newView) => {
   }
 })
 
+// ---- 页面加载动画 ----
+const pageLoading = ref(true)
+
 // ---- 生命周期 ----
 onMounted(() => {
   applyTheme('dark')
   document.addEventListener('keydown', onKeydown)
   doFetchStatus()
+  setTimeout(() => { pageLoading.value = false }, 2000)
 })
 
 onBeforeUnmount(() => {
@@ -558,6 +561,22 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
+
+    <Transition name="ws-loading-fade">
+      <div v-if="pageLoading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#05050A]">
+        <div class="relative">
+          <div class="absolute inset-0 rounded-2xl bg-indigo-500/40 blur-xl"></div>
+          <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 p-3.5 rounded-2xl shadow-lg border border-white/10">
+            <img src="/logo.svg" class="w-9 h-9 brightness-0 invert" alt="logo" />
+          </div>
+        </div>
+        <div class="w-48">
+          <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-400 ws-loading-bar"></div>
+          </div>
+        </div>
+      </div>
+    </Transition>
     <!-- ================== 全局固定背景光晕 (支持长页面滚动) ================== -->
     <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
@@ -826,8 +845,6 @@ onBeforeUnmount(() => {
       </div>
       </Transition>
 
-      <!-- AI 分割任务全局遮罩 -->
-      <CatLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
 
       <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
       <Transition name="view-fade">
@@ -997,5 +1014,16 @@ onBeforeUnmount(() => {
 .flip-leave-to {
   opacity: 0;
   transform: translateX(-30px) scale(0.98);
+}
+
+.ws-loading-fade-leave-active { transition: opacity 0.4s ease; }
+.ws-loading-fade-leave-to { opacity: 0; }
+
+.ws-loading-bar {
+  animation: wsLoadProgress 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes wsLoadProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
 }
 </style>
