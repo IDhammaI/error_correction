@@ -118,6 +118,9 @@ const providerOptions = computed(() => {
   return s && s.available_models ? s.available_models : []
 })
 
+// 是否有可用模型
+const hasConfiguredModel = computed(() => providerOptions.value.some(p => p.configured))
+
 // 从 selectedModel 反查 provider
 const selectedProvider = computed(() => {
   for (const p of providerOptions.value) {
@@ -273,7 +276,7 @@ let activeXhr = null
 let fakeProgressTimer = null
 let fakeProgressKeys = []
 
-const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value)
+const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
 const stopFakeProgress = () => {
@@ -750,6 +753,7 @@ onBeforeUnmount(() => {
                   :provider-options="providerOptions"
                   :selected-model="selectedModel"
                   :disabled="splitting || splitCompleted"
+                  :no-models="!hasConfiguredModel"
                   @update:selected-model="(v) => selectedModel = v"
                 />
 
@@ -778,6 +782,7 @@ onBeforeUnmount(() => {
                     :splitting="splitting"
                     :split-completed="splitCompleted"
                     :expand="questions.length === 0"
+                    :disabled="!hasConfiguredModel"
                     @upload="enqueueUpload"
                     @remove-file="removePendingFile"
                   />

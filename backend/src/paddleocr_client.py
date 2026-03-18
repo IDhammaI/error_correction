@@ -10,11 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import requests
 import aiohttp
-from dotenv import load_dotenv
 from rich.console import Console
-
-# 加载环境变量
-load_dotenv()
 
 console = Console()
 
@@ -27,20 +23,22 @@ POLL_TIMEOUT = 300
 class PaddleOCRClient:
     """PaddleOCR V2 异步任务 API 客户端"""
 
-    def __init__(self):
-        """初始化客户端，从环境变量读取配置"""
-        self.api_url = os.getenv("PADDLEOCR_API_URL")
-        self.token = os.getenv("PADDLEOCR_API_TOKEN")
-        self.model = os.getenv("PADDLEOCR_MODEL", "PaddleOCR-VL-1.5")
-        self.use_doc_orientation = os.getenv("PADDLEOCR_USE_DOC_ORIENTATION", "false").lower() == "true"
-        self.use_doc_unwarping = os.getenv("PADDLEOCR_USE_DOC_UNWARPING", "false").lower() == "true"
-        self.use_chart_recognition = os.getenv("PADDLEOCR_USE_CHART_RECOGNITION", "false").lower() == "true"
-        # 验证必需的配置
+    def __init__(self, *, api_url=None, token=None, model=None,
+                 use_doc_orientation=None, use_doc_unwarping=None,
+                 use_chart_recognition=None):
+        """初始化客户端
+
+        优先使用传入的参数，未提供时回退到环境变量。
+        """
+        self.api_url = api_url or ""
+        self.token = token or ""
+        self.model = model or "PaddleOCR-VL-1.5"
+        self.use_doc_orientation = use_doc_orientation or False
+        self.use_doc_unwarping = use_doc_unwarping or False
+        self.use_chart_recognition = use_chart_recognition or False
         if not self.api_url or not self.token:
             raise ValueError(
-                "缺少必需的环境变量。请确保 .env 文件中配置了：\n"
-                "- PADDLEOCR_API_URL\n"
-                "- PADDLEOCR_API_TOKEN"
+                "缺少 PaddleOCR 配置，请在设置页面配置 PaddleOCR 服务"
             )
 
     @property

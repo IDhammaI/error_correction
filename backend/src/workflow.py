@@ -9,14 +9,11 @@ import logging
 import time
 from typing import List, Dict, Any, TypedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dotenv import load_dotenv
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from config import settings
 from .utils import prepare_input, export_wrongbook, simplify_ocr_results, run_async
-
-load_dotenv()
 console = Console()
 
 # 配置日志
@@ -45,6 +42,9 @@ class WorkflowState(TypedDict, total=False):
     model_provider: str                  # 模型供应商: "openai" | "anthropic"
     model_name: str                      # 用户选择的具体模型名称（可选，None 时使用 provider 默认）
     warnings: List[str]                  # 步骤警告信息（供前端展示）
+    # 数据库凭据（由路由层注入，避免环境变量依赖）
+    llm_credentials: Dict[str, Any]      # {api_key, base_url, light_model_name, supports_function_calling}
+    ocr_credentials: Dict[str, Any]      # {api_url, token, model, use_doc_orientation, ...}
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -67,7 +67,7 @@ def prepare_input_node(state: WorkflowState) -> dict:
 # ── 并行分割辅助函数 ──────────────────────────────────────────
 
 
-def _run_ocr_and_simplify(file_paths: List[str]) -> List[Dict[str, Any]]:
+def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """执行 OCR 解析并简化结果（含重试机制）
 
     支持混合文件类型：PDF 直传 API，图片并行上传。
@@ -78,7 +78,15 @@ def _run_ocr_and_simplify(file_paths: List[str]) -> List[Dict[str, Any]]:
     """
     from src.paddleocr_client import PaddleOCRClient
 
-    client = PaddleOCRClient()
+    creds = ocr_credentials or {}
+    client = PaddleOCRClient(
+        api_url=creds.get("api_url"),
+        token=creds.get("token"),
+        model=creds.get("model"),
+        use_doc_orientation=creds.get("use_doc_orientation"),
+        use_doc_unwarping=creds.get("use_doc_unwarping"),
+        use_chart_recognition=creds.get("use_chart_recognition"),
+    )
 
     # 按文件类型分组
     pdf_paths = [p for p in file_paths if p.lower().endswith(".pdf")]
@@ -341,6 +349,8 @@ def split_questions_node(state: WorkflowState) -> dict:
     file_paths = state["image_paths"]
     model_provider = state.get("model_provider", "openai")
     model_name = state.get("model_name")
+    llm_credentials = state.get("llm_credentials") or {}
+    ocr_credentials = state.get("ocr_credentials") or {}
 
     # 清空旧的 questions.json 和 split_metadata.json
     questions_file = os.path.join(results_dir, "questions.json")
@@ -354,7 +364,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
     ocr_start = time.time()
 
-    ocr_data = _run_ocr_and_simplify(file_paths)
+    ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
 
     if not ocr_data:
         logger.error("OCR 解析失败，无数据返回")

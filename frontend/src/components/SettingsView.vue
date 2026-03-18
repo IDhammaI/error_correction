@@ -69,6 +69,7 @@ const toggleActive = (type, id) => {
 // ---------- 加载 / 保存 ----------
 
 const loadConfig = async () => {
+  configLoaded.value = false
   loading.value = true
   try {
     const cfg = await fetchAppConfig()
@@ -103,6 +104,8 @@ const loadConfig = async () => {
     pushToast('error', '加载配置失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
     loading.value = false
+    // nextTick 后再启用自动保存，避免赋值触发 watcher
+    setTimeout(() => { configLoaded.value = true }, 0)
   }
 }
 
@@ -135,9 +138,7 @@ const saveConfig = async () => {
     payload.active_paddleocr_id = activePaddleocrId.value
 
     await updateAppConfig(payload)
-    pushToast('success', '配置已保存并生效')
     emit('saved')
-    await loadConfig()
   } catch (e) {
     pushToast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -145,19 +146,31 @@ const saveConfig = async () => {
   }
 }
 
-const removeOpenAIProvider = (idx) => {
-  if (openaiProviders.value[idx]?.id === activeOpenaiId.value) activeOpenaiId.value = null
-  openaiProviders.value.splice(idx, 1)
-}
+// ---------- 自动保存（防抖） ----------
+let autoSaveTimer = null
+const configLoaded = ref(false)  // 防止 loadConfig 触发自动保存
 
-const removeAnthropicProvider = (idx) => {
-  if (anthropicProviders.value[idx]?.id === activeAnthropicId.value) activeAnthropicId.value = null
-  anthropicProviders.value.splice(idx, 1)
-}
+watch(
+  [openaiProviders, anthropicProviders, paddleocrProviders, activeOpenaiId, activeAnthropicId, activePaddleocrId],
+  () => {
+    if (!configLoaded.value) return
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = setTimeout(() => saveConfig(), 600)
+  },
+  { deep: true },
+)
 
-const removePaddleOCRProvider = (idx) => {
-  if (paddleocrProviders.value[idx]?.id === activePaddleocrId.value) activePaddleocrId.value = null
-  paddleocrProviders.value.splice(idx, 1)
+const removeProvider = async (type, idx) => {
+  const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
+  const activeMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
+  const list = listMap[type]
+  if (list.value[idx]?.id === activeMap[type].value) activeMap[type].value = null
+  list.value.splice(idx, 1)
+  clearTimeout(autoSaveTimer)
+  try {
+    await saveConfig()
+    pushToast('success', '已删除')
+  } catch { /* saveConfig 内部已 toast error */ }
 }
 
 // ---------- 弹窗控制 ----------
@@ -180,7 +193,7 @@ const openEditDialog = (type, provider, idx) => {
   dialogOpen.value = true
 }
 
-const onDialogConfirm = (formData) => {
+const onDialogConfirm = async (formData) => {
   if (dialogEditIndex.value >= 0) {
     // 编辑模式：更新已有 provider
     const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
@@ -209,7 +222,15 @@ const onDialogConfirm = (formData) => {
       if (paddleocrProviders.value.length === 1) activePaddleocrId.value = p.id
     }
   }
+  const isEdit = dialogEditIndex.value >= 0
   dialogOpen.value = false
+
+  // 立即保存并提示
+  clearTimeout(autoSaveTimer)
+  try {
+    await saveConfig()
+    pushToast('success', isEdit ? '配置已更新' : '供应商已添加')
+  } catch { /* saveConfig 内部已 toast error */ }
 }
 
 onMounted(() => { if (props.visible) loadConfig() })
@@ -239,8 +260,8 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
         <div>
           <div class="mb-3 flex items-center justify-between pl-1">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-                <i class="fa-solid fa-bolt text-lg text-emerald-600 dark:text-emerald-400"></i>
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                <i class="fa-solid fa-bolt text-lg text-blue-600 dark:text-blue-400"></i>
               </div>
               <div>
                 <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">OpenAI 兼容 API</h3>
@@ -249,7 +270,7 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
             </div>
             <button
               @click="openAddDialog('openai')"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
             >
               <i class="fa-solid fa-plus text-[10px]"></i>
               添加
@@ -264,19 +285,18 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
           <div class="space-y-2">
             <div
               v-for="(provider, idx) in openaiProviders" :key="provider.id"
-              class="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all dark:border-white/10 dark:bg-white/[0.03]"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('openai', provider.id)"
             >
               <!-- 激活单选 -->
-              <button
-                @click="toggleActive('openai', provider.id)"
+              <div
                 class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
                 :class="activeOpenaiId === provider.id
                   ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
-                  : 'border-slate-300 hover:border-emerald-400 dark:border-slate-600 dark:hover:border-emerald-500'"
-                :title="activeOpenaiId === provider.id ? '当前已启用' : '点击启用'"
+                  : 'border-slate-300 dark:border-slate-600'"
               >
                 <i v-if="activeOpenaiId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </button>
+              </div>
 
               <!-- 名称 + 状态 -->
               <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -291,14 +311,14 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
 
               <!-- 设置 + 删除 -->
               <button
-                @click="openEditDialog('openai', provider, idx)"
+                @click.stop="openEditDialog('openai', provider, idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
                 title="设置"
               >
                 <i class="fa-solid fa-gear text-xs"></i>
               </button>
               <button
-                @click="removeOpenAIProvider(idx)"
+                @click.stop="removeProvider('openai', idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
                 title="删除"
               >
@@ -312,8 +332,8 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
         <div>
           <div class="mb-3 flex items-center justify-between pl-1">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-500/10">
-                <i class="fa-solid fa-brain text-lg text-orange-600 dark:text-orange-400"></i>
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                <i class="fa-solid fa-brain text-lg text-blue-600 dark:text-blue-400"></i>
               </div>
               <div>
                 <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Anthropic API</h3>
@@ -322,7 +342,7 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
             </div>
             <button
               @click="openAddDialog('anthropic')"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-orange-400 hover:bg-orange-50 hover:text-orange-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
             >
               <i class="fa-solid fa-plus text-[10px]"></i>
               添加
@@ -337,22 +357,21 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
           <div class="space-y-2">
             <div
               v-for="(provider, idx) in anthropicProviders" :key="provider.id"
-              class="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all dark:border-white/10 dark:bg-white/[0.03]"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('anthropic', provider.id)"
             >
-              <button
-                @click="toggleActive('anthropic', provider.id)"
+              <div
                 class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
                 :class="activeAnthropicId === provider.id
-                  ? 'border-orange-500 bg-orange-500 dark:border-orange-400 dark:bg-orange-400'
-                  : 'border-slate-300 hover:border-orange-400 dark:border-slate-600 dark:hover:border-orange-500'"
-                :title="activeAnthropicId === provider.id ? '当前已启用' : '点击启用'"
+                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
+                  : 'border-slate-300 dark:border-slate-600'"
               >
                 <i v-if="activeAnthropicId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </button>
+              </div>
 
               <div class="flex min-w-0 flex-1 items-center gap-2">
                 <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
-                <span v-if="activeAnthropicId === provider.id" class="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                <span v-if="activeAnthropicId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
                   使用中
                 </span>
                 <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
@@ -361,14 +380,14 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
               </div>
 
               <button
-                @click="openEditDialog('anthropic', provider, idx)"
+                @click.stop="openEditDialog('anthropic', provider, idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
                 title="设置"
               >
                 <i class="fa-solid fa-gear text-xs"></i>
               </button>
               <button
-                @click="removeAnthropicProvider(idx)"
+                @click.stop="removeProvider('anthropic', idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
                 title="删除"
               >
@@ -407,22 +426,21 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
           <div class="space-y-2">
             <div
               v-for="(provider, idx) in paddleocrProviders" :key="provider.id"
-              class="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all dark:border-white/10 dark:bg-white/[0.03]"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('paddleocr', provider.id)"
             >
-              <button
-                @click="toggleActive('paddleocr', provider.id)"
+              <div
                 class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
                 :class="activePaddleocrId === provider.id
-                  ? 'border-blue-500 bg-blue-500 dark:border-blue-400 dark:bg-blue-400'
-                  : 'border-slate-300 hover:border-blue-400 dark:border-slate-600 dark:hover:border-blue-500'"
-                :title="activePaddleocrId === provider.id ? '当前已启用' : '点击启用'"
+                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
+                  : 'border-slate-300 dark:border-slate-600'"
               >
                 <i v-if="activePaddleocrId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </button>
+              </div>
 
               <div class="flex min-w-0 flex-1 items-center gap-2">
                 <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
-                <span v-if="activePaddleocrId === provider.id" class="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+                <span v-if="activePaddleocrId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
                   使用中
                 </span>
                 <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
@@ -431,14 +449,14 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
               </div>
 
               <button
-                @click="openEditDialog('paddleocr', provider, idx)"
+                @click.stop="openEditDialog('paddleocr', provider, idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
                 title="设置"
               >
                 <i class="fa-solid fa-gear text-xs"></i>
               </button>
               <button
-                @click="removePaddleOCRProvider(idx)"
+                @click.stop="removeProvider('paddleocr', idx)"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
                 title="删除"
               >
@@ -448,25 +466,6 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
           </div>
         </div>
 
-        <!-- 操作栏 -->
-        <div class="flex items-center justify-end gap-3 pb-8">
-          <button
-            @click="loadConfig"
-            :disabled="saving"
-            class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-5 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
-            <i class="fa-solid fa-rotate-right"></i>
-            重置
-          </button>
-          <button
-            @click="saveConfig"
-            :disabled="saving"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-          >
-            <i class="fa-solid" :class="saving ? 'fa-circle-notch fa-spin' : 'fa-check'"></i>
-            {{ saving ? '保存中...' : '保存配置' }}
-          </button>
-        </div>
       </div>
     </div>
 

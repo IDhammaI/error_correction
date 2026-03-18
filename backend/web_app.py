@@ -491,6 +491,23 @@ def split_questions():
                 'error': f'不支持的模型供应商: {model_provider}'
             }), 400
 
+        # 从数据库加载用户的 LLM + OCR 凭据
+        user_id = session.get('user_id')
+        ocr_credentials = {}
+        if user_id:
+            settings.load_providers_from_db(user_id)
+            with SessionLocal() as db:
+                ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                if ocr_provider:
+                    ocr_credentials = {
+                        "api_url": ocr_provider.base_url,
+                        "token": ocr_provider.api_key,
+                        "model": ocr_provider.model_name,
+                        "use_doc_orientation": ocr_provider.use_doc_orientation,
+                        "use_doc_unwarping": ocr_provider.use_doc_unwarping,
+                        "use_chart_recognition": ocr_provider.use_chart_recognition,
+                    }
+
         with session_lock:
             keys = list(session_file_order)
             file_paths = []
@@ -509,7 +526,13 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider, "model_name": model_name}, config=config)
+        initial_state = {
+            "file_paths": file_paths,
+            "model_provider": model_provider,
+            "model_name": model_name,
+            "ocr_credentials": ocr_credentials,
+        }
+        workflow_graph.invoke(initial_state, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -863,15 +886,26 @@ def list_models():
         api_key = data.get('api_key') or ''
         base_url = data.get('base_url') or ''
 
-        # 如果前端没传 key，尝试从环境变量回退
+        # 如果前端没传 key，从数据库读取已保存的配置
         if not api_key:
-            if provider_type == 'openai':
-                api_key = os.getenv('OPENAI_API_KEY', '')
-            elif provider_type == 'anthropic':
-                api_key = os.getenv('ANTHROPIC_API_KEY', '')
+            user_id = session.get('user_id')
+            provider_id = data.get('provider_id')
+            if user_id:
+                with SessionLocal() as db:
+                    if provider_id:
+                        provider = db.query(crud.ProviderConfig).filter_by(
+                            id=provider_id, user_id=user_id
+                        ).first()
+                    else:
+                        provider = crud.get_active_provider(db, user_id, provider_type)
+                    if provider:
+                        if not api_key:
+                            api_key = provider.api_key or ''
+                        if not base_url:
+                            base_url = provider.base_url or ''
 
         if not api_key:
-            return jsonify({'error': '未提供 API Key，且系统未配置默认 Key'}), 400
+            return jsonify({'error': '未提供 API Key，请先在设置中配置'}), 400
 
         if provider_type == 'openai':
             url = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/v1/models'
@@ -1658,6 +1692,11 @@ def stream_chat(session_id):
 
         if not settings.is_valid_provider(model_provider):
             return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
+
+        # 从数据库加载用户的 LLM 凭据
+        user_id = session.get('user_id')
+        if user_id:
+            settings.load_providers_from_db(user_id)
 
         with SessionLocal() as db:
             from db.models import ChatSession as ChatSessionModel, QuestionTagMapping

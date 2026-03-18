@@ -1,5 +1,7 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
+
+const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] ${msg}`) })
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -14,9 +16,9 @@ const isEdit = computed(() => !!props.editData)
 const typeConfig = computed(() => ({
   openai: {
     title: isEdit.value ? '编辑 OpenAI 兼容供应商' : '添加 OpenAI 兼容供应商',
-    iconBg: 'bg-emerald-50 dark:bg-emerald-500/10',
-    iconCls: 'fa-bolt text-emerald-600 dark:text-emerald-400',
-    btnCls: 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600',
+    iconBg: 'bg-blue-50 dark:bg-blue-500/10',
+    iconCls: 'fa-bolt text-blue-600 dark:text-blue-400',
+    btnCls: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
     namePlaceholder: '例如：DeepSeek / Qwen / Moonshot',
     urlPlaceholder: '留空使用 OpenAI 官方，或填入 https://api.deepseek.com 等',
     modelPlaceholder: 'gpt-4o-mini',
@@ -27,9 +29,9 @@ const typeConfig = computed(() => ({
   },
   anthropic: {
     title: isEdit.value ? '编辑 Anthropic 供应商' : '添加 Anthropic 供应商',
-    iconBg: 'bg-orange-50 dark:bg-orange-500/10',
-    iconCls: 'fa-brain text-orange-600 dark:text-orange-400',
-    btnCls: 'bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600',
+    iconBg: 'bg-blue-50 dark:bg-blue-500/10',
+    iconCls: 'fa-brain text-blue-600 dark:text-blue-400',
+    btnCls: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
     namePlaceholder: '例如：Claude Official',
     urlPlaceholder: '留空使用 Anthropic 官方',
     modelPlaceholder: 'claude-sonnet-4-20250514',
@@ -103,17 +105,15 @@ const fetchModels = async () => {
     const data = await res.json()
     modelList.value = data.models || []
     if (modelList.value.length === 0) {
-      fetchModelError.value = '未获取到可用模型'
+      pushToast('error', '未获取到可用模型')
+    } else {
+      pushToast('success', `获取到 ${modelList.value.length} 个可用模型`)
     }
   } catch (e) {
-    fetchModelError.value = e.message || '获取失败'
+    pushToast('error', e.message || '获取模型列表失败')
   } finally {
     fetchingModels.value = false
   }
-}
-
-const selectModel = (field, modelId) => {
-  form.value[field] = modelId
 }
 
 // 每次打开时重置或回填表单
@@ -121,6 +121,7 @@ watch(() => props.open, (v) => {
   if (!v) return
   modelList.value = []
   fetchModelError.value = ''
+  openDropdown.value = null
   testResult.value = null
   if (props.editData) {
     form.value = {
@@ -185,18 +186,31 @@ const confirm = () => {
 }
 
 const inputCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500'
-const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 appearance-none cursor-pointer bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%2394a3b8\' d=\'M2 4l4 4 4-4\'/%3E%3C/svg%3E")] bg-[length:12px] bg-[right_12px_center] bg-no-repeat pr-10'
+
+// 自定义下拉
+const openDropdown = ref(null) // 'model_name' | 'light_model_name' | null
+const toggleDropdown = (field) => {
+  openDropdown.value = openDropdown.value === field ? null : field
+}
+const selectOption = (field, value) => {
+  form.value[field] = value
+  openDropdown.value = null
+}
 </script>
 
 <template>
   <Teleport to="body">
-    <Transition name="dialog-fade">
-      <div v-if="open" class="fixed inset-0 z-[100] flex items-center justify-center p-4" @click.self="emit('close')">
-        <!-- 背景遮罩 -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <!-- 背景遮罩 -->
+    <div
+      class="fixed inset-0 z-[100] transition-[background-color,backdrop-filter] duration-200 md:left-64"
+      :class="open ? 'bg-black/40 backdrop-blur-sm pointer-events-auto' : 'bg-transparent backdrop-blur-none pointer-events-none'"
+      @click="emit('close')"
+    ></div>
 
+    <Transition name="dialog-fade">
+      <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64" @click.self="emit('close')">
         <!-- 弹窗主体 -->
-        <div class="relative w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white/70 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+        <div class="relative w-full max-w-lg sm:w-[32rem] rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]">
           <!-- 头部 -->
           <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-white/5">
             <div class="flex items-center gap-3">
@@ -216,7 +230,7 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
           </div>
 
           <!-- 表单 -->
-          <form autocomplete="off" class="space-y-4 px-6 py-5" @submit.prevent="confirm">
+          <form autocomplete="off" class="space-y-4 px-6 py-5" @submit.prevent="confirm" @click="openDropdown = null">
             <div>
               <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ? '服务名称' : '供应商名称' }}</label>
               <input
@@ -259,27 +273,48 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
                 class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white/60 px-3.5 py-2 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
               >
                 <i class="fa-solid text-[10px]" :class="fetchingModels ? 'fa-circle-notch fa-spin' : 'fa-arrows-rotate'"></i>
-                {{ fetchingModels ? '获取中...' : '获取模型列表' }}
+                <span class="inline-block w-[4.5rem] text-center">{{ fetchingModels ? '获取中...' : '获取模型列表' }}</span>
               </button>
-              <span v-if="fetchModelError" class="text-xs font-medium text-rose-500 dark:text-rose-400">{{ fetchModelError }}</span>
-              <span v-else-if="modelList.length > 0" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">{{ modelList.length }} 个模型可用</span>
-              <span v-else-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
+              <span v-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
             </div>
 
             <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
               <div>
-                <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">
+                <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
                   {{ type === 'paddleocr' ? 'OCR 模型' : '默认模型' }}
+                  <span v-if="type !== 'paddleocr'" class="group relative">
+                    <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
+                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg backdrop-blur-xl transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                      用于题目分割、纠错等核心任务
+                    </span>
+                  </span>
                 </label>
-                <!-- 有模型列表时用 select -->
-                <select
-                  v-if="modelList.length > 0 && type !== 'paddleocr'"
-                  v-model="form.model_name"
-                  :class="selectCls"
-                >
-                  <option value="" disabled>请选择模型</option>
-                  <option v-for="m in modelList" :key="m" :value="m">{{ m }}</option>
-                </select>
+                <!-- 有模型列表时用自定义下拉 -->
+                <div v-if="modelList.length > 0 && type !== 'paddleocr'" class="relative">
+                  <button
+                    type="button"
+                    @click.stop="toggleDropdown('model_name')"
+                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/60"
+                    :class="form.model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
+                  >
+                    <span class="truncate">{{ form.model_name || '请选择模型' }}</span>
+                    <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'model_name' ? 'rotate-180' : ''"></i>
+                  </button>
+                  <Transition name="dropdown">
+                    <div v-if="openDropdown === 'model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
+                      <button
+                        v-for="m in modelList" :key="m"
+                        type="button"
+                        @click.stop="selectOption('model_name', m)"
+                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
+                        :class="form.model_name === m ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
+                      >
+                        <i v-if="form.model_name === m" class="fa-solid fa-check text-[10px] text-blue-500"></i>
+                        <span :class="form.model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
+                      </button>
+                    </div>
+                  </Transition>
+                </div>
                 <!-- 无模型列表时用 input -->
                 <input
                   v-else
@@ -290,15 +325,50 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
                 />
               </div>
               <div v-if="type === 'openai'">
-                <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">轻量模型 <span class="font-normal text-slate-400">（可选）</span></label>
-                <select
-                  v-if="modelList.length > 0"
-                  v-model="form.light_model_name"
-                  :class="selectCls"
-                >
-                  <option value="">不使用</option>
-                  <option v-for="m in modelList" :key="m" :value="m">{{ m }}</option>
-                </select>
+                <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+                  辅助模型
+                  <span class="font-normal text-slate-400">（可选）</span>
+                  <span class="group relative">
+                    <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
+                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg backdrop-blur-xl transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                      用于科目识别等简单任务，更快更省 Token
+                    </span>
+                  </span>
+                </label>
+                <div v-if="modelList.length > 0" class="relative">
+                  <button
+                    type="button"
+                    @click.stop="toggleDropdown('light_model_name')"
+                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/60"
+                    :class="form.light_model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
+                  >
+                    <span class="truncate">{{ form.light_model_name || '不使用' }}</span>
+                    <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'light_model_name' ? 'rotate-180' : ''"></i>
+                  </button>
+                  <Transition name="dropdown">
+                    <div v-if="openDropdown === 'light_model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
+                      <button
+                        type="button"
+                        @click.stop="selectOption('light_model_name', '')"
+                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
+                        :class="!form.light_model_name ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
+                      >
+                        <i v-if="!form.light_model_name" class="fa-solid fa-check text-[10px] text-blue-500"></i>
+                        <span :class="form.light_model_name ? 'pl-[18px]' : ''">不使用</span>
+                      </button>
+                      <button
+                        v-for="m in modelList" :key="m"
+                        type="button"
+                        @click.stop="selectOption('light_model_name', m)"
+                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
+                        :class="form.light_model_name === m ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
+                      >
+                        <i v-if="form.light_model_name === m" class="fa-solid fa-check text-[10px] text-blue-500"></i>
+                        <span :class="form.light_model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
+                      </button>
+                    </div>
+                  </Transition>
+                </div>
                 <input
                   v-else
                   v-model="form.light_model_name"
@@ -403,12 +473,26 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
 </template>
 
 <style scoped>
-.dialog-fade-enter-active,
+.dialog-fade-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
 .dialog-fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .dialog-fade-enter-from,
 .dialog-fade-leave-to {
   opacity: 0;
+  transform: scale(0.96);
+}
+.dropdown-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.dropdown-leave-active {
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>
