@@ -523,27 +523,32 @@ def split_questions():
                 'error': '请先上传文件'
             }), 400
 
-        # 擦除手写字迹（可选）
-        erase = data.get("erase", False)
-        if erase:
+        # 擦除手写字迹（如果 EnsExam 已接入，则自动执行）
+        ensexam_configured = settings.model_path.exists()
+        if ensexam_configured:
             try:
                 from models.inference import InferenceEngine
                 engine = InferenceEngine()
                 erased_paths = []
                 for fp in file_paths:
+                    # 如果是 PDF 转换为图片的临时路径，或者是直接上传的图片
                     with open(fp, 'rb') as f:
                         img_bytes = f.read()
                     result_img = engine.run(img_bytes)
-                    erased_name = os.path.splitext(os.path.basename(fp))[0] + '_erased.png'
+                    
+                    # 生成擦除后的文件名，保存在 erased_dir
+                    erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.basename(fp)}"
+                    if not erased_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        erased_name += '.png'
+                    
                     erased_path = settings.erased_dir / erased_name
                     result_img.save(str(erased_path), format='PNG')
                     erased_paths.append(str(erased_path))
+                
                 file_paths = erased_paths
-                logger.info("已擦除 %d 张图片的手写字迹", len(erased_paths))
-            except FileNotFoundError as e:
-                logger.warning("擦除模型未配置，跳过擦除: %s", e)
+                logger.info("EnsExam 已接入，自动擦除 %d 张图片的手写字迹", len(erased_paths))
             except Exception:
-                logger.exception("擦除手写字迹失败，使用原图继续")
+                logger.exception("自动擦除手写字迹失败，使用原图继续流程")
 
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
@@ -854,6 +859,9 @@ def get_status():
     try:
         user_id = session.get('user_id')
 
+        # 检查 EnsExam 模型权重是否存在
+        ensexam_configured = settings.model_path.exists()
+
         if user_id:
             # 已登录：从数据库读取用户配置
             with SessionLocal() as db:
@@ -889,6 +897,7 @@ def get_status():
 
         status = {
             'paddleocr_configured': paddleocr_configured,
+            'ensexam_configured': ensexam_configured,
             'available_models': available_models,
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {

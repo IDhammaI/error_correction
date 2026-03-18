@@ -22,44 +22,44 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
 
 <template>
   <div class="custom-select-wrapper relative" :class="widthClass">
-    <label v-if="label" class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">{{ label }}</label>
+    <label v-if="label" class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">{{ label }}</label>
     <button
       type="button"
       @click.stop="toggle"
-      class="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 text-left text-sm font-bold backdrop-blur-xl transition-all dark:border-white/10 dark:bg-slate-800/60"
+      class="flex h-11 w-full items-center justify-between rounded-xl border bg-white/70 px-4 text-left text-sm font-bold shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.06] dark:backdrop-blur-xl"
       :class="[
-        open ? 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500/50 dark:ring-indigo-500/20' : 'hover:border-blue-300 dark:hover:border-indigo-500/30',
+        open ? 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500/50 dark:ring-indigo-500/20' : 'border-slate-200/60 dark:hover:border-indigo-500/30',
         modelValue ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500',
       ]"
     >
       <span class="truncate">{{ modelValue || placeholder }}</span>
-      <i class="fa-solid fa-chevron-down ml-2 text-xs text-slate-400 transition-transform duration-300" :class="open ? 'rotate-180' : ''"></i>
+      <i class="fa-solid fa-chevron-down ml-2 text-xs text-slate-400 transition-transform duration-300 dark:text-slate-500" :class="open ? 'rotate-180' : ''"></i>
     </button>
     <Transition name="dropdown">
-      <div v-if="open" class="absolute left-0 top-full z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-md backdrop-blur-2xl dark:border-white/10 dark:bg-slate-800/70 dark:backdrop-blur-2xl">
-        <button
-          type="button"
-          @click.stop="select('')"
-          class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
-          :class="modelValue === '' ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
-        >
-          <i v-if="modelValue === ''" class="fa-solid fa-check text-xs text-blue-500"></i>
-          <span :class="modelValue !== '' ? 'pl-[18px]' : ''">
-            <i v-if="icon" class="fa-solid fa-layer-group mr-2 text-xs text-slate-400 dark:text-slate-500"></i>{{ placeholder }}
-          </span>
-        </button>
-        <button
-          v-for="opt in options" :key="opt"
-          type="button"
-          @click.stop="select(opt)"
-          class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
-          :class="modelValue === opt ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
-        >
-          <i v-if="modelValue === opt" class="fa-solid fa-check text-xs text-blue-500"></i>
-          <span :class="modelValue !== opt ? 'pl-[18px]' : ''">
-            <i v-if="icon" class="fa-solid mr-2 text-xs" :class="icon(opt)"></i>{{ opt }}
-          </span>
-        </button>
+      <div v-if="open" class="absolute left-0 top-full z-50 mt-2 min-w-full w-max overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+        <div class="no-scrollbar max-h-56 space-y-0.5 overflow-y-auto">
+          <button
+            type="button"
+            @click.stop="select('')"
+            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
+            :class="modelValue === '' ? 'bg-blue-500/10 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'"
+          >
+            <i v-if="icon" class="fa-solid fa-layer-group text-xs opacity-70"></i>
+            <span>{{ placeholder }}</span>
+            <i v-if="modelValue === ''" class="fa-solid fa-check ml-auto text-[10px]"></i>
+          </button>
+          <button
+            v-for="opt in options" :key="opt"
+            type="button"
+            @click.stop="select(opt)"
+            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
+            :class="modelValue === opt ? 'bg-blue-500/10 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'"
+          >
+            <i v-if="icon" class="fa-solid text-xs opacity-70" :class="icon(opt)"></i>
+            <span>{{ opt }}</span>
+            <i v-if="modelValue === opt" class="fa-solid fa-check ml-auto text-[10px]"></i>
+          </button>
+        </div>
       </div>
     </Transition>
   </div>
@@ -68,11 +68,11 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
 <style scoped>
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-8px) scale(0.98);
 }
 </style>

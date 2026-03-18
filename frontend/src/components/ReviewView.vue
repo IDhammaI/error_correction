@@ -181,7 +181,7 @@ const closeAiModal = () => {
 // ---- 生命周期 ----
 watch(() => props.visible, (v) => {
   if (v) loadAll()
-})
+}, { immediate: true })
 </script>
 
 <template>

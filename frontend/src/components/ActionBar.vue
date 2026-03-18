@@ -46,20 +46,20 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
 
     <!-- 导出按钮：极简现代感 -->
     <button
+      v-if="exportEnabled"
       type="button"
       class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
-      :disabled="!exportEnabled"
       @click="emit('export')"
     >
-      <i class="fa-solid fa-file-export transition-transform group-hover:-translate-y-0.5"></i>
+      <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
       导出错题本
     </button>
 
     <!-- 导入错题库按钮：极简现代感 -->
     <button
+      v-if="exportEnabled"
       type="button"
       class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
-      :disabled="!exportEnabled"
       @click="emit('save-to-db')"
     >
       <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>

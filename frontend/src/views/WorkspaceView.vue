@@ -143,14 +143,16 @@ watch(systemStatus, (newVal) => {
 const statusPills = computed(() => {
   if (statusLoading.value) return [
     { key: 'paddle', loading: true, label: 'PaddleOCR' },
-    { key: 'ensexam', loading: true, label: 'EnsExam (未接入)' },
+    { key: 'ensexam', loading: true, label: 'EnsExam' },
     { key: 'langsmith', loading: true, label: 'LangSmith (未接入)' },
   ]
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  pills.push({ key: 'ensexam', ok: false, label: 'EnsExam (未接入)', isPlaceholder: true })
+  if (s.ensexam_configured) {
+    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam已接入' })
+  }
   pills.push(s.langsmith_enabled
     ? { key: 'langsmith', ok: true, label: 'LangSmith追踪' }
     : { key: 'langsmith', ok: false, label: 'LangSmith (未接入)', isPlaceholder: true }
@@ -269,7 +271,7 @@ const uploadBusy = ref(false)
 const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
-const eraseEnabled = ref(false)
+const eraseEnabled = ref(true)
 
 const pendingFiles = reactive([])
 const fileProgress = reactive({})
@@ -640,16 +642,6 @@ onBeforeUnmount(() => {
           </button>
 
           <button
-            @click="currentView = 'review'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="currentView === 'review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
-          >
-            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>待复习</span>
-            <div v-if="currentView === 'review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
-          </button>
-
-          <button
             @click="currentView = 'error-bank'"
             class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'error-bank' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
@@ -657,6 +649,16 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-database w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
             <span>错题库</span>
             <div v-if="currentView === 'error-bank'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
+          </button>
+
+          <button
+            @click="currentView = 'review'"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
+            :class="currentView === 'review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          >
+            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            <span>刷题</span>
+            <div v-if="currentView === 'review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
 
         </nav>
@@ -703,7 +705,7 @@ onBeforeUnmount(() => {
         </button>
         <button @click="currentView = 'review'" class="flex flex-col items-center p-2" :class="currentView === 'review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-          <span class="mt-1 text-xs font-bold">待复习</span>
+          <span class="mt-1 text-xs font-bold">刷题</span>
         </button>
         <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-chart-pie text-lg"></i>

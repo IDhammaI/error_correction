@@ -83,47 +83,47 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
 
 <template>
   <div class="custom-cal-wrapper relative w-full min-w-0">
-    <div class="group flex h-10 w-full cursor-pointer items-center rounded-xl border border-slate-200/60 bg-white/70 px-4 shadow-sm backdrop-blur-xl transition-all hover:border-blue-400/60 hover:bg-white/80 dark:border-white/10 dark:bg-slate-800/60 dark:hover:border-indigo-500/40"
-         :class="{ 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500': open }"
+    <div class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/70 px-4 text-sm font-bold shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.06] dark:backdrop-blur-xl dark:hover:border-indigo-500/30"
+         :class="{ 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500/50 dark:ring-indigo-500/20': open }"
          @click.stop="toggle">
       <i class="fa-regular fa-calendar mr-2 text-sm text-slate-400 transition-colors group-hover:text-blue-500 dark:text-slate-500 dark:group-hover:text-indigo-400"></i>
-      <span v-if="!modelValue" class="text-xs font-bold text-slate-400 dark:text-slate-500">{{ label }}</span>
-      <span v-else class="text-xs font-bold text-slate-700 dark:text-white">{{ modelValue }}</span>
+      <span v-if="!modelValue" class="truncate text-sm font-bold text-slate-400 dark:text-slate-500">{{ label }}</span>
+      <span v-else class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ modelValue }}</span>
     </div>
     <Transition name="cal-dropdown">
       <div v-if="open"
-           class="absolute top-full z-50 mt-1 min-w-full w-64 rounded-xl border border-slate-200/60 bg-white/80 p-4 shadow-md backdrop-blur-2xl dark:border-white/10 dark:bg-slate-800/70 dark:backdrop-blur-2xl"
+           class="absolute top-full z-50 mt-2 min-w-full w-64 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
            :class="align === 'right' ? 'right-0' : 'left-0'">
         <!-- 月份导航 -->
-        <div class="mb-2 flex items-center justify-between">
-          <button @click.stop="prevMonth" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-white">
+        <div class="mb-4 flex items-center justify-between">
+          <button @click.stop="prevMonth" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-white transition-colors">
             <i class="fa-solid fa-chevron-left text-xs"></i>
           </button>
           <span class="text-sm font-black text-slate-700 dark:text-white">{{ calYear }}年{{ calMonth + 1 }}月</span>
-          <button @click.stop="nextMonth" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-white">
+          <button @click.stop="nextMonth" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-white transition-colors">
             <i class="fa-solid fa-chevron-right text-xs"></i>
           </button>
         </div>
         <!-- 星期标题 -->
-        <div class="mb-1 grid grid-cols-7">
+        <div class="mb-2 grid grid-cols-7">
           <span v-for="w in WEEKDAYS" :key="w" class="py-1 text-center text-xs font-black text-slate-400 dark:text-slate-500">{{ w }}</span>
         </div>
         <!-- 日期网格 -->
-        <div class="grid grid-cols-7 place-items-center gap-y-1">
+        <div class="grid grid-cols-7 place-items-center gap-1">
           <button v-for="(d, i) in calDays" :key="i" @click.stop="selectDate(d)"
-            class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+            class="flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all"
             :class="[
-              !d.cur ? 'text-slate-300 dark:text-slate-600' : 'text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700',
-              isDaySel(d) ? '!bg-blue-500 !text-white shadow-md shadow-blue-500/30' : '',
-              isDayToday(d) && !isDaySel(d) ? 'ring-1 ring-blue-400 text-blue-600 dark:text-blue-400' : ''
+              !d.cur ? 'text-slate-300 dark:text-slate-600 opacity-30' : 'text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-white/10',
+              isDaySel(d) ? '!bg-blue-600 !text-white shadow-lg shadow-blue-500/30 dark:!bg-indigo-500 dark:shadow-indigo-500/30' : '',
+              isDayToday(d) && !isDaySel(d) ? 'ring-1 ring-blue-400 text-blue-600 dark:text-indigo-400 dark:ring-indigo-500/50' : ''
             ]">
             {{ d.day }}
           </button>
         </div>
         <!-- 底部操作 -->
-        <div class="mt-2 flex justify-between border-t border-slate-100 pt-2 dark:border-slate-700">
-          <button @click.stop="clearDate" class="text-xs font-bold text-blue-500 hover:text-blue-700 dark:text-indigo-400">清除</button>
-          <button @click.stop="selectToday" class="text-xs font-bold text-blue-500 hover:text-blue-700 dark:text-indigo-400">今天</button>
+        <div class="mt-4 flex justify-between border-t border-slate-100 pt-3 dark:border-white/5">
+          <button @click.stop="clearDate" class="text-xs font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">清除</button>
+          <button @click.stop="selectToday" class="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">今天</button>
         </div>
       </div>
     </Transition>
