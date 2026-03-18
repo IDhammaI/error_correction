@@ -817,10 +817,27 @@ onBeforeUnmount(() => {
                     <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">请确认解析结果的准确性并进行导出或存档</p>
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="rounded-full bg-blue-100 px-3 py-1 text-[10px] font-black text-blue-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-                    {{ questions.length }} 道题目已解析
-                  </span>
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
+                    <button
+                      type="button"
+                      class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+                      @click="selectAll"
+                    >
+                      全选
+                    </button>
+                    <button
+                      type="button"
+                      class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+                      @click="deselectAll"
+                    >
+                      清空
+                    </button>
+                  </div>
+                  <div class="flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white shadow-xl shadow-slate-900/20 dark:bg-white dark:text-slate-900 dark:shadow-none">
+                    <i class="fa-solid fa-square-check text-blue-400"></i>
+                    <span class="tracking-widest">已选 {{ selectedIds.size }} 项</span>
+                  </div>
                 </div>
               </div>
 
