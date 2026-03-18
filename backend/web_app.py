@@ -523,6 +523,28 @@ def split_questions():
                 'error': '请先上传文件'
             }), 400
 
+        # 擦除手写字迹（可选）
+        erase = data.get("erase", False)
+        if erase:
+            try:
+                from models.inference import InferenceEngine
+                engine = InferenceEngine()
+                erased_paths = []
+                for fp in file_paths:
+                    with open(fp, 'rb') as f:
+                        img_bytes = f.read()
+                    result_img = engine.run(img_bytes)
+                    erased_name = os.path.splitext(os.path.basename(fp))[0] + '_erased.png'
+                    erased_path = settings.erased_dir / erased_name
+                    result_img.save(str(erased_path), format='PNG')
+                    erased_paths.append(str(erased_path))
+                file_paths = erased_paths
+                logger.info("已擦除 %d 张图片的手写字迹", len(erased_paths))
+            except FileNotFoundError as e:
+                logger.warning("擦除模型未配置，跳过擦除: %s", e)
+            except Exception:
+                logger.exception("擦除手写字迹失败，使用原图继续")
+
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 

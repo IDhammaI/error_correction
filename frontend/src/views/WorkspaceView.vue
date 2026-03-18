@@ -269,6 +269,7 @@ const uploadBusy = ref(false)
 const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
+const eraseEnabled = ref(false)
 
 const pendingFiles = reactive([])
 const fileProgress = reactive({})
@@ -445,7 +446,7 @@ const doSplit = async () => {
   step.value = 3
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
-    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
+    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value, { erase: eraseEnabled.value })
     questions.value = data.questions || []
     selectedIds.clear()
     if (data.warnings && data.warnings.length) {
@@ -771,6 +772,17 @@ onBeforeUnmount(() => {
                     :no-models="!hasConfiguredModel"
                     @update:selected-model="(v) => selectedModel = v"
                   />
+
+                  <!-- 功能开关 -->
+                  <div class="flex items-center gap-4 border-b border-slate-200/60 py-4 dark:border-white/5">
+                    <label class="flex cursor-pointer items-center gap-2" @click="eraseEnabled = !eraseEnabled">
+                      <div class="relative h-6 w-10 rounded-full transition-colors" :class="eraseEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'">
+                        <div class="absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform" :class="eraseEnabled ? 'translate-x-5' : 'translate-x-1'"></div>
+                      </div>
+                      <span class="text-sm font-bold text-slate-700 dark:text-slate-300">擦除手写字迹</span>
+                      <span class="text-xs text-slate-400 dark:text-slate-500">上传后自动擦除图片中的手写笔迹</span>
+                    </label>
+                  </div>
 
                   <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
                     <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
