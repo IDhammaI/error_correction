@@ -764,6 +764,63 @@ def serve_image(filename):
     return send_file(file_path)
 
 
+@app.route('/erased/<path:filename>')
+def serve_erased_image(filename):
+    """提供擦除结果图片"""
+    file_path = _safe_join(str(settings.erased_dir), filename)
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': '图片不存在'}), 404
+    return send_file(file_path)
+
+
+@app.route('/api/models/erase', methods=['POST'])
+def erase_text():
+    """文字擦除接口
+
+    使用 GAN 模型将试卷图片中的手写笔迹擦除，还原干净的题目底图。
+
+    Request:
+        multipart/form-data，字段 file：图片文件（JPEG/PNG/BMP 等）
+
+    Response:
+        {"success": true, "result_url": "/erased/<filename>"}
+    """
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '缺少 file 字段'}), 400
+
+    file = request.files['file']
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': '文件为空'}), 400
+
+    ext = os.path.splitext(file.filename)[1].lower() or '.png'
+    allowed = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+    if ext not in allowed:
+        return jsonify({'success': False, 'error': f'不支持的图片格式: {ext}'}), 400
+
+    try:
+        image_bytes = file.read()
+    except Exception:
+        return jsonify({'success': False, 'error': '读取文件失败'}), 400
+
+    try:
+        from models.inference import InferenceEngine
+
+        result_img = InferenceEngine().run(image_bytes)
+
+        filename = uuid.uuid4().hex + '.png'
+        save_path = settings.erased_dir / filename
+        result_img.save(save_path, format='PNG')
+
+        return jsonify({'success': True, 'result_url': f'/erased/{filename}'})
+
+    except FileNotFoundError as e:
+        logger.error("模型权重缺失: %s", e)
+        return jsonify({'success': False, 'error': str(e)}), 503
+    except Exception:
+        logger.exception("文字擦除失败")
+        return jsonify({'success': False, 'error': '擦除处理失败，请稍后重试'}), 500
+
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """

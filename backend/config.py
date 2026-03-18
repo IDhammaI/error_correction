@@ -171,6 +171,10 @@ class Settings(BaseSettings):
     pages_dir: Path | None = None
     struct_dir: Path | None = None
     results_dir: Path | None = None
+    erased_dir: Path | None = None
+
+    # 文字擦除模型权重路径，可通过 APP_MODEL_PATH 覆盖
+    model_path: Path | None = None
 
     # 上传 & 请求限制
     max_file_size_mb: int = 50
@@ -191,6 +195,10 @@ class Settings(BaseSettings):
             self.struct_dir = self.runtime_dir / "struct"
         if self.results_dir is None:
             self.results_dir = self.runtime_dir / "results"
+        if self.erased_dir is None:
+            self.erased_dir = self.runtime_dir / "erased"
+        if self.model_path is None:
+            self.model_path = self.runtime_dir / "models" / "latest.pth"
 
         # 初始化 LLM 供应商注册表
         if self.llm_providers is None:
@@ -202,7 +210,7 @@ class Settings(BaseSettings):
 
     def ensure_dirs(self):
         """确保必要目录存在（应在应用启动入口显式调用）"""
-        for d in [self.upload_dir, self.pages_dir, self.struct_dir, self.results_dir]:
+        for d in [self.upload_dir, self.pages_dir, self.struct_dir, self.results_dir, self.erased_dir]:
             d.mkdir(parents=True, exist_ok=True)
 
     # ----- LLM 供应商查询方法 -----

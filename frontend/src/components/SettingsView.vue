@@ -1,6 +1,7 @@
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
 import { fetchAppConfig, updateAppConfig } from '../api.js'
+import { genId } from '../utils.js'
 import ProviderDialog from './ProviderDialog.vue'
 import ProviderSection from './ProviderSection.vue'
 
@@ -18,7 +19,7 @@ const saving = ref(false)
 // ---------- 多 Provider 数据结构 ----------
 
 const makeOpenAIProvider = (data = {}) => ({
-  id: data.id || crypto.randomUUID(),
+  id: data.id || genId(),
   name: data.name || '',
   api_key: data.api_key || '',
   base_url: data.base_url || '',
@@ -30,7 +31,7 @@ const makeOpenAIProvider = (data = {}) => ({
 })
 
 const makeAnthropicProvider = (data = {}) => ({
-  id: data.id || crypto.randomUUID(),
+  id: data.id || genId(),
   name: data.name || '',
   api_key: data.api_key || '',
   base_url: data.base_url || '',
@@ -40,7 +41,7 @@ const makeAnthropicProvider = (data = {}) => ({
 })
 
 const makePaddleOCRProvider = (data = {}) => ({
-  id: data.id || crypto.randomUUID(),
+  id: data.id || genId(),
   name: data.name || '',
   api_key: data.api_key || '',
   base_url: data.base_url || data.api_url || '',
