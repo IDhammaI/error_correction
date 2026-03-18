@@ -11,7 +11,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bytemd/plugin-gfm": "^1.22.0",
+    "@bytemd/vue-next": "^1.22.0",
     "@headlessui/vue": "^1.7.23",
+    "bytemd": "^1.22.0",
     "dompurify": "^3.3.2",
     "lucide-vue-next": "^0.577.0",
     "vue": "^3.5.24",

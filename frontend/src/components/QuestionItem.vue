@@ -19,9 +19,9 @@ const tags = () => {
 }
 
 const statusClass = (status) => {
-  if (status === '已掌握') return 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-  if (status === '复习中') return 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
-  return 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400'
+  if (status === '已掌握') return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30'
+  if (status === '复习中') return 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30'
+  return 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border border-slate-200/50 dark:border-slate-500/30'
 }
 
 const statusIcon = (status) => {
@@ -33,7 +33,7 @@ const statusIcon = (status) => {
 
 <template>
   <div
-    @click="emit('click', question)"
+    @click="selectable ? emit('toggle-select', question.id) : emit('click', question)"
     class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-all hover:shadow-md dark:border-white/10 dark:bg-white/[0.03]"
     :class="{ 'ring-2 ring-indigo-500/50 border-indigo-300 dark:border-indigo-500/40': selected }"
   >
@@ -66,7 +66,7 @@ const statusIcon = (status) => {
         <!-- 底部信息（答案/笔记状态） -->
         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs" @click.stop>
           <span v-if="question.answer" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <i class="fa-solid fa-circle-check"></i>已录入答案
+            <i class="fa-solid fa-circle-check"></i>有答案
           </span>
           <span v-if="question.user_answer" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
             <i class="fa-solid fa-pen-to-square"></i>已记笔记

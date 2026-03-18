@@ -1,14 +1,16 @@
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
-import QuestionDetailModal from './QuestionDetailModal.vue'
 import CustomSelect from './CustomSelect.vue'
 import CalendarPicker from './CalendarPicker.vue'
 import GlassCard from './GlassCard.vue'
 import PageHeader from './PageHeader.vue'
 import SearchInput from './SearchInput.vue'
 import QuestionItem from './QuestionItem.vue'
+import QuestionItemSkeleton from './QuestionItemSkeleton.vue'
+import EditNoteDialog from './EditNoteDialog.vue'
+import SelectionPanel from './SelectionPanel.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -30,11 +32,16 @@ const filters = reactive({
 const page = ref(1)
 const pageSize = ref(20)
 
-// 复习状态图标映射
 const reviewStatusIcon = (status) => {
-  if (status === '待复习') return 'fa-clock text-orange-500'
-  if (status === '复习中') return 'fa-spinner text-amber-500'
-  return 'fa-circle-check text-emerald-500'
+  if (status === '待复习') return 'fa-clock'
+  if (status === '复习中') return 'fa-spinner'
+  return 'fa-circle-check'
+}
+
+const reviewStatusClass = (status) => {
+  if (status === '待复习') return 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border-slate-200/50 dark:border-slate-500/30'
+  if (status === '复习中') return 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-500/30'
+  return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/30'
 }
 
 // ---- 数据 ----
@@ -46,9 +53,11 @@ const subjects = ref([])
 const questionTypes = ref([])
 const tagNames = ref([])
 const selectedIds = reactive(new Set())
+const selectMode = ref(false)
 
-const detailOpen = ref(false)
-const detailQuestion = ref(null)
+const enterSelectMode = () => { selectMode.value = true }
+const exitSelectMode = () => { selectMode.value = false; selectedIds.clear() }
+
 
 // ---- 知识点多选标签 ----
 const selectedTags = reactive(new Set())
@@ -144,26 +153,77 @@ const doExport = async () => {
   }
 }
 
-const openDetail = (q) => { detailQuestion.value = q; detailOpen.value = true }
-const closeDetail = () => { detailOpen.value = false; detailQuestion.value = null }
 
-const onDeleted = (id) => {
-  items.value = items.value.filter(q => q.id !== id)
-  total.value = Math.max(0, total.value - 1)
-  selectedIds.delete(id)
-  closeDetail()
+// ---- 内联操作 ----
+const menuOpenId = ref(null)
+const menuStyle = ref({})
+const dialogOpen = ref(false)
+const dialogField = ref('answer')
+const dialogQuestion = ref(null)
+const dialogSaving = ref(false)
+
+const toggleMenu = (id, event) => {
+  if (menuOpenId.value === id) { menuOpenId.value = null; return }
+  const btn = event.currentTarget
+  const rect = btn.getBoundingClientRect()
+  menuStyle.value = {
+    position: 'fixed',
+    top: rect.bottom + 4 + 'px',
+    left: (rect.right - 160) + 'px',
+    zIndex: 9999,
+  }
+  menuOpenId.value = id
 }
 
-const onAnswerSaved = (id, answer, updatedAt) => {
-  const q = items.value.find(x => x.id === id)
-  if (q) { q.user_answer = answer; q.updated_at = updatedAt }
+const openEditDialog = (q, field) => {
+  menuOpenId.value = null
+  dialogQuestion.value = q
+  dialogField.value = field
+  dialogOpen.value = true
 }
 
-const onReviewStatusChanged = (id, status, updatedAt) => {
-  const q = items.value.find(x => x.id === id)
-  if (q) { q.review_status = status; q.updated_at = updatedAt }
+const onDialogSave = async (draft) => {
+  if (dialogSaving.value || !dialogQuestion.value) return
+  dialogSaving.value = true
+  try {
+    if (dialogField.value === 'answer') {
+      await api.saveQuestionAnswer(dialogQuestion.value.id, draft)
+      dialogQuestion.value.answer = draft
+    } else {
+      await api.saveAnswer(dialogQuestion.value.id, draft)
+      dialogQuestion.value.user_answer = draft
+    }
+    dialogOpen.value = false
+    emit('push-toast', 'success', '已保存')
+  } catch (e) {
+    emit('push-toast', 'error', '保存失败')
+  } finally {
+    dialogSaving.value = false
+  }
 }
 
+const quickMarkStatus = async (q, status) => {
+  try {
+    const data = await api.updateReviewStatus(q.id, status)
+    q.review_status = data.review_status
+    emit('push-toast', 'success', `已标记为「${status}」`)
+  } catch (e) {
+    emit('push-toast', 'error', '更新状态失败')
+  }
+}
+
+const doDelete = async (q) => {
+  if (!window.confirm('确定要永久删除这道题吗？')) return
+  try {
+    await api.deleteQuestion(q.id)
+    items.value = items.value.filter(x => x.id !== q.id)
+    total.value = Math.max(0, total.value - 1)
+    selectedIds.delete(q.id)
+    emit('push-toast', 'success', '题目已删除')
+  } catch (e) {
+    emit('push-toast', 'error', '删除失败')
+  }
+}
 
 const typesetMath = async () => {
   await nextTick()
@@ -184,6 +244,12 @@ const pageButtons = computed(() => {
 
 const refreshTags = async () => {
   tagNames.value = await api.fetchTagNames(filters.subject || undefined)
+}
+
+const scrollContainerRef = ref(null)
+
+const handleScroll = () => {
+  if (menuOpenId.value) menuOpenId.value = null
 }
 
 const loadFilters = async () => {
@@ -214,17 +280,20 @@ const reloadTags = async () => {
 
 watch(() => filters.subject, () => { reloadTags() })
 
-watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } })
+watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { immediate: true })
 
 defineExpose({ refresh: doQuery })
 
+const closeMenu = () => { menuOpenId.value = null }
+onMounted(() => { document.addEventListener('click', closeMenu) })
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  document.removeEventListener('click', closeMenu)
 })
 </script>
 
 <template>
-  <div class="relative h-full overflow-y-auto custom-scrollbar">
+  <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题：强化科技质感 -->
       <PageHeader
@@ -233,6 +302,10 @@ onBeforeUnmount(() => {
       >
         <template #extra>
           <div class="flex items-center gap-4">
+            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="btn-secondary h-10 w-[150px] px-6 shadow-sm">
+              <i class="fa-solid" :class="selectMode ? 'fa-xmark' : 'fa-file-export'"></i>
+              {{ selectMode ? '退出选择' : '导出题目' }}
+            </button>
             <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
               录入新题目
@@ -246,18 +319,28 @@ onBeforeUnmount(() => {
 
       <!-- 搜索控制台 -->
       <div class="relative z-20 mb-8 space-y-6">
-        <!-- 第一行：关键词 + 三个下拉 -->
+        <!-- 第一行：关键词 + 学科 + 题型 + 复习状态 -->
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <SearchInput v-model="filters.keyword" label="内容检索" placeholder="搜索题目关键词..." />
-
           <CustomSelect v-model="filters.subject" :options="subjects" label="学科" placeholder="全部学科" />
           <CustomSelect v-model="filters.question_type" :options="questionTypes" label="题型" placeholder="全部题型" />
+          <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" />
+        </div>
+
+        <!-- 第二行：日期范围 -->
+        <div>
+          <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
+          <div class="flex items-center gap-4">
+            <CalendarPicker v-model="filters.start_date" label="开始日期" align="left" />
+            <span class="shrink-0 text-slate-400 dark:text-slate-600 font-black">—</span>
+            <CalendarPicker v-model="filters.end_date" label="结束日期" align="right" />
+          </div>
         </div>
 
         <!-- 知识点多选标签 -->
         <div v-if="tagNames.length">
-          <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
-          <div class="flex flex-wrap gap-2">
+          <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+          <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
             <button v-for="tag in tagNames" :key="tag"
               @click="toggleTagSelect(tag)"
               class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
@@ -274,34 +357,11 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-
-        <!-- 第二行：复习状态 + 日期范围 + 重置 -->
-        <div class="flex flex-wrap items-end gap-6">
-          <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" :icon="reviewStatusIcon" width-class="w-40 shrink-0" />
-
-          <!-- 时间跨度 -->
-          <div class="min-w-0 flex-1">
-            <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
-            <div class="flex items-center gap-4">
-              <CalendarPicker v-model="filters.start_date" label="开始日期" align="left" />
-              <span class="shrink-0 text-slate-400 dark:text-slate-600 font-black">—</span>
-              <CalendarPicker v-model="filters.end_date" label="结束日期" align="right" />
-            </div>
-          </div>
-          
-
-        </div>
       </div>
 
 
-      <!-- 列表区：使用精美的卡片网格 -->
-      <div v-if="loading" class="flex flex-col items-center justify-center py-40">
-        <div class="relative h-16 w-16">
-          <div class="absolute inset-0 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500"></div>
-          <i class="fa-solid fa-cube absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl text-blue-500"></i>
-        </div>
-        <p class="mt-6 font-mono text-xs font-black uppercase tracking-[0.3em] text-slate-400">正在加载题库...</p>
-      </div>
+      <!-- 列表区 -->
+      <QuestionItemSkeleton v-if="loading" />
 
       <div v-else-if="!items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
         <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
@@ -315,67 +375,112 @@ onBeforeUnmount(() => {
         <QuestionItem
           v-for="q in items" :key="q.id"
           :question="q"
-          :selectable="true"
+          :selectable="selectMode"
           :selected="selectedIds.has(q.id)"
           :show-status="true"
-          @click="openDetail(q)"
           @toggle-select="toggleSelect"
-        />
+        >
+          <template #actions="{ question }">
+            <!-- 更多菜单 -->
+            <div>
+              <button @click.stop="toggleMenu(question.id, $event)"
+                class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
+                <i class="fa-solid fa-ellipsis"></i>
+              </button>
+            </div>
+            <Teleport to="body">
+              <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="translate-y-2 opacity-0 scale-95"
+                enter-to-class="translate-y-0 opacity-100 scale-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="translate-y-0 opacity-100 scale-100"
+                leave-to-class="translate-y-2 opacity-0 scale-95"
+              >
+                <div v-if="menuOpenId === question.id" :style="menuStyle"
+                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                  <div class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</div>
+                  <button @click.stop="quickMarkStatus(question, '待复习'); menuOpenId = null"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-slate-500/10 hover:text-slate-600 dark:hover:bg-slate-500/20 dark:hover:text-slate-400"
+                    :class="question.review_status === '待复习' || !question.review_status ? 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400' : 'text-slate-600 dark:text-slate-300'">
+                    <i class="fa-solid fa-clock text-xs opacity-70"></i>待复习
+                    <i v-if="question.review_status === '待复习' || !question.review_status" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <button @click.stop="quickMarkStatus(question, '复习中'); menuOpenId = null"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
+                    :class="question.review_status === '复习中' ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'">
+                    <i class="fa-solid fa-spinner text-xs opacity-70"></i>复习中
+                    <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <button @click.stop="quickMarkStatus(question, '已掌握'); menuOpenId = null"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400"
+                    :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'">
+                    <i class="fa-solid fa-circle-check text-xs opacity-70"></i>已掌握
+                    <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                  <div class="px-3 pb-1 pt-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
+                  <button @click.stop="openEditDialog(question, 'answer')"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-pen-to-square text-xs opacity-70"></i>{{ question.answer ? '编辑答案' : '录入答案' }}
+                  </button>
+                  <button @click.stop="openEditDialog(question, 'user_answer')"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-note-sticky text-xs opacity-70"></i>{{ question.user_answer ? '编辑笔记' : '记笔记' }}
+                  </button>
+                  <button @click.stop="emit('start-chat', question); menuOpenId = null"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs opacity-70"></i>AI 辅导
+                  </button>
+                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                  <button @click.stop="doDelete(question); menuOpenId = null"
+                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                    <i class="fa-solid fa-trash-can text-xs opacity-70"></i>删除题目
+                  </button>
+                </div>
+              </Transition>
+            </Teleport>
+          </template>
+
+        </QuestionItem>
       </div>
 
       <!-- 分页控制：浮动微拟物风格 -->
-      <div v-if="totalPages > 1" class="mt-16 flex items-center justify-center gap-2">
-        <button @click="goPage(page - 1)" :disabled="page <= 1" class="btn-secondary h-11 w-11 p-0 disabled:opacity-30">
-          <i class="fa-solid fa-chevron-left"></i>
+      <div v-if="totalPages > 1" class="mt-12 flex items-center justify-center gap-4">
+        <button @click="goPage(page - 1)" :disabled="page <= 1" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+          <i class="fa-solid fa-chevron-left text-sm"></i>
         </button>
-        <div class="flex items-center gap-1.5 rounded-2xl bg-white/50 p-1.5 shadow-sm dark:bg-white/5">
+        <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm backdrop-blur-md dark:bg-white/5">
           <template v-for="(p, i) in pageButtons" :key="i">
             <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
             <button v-else @click="goPage(p)" 
-              class="h-9 min-w-[36px] rounded-xl text-xs font-black"
-              :class="p === page ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-white dark:hover:bg-white/10'">
+              class="h-9 min-w-[36px] rounded-xl text-sm font-bold transition-all"
+              :class="p === page ? 'bg-blue-600 text-white shadow-sm dark:bg-indigo-600' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
               {{ p }}
             </button>
           </template>
         </div>
-        <button @click="goPage(page + 1)" :disabled="page >= totalPages" class="btn-secondary h-11 w-11 p-0 disabled:opacity-30">
-          <i class="fa-solid fa-chevron-right"></i>
+        <button @click="goPage(page + 1)" :disabled="page >= totalPages" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+          <i class="fa-solid fa-chevron-right text-sm"></i>
         </button>
       </div>
     </div>
 
-    <!-- 底部悬浮操作胶囊：导出专用 -->
-    <Transition enter-active-class="transition duration-500 ease-out" enter-from-class="translate-y-20 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-300 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-20 opacity-0">
-      <div v-if="selectedIds.size" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 md:bottom-10">
-        <div class="flex items-center gap-6 rounded-full border border-white/20 bg-slate-900/90 px-8 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-2xl dark:bg-slate-800/80">
-          <div class="flex items-center gap-3 border-r border-white/10 pr-6">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 font-mono text-xs font-black text-white outline outline-4 outline-blue-500/20">
-              {{ selectedIds.size }}
-            </div>
-            <span class="text-sm font-black tracking-widest text-white uppercase">已选中</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <button @click="doExport" class="btn-primary h-10 px-6 text-xs font-black shadow-lg shadow-blue-500/40">
-              <i class="fa-solid fa-file-export mr-2"></i> 生成复习卷
-            </button>
-            <button @click="clearSelection" class="text-xs font-black tracking-widest text-slate-400 hover:text-white transition-colors">
-              清除
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <!-- 选择模式浮动面板 -->
+    <SelectionPanel
+      :visible="selectMode"
+      :count="selectedIds.size"
+      @export="doExport"
+      @clear="clearSelection"
+    />
 
-    <QuestionDetailModal
-      :open="detailOpen"
-      :question="detailQuestion"
-      @close="closeDetail"
-      @open-image="(src) => emit('open-image', src)"
-      @deleted="onDeleted"
-      @answer-saved="onAnswerSaved"
-      @review-status-changed="onReviewStatusChanged"
-      @push-toast="(type, msg) => emit('push-toast', type, msg)"
-      @start-chat="(q) => emit('start-chat', q)"
+    <EditNoteDialog
+      :open="dialogOpen"
+      :field="dialogField"
+      :value="dialogQuestion?.[dialogField] || ''"
+      :saving="dialogSaving"
+      @close="dialogOpen = false"
+      @save="onDialogSave"
     />
   </div>
 </template>

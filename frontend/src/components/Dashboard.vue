@@ -186,7 +186,7 @@ const heatmapCellColor = (val) => {
 // ---- 生命周期 ----
 watch(() => props.visible, (v) => {
   if (v) loadStats()
-})
+}, { immediate: true })
 
 watch(() => [props.theme, stats.value], () => {
   if (props.visible && stats.value) nextTick(initCharts)
@@ -223,8 +223,8 @@ onBeforeUnmount(() => {
       </div>
       <div v-else class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
-        <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_status_stats?.['待复习'] || 0" unit="道" color="blue" />
-        <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_status_stats?.['已掌握'] || 0" unit="道" color="emerald" />
+        <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_stats?.['待复习'] || 0" unit="道" color="blue" />
+        <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="emerald" />
         <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="slate" />
       </div>
 
