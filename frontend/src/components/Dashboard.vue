@@ -4,6 +4,7 @@ import * as api from '../api.js'
 import CustomSelect from './CustomSelect.vue'
 import GlassCard from './GlassCard.vue'
 import PageHeader from './PageHeader.vue'
+import StatCard from './StatCard.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -202,62 +203,29 @@ onBeforeUnmount(() => {
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题 + 学科筛选 -->
-      <div class="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          badge="学习数据中心"
-          badge-icon="fa-solid fa-chart-pie"
-          badge-color="indigo"
-          title="数据面板"
-          subtitle="追踪复习进度，掌握薄弱环节"
-          subtitle-icon="fa-solid fa-brain text-indigo-500"
-        />
-        <div class="flex items-center gap-3">
-          <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-          <button @click="emit('go-workspace')" class="btn-primary group h-11 px-8 shadow-xl shadow-blue-500/20">
-            <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="数据面板"
+        subtitle="错题统计与学习趋势一览"
+      >
+        <template #extra>
+          <div class="flex items-center gap-4">
+            <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+            <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
+              <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
+            </button>
+          </div>
+        </template>
+      </PageHeader>
 
       <!-- 统计卡片 -->
       <div v-if="statsLoading" class="mb-8 flex justify-center py-12">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500"></div>
       </div>
       <div v-else class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <GlassCard padding="p-5">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
-            总错题 <i class="fa-solid fa-layer-group text-indigo-500"></i>
-          </div>
-          <div class="text-2xl font-black text-slate-900 dark:text-white">
-            {{ stats?.total_questions || 0 }} <span class="ml-0.5 text-xs font-medium text-slate-400">道</span>
-          </div>
-        </GlassCard>
-        <GlassCard padding="p-5">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
-            待复习 <i class="fa-solid fa-clock text-orange-500"></i>
-          </div>
-          <div class="flex items-baseline gap-1">
-            <span class="text-2xl font-black text-slate-900 dark:text-white">{{ stats?.review_status_stats?.['待复习'] || 0 }}</span>
-            <span class="text-[10px] font-bold text-slate-500">道</span>
-          </div>
-        </GlassCard>
-        <GlassCard padding="p-5">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
-            已掌握 <i class="fa-solid fa-circle-check text-emerald-500"></i>
-          </div>
-          <div class="flex items-baseline gap-1">
-            <span class="text-2xl font-black text-slate-900 dark:text-white">{{ stats?.review_status_stats?.['已掌握'] || 0 }}</span>
-            <span class="text-[10px] font-bold text-slate-500">道</span>
-          </div>
-        </GlassCard>
-        <GlassCard padding="p-5">
-          <div class="mb-1.5 flex items-center justify-between text-xs font-black text-slate-600 dark:text-slate-400">
-            今日掌握 <i class="fa-solid fa-bolt text-amber-500"></i>
-          </div>
-          <div class="text-2xl font-black text-slate-900 dark:text-white">
-            {{ stats?.review_stats?.['已掌握'] || 0 }} <span class="ml-0.5 text-xs font-medium text-slate-400">道</span>
-          </div>
-        </GlassCard>
+        <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
+        <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_status_stats?.['待复习'] || 0" unit="道" color="blue" />
+        <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_status_stats?.['已掌握'] || 0" unit="道" color="emerald" />
+        <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="slate" />
       </div>
 
       <!-- 图表区第一行：趋势 + 条形图 -->
@@ -291,7 +259,7 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-fire text-rose-500"></i> 知识点 × 题型分布
           </h3>
           <div v-if="heatmapData.tags.length && heatmapData.types.length" class="overflow-x-auto">
-            <table class="heatmap-table w-full text-center text-[11px]">
+            <table class="heatmap-table w-full text-center text-xs">
               <thead>
                 <tr>
                   <th class="sticky left-0 z-10 bg-white/80 px-2 py-2 text-left font-bold text-slate-500 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-400"></th>
@@ -320,13 +288,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.container {
-  animation: dashEntry 0.8s cubic-bezier(0.2, 0, 0, 1) both;
-}
-@keyframes dashEntry {
-  from { opacity: 0; transform: scale(0.98) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
 .heatmap-table th, .heatmap-table td {
   white-space: nowrap;
 }

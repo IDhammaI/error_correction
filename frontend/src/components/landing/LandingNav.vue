@@ -46,12 +46,12 @@ const emit = defineEmits(['scrollToSection'])
           <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors">
             <i class="fa-brands fa-github text-xl"></i>
           </a>
-          <a href="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
+          <RouterLink to="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
             <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
             <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all">
               进入工作台
             </span>
-          </a>
+          </RouterLink>
         </div>
       </div>
     </div>

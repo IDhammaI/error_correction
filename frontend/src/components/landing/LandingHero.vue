@@ -248,13 +248,13 @@ onUnmounted(() => {
             专为中学生与大学生研发。上传凌乱试卷，AI 自动完成图片分割、OCR 纠错及 LaTeX 公式还原。释放你的双手，将时间交还给真正的思考。
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start" style="transition-delay: 450ms;">
-            <a href="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
+            <RouterLink to="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
               <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
               <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all gap-3">
                 <UploadCloud class="w-5 h-5" />
                 上传试卷分析
               </span>
-            </a>
+            </RouterLink>
             <a href="#demo" class="relative inline-flex group h-14 w-full sm:w-auto">
               <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
               <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all gap-2">

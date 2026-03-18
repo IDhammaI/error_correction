@@ -1,24 +1,28 @@
+import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { usePageTransition } from '../composables/usePageTransition.js'
 
 const routes = [
   {
     path: '/',
     component: () => import('../views/LandingView.vue'),
+    meta: { layout: 'landing' },
   },
   {
     path: '/auth',
     component: () => import('../components/AuthLayout.vue'),
     redirect: '/auth/login',
+    meta: { layout: 'auth' },
     children: [
-      { path: 'login',    component: () => import('../components/LoginView.vue'),    meta: { order: 0 } },
-      { path: 'register', component: () => import('../components/RegisterView.vue'), meta: { order: 1 } },
+      { path: 'login',    component: () => import('../components/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
+      { path: 'register', component: () => import('../components/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
     ],
   },
   {
     path: '/app/:view?/:subview?',
     component: () => import('../views/WorkspaceView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, layout: 'app' },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -31,7 +35,7 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const { currentUser, authChecked } = useAuth()
 
   // 首次导航时请求登录态
@@ -52,6 +56,26 @@ router.beforeEach(async (to) => {
 
   if (to.path.startsWith('/auth') && currentUser.value) {
     return '/app/workspace'
+  }
+
+  // 跨布局跳转：先让 loading 完全进场，再放行路由
+  const fromLayout = from.meta.layout || ''
+  const toLayout = to.meta.layout || ''
+  if (fromLayout && toLayout && fromLayout !== toLayout) {
+    const { show } = usePageTransition()
+    await show() // 等淡入动画结束
+  }
+})
+
+router.afterEach(async (to, from) => {
+  const fromLayout = from.meta.layout || ''
+  const toLayout = to.meta.layout || ''
+  if (fromLayout && toLayout && fromLayout !== toLayout) {
+    const { hide } = usePageTransition()
+    // 等待 DOM 更新，确保新页面组件已挂载
+    await nextTick()
+    // 新页面渲染完成后再淡出，给一点缓冲时间
+    hide(500)
   }
 })
 

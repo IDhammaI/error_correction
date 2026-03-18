@@ -1,12 +1,14 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
-import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
+import { typesetMath as _typesetMath } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 import CustomSelect from './CustomSelect.vue'
 import CalendarPicker from './CalendarPicker.vue'
 import GlassCard from './GlassCard.vue'
 import PageHeader from './PageHeader.vue'
+import SearchInput from './SearchInput.vue'
+import QuestionItem from './QuestionItem.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -162,7 +164,6 @@ const onReviewStatusChanged = (id, status, updatedAt) => {
   if (q) { q.review_status = status; q.updated_at = updatedAt }
 }
 
-const getSummary = (q) => getQuestionSnippet(q)
 
 const typesetMath = async () => {
   await nextTick()
@@ -226,33 +227,28 @@ onBeforeUnmount(() => {
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题：强化科技质感 -->
-      <div class="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          badge="智能存档中心"
-          badge-icon="fa-solid fa-vault"
-          badge-color="blue"
-          title="错题知识图谱"
-          :subtitle="`${totalText} · 记录每一次认知的突破`"
-          subtitle-icon="fa-solid fa-chart-line text-blue-500"
-        />
-        <button @click="emit('go-workspace')" class="btn-primary group h-12 px-8 shadow-xl shadow-blue-500/20">
-          <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
-          录入新题目
-        </button>
-      </div>
-
-      <!-- 搜索控制台：玻璃态工具栏 -->
-      <GlassCard rounded="rounded-3xl" padding="p-5 sm:p-6" class="relative z-20 mb-8 space-y-5">
-        <!-- 第一行：关键词 + 三个下拉 -->
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <!-- 关键词 -->
-          <div>
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">内容检索</label>
-            <div class="relative group">
-              <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
-              <input v-model="filters.keyword" type="text" placeholder="搜索题目关键词..." class="h-11 w-full rounded-xl border border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm font-bold shadow-sm backdrop-blur-sm outline-none hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white/70 hover:shadow-md focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-indigo-500/30 dark:hover:bg-white/10 dark:focus:border-indigo-500/50" />
-            </div>
+      <PageHeader
+        title="错题库"
+        :subtitle="`${totalText}，支持按学科、知识点筛选`"
+      >
+        <template #extra>
+          <div class="flex items-center gap-4">
+            <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
+              <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
+              录入新题目
+            </button>
+            <button @click="resetFilters" class="btn-secondary h-10 px-4 shadow-sm transition-all" title="重置筛选">
+              <i class="fa-solid fa-arrow-rotate-right"></i>
+            </button>
           </div>
+        </template>
+      </PageHeader>
+
+      <!-- 搜索控制台 -->
+      <div class="relative z-20 mb-8 space-y-6">
+        <!-- 第一行：关键词 + 三个下拉 -->
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <SearchInput v-model="filters.keyword" label="内容检索" placeholder="搜索题目关键词..." />
 
           <CustomSelect v-model="filters.subject" :options="subjects" label="学科" placeholder="全部学科" />
           <CustomSelect v-model="filters.question_type" :options="questionTypes" label="题型" placeholder="全部题型" />
@@ -260,7 +256,7 @@ onBeforeUnmount(() => {
 
         <!-- 知识点多选标签 -->
         <div v-if="tagNames.length">
-          <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+          <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
           <div class="flex flex-wrap gap-2">
             <button v-for="tag in tagNames" :key="tag"
               @click="toggleTagSelect(tag)"
@@ -269,7 +265,7 @@ onBeforeUnmount(() => {
                 ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
                 : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300'"
             >
-              <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-[10px]"></i>
+              <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
               {{ tag }}
             </button>
             <button v-if="selectedTags.size" @click="clearTagSelection"
@@ -280,24 +276,22 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- 第二行：复习状态 + 日期范围 + 重置 -->
-        <div class="flex flex-wrap items-end gap-5">
+        <div class="flex flex-wrap items-end gap-6">
           <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" :icon="reviewStatusIcon" width-class="w-40 shrink-0" />
 
           <!-- 时间跨度 -->
           <div class="min-w-0 flex-1">
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
-            <div class="flex items-center gap-3">
+            <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
+            <div class="flex items-center gap-4">
               <CalendarPicker v-model="filters.start_date" label="开始日期" align="left" />
               <span class="shrink-0 text-slate-400 dark:text-slate-600 font-black">—</span>
               <CalendarPicker v-model="filters.end_date" label="结束日期" align="right" />
             </div>
           </div>
           
-          <button @click="resetFilters" class="btn-secondary h-11 shrink-0 px-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md" title="重置筛选">
-            <i class="fa-solid fa-arrow-rotate-right"></i>
-          </button>
+
         </div>
-      </GlassCard>
+      </div>
 
 
       <!-- 列表区：使用精美的卡片网格 -->
@@ -310,72 +304,23 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-else-if="!items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
-        <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-xl dark:bg-slate-900">
+        <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
           <i class="fa-solid fa-box-open text-4xl text-slate-300 dark:text-slate-700"></i>
         </div>
         <p class="text-xl font-black text-slate-900 dark:text-white">暂无匹配记录</p>
         <p class="mt-2 text-sm font-medium text-slate-500">调整筛选条件，或者开始新的录入</p>
       </div>
 
-      <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div
-          v-for="q in items"
-          :key="q.id"
+      <div v-else class="space-y-4">
+        <QuestionItem
+          v-for="q in items" :key="q.id"
+          :question="q"
+          :selectable="true"
+          :selected="selectedIds.has(q.id)"
+          :show-status="true"
           @click="openDetail(q)"
-          class="group relative cursor-pointer overflow-hidden rounded-[2rem] border bg-white/80 p-6 shadow-sm backdrop-blur-md hover:-translate-y-1.5 hover:shadow-2xl dark:bg-white/[0.03]"
-          :class="selectedIds.has(q.id) ? 'border-blue-500 ring-1 ring-blue-500/50 shadow-blue-500/10' : 'border-slate-200/60 dark:border-white/10 hover:border-blue-400/40'"
-        >
-          <!-- 学科状态条 -->
-          <div class="absolute left-0 top-0 h-full w-1.5 opacity-80"
-            :class="q.subject === '数学' ? 'bg-blue-500' : q.subject === '物理' ? 'bg-indigo-600' : 'bg-emerald-500'">
-          </div>
-
-          <div class="flex items-start gap-5">
-            <!-- 勾选框：科技感微动效 -->
-            <button class="mt-1 shrink-0" @click.stop="toggleSelect(q.id)">
-              <div class="flex h-6 w-6 items-center justify-center rounded-lg border-2"
-                :class="selectedIds.has(q.id) ? 'border-blue-500 bg-blue-500 text-white rotate-12 scale-110 shadow-lg shadow-blue-500/40' : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'">
-                <i v-show="selectedIds.has(q.id)" class="fa-solid fa-check text-[11px] font-black"></i>
-              </div>
-            </button>
-
-            <div class="min-w-0 flex-1">
-              <!-- 顶部标签云 -->
-              <div class="mb-4 flex flex-wrap items-center gap-2">
-                <span class="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                  {{ q.question_type }}
-                </span>
-                <span v-for="tag in (q.knowledge_tags || [])" :key="tag" class="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 text-[10px] font-black text-blue-600 dark:text-blue-300">
-                  <span class="h-1 w-1 rounded-full bg-blue-500"></span> {{ tag }}
-                </span>
-                <span class="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
-                  :class="q.review_status === '已掌握' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : q.review_status === '复习中' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400'">
-                  <i class="fa-solid" :class="q.review_status === '已掌握' ? 'fa-circle-check' : q.review_status === '复习中' ? 'fa-spinner' : 'fa-clock'"></i>
-                  {{ q.review_status || '待复习' }}
-                </span>
-              </div>
-              
-              <!-- 题目摘要 -->
-              <p class="line-clamp-3 text-sm font-bold leading-relaxed text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">
-                {{ getSummary(q) }}
-              </p>
-
-              <!-- 底部元数据 -->
-              <div class="mt-6 flex items-center justify-between border-t border-slate-50 pt-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:border-white/5">
-                <div class="flex items-center gap-3">
-                  <span class="font-mono">编号 #{{ q.id }}</span>
-                  <span v-if="q.answer" class="flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 font-bold normal-case tracking-normal text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                    <i class="fa-solid fa-circle-check"></i>答案
-                  </span>
-                  <span v-if="q.user_answer" class="flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 font-bold normal-case tracking-normal text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                    <i class="fa-solid fa-pen-to-square"></i>笔记
-                  </span>
-                </div>
-                <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar-alt text-blue-500"></i> {{ q.created_at ? new Date(q.created_at).toLocaleDateString() : '未知' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          @toggle-select="toggleSelect"
+        />
       </div>
 
       <!-- 分页控制：浮动微拟物风格 -->
@@ -435,14 +380,3 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-/* 列表入场动画 */
-.container {
-  animation: vaultEntry 0.8s cubic-bezier(0.2, 0, 0, 1) both;
-}
-@keyframes vaultEntry {
-  from { opacity: 0; transform: scale(0.98) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-</style>
