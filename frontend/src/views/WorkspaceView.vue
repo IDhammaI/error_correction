@@ -15,6 +15,7 @@ import SplitLoading from '../components/SplitLoading.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
+import ReviewView from '../components/ReviewView.vue'
 import ErrorBank from '../components/ErrorBank.vue'
 import ChatView from '../components/ChatView.vue'
 import SettingsView from '../components/SettingsView.vue'
@@ -45,6 +46,7 @@ const VIEW_TO_PATH = {
   workspace: '/app/workspace',
   workspace_review: '/app/workspace/review',
   dashboard: '/app/dashboard',
+  review: '/app/review',
   'error-bank': '/app/error-bank',
   settings: '/app/settings',
   'split-history': '/app/split-history',
@@ -627,12 +629,22 @@ onBeforeUnmount(() => {
           </button>
 
           <button
+            @click="currentView = 'review'"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
+            :class="currentView === 'review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          >
+            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            <span>待复习</span>
+            <div v-if="currentView === 'review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
+          </button>
+
+          <button
             @click="currentView = 'dashboard'"
             class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>我的错题本</span>
+            <span>数据面板</span>
             <div v-if="currentView === 'dashboard'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
 
@@ -652,18 +664,18 @@ onBeforeUnmount(() => {
       <!-- 底部控制与返回栏 -->
       <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
         <!-- 用户信息 -->
-        <div class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-1 bg-slate-50/80 dark:bg-white/5">
-          <div class="h-8 w-8 shrink-0 rounded-full bg-blue-100 dark:bg-indigo-500/20 flex items-center justify-center text-blue-700 dark:text-indigo-300 text-sm font-extrabold">
+        <div class="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 mb-1.5 bg-white/70 backdrop-blur-xl border border-slate-200/60 dark:bg-white/[0.06] dark:backdrop-blur-xl dark:border-white/10">
+          <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 flex items-center justify-center text-white text-sm font-extrabold shadow-sm">
             {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate leading-tight">{{ currentUser?.username }}</p>
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate leading-tight">{{ currentUser?.username }}</p>
             <p class="text-[11px] text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
           </div>
           <button
             @click="handleLogout"
             title="退出登录"
-            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50/80 dark:hover:bg-rose-500/10 transition-all"
           >
             <i class="fas fa-right-from-bracket text-sm"></i>
           </button>
@@ -672,7 +684,7 @@ onBeforeUnmount(() => {
         <button
           @click="currentView = 'settings'"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
-          :class="currentView === 'settings' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          :class="currentView === 'settings' ? 'bg-white/70 backdrop-blur-xl border border-blue-200/60 text-blue-600 shadow-sm dark:bg-white/10 dark:backdrop-blur-xl dark:border-indigo-500/30 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'text-slate-600 hover:bg-white/60 hover:backdrop-blur-xl hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
         >
           <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
           系统设置
@@ -688,9 +700,13 @@ onBeforeUnmount(() => {
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
           <span class="mt-1 text-[10px] font-bold">录题</span>
         </button>
+        <button @click="currentView = 'review'" class="flex flex-col items-center p-2" :class="currentView === 'review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          <span class="mt-1 text-[10px] font-bold">待复习</span>
+        </button>
         <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-chart-pie text-lg"></i>
-          <span class="mt-1 text-[10px] font-bold">仪表盘</span>
+          <span class="mt-1 text-[10px] font-bold">数据面板</span>
         </button>
         <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-layer-group text-lg"></i>
@@ -873,7 +889,21 @@ onBeforeUnmount(() => {
       </Transition>
 
 
-      <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
+      <!-- 视图 2：待复习 -->
+      <Transition name="view-fade">
+        <div v-show="currentView === 'review'" class="h-full">
+          <ReviewView
+            :theme="theme"
+            :visible="currentView === 'review'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @start-chat="openChat"
+          />
+        </div>
+      </Transition>
+
+      <!-- 视图 3：数据面板 -->
       <Transition name="view-fade">
         <div v-show="currentView === 'dashboard'" class="h-full">
           <Dashboard
@@ -881,8 +911,6 @@ onBeforeUnmount(() => {
             :visible="currentView === 'dashboard'"
             @go-workspace="currentView = 'workspace'"
             @push-toast="pushToast"
-            @open-image="openModal"
-            @start-chat="openChat"
           />
         </div>
       </Transition>

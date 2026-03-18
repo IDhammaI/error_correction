@@ -5,6 +5,8 @@ import { getQuestionSnippet, typesetMath as _typesetMath } from '../utils.js'
 import QuestionDetailModal from './QuestionDetailModal.vue'
 import CustomSelect from './CustomSelect.vue'
 import CalendarPicker from './CalendarPicker.vue'
+import GlassCard from './GlassCard.vue'
+import PageHeader from './PageHeader.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -46,45 +48,8 @@ const selectedIds = reactive(new Set())
 const detailOpen = ref(false)
 const detailQuestion = ref(null)
 
-// ---- 知识点标签墙 ----
-const TAG_BATCH_SIZE = 8
-const tagBatchIndex = ref(0)
-const tagBatchAnimating = ref(false)
+// ---- 知识点多选标签 ----
 const selectedTags = reactive(new Set())
-
-const TAG_COLORS = [
-  { bg: 'bg-[#f08a5d]', text: 'text-black' },
-  { bg: 'bg-[#f9d74c]', text: 'text-black' },
-  { bg: 'bg-[#c6e3b5]', text: 'text-black' },
-  { bg: 'bg-[#a6c1ee]', text: 'text-black' },
-  { bg: 'bg-[#f6f2ce]', text: 'text-black' },
-  { bg: 'bg-[#ffb5a7]', text: 'text-black' },
-  { bg: 'bg-[#e4c1f9]', text: 'text-black' },
-  { bg: 'bg-[#8bc9e4]', text: 'text-black' },
-  { bg: 'bg-[#ffc3a0]', text: 'text-black' },
-  { bg: 'bg-[#a0e4cb]', text: 'text-black' },
-  { bg: 'bg-[#dcd3ff]', text: 'text-black' },
-  { bg: 'bg-[#ffafcc]', text: 'text-black' },
-  { bg: 'bg-[#bde0fe]', text: 'text-black' },
-  { bg: 'bg-[#f4a261]', text: 'text-black' },
-]
-
-const tagColor = (idx) => TAG_COLORS[idx % TAG_COLORS.length]
-
-const currentTagBatch = computed(() => {
-  const start = tagBatchIndex.value * TAG_BATCH_SIZE
-  return tagNames.value.slice(start, start + TAG_BATCH_SIZE)
-})
-
-const hasMoreTagBatches = computed(() => tagNames.value.length > TAG_BATCH_SIZE)
-
-const refreshTagBatch = () => {
-  const totalBatches = Math.ceil(tagNames.value.length / TAG_BATCH_SIZE)
-  if (totalBatches <= 1) return
-  tagBatchAnimating.value = false
-  tagBatchIndex.value = (tagBatchIndex.value + 1) % totalBatches
-  requestAnimationFrame(() => { tagBatchAnimating.value = true })
-}
 
 const toggleTagSelect = (tag) => {
   if (selectedTags.has(tag)) {
@@ -102,16 +67,6 @@ const clearTagSelection = () => {
   filters.knowledge_tag = ''
 }
 
-// 下拉框单选 → 同步到标签墙
-watch(() => filters.knowledge_tag, (val) => {
-  // 如果是标签墙触发的多选逗号值，不要反向覆盖
-  if (val && !val.includes(',')) {
-    selectedTags.clear()
-    selectedTags.add(val)
-  } else if (!val) {
-    selectedTags.clear()
-  }
-})
 
 const totalText = computed(() => `共收录 ${total.value} 道题目`)
 
@@ -228,7 +183,6 @@ const pageButtons = computed(() => {
 
 const refreshTags = async () => {
   tagNames.value = await api.fetchTagNames(filters.subject || undefined)
-  tagBatchIndex.value = 0
 }
 
 const loadFilters = async () => {
@@ -240,7 +194,6 @@ const loadFilters = async () => {
     subjects.value = s
     questionTypes.value = qt
     await refreshTags()
-    nextTick(() => { tagBatchAnimating.value = true })
   } catch (e) {
     emit('push-toast', 'error', '加载筛选项失败')
   }
@@ -274,17 +227,14 @@ onBeforeUnmount(() => {
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题：强化科技质感 -->
       <div class="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div class="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300">
-            <i class="fa-solid fa-vault animate-pulse"></i> 智能存档中心
-          </div>
-          <h2 class="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl dark:text-white">
-            错题知识图谱
-          </h2>
-          <p class="mt-2 flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400">
-            <i class="fa-solid fa-chart-line text-blue-500"></i> {{ totalText }} · 记录每一次认知的突破
-          </p>
-        </div>
+        <PageHeader
+          badge="智能存档中心"
+          badge-icon="fa-solid fa-vault"
+          badge-color="blue"
+          title="错题知识图谱"
+          :subtitle="`${totalText} · 记录每一次认知的突破`"
+          subtitle-icon="fa-solid fa-chart-line text-blue-500"
+        />
         <button @click="emit('go-workspace')" class="btn-primary group h-12 px-8 shadow-xl shadow-blue-500/20">
           <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
           录入新题目
@@ -292,7 +242,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 搜索控制台：玻璃态工具栏 -->
-      <div class="relative z-20 mb-8 space-y-5 rounded-3xl border border-slate-200/60 bg-white/40 p-5 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0F]/60 sm:p-6">
+      <GlassCard rounded="rounded-3xl" padding="p-5 sm:p-6" class="relative z-20 mb-8 space-y-5">
         <!-- 第一行：关键词 + 三个下拉 -->
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <!-- 关键词 -->
@@ -305,8 +255,28 @@ onBeforeUnmount(() => {
           </div>
 
           <CustomSelect v-model="filters.subject" :options="subjects" label="学科" placeholder="全部学科" />
-          <CustomSelect v-model="filters.knowledge_tag" :options="tagNames" label="知识点标签" placeholder="全部知识点" />
           <CustomSelect v-model="filters.question_type" :options="questionTypes" label="题型" placeholder="全部题型" />
+        </div>
+
+        <!-- 知识点多选标签 -->
+        <div v-if="tagNames.length">
+          <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="tag in tagNames" :key="tag"
+              @click="toggleTagSelect(tag)"
+              class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
+              :class="selectedTags.has(tag)
+                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
+                : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300'"
+            >
+              <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-[10px]"></i>
+              {{ tag }}
+            </button>
+            <button v-if="selectedTags.size" @click="clearTagSelection"
+              class="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
+              <i class="fa-solid fa-xmark mr-1"></i>清除
+            </button>
+          </div>
         </div>
 
         <!-- 第二行：复习状态 + 日期范围 + 重置 -->
@@ -327,78 +297,8 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-arrow-rotate-right"></i>
           </button>
         </div>
-      </div>
+      </GlassCard>
 
-      <!-- 知识点标签墙 Bento Grid -->
-      <div v-if="tagNames.length" class="mb-8 rounded-3xl border border-slate-200/60 bg-white/40 p-5 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0F]/60 sm:p-6">
-        <div class="mb-4 flex items-end justify-between">
-          <div>
-            <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 dark:text-slate-300">
-              <i class="fa-solid fa-cubes text-indigo-500"></i> 知识点快速检索
-            </h3>
-            <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-500">点击标签筛选对应错题，支持多选</p>
-          </div>
-          <button v-if="hasMoreTagBatches" @click="refreshTagBatch"
-            class="group flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-400">
-            <svg class="h-3.5 w-3.5 transition-transform duration-500 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            换一批
-          </button>
-        </div>
-        <div class="flex flex-wrap gap-2.5" :class="{ 'tag-batch-active': tagBatchAnimating }">
-          <button v-for="(tag, idx) in currentTagBatch" :key="tag"
-            @click="toggleTagSelect(tag)"
-            class="bento-tag relative overflow-hidden rounded-2xl px-4 py-2.5 text-sm font-bold hover:scale-[0.97] hover:brightness-105 active:scale-95"
-            :class="[
-              tagColor(tagBatchIndex * TAG_BATCH_SIZE + idx).bg,
-              tagColor(tagBatchIndex * TAG_BATCH_SIZE + idx).text,
-              selectedTags.has(tag) ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-indigo-400 dark:ring-offset-slate-900 shadow-lg' : 'shadow-sm'
-            ]"
-            :style="{ animationDelay: (idx * 0.05) + 's' }">
-            <span class="relative z-10 flex items-center gap-1.5">
-              <i v-if="selectedTags.has(tag)" class="fa-solid fa-check text-[10px]"></i>
-              {{ tag }}
-            </span>
-            <div class="absolute inset-0 bg-black/5 opacity-0 transition-opacity hover:opacity-100"></div>
-          </button>
-        </div>
-        <div v-if="selectedTags.size" class="mt-3 flex items-center gap-2">
-          <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">已选 {{ selectedTags.size }} 个标签</span>
-          <button @click="clearTagSelection" class="text-[11px] font-bold text-blue-500 hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300">清除全部</button>
-        </div>
-      </div>
-
-      <!-- 复习状态说明卡片 -->
-      <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div class="flex items-start gap-3 rounded-2xl border border-orange-300 bg-orange-50 p-4 dark:border-orange-500/20 dark:bg-orange-500/10">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-500/20">
-            <i class="fa-solid fa-clock text-orange-500"></i>
-          </div>
-          <div>
-            <div class="text-sm font-black text-orange-700 dark:text-orange-300">待复习</div>
-            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-orange-600 dark:text-orange-300/80">新录入的错题，等待首次复习巩固</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
-            <i class="fa-solid fa-spinner text-amber-500"></i>
-          </div>
-          <div>
-            <div class="text-sm font-black text-amber-700 dark:text-amber-300">复习中</div>
-            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-amber-600 dark:text-amber-300/80">正在反复练习中，还需要继续加强</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/20">
-            <i class="fa-solid fa-circle-check text-emerald-500"></i>
-          </div>
-          <div>
-            <div class="text-sm font-black text-emerald-700 dark:text-emerald-300">已掌握</div>
-            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-emerald-600 dark:text-emerald-300/80">已完全理解并能独立解答，无需再复习</p>
-          </div>
-        </div>
-      </div>
 
       <!-- 列表区：使用精美的卡片网格 -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-40">
@@ -422,7 +322,7 @@ onBeforeUnmount(() => {
           v-for="q in items"
           :key="q.id"
           @click="openDetail(q)"
-          class="group relative cursor-pointer overflow-hidden rounded-[2rem] border bg-white/80 p-6 shadow-sm backdrop-blur-md hover:-translate-y-1.5 hover:shadow-2xl dark:bg-[#0A0A0F]/60"
+          class="group relative cursor-pointer overflow-hidden rounded-[2rem] border bg-white/80 p-6 shadow-sm backdrop-blur-md hover:-translate-y-1.5 hover:shadow-2xl dark:bg-white/[0.03]"
           :class="selectedIds.has(q.id) ? 'border-blue-500 ring-1 ring-blue-500/50 shadow-blue-500/10' : 'border-slate-200/60 dark:border-white/10 hover:border-blue-400/40'"
         >
           <!-- 学科状态条 -->
@@ -545,13 +445,4 @@ onBeforeUnmount(() => {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* 知识点标签墙动画 */
-@keyframes tagPopIn {
-  0% { opacity: 0; transform: scale(0.85) translateY(8px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-.tag-batch-active .bento-tag {
-  opacity: 0;
-  animation: tagPopIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
 </style>

@@ -156,7 +156,7 @@ cd frontend && npm install               # 前端（Node 18+）
 | 语义 | 亮色 | 暗色 |
 |------|------|------|
 | 背景 | `white` / `slate-50` | `slate-900` / `slate-950` / `[#0A0A0F]` |
-| 卡片面 | `white/70` + `backdrop-blur-xl` | `[#0A0A0F]/60` + `backdrop-blur-xl` |
+| 卡片面 | `white/70` + `backdrop-blur-xl` | `white/[0.03]` + `backdrop-blur-xl` |
 | 边框 | `border-slate-200/60` | `border-white/10` |
 | 主操作 | `blue-600` / `indigo-600` | `indigo-500` |
 | 成功 | `emerald-600` | `emerald-400` |

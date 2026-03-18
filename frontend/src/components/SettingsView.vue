@@ -2,6 +2,7 @@
 import { ref, inject, onMounted, watch } from 'vue'
 import { fetchAppConfig, updateAppConfig } from '../api.js'
 import ProviderDialog from './ProviderDialog.vue'
+import ProviderSection from './ProviderSection.vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -257,214 +258,43 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
       <div v-else class="space-y-6">
 
         <!-- ====== OpenAI 兼容 API ====== -->
-        <div>
-          <div class="mb-3 flex items-center justify-between pl-1">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-                <i class="fa-solid fa-bolt text-lg text-blue-600 dark:text-blue-400"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">OpenAI 兼容 API</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400">支持 OpenAI / DeepSeek / Qwen / Moonshot 等</p>
-              </div>
-            </div>
-            <button
-              @click="openAddDialog('openai')"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-            >
-              <i class="fa-solid fa-plus text-[10px]"></i>
-              添加
-            </button>
-          </div>
-
-          <div v-if="openaiProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
-            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
-            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
-          </div>
-
-          <div class="space-y-2">
-            <div
-              v-for="(provider, idx) in openaiProviders" :key="provider.id"
-              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
-              @click="toggleActive('openai', provider.id)"
-            >
-              <!-- 激活单选 -->
-              <div
-                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                :class="activeOpenaiId === provider.id
-                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
-                  : 'border-slate-300 dark:border-slate-600'"
-              >
-                <i v-if="activeOpenaiId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </div>
-
-              <!-- 名称 + 状态 -->
-              <div class="flex min-w-0 flex-1 items-center gap-2">
-                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
-                <span v-if="activeOpenaiId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  使用中
-                </span>
-                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                  已配置
-                </span>
-              </div>
-
-              <!-- 设置 + 删除 -->
-              <button
-                @click.stop="openEditDialog('openai', provider, idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-                title="设置"
-              >
-                <i class="fa-solid fa-gear text-xs"></i>
-              </button>
-              <button
-                @click.stop="removeProvider('openai', idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
-                title="删除"
-              >
-                <i class="fa-solid fa-trash-can text-xs"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProviderSection
+          icon="fa-solid fa-bolt"
+          title="OpenAI 兼容 API"
+          subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等"
+          :providers="openaiProviders"
+          :active-id="activeOpenaiId"
+          @add="openAddDialog('openai')"
+          @toggle-active="(id) => toggleActive('openai', id)"
+          @edit="(p, idx) => openEditDialog('openai', p, idx)"
+          @remove="(idx) => removeProvider('openai', idx)"
+        />
 
         <!-- ====== Anthropic API ====== -->
-        <div>
-          <div class="mb-3 flex items-center justify-between pl-1">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-                <i class="fa-solid fa-brain text-lg text-blue-600 dark:text-blue-400"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Anthropic API</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Claude 系列模型</p>
-              </div>
-            </div>
-            <button
-              @click="openAddDialog('anthropic')"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-            >
-              <i class="fa-solid fa-plus text-[10px]"></i>
-              添加
-            </button>
-          </div>
-
-          <div v-if="anthropicProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
-            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
-            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
-          </div>
-
-          <div class="space-y-2">
-            <div
-              v-for="(provider, idx) in anthropicProviders" :key="provider.id"
-              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
-              @click="toggleActive('anthropic', provider.id)"
-            >
-              <div
-                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                :class="activeAnthropicId === provider.id
-                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
-                  : 'border-slate-300 dark:border-slate-600'"
-              >
-                <i v-if="activeAnthropicId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </div>
-
-              <div class="flex min-w-0 flex-1 items-center gap-2">
-                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
-                <span v-if="activeAnthropicId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  使用中
-                </span>
-                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                  已配置
-                </span>
-              </div>
-
-              <button
-                @click.stop="openEditDialog('anthropic', provider, idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-                title="设置"
-              >
-                <i class="fa-solid fa-gear text-xs"></i>
-              </button>
-              <button
-                @click.stop="removeProvider('anthropic', idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
-                title="删除"
-              >
-                <i class="fa-solid fa-trash-can text-xs"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProviderSection
+          icon="fa-solid fa-brain"
+          title="Anthropic API"
+          subtitle="Claude 系列模型"
+          :providers="anthropicProviders"
+          :active-id="activeAnthropicId"
+          @add="openAddDialog('anthropic')"
+          @toggle-active="(id) => toggleActive('anthropic', id)"
+          @edit="(p, idx) => openEditDialog('anthropic', p, idx)"
+          @remove="(idx) => removeProvider('anthropic', idx)"
+        />
 
         <!-- ====== PaddleOCR ====== -->
-        <div>
-          <div class="mb-3 flex items-center justify-between pl-1">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-                <i class="fa-solid fa-eye text-lg text-blue-600 dark:text-blue-400"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">PaddleOCR</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400">文档 OCR 识别服务</p>
-              </div>
-            </div>
-            <button
-              @click="openAddDialog('paddleocr')"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-            >
-              <i class="fa-solid fa-plus text-[10px]"></i>
-              添加
-            </button>
-          </div>
-
-          <div v-if="paddleocrProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
-            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
-            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
-          </div>
-
-          <div class="space-y-2">
-            <div
-              v-for="(provider, idx) in paddleocrProviders" :key="provider.id"
-              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
-              @click="toggleActive('paddleocr', provider.id)"
-            >
-              <div
-                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                :class="activePaddleocrId === provider.id
-                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
-                  : 'border-slate-300 dark:border-slate-600'"
-              >
-                <i v-if="activePaddleocrId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
-              </div>
-
-              <div class="flex min-w-0 flex-1 items-center gap-2">
-                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
-                <span v-if="activePaddleocrId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  使用中
-                </span>
-                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                  已配置
-                </span>
-              </div>
-
-              <button
-                @click.stop="openEditDialog('paddleocr', provider, idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-                title="设置"
-              >
-                <i class="fa-solid fa-gear text-xs"></i>
-              </button>
-              <button
-                @click.stop="removeProvider('paddleocr', idx)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
-                title="删除"
-              >
-                <i class="fa-solid fa-trash-can text-xs"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProviderSection
+          icon="fa-solid fa-eye"
+          title="PaddleOCR"
+          subtitle="文档 OCR 识别服务"
+          :providers="paddleocrProviders"
+          :active-id="activePaddleocrId"
+          @add="openAddDialog('paddleocr')"
+          @toggle-active="(id) => toggleActive('paddleocr', id)"
+          @edit="(p, idx) => openEditDialog('paddleocr', p, idx)"
+          @remove="(idx) => removeProvider('paddleocr', idx)"
+        />
 
       </div>
     </div>
