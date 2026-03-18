@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import PurePath
 from typing import Optional
 
+import requests as http_requests
+
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
 from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, session
@@ -21,7 +23,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
-from config import settings, update_env_file
+from config import settings
 from db import init_db, SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
@@ -489,6 +491,23 @@ def split_questions():
                 'error': f'不支持的模型供应商: {model_provider}'
             }), 400
 
+        # 从数据库加载用户的 LLM + OCR 凭据
+        user_id = session.get('user_id')
+        ocr_credentials = {}
+        if user_id:
+            settings.load_providers_from_db(user_id)
+            with SessionLocal() as db:
+                ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                if ocr_provider:
+                    ocr_credentials = {
+                        "api_url": ocr_provider.base_url,
+                        "token": ocr_provider.api_key,
+                        "model": ocr_provider.model_name,
+                        "use_doc_orientation": ocr_provider.use_doc_orientation,
+                        "use_doc_unwarping": ocr_provider.use_doc_unwarping,
+                        "use_chart_recognition": ocr_provider.use_chart_recognition,
+                    }
+
         with session_lock:
             keys = list(session_file_order)
             file_paths = []
@@ -507,7 +526,13 @@ def split_questions():
         current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": current_thread_id}}
 
-        workflow_graph.invoke({"file_paths": file_paths, "model_provider": model_provider, "model_name": model_name}, config=config)
+        initial_state = {
+            "file_paths": file_paths,
+            "model_provider": model_provider,
+            "model_name": model_name,
+            "ocr_credentials": ocr_credentials,
+        }
+        workflow_graph.invoke(initial_state, config=config)
         state = workflow_graph.invoke(None, config=config)
 
         questions = state.get('questions', [])
@@ -748,9 +773,40 @@ def get_status():
         JSON响应，包含系统配置和状态
     """
     try:
-        # 检查配置
-        paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
-        available_models = settings.get_available_models()
+        user_id = session.get('user_id')
+
+        if user_id:
+            # 已登录：从数据库读取用户配置
+            with SessionLocal() as db:
+                paddle_provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                paddleocr_configured = bool(paddle_provider and paddle_provider.api_key and paddle_provider.base_url)
+
+                # 构建用户级可用模型列表
+                available_models = []
+                for category, label in [('openai', 'OpenAI'), ('anthropic', 'Anthropic')]:
+                    provider = crud.get_active_provider(db, user_id, category)
+                    if provider and provider.api_key:
+                        available_models.append({
+                            'value': category,
+                            'label': provider.name or label,
+                            'configured': True,
+                            'status': '配置成功',
+                            'default_model': provider.model_name or '',
+                            'models': [provider.model_name] if provider.model_name else [],
+                        })
+                    else:
+                        available_models.append({
+                            'value': category,
+                            'label': label,
+                            'configured': False,
+                            'status': '未配置',
+                            'default_model': '',
+                            'models': [],
+                        })
+        else:
+            # 未登录：返回空状态
+            paddleocr_configured = False
+            available_models = []
 
         status = {
             'paddleocr_configured': paddleocr_configured,
@@ -778,9 +834,14 @@ def get_status():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """获取当前可编辑配置（API key 脱敏）"""
+    """获取当前用户的 provider 配置"""
     try:
-        return jsonify({'success': True, 'config': settings.get_config_for_ui()})
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': '请先登录'}), 401
+        with SessionLocal() as db:
+            config = crud.get_user_providers(db, user_id)
+        return jsonify({'success': True, 'config': config})
     except Exception as e:
         logger.exception("获取配置失败")
         return jsonify({'success': False, 'error': '获取配置失败'}), 500
@@ -788,63 +849,161 @@ def get_config():
 
 @app.route('/api/config', methods=['PUT'])
 def update_config():
-    """更新配置并热重载
-
-    接收 JSON body，结构与 GET /api/config 返回的 config 一致。
-    密钥字段不发送或发送 null 则跳过，发送空字符串则清空。
-    """
+    """保存当前用户的 provider 配置到数据库"""
     try:
         data = request.get_json(force=True) or {}
-        updates = {}
+        user_id = session.get('user_id')
 
-        # 字段→环境变量映射
-        field_map = {
-            'openai': {
-                'api_key': 'OPENAI_API_KEY',
-                'base_url': 'OPENAI_BASE_URL',
-                'model_name': 'OPENAI_MODEL_NAME',
-                'light_model_name': 'OPENAI_LIGHT_MODEL_NAME',
-                'supports_function_calling': 'OPENAI_SUPPORTS_FUNCTION_CALLING',
-            },
-            'anthropic': {
-                'api_key': 'ANTHROPIC_API_KEY',
-                'base_url': 'ANTHROPIC_BASE_URL',
-                'model_name': 'ANTHROPIC_MODEL_NAME',
-            },
-            'paddleocr': {
-                'api_url': 'PADDLEOCR_API_URL',
-                'api_token': 'PADDLEOCR_API_TOKEN',
-                'model': 'PADDLEOCR_MODEL',
-                'use_doc_orientation': 'PADDLEOCR_USE_DOC_ORIENTATION',
-                'use_doc_unwarping': 'PADDLEOCR_USE_DOC_UNWARPING',
-                'use_chart_recognition': 'PADDLEOCR_USE_CHART_RECOGNITION',
-            },
-        }
+        if not user_id:
+            return jsonify({'success': False, 'error': '请先登录'}), 401
 
-        for section, mapping in field_map.items():
-            section_data = data.get(section)
-            if not isinstance(section_data, dict):
-                continue
-            for field, env_key in mapping.items():
-                if field not in section_data:
-                    continue
-                val = section_data[field]
-                if val is None:
-                    continue
-                # 布尔值转字符串
-                if isinstance(val, bool):
-                    val = 'true' if val else 'false'
-                updates[env_key] = str(val)
-
-        if updates:
-            update_env_file(updates)
-            settings.reload_providers()
-
+        with SessionLocal() as db:
+            try:
+                crud.save_user_providers(db, user_id, data)
+            except Exception:
+                db.rollback()
+                raise
         return jsonify({'success': True})
 
     except Exception as e:
         logger.exception("更新配置失败")
         return jsonify({'success': False, 'error': '更新配置失败，请检查日志'}), 500
+
+
+@app.route('/api/models/list', methods=['POST'])
+def list_models():
+    """代理请求目标 API 的模型列表，绕过浏览器 CORS 限制。
+
+    请求体:
+        type: 'openai' | 'anthropic'
+        api_key: API Key（可选，留空则使用系统已配置的 key）
+        base_url: Base URL（可选）
+        provider_id: 已有 provider 的 id（可选，用于回退读取已存 key）
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        provider_type = data.get('type', 'openai')
+        api_key = data.get('api_key') or ''
+        base_url = data.get('base_url') or ''
+
+        # 如果前端没传 key，从数据库读取已保存的配置
+        if not api_key:
+            user_id = session.get('user_id')
+            provider_id = data.get('provider_id')
+            if user_id:
+                with SessionLocal() as db:
+                    if provider_id:
+                        provider = db.query(crud.ProviderConfig).filter_by(
+                            id=provider_id, user_id=user_id
+                        ).first()
+                    else:
+                        provider = crud.get_active_provider(db, user_id, provider_type)
+                    if provider:
+                        if not api_key:
+                            api_key = provider.api_key or ''
+                        if not base_url:
+                            base_url = provider.base_url or ''
+
+        if not api_key:
+            return jsonify({'error': '未提供 API Key，请先在设置中配置'}), 400
+
+        if provider_type == 'openai':
+            url = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/v1/models'
+            headers = {'Authorization': f'Bearer {api_key}'}
+            resp = http_requests.get(url, headers=headers, timeout=15)
+
+            # 部分 OpenAI 兼容 API 的路径可能不带 /v1
+            if resp.status_code == 404:
+                url_alt = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/models'
+                resp = http_requests.get(url_alt, headers=headers, timeout=15)
+
+            if resp.status_code != 200:
+                return jsonify({'error': f'API 返回 {resp.status_code}: {resp.text[:200]}'}), 502
+
+            body = resp.json()
+            models = sorted([m['id'] for m in body.get('data', [])]) if 'data' in body else []
+            return jsonify({'models': models})
+
+        elif provider_type == 'anthropic':
+            # Anthropic 没有官方 list models 接口，返回常用模型列表
+            models = [
+                'claude-opus-4-20250514',
+                'claude-sonnet-4-20250514',
+                'claude-haiku-4-20250506',
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-haiku-20241022',
+                'claude-3-opus-20240229',
+            ]
+            return jsonify({'models': models})
+
+        else:
+            return jsonify({'error': f'不支持的 provider 类型: {provider_type}'}), 400
+
+    except http_requests.Timeout:
+        return jsonify({'error': '请求超时，请检查 Base URL 是否正确'}), 504
+    except http_requests.ConnectionError:
+        return jsonify({'error': '无法连接目标 API，请检查 Base URL'}), 502
+    except Exception as e:
+        logger.exception("获取模型列表失败")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/paddleocr/test', methods=['POST'])
+def test_paddleocr():
+    """测试 PaddleOCR API Token 是否可用。
+
+    请求体:
+        api_token: API Token（可选，留空则从数据库读取）
+        api_url: API URL（可选，留空则从数据库读取）
+        provider_id: 已有 provider 的 id（可选，用于回退读取已存 token）
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        api_token = data.get('api_token') or ''
+        api_url = data.get('api_url') or ''
+
+        # 前端未提供凭据时，从数据库读取已保存的配置
+        if not api_token or not api_url:
+            user_id = session.get('user_id')
+            provider_id = data.get('provider_id')
+            if user_id:
+                with SessionLocal() as db:
+                    if provider_id:
+                        provider = db.query(crud.ProviderConfig).filter_by(
+                            id=provider_id, user_id=user_id
+                        ).first()
+                    else:
+                        provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                    if provider:
+                        if not api_token:
+                            api_token = provider.api_key or ''
+                        if not api_url:
+                            api_url = provider.base_url or ''
+
+        if not api_token or not api_url:
+            return jsonify({'error': '未提供 API Token 或 API URL'}), 400
+
+        # 用 GET 请求 API URL，带 token 验证认证是否有效
+        headers = {'Authorization': f'bearer {api_token}'}
+        resp = http_requests.get(api_url, headers=headers, timeout=10)
+
+        # 401/403 表示 token 无效
+        if resp.status_code in (401, 403):
+            return jsonify({'success': False, 'error': '认证失败，请检查 API Token 是否正确'})
+
+        # 其他非 5xx 状态码都认为 token 有效（包括 404/405 等，因为 GET 可能不被支持但认证通过了）
+        if resp.status_code >= 500:
+            return jsonify({'success': False, 'error': f'服务端错误 ({resp.status_code})，请检查 API URL'})
+
+        return jsonify({'success': True, 'message': 'API Token 验证通过'})
+
+    except http_requests.Timeout:
+        return jsonify({'success': False, 'error': '请求超时，请检查 API URL 是否正确'}), 504
+    except http_requests.ConnectionError:
+        return jsonify({'success': False, 'error': '无法连接，请检查 API URL'}), 502
+    except Exception as e:
+        logger.exception("测试 PaddleOCR 连接失败")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/history', methods=['GET'])
@@ -1533,6 +1692,11 @@ def stream_chat(session_id):
 
         if not settings.is_valid_provider(model_provider):
             return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
+
+        # 从数据库加载用户的 LLM 凭据
+        user_id = session.get('user_id')
+        if user_id:
+            settings.load_providers_from_db(user_id)
 
         with SessionLocal() as db:
             from db.models import ChatSession as ChatSessionModel, QuestionTagMapping

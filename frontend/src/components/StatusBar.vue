@@ -19,6 +19,7 @@ const props = defineProps({
   providerOptions: { type: Array, default: () => [] },
   selectedModel: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
+  noModels: { type: Boolean, default: false },
 })
 
 const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
@@ -43,7 +44,7 @@ const modelOptions = computed(() => {
   return items
 })
 
-const selectedLabel = computed(() => props.selectedModel || '选择模型')
+const selectedLabel = computed(() => props.noModels ? '暂无模型' : (props.selectedModel || '选择模型'))
 
 // 反查当前选中模型所属的 provider
 const currentProvider = computed(() => {
@@ -143,7 +144,7 @@ const modelStatusError = computed(() => {
 
     <!-- 模型下拉选择器 (按 provider 分组) -->
     <div v-if="!statusError" class="ml-auto flex items-center gap-2">
-      <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled">
+      <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled || noModels">
         <div class="relative w-48">
           <ListboxButton
             class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"

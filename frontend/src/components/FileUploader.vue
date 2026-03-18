@@ -10,6 +10,7 @@ const props = defineProps({
   splitting: { type: Boolean, default: false },
   splitCompleted: { type: Boolean, default: false },
   expand: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['upload', 'remove-file'])
@@ -18,6 +19,7 @@ const fileInputEl = ref(null)
 const uploadHover = ref(false)
 
 const onFileInput = (e) => {
+  if (props.disabled) return
   emit('upload', e.target.files)
   e.target.value = ''
 }
@@ -25,7 +27,13 @@ const onFileInput = (e) => {
 const onDrop = (e) => {
   e.preventDefault()
   uploadHover.value = false
+  if (props.disabled) return
   emit('upload', e.dataTransfer.files)
+}
+
+const onClickZone = () => {
+  if (props.disabled) return
+  fileInputEl.value?.click()
 }
 </script>
 
@@ -38,15 +46,16 @@ const onDrop = (e) => {
         uploadHover
           ? 'border-blue-500/50 bg-slate-900/10 shadow-2xl shadow-blue-500/20 dark:border-indigo-500/50 dark:bg-white/10'
           : 'border-slate-900/10 bg-slate-900/[0.05] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-blue-200 hover:bg-slate-900/10 dark:border-white/5 dark:bg-white/5 dark:shadow-none dark:hover:border-indigo-500/20 dark:hover:bg-white/10',
-        expand ? 'flex-1 py-12 min-h-[280px]' : 'py-10'
+        expand ? 'flex-1 py-12 min-h-[280px]' : 'py-10',
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       ]"
       @dragenter.prevent="uploadHover = true"
       @dragover.prevent="uploadHover = true"
       @dragleave.prevent="uploadHover = false"
       @drop="onDrop"
-      @click="() => fileInputEl?.click()"
-      @keydown.enter.prevent="() => fileInputEl?.click()"
-      @keydown.space.prevent="() => fileInputEl?.click()"
+      @click="onClickZone"
+      @keydown.enter.prevent="onClickZone"
+      @keydown.space.prevent="onClickZone"
       role="button"
       tabindex="0"
     >
@@ -63,7 +72,10 @@ const onDrop = (e) => {
         </div>
 
         <div class="max-w-xs">
-          <h4 class="text-sm font-black tracking-tight text-slate-900 dark:text-white">
+          <h4 v-if="disabled" class="text-sm font-black tracking-tight text-slate-500 dark:text-slate-400">
+            请先在 <span class="text-blue-600 dark:text-indigo-400">系统设置</span> 中配置 API 模型
+          </h4>
+          <h4 v-else class="text-sm font-black tracking-tight text-slate-900 dark:text-white">
             点击 <span class="text-blue-600 dark:text-indigo-400">选择文件</span> 或拖拽至此
           </h4>
           <div class="mt-4 flex flex-wrap justify-center gap-1.5">

@@ -118,6 +118,9 @@ const providerOptions = computed(() => {
   return s && s.available_models ? s.available_models : []
 })
 
+// 是否有可用模型
+const hasConfiguredModel = computed(() => providerOptions.value.some(p => p.configured))
+
 // 从 selectedModel 反查 provider
 const selectedProvider = computed(() => {
   for (const p of providerOptions.value) {
@@ -273,7 +276,7 @@ let activeXhr = null
 let fakeProgressTimer = null
 let fakeProgressKeys = []
 
-const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value)
+const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
 const stopFakeProgress = () => {
@@ -580,9 +583,9 @@ onBeforeUnmount(() => {
     </Transition>
     <!-- ================== 全局固定背景光晕 (支持长页面滚动) ================== -->
     <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-600/20 dark:mix-blend-screen"></div>
-      <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-600/20 dark:mix-blend-screen"></div>
-      <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/10 dark:mix-blend-screen"></div>
+      <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-500/[0.15] dark:mix-blend-screen"></div>
+      <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-500/[0.12] dark:mix-blend-screen"></div>
+      <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/[0.10] dark:mix-blend-screen"></div>
     </div>
 
     <!-- ================== PC端：左侧边栏导航 ================== -->
@@ -750,6 +753,7 @@ onBeforeUnmount(() => {
                   :provider-options="providerOptions"
                   :selected-model="selectedModel"
                   :disabled="splitting || splitCompleted"
+                  :no-models="!hasConfiguredModel"
                   @update:selected-model="(v) => selectedModel = v"
                 />
 
@@ -778,6 +782,7 @@ onBeforeUnmount(() => {
                     :splitting="splitting"
                     :split-completed="splitCompleted"
                     :expand="questions.length === 0"
+                    :disabled="!hasConfiguredModel"
                     @upload="enqueueUpload"
                     @remove-file="removePendingFile"
                   />
@@ -968,15 +973,15 @@ onBeforeUnmount(() => {
 <style>
 /* 自定义背景光晕动画 - 极致性能优化版 */
 @keyframes blob {
-  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.6; }
-  33% { transform: translate3d(80px, -120px, 0) scale(1.2); opacity: 0.8; }
-  66% { transform: translate3d(-60px, 60px, 0) scale(0.8); opacity: 0.3; }
-  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.6; }
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(80px, -120px, 0) scale(1.15); }
+  66% { transform: translate3d(-60px, 60px, 0) scale(0.9); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
 .animate-blob {
   animation: blob 30s infinite alternate ease-in-out;
-  will-change: transform, opacity;
+  will-change: transform;
 }
 
 .animation-delay-2000 {

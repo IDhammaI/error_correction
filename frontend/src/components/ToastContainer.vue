@@ -19,7 +19,7 @@ const onLeave = (el) => {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed left-0 right-0 top-6 z-[100] flex flex-col items-center gap-3 px-4 md:left-64">
+  <div class="pointer-events-none fixed left-0 right-0 top-6 z-[200] flex flex-col items-center gap-3 px-4 md:left-64">
     <TransitionGroup
       enter-active-class="transition duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)"
       enter-from-class="opacity-0 -translate-y-8 scale-90"

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
 import { fetchAppConfig, updateAppConfig } from '../api.js'
+import ProviderDialog from './ProviderDialog.vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -13,49 +14,98 @@ const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] $
 const loading = ref(true)
 const saving = ref(false)
 
-// 表单数据
-const form = ref({
-  openai: { api_key: '', base_url: '', model_name: '', light_model_name: '', supports_function_calling: true },
-  anthropic: { api_key: '', base_url: '', model_name: '' },
-  paddleocr: { api_url: '', api_token: '', model: '', use_doc_orientation: false, use_doc_unwarping: false, use_chart_recognition: false },
+// ---------- 多 Provider 数据结构 ----------
+
+const makeOpenAIProvider = (data = {}) => ({
+  id: data.id || crypto.randomUUID(),
+  name: data.name || '',
+  api_key: data.api_key || '',
+  base_url: data.base_url || '',
+  model_name: data.model_name || '',
+  light_model_name: data.light_model_name || '',
+  supports_function_calling: data.supports_function_calling ?? true,
+  api_key_set: data.api_key_set || false,
+  api_key_hint: data.api_key_hint || '',
 })
 
-// 用于显示占位提示
-const hints = ref({
-  openai: { api_key_set: false, api_key_hint: '' },
-  anthropic: { api_key_set: false, api_key_hint: '' },
-  paddleocr: { api_token_set: false, api_token_hint: '' },
+const makeAnthropicProvider = (data = {}) => ({
+  id: data.id || crypto.randomUUID(),
+  name: data.name || '',
+  api_key: data.api_key || '',
+  base_url: data.base_url || '',
+  model_name: data.model_name || '',
+  api_key_set: data.api_key_set || false,
+  api_key_hint: data.api_key_hint || '',
 })
+
+const makePaddleOCRProvider = (data = {}) => ({
+  id: data.id || crypto.randomUUID(),
+  name: data.name || '',
+  api_key: data.api_key || '',
+  base_url: data.base_url || data.api_url || '',
+  model_name: data.model_name || data.model || '',
+  use_doc_orientation: data.use_doc_orientation || false,
+  use_doc_unwarping: data.use_doc_unwarping || false,
+  use_chart_recognition: data.use_chart_recognition || false,
+  api_key_set: data.api_key_set || data.api_token_set || false,
+  api_key_hint: data.api_key_hint || data.api_token_hint || '',
+})
+
+const openaiProviders = ref([])
+const anthropicProviders = ref([])
+const paddleocrProviders = ref([])
+
+// 当前激活的 provider ID（每类只能激活一个）
+const activeOpenaiId = ref(null)
+const activeAnthropicId = ref(null)
+const activePaddleocrId = ref(null)
+
+const toggleActive = (type, id) => {
+  const refMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
+  const target = refMap[type]
+  target.value = target.value === id ? null : id
+}
+
+// ---------- 加载 / 保存 ----------
 
 const loadConfig = async () => {
+  configLoaded.value = false
   loading.value = true
   try {
     const cfg = await fetchAppConfig()
-    // 填充表单（密钥字段留空，用户不修改则不提交）
-    form.value.openai.base_url = cfg.openai?.base_url || ''
-    form.value.openai.model_name = cfg.openai?.model_name || ''
-    form.value.openai.light_model_name = cfg.openai?.light_model_name || ''
-    form.value.openai.supports_function_calling = cfg.openai?.supports_function_calling ?? true
-    form.value.openai.api_key = ''
 
-    form.value.anthropic.base_url = cfg.anthropic?.base_url || ''
-    form.value.anthropic.model_name = cfg.anthropic?.model_name || ''
-    form.value.anthropic.api_key = ''
+    if (cfg.openai_providers && cfg.openai_providers.length > 0) {
+      openaiProviders.value = cfg.openai_providers.map(p => makeOpenAIProvider(p))
+    } else if (cfg.openai) {
+      openaiProviders.value = [makeOpenAIProvider({ name: 'Default', ...cfg.openai })]
+    } else {
+      openaiProviders.value = []
+    }
+    activeOpenaiId.value = cfg.active_openai_id || openaiProviders.value[0]?.id || null
 
-    form.value.paddleocr.api_url = cfg.paddleocr?.api_url || ''
-    form.value.paddleocr.model = cfg.paddleocr?.model || ''
-    form.value.paddleocr.api_token = ''
-    form.value.paddleocr.use_doc_orientation = cfg.paddleocr?.use_doc_orientation || false
-    form.value.paddleocr.use_doc_unwarping = cfg.paddleocr?.use_doc_unwarping || false
-    form.value.paddleocr.use_chart_recognition = cfg.paddleocr?.use_chart_recognition || false
+    if (cfg.anthropic_providers && cfg.anthropic_providers.length > 0) {
+      anthropicProviders.value = cfg.anthropic_providers.map(p => makeAnthropicProvider(p))
+    } else if (cfg.anthropic) {
+      anthropicProviders.value = [makeAnthropicProvider({ name: 'Default', ...cfg.anthropic })]
+    } else {
+      anthropicProviders.value = []
+    }
+    activeAnthropicId.value = cfg.active_anthropic_id || anthropicProviders.value[0]?.id || null
 
-    hints.value.openai = { api_key_set: cfg.openai?.api_key_set, api_key_hint: cfg.openai?.api_key_hint || '' }
-    hints.value.anthropic = { api_key_set: cfg.anthropic?.api_key_set, api_key_hint: cfg.anthropic?.api_key_hint || '' }
-    hints.value.paddleocr = { api_token_set: cfg.paddleocr?.api_token_set, api_token_hint: cfg.paddleocr?.api_token_hint || '' }
+    if (cfg.paddleocr_providers && cfg.paddleocr_providers.length > 0) {
+      paddleocrProviders.value = cfg.paddleocr_providers.map(p => makePaddleOCRProvider(p))
+    } else if (cfg.paddleocr) {
+      paddleocrProviders.value = [makePaddleOCRProvider({ name: 'Default', ...cfg.paddleocr })]
+    } else {
+      paddleocrProviders.value = []
+    }
+    activePaddleocrId.value = cfg.active_paddleocr_id || paddleocrProviders.value[0]?.id || null
   } catch (e) {
     pushToast('error', '加载配置失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
     loading.value = false
+    // nextTick 后再启用自动保存，避免赋值触发 watcher
+    setTimeout(() => { configLoaded.value = true }, 0)
   }
 }
 
@@ -65,42 +115,122 @@ const saveConfig = async () => {
   try {
     const payload = {}
 
-    // OpenAI
-    const oa = {}
-    if (form.value.openai.api_key) oa.api_key = form.value.openai.api_key
-    oa.base_url = form.value.openai.base_url
-    oa.model_name = form.value.openai.model_name
-    oa.light_model_name = form.value.openai.light_model_name
-    oa.supports_function_calling = form.value.openai.supports_function_calling
-    payload.openai = oa
+    payload.openai_providers = openaiProviders.value.map(p => {
+      const item = { id: p.id, name: p.name, base_url: p.base_url, model_name: p.model_name, light_model_name: p.light_model_name, supports_function_calling: p.supports_function_calling }
+      if (p.api_key) item.api_key = p.api_key
+      return item
+    })
 
-    // Anthropic
-    const an = {}
-    if (form.value.anthropic.api_key) an.api_key = form.value.anthropic.api_key
-    an.base_url = form.value.anthropic.base_url
-    an.model_name = form.value.anthropic.model_name
-    payload.anthropic = an
+    payload.anthropic_providers = anthropicProviders.value.map(p => {
+      const item = { id: p.id, name: p.name, base_url: p.base_url, model_name: p.model_name }
+      if (p.api_key) item.api_key = p.api_key
+      return item
+    })
 
-    // PaddleOCR
-    const po = {}
-    if (form.value.paddleocr.api_token) po.api_token = form.value.paddleocr.api_token
-    po.api_url = form.value.paddleocr.api_url
-    po.model = form.value.paddleocr.model
-    po.use_doc_orientation = form.value.paddleocr.use_doc_orientation
-    po.use_doc_unwarping = form.value.paddleocr.use_doc_unwarping
-    po.use_chart_recognition = form.value.paddleocr.use_chart_recognition
-    payload.paddleocr = po
+    payload.paddleocr_providers = paddleocrProviders.value.map(p => {
+      const item = { id: p.id, name: p.name, api_url: p.base_url, model: p.model_name, use_doc_orientation: p.use_doc_orientation, use_doc_unwarping: p.use_doc_unwarping, use_chart_recognition: p.use_chart_recognition }
+      if (p.api_key) item.api_token = p.api_key
+      return item
+    })
+
+    payload.active_openai_id = activeOpenaiId.value
+    payload.active_anthropic_id = activeAnthropicId.value
+    payload.active_paddleocr_id = activePaddleocrId.value
 
     await updateAppConfig(payload)
-    pushToast('success', '配置已保存并生效')
     emit('saved')
-    // 重新加载以更新 hints
-    await loadConfig()
   } catch (e) {
     pushToast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
     saving.value = false
   }
+}
+
+// ---------- 自动保存（防抖） ----------
+let autoSaveTimer = null
+const configLoaded = ref(false)  // 防止 loadConfig 触发自动保存
+
+watch(
+  [openaiProviders, anthropicProviders, paddleocrProviders, activeOpenaiId, activeAnthropicId, activePaddleocrId],
+  () => {
+    if (!configLoaded.value) return
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = setTimeout(() => saveConfig(), 600)
+  },
+  { deep: true },
+)
+
+const removeProvider = async (type, idx) => {
+  const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
+  const activeMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
+  const list = listMap[type]
+  if (list.value[idx]?.id === activeMap[type].value) activeMap[type].value = null
+  list.value.splice(idx, 1)
+  clearTimeout(autoSaveTimer)
+  try {
+    await saveConfig()
+    pushToast('success', '已删除')
+  } catch { /* saveConfig 内部已 toast error */ }
+}
+
+// ---------- 弹窗控制 ----------
+const dialogOpen = ref(false)
+const dialogType = ref('openai')
+const dialogEditData = ref(null)  // null=新增, object=编辑
+const dialogEditIndex = ref(-1)
+
+const openAddDialog = (type) => {
+  dialogType.value = type
+  dialogEditData.value = null
+  dialogEditIndex.value = -1
+  dialogOpen.value = true
+}
+
+const openEditDialog = (type, provider, idx) => {
+  dialogType.value = type
+  dialogEditData.value = { ...provider }
+  dialogEditIndex.value = idx
+  dialogOpen.value = true
+}
+
+const onDialogConfirm = async (formData) => {
+  if (dialogEditIndex.value >= 0) {
+    // 编辑模式：更新已有 provider
+    const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
+    const list = listMap[dialogType.value]
+    const existing = list.value[dialogEditIndex.value]
+    if (existing) {
+      Object.assign(existing, formData)
+      if (dialogType.value === 'paddleocr') {
+        existing.base_url = formData.base_url
+        existing.model_name = formData.model_name
+      }
+    }
+  } else {
+    // 新增模式
+    if (dialogType.value === 'openai') {
+      const p = makeOpenAIProvider(formData)
+      openaiProviders.value.push(p)
+      if (openaiProviders.value.length === 1) activeOpenaiId.value = p.id
+    } else if (dialogType.value === 'anthropic') {
+      const p = makeAnthropicProvider(formData)
+      anthropicProviders.value.push(p)
+      if (anthropicProviders.value.length === 1) activeAnthropicId.value = p.id
+    } else {
+      const p = makePaddleOCRProvider({ name: formData.name, api_key: formData.api_key, api_url: formData.base_url, model: formData.model_name, use_doc_orientation: formData.use_doc_orientation, use_doc_unwarping: formData.use_doc_unwarping, use_chart_recognition: formData.use_chart_recognition })
+      paddleocrProviders.value.push(p)
+      if (paddleocrProviders.value.length === 1) activePaddleocrId.value = p.id
+    }
+  }
+  const isEdit = dialogEditIndex.value >= 0
+  dialogOpen.value = false
+
+  // 立即保存并提示
+  clearTimeout(autoSaveTimer)
+  try {
+    await saveConfig()
+    pushToast('success', isEdit ? '配置已更新' : '供应商已添加')
+  } catch { /* saveConfig 内部已 toast error */ }
 }
 
 onMounted(() => { if (props.visible) loadConfig() })
@@ -127,218 +257,225 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
       <div v-else class="space-y-6">
 
         <!-- ====== OpenAI 兼容 API ====== -->
-        <div class="rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-5 flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-              <i class="fa-solid fa-bolt text-lg text-emerald-600 dark:text-emerald-400"></i>
+        <div>
+          <div class="mb-3 flex items-center justify-between pl-1">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                <i class="fa-solid fa-bolt text-lg text-blue-600 dark:text-blue-400"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">OpenAI 兼容 API</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">支持 OpenAI / DeepSeek / Qwen / Moonshot 等</p>
+              </div>
             </div>
-            <div>
-              <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">OpenAI 兼容 API</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">支持 OpenAI / DeepSeek / Qwen / Moonshot 等，通过 Base URL 切换</p>
-            </div>
+            <button
+              @click="openAddDialog('openai')"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+            >
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              添加
+            </button>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">API Key</label>
-              <input
-                v-model="form.openai.api_key"
-                type="password"
-                :placeholder="hints.openai.api_key_set ? `已设置 (${hints.openai.api_key_hint})` : '输入 API Key'"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">Base URL</label>
-              <input
-                v-model="form.openai.base_url"
-                type="text"
-                placeholder="留空使用 OpenAI 官方，或填入 https://api.deepseek.com 等"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">默认模型</label>
-              <input
-                v-model="form.openai.model_name"
-                type="text"
-                placeholder="gpt-4o-mini"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">轻量模型 <span class="font-normal text-slate-400">（可选）</span></label>
-              <input
-                v-model="form.openai.light_model_name"
-                type="text"
-                placeholder="科目识别等轻量任务使用"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
+
+          <div v-if="openaiProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
+            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
+            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
           </div>
-          <!-- 能力开关 -->
-          <div class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">
-            <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">能力开关</p>
-            <div class="space-y-3">
-              <label
-                v-for="toggle in [
-                  { key: 'supports_function_calling', label: '支持 Function Calling', description: '文心一言、通义千问等不支持时需关闭，否则会陷入无限循环' },
-                ]"
-                :key="toggle.key"
-                class="flex cursor-pointer items-center justify-between"
+
+          <div class="space-y-2">
+            <div
+              v-for="(provider, idx) in openaiProviders" :key="provider.id"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('openai', provider.id)"
+            >
+              <!-- 激活单选 -->
+              <div
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                :class="activeOpenaiId === provider.id
+                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
+                  : 'border-slate-300 dark:border-slate-600'"
               >
-                <div>
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
-                  <p v-if="toggle.description" class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{{ toggle.description }}</p>
-                </div>
-                <button
-                  type="button"
-                  @click="form.openai[toggle.key] = !form.openai[toggle.key]"
-                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  :class="form.openai[toggle.key] ? 'bg-blue-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
-                >
-                  <span
-                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
-                    :class="form.openai[toggle.key] ? 'translate-x-5' : 'translate-x-0'"
-                  ></span>
-                </button>
-              </label>
+                <i v-if="activeOpenaiId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
+              </div>
+
+              <!-- 名称 + 状态 -->
+              <div class="flex min-w-0 flex-1 items-center gap-2">
+                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
+                <span v-if="activeOpenaiId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  使用中
+                </span>
+                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                  已配置
+                </span>
+              </div>
+
+              <!-- 设置 + 删除 -->
+              <button
+                @click.stop="openEditDialog('openai', provider, idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
+                title="设置"
+              >
+                <i class="fa-solid fa-gear text-xs"></i>
+              </button>
+              <button
+                @click.stop="removeProvider('openai', idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
+                title="删除"
+              >
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- ====== Anthropic API ====== -->
-        <div class="rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-5 flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-500/10">
-              <i class="fa-solid fa-brain text-lg text-orange-600 dark:text-orange-400"></i>
+        <div>
+          <div class="mb-3 flex items-center justify-between pl-1">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                <i class="fa-solid fa-brain text-lg text-blue-600 dark:text-blue-400"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Anthropic API</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Claude 系列模型</p>
+              </div>
             </div>
-            <div>
-              <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Anthropic API</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Claude 系列模型</p>
-            </div>
+            <button
+              @click="openAddDialog('anthropic')"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+            >
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              添加
+            </button>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">API Key</label>
-              <input
-                v-model="form.anthropic.api_key"
-                type="password"
-                :placeholder="hints.anthropic.api_key_set ? `已设置 (${hints.anthropic.api_key_hint})` : '输入 API Key'"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">Base URL</label>
-              <input
-                v-model="form.anthropic.base_url"
-                type="text"
-                placeholder="留空使用 Anthropic 官方"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">默认模型</label>
-              <input
-                v-model="form.anthropic.model_name"
-                type="text"
-                placeholder="claude-sonnet-4-20250514"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
+
+          <div v-if="anthropicProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
+            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
+            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
+          </div>
+
+          <div class="space-y-2">
+            <div
+              v-for="(provider, idx) in anthropicProviders" :key="provider.id"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('anthropic', provider.id)"
+            >
+              <div
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                :class="activeAnthropicId === provider.id
+                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
+                  : 'border-slate-300 dark:border-slate-600'"
+              >
+                <i v-if="activeAnthropicId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
+              </div>
+
+              <div class="flex min-w-0 flex-1 items-center gap-2">
+                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
+                <span v-if="activeAnthropicId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  使用中
+                </span>
+                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                  已配置
+                </span>
+              </div>
+
+              <button
+                @click.stop="openEditDialog('anthropic', provider, idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
+                title="设置"
+              >
+                <i class="fa-solid fa-gear text-xs"></i>
+              </button>
+              <button
+                @click.stop="removeProvider('anthropic', idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
+                title="删除"
+              >
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- ====== PaddleOCR ====== -->
-        <div class="rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60">
-          <div class="mb-5 flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-              <i class="fa-solid fa-eye text-lg text-blue-600 dark:text-blue-400"></i>
+        <div>
+          <div class="mb-3 flex items-center justify-between pl-1">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                <i class="fa-solid fa-eye text-lg text-blue-600 dark:text-blue-400"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">PaddleOCR</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">文档 OCR 识别服务</p>
+              </div>
             </div>
-            <div>
-              <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">PaddleOCR</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400">文档 OCR 识别服务</p>
-            </div>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">API URL</label>
-              <input
-                v-model="form.paddleocr.api_url"
-                type="text"
-                placeholder="https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">API Token</label>
-              <input
-                v-model="form.paddleocr.api_token"
-                type="password"
-                :placeholder="hints.paddleocr.api_token_set ? `已设置 (${hints.paddleocr.api_token_hint})` : '输入 API Token'"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">OCR 模型</label>
-              <input
-                v-model="form.paddleocr.model"
-                type="text"
-                placeholder="PaddleOCR-VL-1.5"
-                class="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500"
-              />
-            </div>
+            <button
+              @click="openAddDialog('paddleocr')"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+            >
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              添加
+            </button>
           </div>
 
-          <!-- PaddleOCR 开关 -->
-          <div class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">
-            <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">功能开关</p>
-            <div class="space-y-3">
-              <label
-                v-for="toggle in [
-                  { key: 'use_doc_orientation', label: '文档方向检测' },
-                  { key: 'use_doc_unwarping', label: '文档去畸变' },
-                  { key: 'use_chart_recognition', label: '图表识别' },
-                ]"
-                :key="toggle.key"
-                class="flex cursor-pointer items-center justify-between"
+          <div v-if="paddleocrProviders.length === 0" class="rounded-2xl border border-dashed border-slate-200/60 py-10 text-center dark:border-white/10">
+            <i class="fa-solid fa-plug text-3xl text-slate-300 dark:text-slate-600"></i>
+            <p class="mt-3 text-sm font-medium text-slate-400 dark:text-slate-500">尚未配置，点击上方"添加"按钮</p>
+          </div>
+
+          <div class="space-y-2">
+            <div
+              v-for="(provider, idx) in paddleocrProviders" :key="provider.id"
+              class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+              @click="toggleActive('paddleocr', provider.id)"
+            >
+              <div
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                :class="activePaddleocrId === provider.id
+                  ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400'
+                  : 'border-slate-300 dark:border-slate-600'"
               >
-                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
-                <button
-                  type="button"
-                  @click="form.paddleocr[toggle.key] = !form.paddleocr[toggle.key]"
-                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  :class="form.paddleocr[toggle.key] ? 'bg-blue-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'"
-                >
-                  <span
-                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
-                    :class="form.paddleocr[toggle.key] ? 'translate-x-5' : 'translate-x-0'"
-                  ></span>
-                </button>
-              </label>
+                <i v-if="activePaddleocrId === provider.id" class="fa-solid fa-check text-[9px] text-white"></i>
+              </div>
+
+              <div class="flex min-w-0 flex-1 items-center gap-2">
+                <span class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ provider.name || '未命名' }}</span>
+                <span v-if="activePaddleocrId === provider.id" class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  使用中
+                </span>
+                <span v-else-if="provider.api_key_set" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                  已配置
+                </span>
+              </div>
+
+              <button
+                @click.stop="openEditDialog('paddleocr', provider, idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
+                title="设置"
+              >
+                <i class="fa-solid fa-gear text-xs"></i>
+              </button>
+              <button
+                @click.stop="removeProvider('paddleocr', idx)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
+                title="删除"
+              >
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- 操作栏 -->
-        <div class="flex items-center justify-end gap-3 pb-8">
-          <button
-            @click="loadConfig"
-            :disabled="saving"
-            class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-5 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
-            <i class="fa-solid fa-rotate-right"></i>
-            重置
-          </button>
-          <button
-            @click="saveConfig"
-            :disabled="saving"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-          >
-            <i class="fa-solid" :class="saving ? 'fa-circle-notch fa-spin' : 'fa-check'"></i>
-            {{ saving ? '保存中...' : '保存配置' }}
-          </button>
-        </div>
       </div>
     </div>
+
+    <!-- 添加/编辑供应商弹窗 -->
+    <ProviderDialog
+      :open="dialogOpen"
+      :type="dialogType"
+      :edit-data="dialogEditData"
+      @close="dialogOpen = false"
+      @confirm="onDialogConfirm"
+    />
   </div>
 </template>
