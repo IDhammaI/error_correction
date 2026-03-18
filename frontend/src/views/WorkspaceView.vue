@@ -15,6 +15,7 @@ import SplitLoading from '../components/SplitLoading.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
+import ReviewView from '../components/ReviewView.vue'
 import ErrorBank from '../components/ErrorBank.vue'
 import ChatView from '../components/ChatView.vue'
 import SettingsView from '../components/SettingsView.vue'
@@ -45,6 +46,7 @@ const VIEW_TO_PATH = {
   workspace: '/app/workspace',
   workspace_review: '/app/workspace/review',
   dashboard: '/app/dashboard',
+  review: '/app/review',
   'error-bank': '/app/error-bank',
   settings: '/app/settings',
   'split-history': '/app/split-history',
@@ -614,10 +616,10 @@ onBeforeUnmount(() => {
 
         <!-- 视图切换菜单 -->
         <nav class="mt-6 flex flex-col gap-1.5 px-4">
-          <div class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
+          <div class="mb-2 px-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
 
           <button
-            @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+            @click="currentView = 'workspace'"
             class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
             :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
@@ -632,8 +634,18 @@ onBeforeUnmount(() => {
             :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>我的错题本</span>
+            <span>数据面板</span>
             <div v-if="currentView === 'dashboard'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
+          </button>
+
+          <button
+            @click="currentView = 'review'"
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
+            :class="currentView === 'review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          >
+            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            <span>待复习</span>
+            <div v-if="currentView === 'review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
 
           <button
@@ -652,18 +664,18 @@ onBeforeUnmount(() => {
       <!-- 底部控制与返回栏 -->
       <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
         <!-- 用户信息 -->
-        <div class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-1 bg-slate-50/80 dark:bg-white/5">
-          <div class="h-8 w-8 shrink-0 rounded-full bg-blue-100 dark:bg-indigo-500/20 flex items-center justify-center text-blue-700 dark:text-indigo-300 text-sm font-extrabold">
+        <div class="flex items-center gap-2 rounded-2xl px-3 py-2 mb-2 bg-white/70 backdrop-blur-xl border border-slate-200/60 dark:bg-white/[0.06] dark:backdrop-blur-xl dark:border-white/10">
+          <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 flex items-center justify-center text-white text-sm font-extrabold shadow-sm">
             {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate leading-tight">{{ currentUser?.username }}</p>
-            <p class="text-[11px] text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate leading-tight">{{ currentUser?.username }}</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
           </div>
           <button
             @click="handleLogout"
             title="退出登录"
-            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50/80 dark:hover:bg-rose-500/10 transition-all"
           >
             <i class="fas fa-right-from-bracket text-sm"></i>
           </button>
@@ -672,7 +684,7 @@ onBeforeUnmount(() => {
         <button
           @click="currentView = 'settings'"
           class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
-          :class="currentView === 'settings' ? 'bg-blue-600 text-white shadow-md dark:bg-indigo-500 dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+          :class="currentView === 'settings' ? 'bg-white/70 backdrop-blur-xl border border-blue-200/60 text-blue-600 shadow-sm dark:bg-white/10 dark:backdrop-blur-xl dark:border-indigo-500/30 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'text-slate-600 hover:bg-white/60 hover:backdrop-blur-xl hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
         >
           <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
           系统设置
@@ -686,23 +698,27 @@ onBeforeUnmount(() => {
       <div class="flex justify-around">
         <button @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'" class="flex flex-col items-center p-2" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
-          <span class="mt-1 text-[10px] font-bold">录题</span>
+          <span class="mt-1 text-xs font-bold">录题</span>
+        </button>
+        <button @click="currentView = 'review'" class="flex flex-col items-center p-2" :class="currentView === 'review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+          <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          <span class="mt-1 text-xs font-bold">待复习</span>
         </button>
         <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-chart-pie text-lg"></i>
-          <span class="mt-1 text-[10px] font-bold">仪表盘</span>
+          <span class="mt-1 text-xs font-bold">数据面板</span>
         </button>
         <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-layer-group text-lg"></i>
-          <span class="mt-1 text-[10px] font-bold">错题本</span>
+          <span class="mt-1 text-xs font-bold">错题本</span>
         </button>
         <button @click="currentView = 'settings'" class="flex flex-col items-center p-2" :class="currentView === 'settings' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-sliders text-lg"></i>
-          <span class="mt-1 text-[10px] font-bold">设置</span>
+          <span class="mt-1 text-xs font-bold">设置</span>
         </button>
         <button @click="(e) => toggleTheme(e.currentTarget)" class="hidden">
-          <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon'"></i>
-          <span class="text-[10px] font-bold">主题</span>
+          <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-indigo-400' : 'fa-moon'"></i>
+          <span class="text-xs font-bold">主题</span>
         </button>
       </div>
     </nav>
@@ -711,97 +727,96 @@ onBeforeUnmount(() => {
     <main class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-0">
 
       <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
-      <Transition name="view-fade">
-      <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
-        <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-5xl flex-col px-4 py-4 sm:px-8 sm:py-6">
-          <Transition name="flip" mode="out-in">
-            <!-- 第一页：录题与分析 -->
-            <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
-              <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
-                <div>
-                  <div class="mb-3.5 flex items-center">
-                    <div class="relative flex items-center gap-2 py-1 text-[10px] font-black tracking-widest text-blue-600/80 dark:text-indigo-300/80">
-                      <div class="relative flex h-4 w-4 items-center justify-center">
-                        <i class="fa-solid fa-bolt-lightning absolute animate-pulse text-[10px] text-amber-500 dark:text-indigo-400"></i>
-                        <div class="absolute h-full w-full animate-ping rounded-full bg-amber-400/10 dark:bg-indigo-400/10"></div>
-                      </div>
+        <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
+          <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-6xl flex-col px-4 py-4 sm:px-8 sm:py-6">
+            <Transition name="flip" mode="out-in">
+              <!-- 第一页：录题与分析 -->
+              <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
+                <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
+                  <div>
+                    <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+                      智能录入与分析
+                    </h2>
+                    <div class="mt-2 flex items-center">
+                      <div class="relative flex items-center gap-2 py-1 text-xs font-black tracking-widest text-blue-600/80 dark:text-indigo-300/80">
+                        <div class="relative flex h-4 w-4 items-center justify-center">
+                          <i class="fa-solid fa-bolt-lightning absolute animate-pulse text-xs text-indigo-500 dark:text-indigo-400"></i>
+                          <div class="absolute h-full w-full animate-ping rounded-full bg-indigo-400/10 dark:bg-indigo-400/10"></div>
+                        </div>
 
-                      <span class="relative z-10 uppercase pb-0.5">
-                        新一代 AI 错题处理架构 <span class="ml-1 font-extrabold text-blue-600 dark:text-indigo-300">V2.0</span>
-                      </span>
+                        <span class="relative z-10 uppercase pb-0.5">
+                          新一代 AI 错题处理架构 <span class="ml-1 font-extrabold text-blue-600 dark:text-indigo-300">V2.0</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-                    智能录入与分析
-                  </h2>
-                </div>
-                <button
-                  @click="currentView = 'split-history'"
-                  class="group inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm font-bold text-slate-600 backdrop-blur-md transition-all hover:border-blue-500/40 hover:bg-white hover:text-blue-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
-                >
-                  <i class="fa-solid fa-clock-rotate-left text-sm transition-transform group-hover:scale-110"></i>
-                  分割历史
-                </button>
-              </div>
-
-              <div class="main-content relative flex flex-1 flex-col min-h-0 bg-transparent">
-                <StatusBar
-                  class="border-b border-slate-200/60 pb-6 dark:border-white/5"
-                  :status-loading="statusLoading"
-                  :status-error="statusError"
-                  :status-pills="statusPills"
-                  :provider-options="providerOptions"
-                  :selected-model="selectedModel"
-                  :disabled="splitting || splitCompleted"
-                  :no-models="!hasConfiguredModel"
-                  @update:selected-model="(v) => selectedModel = v"
-                />
-
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
-                  <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
-
-                  <FileList
-                    :pending-files="pendingFiles"
-                    :file-progress="fileProgress"
-                    :waiting-keys="waitingKeys"
-                    :upload-busy="uploadBusy"
-                    :upload-ready="uploadReady"
-                    :splitting="splitting"
-                    :split-completed="splitCompleted"
-                    @remove-file="removePendingFile"
-                  />
-
-                  <FileUploader
-                    class="transition-all duration-500"
-                    :class="questions.length === 0 ? 'flex-1' : 'border-b border-slate-200/60 pb-8 dark:border-white/5'"
-                    :pending-files="pendingFiles"
-                    :file-progress="fileProgress"
-                    :waiting-keys="waitingKeys"
-                    :upload-busy="uploadBusy"
-                    :upload-ready="uploadReady"
-                    :splitting="splitting"
-                    :split-completed="splitCompleted"
-                    :expand="questions.length === 0"
-                    :disabled="!hasConfiguredModel"
-                    @upload="enqueueUpload"
-                    @remove-file="removePendingFile"
-                  />
+                  <button
+                    @click="currentView = 'split-history'"
+                    class="group inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2 text-sm font-bold text-slate-600 backdrop-blur-md transition-all hover:border-blue-500/40 hover:bg-white hover:text-blue-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
+                  >
+                    <i class="fa-solid fa-clock-rotate-left text-sm transition-transform group-hover:scale-110"></i>
+                    分割历史
+                  </button>
                 </div>
 
-                <ActionBar
-                  class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
-                  :split-enabled="splitEnabled"
-                  :export-enabled="false"
-                  :splitting="splitting"
-                  :split-completed="splitCompleted"
-                  @split="doSplit"
-                />
+                <div class="main-content relative flex flex-1 flex-col min-h-0 bg-transparent">
+                  <StatusBar
+                    class="border-b border-slate-200/60 pb-6 dark:border-white/5"
+                    :status-loading="statusLoading"
+                    :status-error="statusError"
+                    :status-pills="statusPills"
+                    :provider-options="providerOptions"
+                    :selected-model="selectedModel"
+                    :disabled="splitting || splitCompleted"
+                    :no-models="!hasConfiguredModel"
+                    @update:selected-model="(v) => selectedModel = v"
+                  />
 
+                  <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
+                    <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
+
+                    <FileList
+                      :pending-files="pendingFiles"
+                      :file-progress="fileProgress"
+                      :waiting-keys="waitingKeys"
+                      :upload-busy="uploadBusy"
+                      :upload-ready="uploadReady"
+                      :splitting="splitting"
+                      :split-completed="splitCompleted"
+                      @remove-file="removePendingFile"
+                    />
+
+                    <FileUploader
+                      class="transition-all duration-500"
+                      :class="questions.length === 0 ? 'flex-1' : 'border-b border-slate-200/60 pb-8 dark:border-white/5'"
+                      :pending-files="pendingFiles"
+                      :file-progress="fileProgress"
+                      :waiting-keys="waitingKeys"
+                      :upload-busy="uploadBusy"
+                      :upload-ready="uploadReady"
+                      :splitting="splitting"
+                      :split-completed="splitCompleted"
+                      :expand="questions.length === 0"
+                      :disabled="!hasConfiguredModel"
+                      @upload="enqueueUpload"
+                      @remove-file="removePendingFile"
+                    />
+                  </div>
+
+                  <ActionBar
+                    class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
+                    :split-enabled="splitEnabled"
+                    :export-enabled="false"
+                    :splitting="splitting"
+                    :split-completed="splitCompleted"
+                    @split="doSplit"
+                  />
+
+                </div>
               </div>
-            </div>
 
             <!-- 第二页：解析结果核对 -->
-            <div v-else key="review" class="flex flex-1 flex-col overflow-hidden">
+            <div v-else-if="currentView === 'workspace_review'" key="review" class="flex flex-1 flex-col overflow-hidden">
               <div class="mb-4 flex items-center justify-between pl-2 sm:pl-0 shrink-0">
                 <div class="flex items-center gap-4">
                   <button
@@ -814,27 +829,27 @@ onBeforeUnmount(() => {
                     <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
                       题目数据核对
                     </h2>
-                    <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">请确认解析结果的准确性并进行导出或存档</p>
+                    <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">请确认解析结果的准确性并进行导出或存档</p>
                   </div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                   <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
                     <button
                       type="button"
-                      class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+                      class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
                       @click="selectAll"
                     >
                       全选
                     </button>
                     <button
                       type="button"
-                      class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-[10px] font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+                      class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
                       @click="deselectAll"
                     >
                       清空
                     </button>
                   </div>
-                  <div class="flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white shadow-xl shadow-slate-900/20 dark:bg-white dark:text-slate-900 dark:shadow-none">
+                  <div class="flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-black text-white shadow-md dark:bg-white dark:text-slate-900 dark:shadow-none">
                     <i class="fa-solid fa-square-check text-blue-400"></i>
                     <span class="tracking-widest">已选 {{ selectedIds.size }} 项</span>
                   </div>
@@ -864,81 +879,79 @@ onBeforeUnmount(() => {
                 @save-to-db="doSaveToDb"
               />
             </div>
-          </Transition>
+            </Transition>
+          </div>
+
+          <!-- AI 分割任务全局遮罩 -->
+          <SplitLoading v-if="splitting" />
         </div>
 
-        <!-- AI 分割任务全局遮罩 -->
-        <SplitLoading v-if="splitting" />
+      <!-- 视图 2：待复习 -->
+      <div v-show="currentView === 'review'" class="h-full">
+        <ReviewView
+          :theme="theme"
+          :visible="currentView === 'review'"
+          @go-workspace="currentView = 'workspace'"
+          @push-toast="pushToast"
+          @open-image="openModal"
+          @start-chat="openChat"
+        />
       </div>
-      </Transition>
 
+      <!-- 视图 3：数据面板 -->
+      <div v-show="currentView === 'dashboard'" class="h-full">
+        <Dashboard
+          :theme="theme"
+          :visible="currentView === 'dashboard'"
+          @go-workspace="currentView = 'workspace'"
+          @push-toast="pushToast"
+        />
+      </div>
 
-      <!-- 视图 2：我的错题本数据看板 (完全独立组件) -->
-      <Transition name="view-fade">
-        <div v-show="currentView === 'dashboard'" class="h-full">
-          <Dashboard
-            :theme="theme"
-            :visible="currentView === 'dashboard'"
-            @go-workspace="currentView = 'workspace'"
-            @push-toast="pushToast"
-            @open-image="openModal"
-            @start-chat="openChat"
-          />
-        </div>
-      </Transition>
+      <!-- 视图 4：错题库 -->
+      <div v-show="currentView === 'error-bank'" class="h-full">
+        <ErrorBank
+          ref="errorBankRef"
+          :theme="theme"
+          :visible="currentView === 'error-bank'"
+          @go-workspace="currentView = 'workspace'"
+          @push-toast="pushToast"
+          @open-image="openModal"
+          @start-chat="openChat"
+        />
+      </div>
 
-      <!-- 视图 3：错题库 -->
-      <Transition name="view-fade">
-        <div v-show="currentView === 'error-bank'" class="h-full">
-          <ErrorBank
-            ref="errorBankRef"
-            :theme="theme"
-            :visible="currentView === 'error-bank'"
-            @go-workspace="currentView = 'workspace'"
-            @push-toast="pushToast"
-            @open-image="openModal"
-            @start-chat="openChat"
-          />
-        </div>
-      </Transition>
+      <!-- 视图 5：分割历史 -->
+      <div v-show="currentView === 'split-history'" class="h-full">
+        <SplitHistory
+          :theme="theme"
+          :visible="currentView === 'split-history'"
+          @push-toast="pushToast"
+          @open-image="openModal"
+          @load-record="handleLoadRecord"
+          @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+        />
+      </div>
 
-      <!-- 视图 4：分割历史 -->
-      <Transition name="view-fade">
-        <div v-show="currentView === 'split-history'" class="h-full">
-          <SplitHistory
-            :theme="theme"
-            :visible="currentView === 'split-history'"
-            @push-toast="pushToast"
-            @open-image="openModal"
-            @load-record="handleLoadRecord"
-            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-          />
-        </div>
-      </Transition>
+      <!-- 视图 6：系统设置 -->
+      <div v-show="currentView === 'settings'" class="h-full">
+        <SettingsView
+          :visible="currentView === 'settings'"
+          @saved="doFetchStatus"
+        />
+      </div>
 
-      <!-- 视图 5：系统设置 -->
-      <Transition name="view-fade">
-        <div v-show="currentView === 'settings'" class="h-full">
-          <SettingsView
-            :visible="currentView === 'settings'"
-            @saved="doFetchStatus"
-          />
-        </div>
-      </Transition>
-
-      <!-- 视图 6：AI 辅导对话 -->
-      <Transition name="view-fade">
-        <div v-show="currentView === 'chat'" class="h-full">
-          <ChatView
-            v-if="chatActive"
-            :session-id="chatSessionId"
-            :question="chatQuestion"
-            :model-provider="selectedProvider"
-            :model-name="selectedModel"
-            @back="backToErrorBank"
-          />
-        </div>
-      </Transition>
+      <!-- 视图 7：AI 辅导对话 -->
+      <div v-show="currentView === 'chat'" class="h-full">
+        <ChatView
+          v-if="chatActive"
+          :session-id="chatSessionId"
+          :question="chatQuestion"
+          :model-provider="selectedProvider"
+          :model-name="selectedModel"
+          @back="backToErrorBank"
+        />
+      </div>
     </main>
 
     <!-- 全局弹窗与通知 -->
@@ -1015,33 +1028,6 @@ onBeforeUnmount(() => {
   mix-blend-mode: normal;
 }
 
-/* 侧边栏视图切换：交叉淡入淡出 */
-.view-fade-enter-active {
-  transition: opacity 0.22s ease;
-}
-.view-fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.view-fade-enter-from,
-.view-fade-leave-to {
-  opacity: 0;
-}
-
-/* 翻页动画效果 */
-.flip-enter-active {
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.flip-leave-active {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.flip-enter-from {
-  opacity: 0;
-  transform: translateX(30px) scale(0.98);
-}
-.flip-leave-to {
-  opacity: 0;
-  transform: translateX(-30px) scale(0.98);
-}
 
 .ws-loading-fade-leave-active { transition: opacity 0.4s ease; }
 .ws-loading-fade-leave-to { opacity: 0; }
@@ -1053,4 +1039,5 @@ onBeforeUnmount(() => {
   from { width: 0%; }
   to   { width: 100%; }
 }
+
 </style>

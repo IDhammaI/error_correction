@@ -6,12 +6,9 @@ const route = useRoute()
 const router = useRouter()
 const transitionName = ref('auth-slide-left')
 
-const loading = ref(true)
-
 onMounted(() => {
-  setTimeout(() => {
-    loading.value = false
-  }, 2000)
+  document.documentElement.classList.add('dark')
+  localStorage.setItem('theme', 'dark')
 })
 
 router.beforeEach((to, from) => {
@@ -31,22 +28,6 @@ const FEATURES = [
 <template>
   <div class="min-h-screen flex bg-slate-50 dark:bg-[#0A0A0F]">
 
-    <!-- Loading overlay -->
-    <Transition name="loading-fade">
-      <div v-if="loading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
-        <div class="relative">
-          <div class="absolute inset-0 rounded-2xl bg-indigo-500/40 blur-xl"></div>
-          <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 p-3.5 rounded-2xl shadow-lg border border-white/10">
-            <img src="/logo.svg" class="w-9 h-9 brightness-0 invert" alt="logo" />
-          </div>
-        </div>
-        <div class="w-48">
-          <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-400 loading-bar"></div>
-          </div>
-        </div>
-      </div>
-    </Transition>
 
     <!-- 左侧品牌区（大屏显示） -->
     <div class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-indigo-950 dark:to-[#0A0A0F] p-12">
@@ -178,21 +159,6 @@ input:-webkit-autofill:focus {
 </style>
 
 <style scoped>
-.loading-fade-leave-active {
-  transition: opacity 0.4s ease;
-}
-.loading-fade-leave-to {
-  opacity: 0;
-}
-
-.loading-bar {
-  animation: loadProgress 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-@keyframes loadProgress {
-  from { width: 0%; }
-  to   { width: 100%; }
-}
-
 /* 向左滑（登录 → 注册） */
 .auth-slide-left-enter-active,
 .auth-slide-left-leave-active {

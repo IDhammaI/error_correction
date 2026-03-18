@@ -15,12 +15,12 @@
     <div class="relative z-10 flex-1 flex flex-col items-center justify-center text-center">
       <h2 class="text-4xl font-extrabold mb-6 text-white">即刻开启高效学习模式</h2>
       <p class="text-blue-100/80 text-lg mb-10 max-w-xl mx-auto">告别低效抄录，让 AI 成为你的超级助教。注册即享完整试卷解析体验。</p>
-      <a href="/auth" class="relative inline-flex group h-12">
+      <RouterLink to="/auth" class="relative inline-flex group h-12">
         <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
         <span class="relative inline-flex items-center px-8 py-3 text-sm font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all">
           免费创建错题库
         </span>
-      </a>
+      </RouterLink>
     </div>
 
     <!-- Footer -->
