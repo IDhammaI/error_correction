@@ -3,6 +3,16 @@ import DOMPurify from 'dompurify'
 /** 生成文件唯一标识 */
 export const fileKey = (file) => `${file.name}|${file.size}|${file.lastModified}`
 
+/** 生成唯一 ID（兼容非 HTTPS 上下文，使用 getRandomValues 确保密码学安全） */
+export const genId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+}
+
 /** 格式化选项文本 */
 export const formatOption = (s) => String(s || '')
 

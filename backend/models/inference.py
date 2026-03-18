@@ -119,21 +119,13 @@ class InferenceEngine:
     # 推理
     # ------------------------------------------------------------------
 
-    def _infer_single(self, arr: np.ndarray) -> np.ndarray:
-        """整图推理（适用于恰好 512×512 的 patch）"""
-        import torch
-        tensor = self._to_tensor(arr, self._device)
-        with torch.no_grad():
-            *_, Icomp = self._model(tensor)
-        return self._to_numpy(Icomp)
-
     def _infer_sliding_window(self, arr: np.ndarray) -> np.ndarray:
         """滑动窗口推理，patch 重叠区域做加权平均以消除接缝"""
         import torch
 
         h, w, _ = arr.shape
-        result = np.zeros((h, w, 3), dtype=np.float64)
-        weight = np.zeros((h, w, 1), dtype=np.float64)
+        result = np.zeros((h, w, 3), dtype=np.float32)
+        weight = np.zeros((h, w, 1), dtype=np.float32)
 
         stride = _PATCH_SIZE - _OVERLAP
 
@@ -143,15 +135,16 @@ class InferenceEngine:
                 pts.append(total - _PATCH_SIZE)
             return pts
 
-        for y in _ticks(h):
-            for x in _ticks(w):
-                patch = arr[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE]
-                tensor = self._to_tensor(patch, self._device)
-                with torch.no_grad():
+        with torch.no_grad():
+            for y in _ticks(h):
+                for x in _ticks(w):
+                    patch = arr[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE]
+                    tensor = self._to_tensor(patch, self._device)
                     *_, Icomp = self._model(tensor)
-                out = self._to_numpy(Icomp).astype(np.float64)
-                result[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += out
-                weight[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += 1.0
+                    # 直接从 tensor 提取 float32，避免 uint8 截断精度损失
+                    out = (Icomp.squeeze(0).permute(1, 2, 0).cpu().numpy() + 1.0) * 127.5
+                    result[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += out
+                    weight[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += 1.0
 
         return np.clip(result / weight, 0, 255).astype(np.uint8)
 
@@ -174,10 +167,7 @@ class InferenceEngine:
         arr, orig_w, orig_h = self._preprocess(pil_img)
         h, w, _ = arr.shape
 
-        if h == _PATCH_SIZE and w == _PATCH_SIZE:
-            result_arr = self._infer_single(arr)
-        else:
-            result_arr = self._infer_sliding_window(arr)
+        result_arr = self._infer_sliding_window(arr)
 
         # 裁剪掉 padding，还原到原始尺寸
         result_arr = result_arr[:orig_h, :orig_w]

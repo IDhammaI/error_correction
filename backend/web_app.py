@@ -804,7 +804,6 @@ def erase_text():
 
     try:
         from models.inference import InferenceEngine
-        import uuid
 
         result_img = InferenceEngine().run(image_bytes)
 
