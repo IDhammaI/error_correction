@@ -75,11 +75,11 @@ export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort 
   return xhr
 }
 
-export async function splitQuestions(modelProvider, modelName) {
+export async function splitQuestions(modelProvider, modelName, { erase = false } = {}) {
   const resp = await fetch('/api/split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName)),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { erase })),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()
