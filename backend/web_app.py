@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import PurePath
 from typing import Optional
 
+import requests as http_requests
+
 # Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
 mimetypes.add_type('application/javascript', '.js')
 from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, session
@@ -21,7 +23,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.workflow import build_workflow
 from src.utils import export_wrongbook as export_wrongbook_md
-from config import settings, update_env_file
+from config import settings
 from db import init_db, SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
@@ -778,9 +780,14 @@ def get_status():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """获取当前可编辑配置（API key 脱敏）"""
+    """获取当前用户的 provider 配置"""
     try:
-        return jsonify({'success': True, 'config': settings.get_config_for_ui()})
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': '请先登录'}), 401
+        with SessionLocal() as db:
+            config = crud.get_user_providers(db, user_id)
+        return jsonify({'success': True, 'config': config})
     except Exception as e:
         logger.exception("获取配置失败")
         return jsonify({'success': False, 'error': '获取配置失败'}), 500
@@ -788,63 +795,136 @@ def get_config():
 
 @app.route('/api/config', methods=['PUT'])
 def update_config():
-    """更新配置并热重载
-
-    接收 JSON body，结构与 GET /api/config 返回的 config 一致。
-    密钥字段不发送或发送 null 则跳过，发送空字符串则清空。
-    """
+    """保存当前用户的 provider 配置到数据库"""
     try:
         data = request.get_json(force=True) or {}
-        updates = {}
+        user_id = session.get('user_id')
 
-        # 字段→环境变量映射
-        field_map = {
-            'openai': {
-                'api_key': 'OPENAI_API_KEY',
-                'base_url': 'OPENAI_BASE_URL',
-                'model_name': 'OPENAI_MODEL_NAME',
-                'light_model_name': 'OPENAI_LIGHT_MODEL_NAME',
-                'supports_function_calling': 'OPENAI_SUPPORTS_FUNCTION_CALLING',
-            },
-            'anthropic': {
-                'api_key': 'ANTHROPIC_API_KEY',
-                'base_url': 'ANTHROPIC_BASE_URL',
-                'model_name': 'ANTHROPIC_MODEL_NAME',
-            },
-            'paddleocr': {
-                'api_url': 'PADDLEOCR_API_URL',
-                'api_token': 'PADDLEOCR_API_TOKEN',
-                'model': 'PADDLEOCR_MODEL',
-                'use_doc_orientation': 'PADDLEOCR_USE_DOC_ORIENTATION',
-                'use_doc_unwarping': 'PADDLEOCR_USE_DOC_UNWARPING',
-                'use_chart_recognition': 'PADDLEOCR_USE_CHART_RECOGNITION',
-            },
-        }
+        if not user_id:
+            return jsonify({'success': False, 'error': '请先登录'}), 401
 
-        for section, mapping in field_map.items():
-            section_data = data.get(section)
-            if not isinstance(section_data, dict):
-                continue
-            for field, env_key in mapping.items():
-                if field not in section_data:
-                    continue
-                val = section_data[field]
-                if val is None:
-                    continue
-                # 布尔值转字符串
-                if isinstance(val, bool):
-                    val = 'true' if val else 'false'
-                updates[env_key] = str(val)
-
-        if updates:
-            update_env_file(updates)
-            settings.reload_providers()
-
+        with SessionLocal() as db:
+            try:
+                crud.save_user_providers(db, user_id, data)
+            except Exception:
+                db.rollback()
+                raise
         return jsonify({'success': True})
 
     except Exception as e:
         logger.exception("更新配置失败")
         return jsonify({'success': False, 'error': '更新配置失败，请检查日志'}), 500
+
+
+@app.route('/api/models/list', methods=['POST'])
+def list_models():
+    """代理请求目标 API 的模型列表，绕过浏览器 CORS 限制。
+
+    请求体:
+        type: 'openai' | 'anthropic'
+        api_key: API Key（可选，留空则使用系统已配置的 key）
+        base_url: Base URL（可选）
+        provider_id: 已有 provider 的 id（可选，用于回退读取已存 key）
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        provider_type = data.get('type', 'openai')
+        api_key = data.get('api_key') or ''
+        base_url = data.get('base_url') or ''
+
+        # 如果前端没传 key，尝试从环境变量回退
+        if not api_key:
+            if provider_type == 'openai':
+                api_key = os.getenv('OPENAI_API_KEY', '')
+            elif provider_type == 'anthropic':
+                api_key = os.getenv('ANTHROPIC_API_KEY', '')
+
+        if not api_key:
+            return jsonify({'error': '未提供 API Key，且系统未配置默认 Key'}), 400
+
+        if provider_type == 'openai':
+            url = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/v1/models'
+            headers = {'Authorization': f'Bearer {api_key}'}
+            resp = http_requests.get(url, headers=headers, timeout=15)
+
+            # 部分 OpenAI 兼容 API 的路径可能不带 /v1
+            if resp.status_code == 404:
+                url_alt = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/models'
+                resp = http_requests.get(url_alt, headers=headers, timeout=15)
+
+            if resp.status_code != 200:
+                return jsonify({'error': f'API 返回 {resp.status_code}: {resp.text[:200]}'}), 502
+
+            body = resp.json()
+            models = sorted([m['id'] for m in body.get('data', [])]) if 'data' in body else []
+            return jsonify({'models': models})
+
+        elif provider_type == 'anthropic':
+            # Anthropic 没有官方 list models 接口，返回常用模型列表
+            models = [
+                'claude-opus-4-20250514',
+                'claude-sonnet-4-20250514',
+                'claude-haiku-4-20250506',
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-haiku-20241022',
+                'claude-3-opus-20240229',
+            ]
+            return jsonify({'models': models})
+
+        else:
+            return jsonify({'error': f'不支持的 provider 类型: {provider_type}'}), 400
+
+    except http_requests.Timeout:
+        return jsonify({'error': '请求超时，请检查 Base URL 是否正确'}), 504
+    except http_requests.ConnectionError:
+        return jsonify({'error': '无法连接目标 API，请检查 Base URL'}), 502
+    except Exception as e:
+        logger.exception("获取模型列表失败")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/paddleocr/test', methods=['POST'])
+def test_paddleocr():
+    """测试 PaddleOCR API Token 是否可用。
+
+    请求体:
+        api_token: API Token
+        api_url: API URL
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        api_token = data.get('api_token') or ''
+        api_url = data.get('api_url') or ''
+
+        if not api_token:
+            api_token = os.getenv('PADDLEOCR_API_TOKEN', '')
+        if not api_url:
+            api_url = os.getenv('PADDLEOCR_API_URL', '')
+
+        if not api_token or not api_url:
+            return jsonify({'error': '未提供 API Token 或 API URL'}), 400
+
+        # 用 GET 请求 API URL，带 token 验证认证是否有效
+        headers = {'Authorization': f'bearer {api_token}'}
+        resp = http_requests.get(api_url, headers=headers, timeout=10)
+
+        # 401/403 表示 token 无效
+        if resp.status_code in (401, 403):
+            return jsonify({'success': False, 'error': '认证失败，请检查 API Token 是否正确'})
+
+        # 其他非 5xx 状态码都认为 token 有效（包括 404/405 等，因为 GET 可能不被支持但认证通过了）
+        if resp.status_code >= 500:
+            return jsonify({'success': False, 'error': f'服务端错误 ({resp.status_code})，请检查 API URL'})
+
+        return jsonify({'success': True, 'message': 'API Token 验证通过'})
+
+    except http_requests.Timeout:
+        return jsonify({'success': False, 'error': '请求超时，请检查 API URL 是否正确'}), 504
+    except http_requests.ConnectionError:
+        return jsonify({'success': False, 'error': '无法连接，请检查 API URL'}), 502
+    except Exception as e:
+        logger.exception("测试 PaddleOCR 连接失败")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/history', methods=['GET'])

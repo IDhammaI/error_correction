@@ -24,6 +24,31 @@ class User(Base):
     questions = relationship("Question", back_populates="user")
     upload_batches = relationship("UploadBatch", back_populates="user")
     split_records = relationship("SplitRecord", back_populates="user")
+    provider_configs = relationship("ProviderConfig", back_populates="user", cascade="all, delete-orphan")
+
+
+class ProviderConfig(Base):
+    """用户级 API 供应商配置（每用户可配置多个，同类激活一个）"""
+    __tablename__ = "provider_configs"
+
+    id = Column(String(36), primary_key=True)  # UUID
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(20), nullable=False)  # 'openai' | 'anthropic' | 'paddleocr'
+    name = Column(String(100), default="")
+    is_active = Column(Boolean, default=False)
+    api_key = Column(Text, default="")  # 加密存储（后续）
+    base_url = Column(Text, default="")
+    model_name = Column(String(100), default="")
+    light_model_name = Column(String(100), default="")
+    supports_function_calling = Column(Boolean, default=True)
+    # PaddleOCR 专用
+    use_doc_orientation = Column(Boolean, default=False)
+    use_doc_unwarping = Column(Boolean, default=False)
+    use_chart_recognition = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="provider_configs")
 
 
 class UploadBatch(Base):
