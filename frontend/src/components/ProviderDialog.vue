@@ -155,13 +155,15 @@ const testConnection = async () => {
   testingConnection.value = true
   testResult.value = null
   try {
+    const payload = {
+      api_token: form.value.api_key || undefined,
+      api_url: form.value.base_url || undefined,
+      provider_id: props.editData?.id || undefined,
+    }
     const res = await fetch('/api/paddleocr/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_token: form.value.api_key || undefined,
-        api_url: form.value.base_url || undefined,
-      }),
+      body: JSON.stringify(payload),
     })
     const data = await res.json()
     testResult.value = {
@@ -220,6 +222,7 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
               <input
                 v-model="form.name"
                 type="text"
+                autocomplete="one-time-code"
                 :placeholder="typeConfig.namePlaceholder"
                 :class="inputCls"
                 autofocus
@@ -231,6 +234,7 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
               <input
                 v-model="form.api_key"
                 type="password"
+                autocomplete="new-password"
                 :placeholder="isEdit && editData?.api_key_set ? `已设置 (${editData.api_key_hint})，留空则不修改` : typeConfig.secretPlaceholder"
                 :class="inputCls"
               />
@@ -241,6 +245,7 @@ const selectCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py
               <input
                 v-model="form.base_url"
                 type="text"
+                autocomplete="one-time-code"
                 :placeholder="typeConfig.urlPlaceholder"
                 :class="inputCls"
               />

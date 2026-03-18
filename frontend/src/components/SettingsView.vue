@@ -19,7 +19,7 @@ const saving = ref(false)
 const makeOpenAIProvider = (data = {}) => ({
   id: data.id || crypto.randomUUID(),
   name: data.name || '',
-  api_key: '',
+  api_key: data.api_key || '',
   base_url: data.base_url || '',
   model_name: data.model_name || '',
   light_model_name: data.light_model_name || '',
@@ -31,7 +31,7 @@ const makeOpenAIProvider = (data = {}) => ({
 const makeAnthropicProvider = (data = {}) => ({
   id: data.id || crypto.randomUUID(),
   name: data.name || '',
-  api_key: '',
+  api_key: data.api_key || '',
   base_url: data.base_url || '',
   model_name: data.model_name || '',
   api_key_set: data.api_key_set || false,
@@ -41,7 +41,7 @@ const makeAnthropicProvider = (data = {}) => ({
 const makePaddleOCRProvider = (data = {}) => ({
   id: data.id || crypto.randomUUID(),
   name: data.name || '',
-  api_key: '',
+  api_key: data.api_key || '',
   base_url: data.base_url || data.api_url || '',
   model_name: data.model_name || data.model || '',
   use_doc_orientation: data.use_doc_orientation || false,
@@ -204,7 +204,7 @@ const onDialogConfirm = (formData) => {
       anthropicProviders.value.push(p)
       if (anthropicProviders.value.length === 1) activeAnthropicId.value = p.id
     } else {
-      const p = makePaddleOCRProvider({ name: formData.name, api_url: formData.base_url, model: formData.model_name, use_doc_orientation: formData.use_doc_orientation, use_doc_unwarping: formData.use_doc_unwarping, use_chart_recognition: formData.use_chart_recognition })
+      const p = makePaddleOCRProvider({ name: formData.name, api_key: formData.api_key, api_url: formData.base_url, model: formData.model_name, use_doc_orientation: formData.use_doc_orientation, use_doc_unwarping: formData.use_doc_unwarping, use_chart_recognition: formData.use_chart_recognition })
       paddleocrProviders.value.push(p)
       if (paddleocrProviders.value.length === 1) activePaddleocrId.value = p.id
     }

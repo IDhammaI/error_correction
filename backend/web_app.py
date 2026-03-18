@@ -750,9 +750,40 @@ def get_status():
         JSON响应，包含系统配置和状态
     """
     try:
-        # 检查配置
-        paddleocr_configured = bool(os.getenv('PADDLEOCR_API_URL'))
-        available_models = settings.get_available_models()
+        user_id = session.get('user_id')
+
+        if user_id:
+            # 已登录：从数据库读取用户配置
+            with SessionLocal() as db:
+                paddle_provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                paddleocr_configured = bool(paddle_provider and paddle_provider.api_key and paddle_provider.base_url)
+
+                # 构建用户级可用模型列表
+                available_models = []
+                for category, label in [('openai', 'OpenAI'), ('anthropic', 'Anthropic')]:
+                    provider = crud.get_active_provider(db, user_id, category)
+                    if provider and provider.api_key:
+                        available_models.append({
+                            'value': category,
+                            'label': provider.name or label,
+                            'configured': True,
+                            'status': '配置成功',
+                            'default_model': provider.model_name or '',
+                            'models': [provider.model_name] if provider.model_name else [],
+                        })
+                    else:
+                        available_models.append({
+                            'value': category,
+                            'label': label,
+                            'configured': False,
+                            'status': '未配置',
+                            'default_model': '',
+                            'models': [],
+                        })
+        else:
+            # 未登录：返回空状态
+            paddleocr_configured = False
+            available_models = []
 
         status = {
             'paddleocr_configured': paddleocr_configured,
@@ -888,18 +919,32 @@ def test_paddleocr():
     """测试 PaddleOCR API Token 是否可用。
 
     请求体:
-        api_token: API Token
-        api_url: API URL
+        api_token: API Token（可选，留空则从数据库读取）
+        api_url: API URL（可选，留空则从数据库读取）
+        provider_id: 已有 provider 的 id（可选，用于回退读取已存 token）
     """
     try:
         data = request.get_json(force=True) or {}
         api_token = data.get('api_token') or ''
         api_url = data.get('api_url') or ''
 
-        if not api_token:
-            api_token = os.getenv('PADDLEOCR_API_TOKEN', '')
-        if not api_url:
-            api_url = os.getenv('PADDLEOCR_API_URL', '')
+        # 前端未提供凭据时，从数据库读取已保存的配置
+        if not api_token or not api_url:
+            user_id = session.get('user_id')
+            provider_id = data.get('provider_id')
+            if user_id:
+                with SessionLocal() as db:
+                    if provider_id:
+                        provider = db.query(crud.ProviderConfig).filter_by(
+                            id=provider_id, user_id=user_id
+                        ).first()
+                    else:
+                        provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                    if provider:
+                        if not api_token:
+                            api_token = provider.api_key or ''
+                        if not api_url:
+                            api_url = provider.base_url or ''
 
         if not api_token or not api_url:
             return jsonify({'error': '未提供 API Token 或 API URL'}), 400
