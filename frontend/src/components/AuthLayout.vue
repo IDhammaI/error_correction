@@ -9,6 +9,10 @@ const transitionName = ref('auth-slide-left')
 const loading = ref(true)
 
 onMounted(() => {
+  // 强制暗色模式
+  document.documentElement.classList.add('dark')
+  localStorage.setItem('theme', 'dark')
+
   setTimeout(() => {
     loading.value = false
   }, 2000)
