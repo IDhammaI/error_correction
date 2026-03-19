@@ -93,9 +93,6 @@ const modelStatusError = computed(() => {
     class="relative z-20 flex flex-wrap items-center gap-4 py-2 text-sm shrink-0"
   >
     <div class="flex items-center gap-2.5">
-      <div class="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300 bg-white text-blue-600 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-indigo-400">
-        <i class="fa-solid fa-bolt-lightning text-[10px]"></i>
-      </div>
       <span class="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-600 dark:text-slate-400">
         引擎状态
       </span>
