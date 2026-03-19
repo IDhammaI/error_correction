@@ -55,6 +55,10 @@ const VIEW_TO_PATH = {
   chat: '/app/chat',
 }
 
+const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history'])
+
+const lastWorkspaceView = ref('workspace')
+
 const currentView = computed({
   get() {
     const view = route.params.view || 'workspace'
@@ -66,6 +70,10 @@ const currentView = computed({
     const path = VIEW_TO_PATH[view]
     if (path && route.path !== path) router.push(path)
   },
+})
+
+watch(currentView, (v) => {
+  if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
 })
 
 // ---- 状态定义 ----
@@ -642,13 +650,13 @@ onBeforeUnmount(() => {
           <div class="mb-2 px-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
 
           <button
-            @click="currentView = 'workspace'"
+            @click="currentView = lastWorkspaceView"
             class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+            :class="WORKSPACE_VIEWS.has(currentView) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
             <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
             <span>录题工作台</span>
-            <div v-if="currentView === 'workspace' || currentView === 'workspace_review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
+            <div v-if="WORKSPACE_VIEWS.has(currentView)" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
 
           <button
@@ -717,7 +725,7 @@ onBeforeUnmount(() => {
     <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
     <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/90 pb-2 pt-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#0A0A0F]/90">
       <div class="flex justify-around">
-        <button @click="currentView = splitCompleted ? 'workspace_review' : 'workspace'" class="flex flex-col items-center p-2" :class="currentView === 'workspace' || currentView === 'workspace_review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = lastWorkspaceView" class="flex flex-col items-center p-2" :class="WORKSPACE_VIEWS.has(currentView) ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
           <span class="mt-1 text-xs font-bold">录题</span>
         </button>
