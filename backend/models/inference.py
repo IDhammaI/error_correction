@@ -51,6 +51,8 @@ class InferenceEngine:
                 return
 
             import torch
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
             from models.model import Generator
             from config import settings
 

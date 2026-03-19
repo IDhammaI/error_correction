@@ -9,6 +9,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 from pathlib import Path
 from PIL import Image
 import numpy as np
