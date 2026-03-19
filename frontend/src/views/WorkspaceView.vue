@@ -22,6 +22,7 @@ import ErrorBank from '../components/ErrorBank.vue'
 import ChatView from '../components/ChatView.vue'
 import SettingsView from '../components/SettingsView.vue'
 import SplitHistory from '../components/SplitHistory.vue'
+import GlassButton from '../components/GlassButton.vue'
 
 // ---- 认证状态 ----
 const { currentUser } = useAuth()
@@ -785,13 +786,9 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                   </div>
-                  <button
-                    @click="currentView = 'split-history'"
-                    class="group inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2 text-sm font-bold text-slate-600 backdrop-blur-md transition-all hover:border-blue-500/40 hover:bg-white hover:text-blue-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
-                  >
-                    <i class="fa-solid fa-clock-rotate-left text-sm transition-transform group-hover:scale-110"></i>
+                  <GlassButton icon="fa-clock-rotate-left" @click="currentView = 'split-history'">
                     分割历史
-                  </button>
+                  </GlassButton>
                 </div>
 
                 <div class="main-content relative flex flex-1 flex-col min-h-0 bg-transparent">

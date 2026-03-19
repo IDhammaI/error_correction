@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
 import CustomSelect from './CustomSelect.vue'
-import CalendarPicker from './CalendarPicker.vue'
+import DateRangePicker from './DateRangePicker.vue'
 import GlassCard from './GlassCard.vue'
 import PageHeader from './PageHeader.vue'
 import SearchInput from './SearchInput.vue'
@@ -11,6 +11,7 @@ import QuestionItem from './QuestionItem.vue'
 import QuestionItemSkeleton from './QuestionItemSkeleton.vue'
 import EditNoteDialog from './EditNoteDialog.vue'
 import SelectionPanel from './SelectionPanel.vue'
+import GlassButton from './GlassButton.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -307,10 +308,9 @@ onBeforeUnmount(() => {
       >
         <template #extra>
           <div class="flex items-center gap-4">
-            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="group inline-flex h-10 w-[150px] items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-6 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]">
-              <i class="fa-solid" :class="selectMode ? 'fa-xmark' : 'fa-file-export'"></i>
+            <GlassButton :icon="selectMode ? 'fa-xmark' : 'fa-file-export'" class="w-[150px]" @click="selectMode ? exitSelectMode() : enterSelectMode()">
               {{ selectMode ? '退出选择' : '导出题目' }}
-            </button>
+            </GlassButton>
             <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
               录入新题目
@@ -334,12 +334,13 @@ onBeforeUnmount(() => {
 
         <!-- 第二行：日期范围 -->
         <div>
-          <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">时间跨度</label>
-          <div class="flex items-center gap-4">
-            <CalendarPicker v-model="filters.start_date" label="开始日期" align="left" />
-            <span class="shrink-0 text-slate-400 dark:text-slate-600 font-black">—</span>
-            <CalendarPicker v-model="filters.end_date" label="结束日期" align="right" />
-          </div>
+          <DateRangePicker
+            :start-date="filters.start_date"
+            :end-date="filters.end_date"
+            label="时间跨度"
+            @update:start-date="filters.start_date = $event"
+            @update:end-date="filters.end_date = $event"
+          />
         </div>
 
         <!-- 知识点多选标签 -->

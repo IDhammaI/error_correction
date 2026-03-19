@@ -26,9 +26,9 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
     <button
       type="button"
       @click.stop="toggle"
-      class="flex h-11 w-full items-center justify-between rounded-xl border bg-white/70 px-4 text-left text-sm font-bold shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.06] dark:backdrop-blur-xl"
+      class="flex h-11 w-full items-center justify-between rounded-xl border bg-white/60 px-4 text-left text-sm font-bold backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
       :class="[
-        open ? 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500/50 dark:ring-indigo-500/20' : 'border-slate-200/60 dark:hover:border-indigo-500/30',
+        open ? 'border-white/30 bg-white/80 shadow-sm ring-2 ring-white/10 dark:border-white/20 dark:bg-white/[0.06] dark:ring-white/5' : 'border-slate-200/60',
         modelValue ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500',
       ]"
     >
@@ -41,8 +41,8 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
           <button
             type="button"
             @click.stop="select('')"
-            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
-            :class="modelValue === '' ? 'bg-blue-500/10 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'"
+            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-white/60 hover:text-slate-800 dark:hover:bg-white/10 dark:hover:text-slate-100"
+            :class="modelValue === '' ? 'bg-white/60 text-slate-800 dark:bg-white/10 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'"
           >
             <i v-if="icon" class="fa-solid fa-layer-group text-xs opacity-70"></i>
             <span>{{ placeholder }}</span>
@@ -52,8 +52,8 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             v-for="opt in options" :key="opt"
             type="button"
             @click.stop="select(opt)"
-            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
-            :class="modelValue === opt ? 'bg-blue-500/10 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'"
+            class="group flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-all hover:bg-white/60 hover:text-slate-800 dark:hover:bg-white/10 dark:hover:text-slate-100"
+            :class="modelValue === opt ? 'bg-white/60 text-slate-800 dark:bg-white/10 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'"
           >
             <i v-if="icon" class="fa-solid text-xs opacity-70" :class="icon(opt)"></i>
             <span>{{ opt }}</span>

@@ -83,10 +83,10 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
 
 <template>
   <div class="custom-cal-wrapper relative w-full min-w-0">
-    <div class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/70 px-4 text-sm font-bold shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.06] dark:backdrop-blur-xl dark:hover:border-indigo-500/30"
-         :class="{ 'border-blue-400 ring-2 ring-blue-500/20 dark:border-indigo-500/50 dark:ring-indigo-500/20': open }"
+    <div class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/60 px-4 text-sm font-bold backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
+         :class="open ? 'border-white/30 bg-white/80 shadow-sm ring-2 ring-white/10 dark:border-white/20 dark:bg-white/[0.06] dark:ring-white/5' : 'border-slate-200/60'"
          @click.stop="toggle">
-      <i class="fa-regular fa-calendar mr-2 text-sm text-slate-400 transition-colors group-hover:text-blue-500 dark:text-slate-500 dark:group-hover:text-indigo-400"></i>
+      <i class="fa-regular fa-calendar mr-2 text-sm text-slate-400 transition-colors group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-300"></i>
       <span v-if="!modelValue" class="truncate text-sm font-bold text-slate-400 dark:text-slate-500">{{ label }}</span>
       <span v-else class="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{{ modelValue }}</span>
     </div>
@@ -114,7 +114,7 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
             class="flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all"
             :class="[
               !d.cur ? 'text-slate-300 dark:text-slate-600 opacity-30' : 'text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-blue-50 dark:hover:bg-white/10',
-              isDaySel(d) ? '!bg-blue-600 !text-white shadow-lg shadow-blue-500/30 dark:!bg-indigo-500 dark:shadow-indigo-500/30' : '',
+              isDaySel(d) ? '!bg-blue-600 !text-white shadow-md shadow-blue-500/20 dark:!bg-indigo-500' : '',
               isDayToday(d) && !isDaySel(d) ? 'ring-1 ring-blue-400 text-blue-600 dark:text-indigo-400 dark:ring-indigo-500/50' : ''
             ]">
             {{ d.day }}
