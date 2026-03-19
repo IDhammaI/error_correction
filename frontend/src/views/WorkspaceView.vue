@@ -12,6 +12,7 @@ import FileList from '../components/FileList.vue'
 import FileUploader from '../components/FileUploader.vue'
 import QuestionList from '../components/QuestionList.vue'
 import ActionBar from '../components/ActionBar.vue'
+import SelectionPanel from '../components/SelectionPanel.vue'
 import SplitLoading from '../components/SplitLoading.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
@@ -864,31 +865,9 @@ onBeforeUnmount(() => {
                       <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">请确认解析结果的准确性并进行导出或存档</p>
                     </div>
                   </div>
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
-                      <button
-                        type="button"
-                        class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
-                        @click="selectAll"
-                      >
-                        全选
-                      </button>
-                      <button
-                        type="button"
-                        class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
-                        @click="deselectAll"
-                      >
-                        清空
-                      </button>
-                    </div>
-                    <div class="flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-black text-white shadow-md dark:bg-white dark:text-slate-900 dark:shadow-none">
-                      <i class="fa-solid fa-square-check text-blue-400"></i>
-                      <span class="tracking-widest">已选 {{ selectedIds.size }} 项</span>
-                    </div>
-                  </div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2">
+                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
                   <QuestionList
                     ref="questionListRef"
                     :questions="questions"
@@ -901,15 +880,6 @@ onBeforeUnmount(() => {
                   />
                 </div>
 
-                <ActionBar
-                  class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
-                  :split-enabled="false"
-                  :export-enabled="exportEnabled"
-                  :splitting="false"
-                  :split-completed="true"
-                  @export="doExport"
-                  @save-to-db="doSaveToDb"
-                />
               </div>
             </Transition>
 
@@ -983,6 +953,17 @@ onBeforeUnmount(() => {
           />
         </div>
       </Transition>
+
+      <!-- workspace_review 浮动选择面板 -->
+      <SelectionPanel
+        :visible="currentView === 'workspace_review'"
+        :count="selectedIds.size"
+        export-label="导出错题本"
+        :show-save="true"
+        @export="doExport"
+        @save="doSaveToDb"
+        @clear="deselectAll"
+      />
 
       <!-- AI 分割任务全局遮罩：置于 main 顶层，仅在录题视图且正在分割时显示 -->
       <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />

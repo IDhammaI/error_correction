@@ -2,9 +2,11 @@
 defineProps({
   count: { type: Number, default: 0 },
   visible: { type: Boolean, default: false },
+  exportLabel: { type: String, default: '生成复习卷' },
+  showSave: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['export', 'clear'])
+const emit = defineEmits(['export', 'save', 'clear'])
 </script>
 
 <template>
@@ -25,18 +27,27 @@ const emit = defineEmits(['export', 'clear'])
           <span class="text-sm font-bold tracking-wider text-slate-700 dark:text-slate-200">已选中题目</span>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
           <button
             @click="emit('export')"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-blue-500/20 active:scale-95 dark:bg-indigo-600 dark:hover:bg-indigo-500"
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
           >
-            <i class="fa-solid fa-file-export text-sm"></i>
-            生成复习卷
+            <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
+            {{ exportLabel }}
+          </button>
+
+          <button
+            v-if="showSave"
+            @click="emit('save')"
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
+          >
+            <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>
+            导入错题库
           </button>
 
           <button
             @click="emit('clear')"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm font-bold text-slate-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-rose-500/30 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
           >
             清除
           </button>
