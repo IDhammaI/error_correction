@@ -244,8 +244,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div v-for="i in 2" :key="i"
-            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            <div class="mb-4 flex items-center gap-2">
+              <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+              <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+            </div>
+            <div class="h-[360px] w-full rounded-xl bg-slate-100/80 dark:bg-white/[0.04]"></div>
+          </div>
+          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
@@ -288,8 +294,8 @@ onBeforeUnmount(() => {
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-chart-bar text-emerald-500"></i> 知识点掌握状态
             </h3>
-            <div v-if="stats?.tag_status_stats?.length" class="relative h-[240px] w-full"><canvas ref="stackedCanvas"></canvas></div>
-            <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
+            <div v-if="stats?.tag_status_stats?.length" class="relative h-[360px] w-full"><canvas ref="stackedCanvas"></canvas></div>
+            <div v-else class="flex h-[360px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
           </GlassCard>
           <GlassCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
