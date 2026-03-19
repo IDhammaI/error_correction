@@ -67,8 +67,8 @@ const statusIcon = (status) => {
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <!-- 复习状态图标 -->
           <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
-          <span v-if="question.subject" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">{{ question.subject }}</span>
           <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">{{ question.question_type }}</span>
+          <span v-if="question.subject" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">{{ question.subject }}</span>
           <span v-for="tag in tags()" :key="tag" class="rounded-full border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">{{ tag }}</span>
         </div>
 

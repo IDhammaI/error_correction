@@ -31,7 +31,7 @@ const filters = reactive({
   review_status: '',
 })
 const page = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 const reviewStatusIcon = (status) => {
   if (status === '待复习') return 'fa-clock'
@@ -315,9 +315,6 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
               录入新题目
             </button>
-            <button @click="resetFilters" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-sm text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]" title="重置筛选">
-              <i class="fa-solid fa-arrow-rotate-right"></i>
-            </button>
           </div>
         </template>
       </PageHeader>
@@ -332,8 +329,8 @@ onBeforeUnmount(() => {
           <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" />
         </div>
 
-        <!-- 第二行：日期范围 -->
-        <div>
+        <!-- 第二行：日期范围 + 重置筛选 -->
+        <div class="flex items-center gap-3">
           <DateRangePicker
             :start-date="filters.start_date"
             :end-date="filters.end_date"
@@ -341,43 +338,59 @@ onBeforeUnmount(() => {
             @update:start-date="filters.start_date = $event"
             @update:end-date="filters.end_date = $event"
           />
+          <button @click="resetFilters" title="重置筛选"
+            class="mt-6 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-slate-200">
+            <i class="fa-solid fa-arrow-rotate-right text-sm"></i>
+          </button>
         </div>
 
         <!-- 知识点多选标签 -->
-        <div v-if="tagNames.length">
-          <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
-          <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
-            <button v-for="tag in tagNames" :key="tag"
-              @click="toggleTagSelect(tag)"
-              class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
-              :class="selectedTags.has(tag)
-                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
-                : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300'"
-            >
-              <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
-              {{ tag }}
-            </button>
-            <button v-if="selectedTags.size" @click="clearTagSelection"
-              class="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
-              <i class="fa-solid fa-xmark mr-1"></i>清除
-            </button>
+        <Transition
+          enter-active-class="transition-all duration-300 ease-out"
+          leave-active-class="transition-all duration-200 ease-in"
+          enter-from-class="opacity-0 -translate-y-1"
+          leave-to-class="opacity-0 -translate-y-1"
+        >
+          <div v-if="tagNames.length">
+            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+            <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
+              <button v-for="(tag, i) in tagNames" :key="tag"
+                @click="toggleTagSelect(tag)"
+                class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
+                :style="{ animationDelay: `${i * 20}ms` }"
+                :class="['tag-fade-in', selectedTags.has(tag)
+                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
+                  : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300']"
+              >
+                <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
+                {{ tag }}
+              </button>
+              <button v-if="selectedTags.size" @click="clearTagSelection"
+                class="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
+                <i class="fa-solid fa-xmark mr-1"></i>清除
+              </button>
+            </div>
           </div>
-        </div>
+        </Transition>
       </div>
 
 
       <!-- 列表区 -->
-      <QuestionItemSkeleton v-if="loading" />
+      <div class="relative">
+        <!-- 首次加载：无旧数据时显示骨架 -->
+        <QuestionItemSkeleton v-if="loading && !items.length" />
 
-      <div v-else-if="!items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
-        <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
-          <i class="fa-solid fa-box-open text-4xl text-slate-300 dark:text-slate-700"></i>
+        <!-- 空状态 -->
+        <div v-else-if="!loading && !items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
+          <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
+            <i class="fa-solid fa-box-open text-4xl text-slate-300 dark:text-slate-700"></i>
+          </div>
+          <p class="text-xl font-black text-slate-900 dark:text-white">暂无匹配记录</p>
+          <p class="mt-2 text-sm font-medium text-slate-500">调整筛选条件，或者开始新的录入</p>
         </div>
-        <p class="text-xl font-black text-slate-900 dark:text-white">暂无匹配记录</p>
-        <p class="mt-2 text-sm font-medium text-slate-500">调整筛选条件，或者开始新的录入</p>
-      </div>
 
-      <div v-else class="space-y-4">
+        <!-- 列表（有旧数据时保留，遮罩覆盖） -->
+        <div v-else class="space-y-4">
         <QuestionItem
           v-for="q in items" :key="q.id"
           :question="q"
@@ -449,6 +462,15 @@ onBeforeUnmount(() => {
           </template>
 
         </QuestionItem>
+        </div>
+
+        <!-- 遮罩：筛选/翻页时覆盖旧列表，布局不跳动 -->
+        <Transition enter-active-class="transition-opacity duration-150" leave-active-class="transition-opacity duration-150" enter-from-class="opacity-0" leave-to-class="opacity-0">
+          <div v-if="loading && items.length"
+            class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm dark:bg-black/30">
+            <div class="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-white/20 dark:border-t-white/60"></div>
+          </div>
+        </Transition>
       </div>
 
       <!-- 分页控制：浮动微拟物风格 -->
@@ -494,3 +516,12 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style scoped>
+@keyframes tagFadeIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tag-fade-in {
+  animation: tagFadeIn 0.2s ease-out both;
+}
+</style>

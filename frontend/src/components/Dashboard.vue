@@ -217,72 +217,110 @@ onBeforeUnmount(() => {
         </template>
       </PageHeader>
 
-      <!-- 统计卡片 -->
-      <div v-if="statsLoading" class="mb-8 flex justify-center py-12">
-        <div class="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500"></div>
-      </div>
-      <div v-else class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
-        <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_stats?.['待复习'] || 0" unit="道" color="blue" />
-        <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="emerald" />
-        <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="slate" />
-      </div>
-
-      <!-- 图表区第一行：趋势 + 条形图 -->
-      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <GlassCard>
-          <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
-            <i class="fa-solid fa-chart-line text-blue-500"></i> 最近 30 天趋势
-          </h3>
-          <div class="relative h-[240px] w-full"><canvas ref="trendCanvas"></canvas></div>
-        </GlassCard>
-        <GlassCard>
-          <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
-            <i class="fa-solid fa-ranking-star text-indigo-500"></i> Top 10 易错知识点
-          </h3>
-          <div v-if="stats?.tag_stats?.length" class="relative h-[240px] w-full"><canvas ref="barCanvas"></canvas></div>
-          <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无标签数据</div>
-        </GlassCard>
-      </div>
-
-      <!-- 图表区第二行：堆叠柱状图 + 热力图 -->
-      <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <GlassCard>
-          <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
-            <i class="fa-solid fa-chart-bar text-emerald-500"></i> 知识点掌握状态
-          </h3>
-          <div v-if="stats?.tag_status_stats?.length" class="relative h-[240px] w-full"><canvas ref="stackedCanvas"></canvas></div>
-          <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
-        </GlassCard>
-        <GlassCard>
-          <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
-            <i class="fa-solid fa-fire text-rose-500"></i> 知识点 × 题型分布
-          </h3>
-          <div v-if="heatmapData.tags.length && heatmapData.types.length" class="overflow-x-auto">
-            <table class="heatmap-table w-full text-center text-xs">
-              <thead>
-                <tr>
-                  <th class="sticky left-0 z-10 bg-white/80 px-2 py-2 text-left font-bold text-slate-500 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-400"></th>
-                  <th v-for="t in heatmapData.types" :key="t" class="px-2 py-2 font-bold text-slate-500 dark:text-slate-400">{{ t }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(tag, ri) in heatmapData.tags" :key="tag">
-                  <td class="sticky left-0 z-10 max-w-[120px] truncate bg-white/80 px-2 py-1.5 text-left font-bold text-slate-600 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-300">{{ tag }}</td>
-                  <td v-for="(t, ci) in heatmapData.types" :key="t" class="px-1 py-1">
-                    <div
-                      class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold"
-                      :style="{ backgroundColor: heatmapCellColor(heatmapData.data[ri]?.[ci] || 0) }"
-                      :class="heatmapData.data[ri]?.[ci] ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-300 dark:text-slate-600'"
-                    >{{ heatmapData.data[ri]?.[ci] || 0 }}</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      <!-- 骨架屏（加载中） -->
+      <template v-if="statsLoading">
+        <!-- 统计卡片骨架：精确复刻 StatCard 内部结构 -->
+        <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div v-for="i in 4" :key="i"
+            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            <div class="flex items-center gap-4">
+              <div class="size-12 shrink-0 rounded-lg bg-slate-200/80 dark:bg-white/[0.07]"></div>
+              <div class="flex flex-col gap-2">
+                <div class="h-3.5 w-10 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+                <div class="h-8 w-14 rounded-lg bg-slate-200/80 dark:bg-white/[0.07]"></div>
+              </div>
+            </div>
           </div>
-          <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无题型交叉数据</div>
-        </GlassCard>
-      </div>
+        </div>
+        <!-- 图表骨架：精确复刻 GlassCard + 标题行 + canvas 区域 -->
+        <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div v-for="i in 2" :key="i"
+            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            <div class="mb-4 flex items-center gap-2">
+              <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+              <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+            </div>
+            <div class="h-[240px] w-full rounded-xl bg-slate-100/80 dark:bg-white/[0.04]"></div>
+          </div>
+        </div>
+        <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div v-for="i in 2" :key="i"
+            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            <div class="mb-4 flex items-center gap-2">
+              <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+              <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
+            </div>
+            <div class="h-[240px] w-full rounded-xl bg-slate-100/80 dark:bg-white/[0.04]"></div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 实际内容 -->
+      <template v-else>
+        <!-- 统计卡片 -->
+        <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
+          <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_stats?.['待复习'] || 0" unit="道" color="blue" />
+          <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="emerald" />
+          <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="slate" />
+        </div>
+
+        <!-- 图表区第一行：趋势 + 条形图 -->
+        <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <GlassCard>
+            <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-chart-line text-blue-500"></i> 最近 30 天趋势
+            </h3>
+            <div class="relative h-[240px] w-full"><canvas ref="trendCanvas"></canvas></div>
+          </GlassCard>
+          <GlassCard>
+            <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-ranking-star text-indigo-500"></i> Top 10 易错知识点
+            </h3>
+            <div v-if="stats?.tag_stats?.length" class="relative h-[240px] w-full"><canvas ref="barCanvas"></canvas></div>
+            <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无标签数据</div>
+          </GlassCard>
+        </div>
+
+        <!-- 图表区第二行：堆叠柱状图 + 热力图 -->
+        <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <GlassCard>
+            <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-chart-bar text-emerald-500"></i> 知识点掌握状态
+            </h3>
+            <div v-if="stats?.tag_status_stats?.length" class="relative h-[240px] w-full"><canvas ref="stackedCanvas"></canvas></div>
+            <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
+          </GlassCard>
+          <GlassCard>
+            <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-fire text-rose-500"></i> 知识点 × 题型分布
+            </h3>
+            <div v-if="heatmapData.tags.length && heatmapData.types.length" class="overflow-x-auto">
+              <table class="heatmap-table w-full text-center text-xs">
+                <thead>
+                  <tr>
+                    <th class="sticky left-0 z-10 bg-white/80 px-2 py-2 text-left font-bold text-slate-500 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-400"></th>
+                    <th v-for="t in heatmapData.types" :key="t" class="px-2 py-2 font-bold text-slate-500 dark:text-slate-400">{{ t }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(tag, ri) in heatmapData.tags" :key="tag">
+                    <td class="sticky left-0 z-10 max-w-[120px] truncate bg-white/80 px-2 py-1.5 text-left font-bold text-slate-600 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-300">{{ tag }}</td>
+                    <td v-for="(t, ci) in heatmapData.types" :key="t" class="px-1 py-1">
+                      <div
+                        class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold"
+                        :style="{ backgroundColor: heatmapCellColor(heatmapData.data[ri]?.[ci] || 0) }"
+                        :class="heatmapData.data[ri]?.[ci] ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-300 dark:text-slate-600'"
+                      >{{ heatmapData.data[ri]?.[ci] || 0 }}</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无题型交叉数据</div>
+          </GlassCard>
+        </div>
+      </template>
     </div>
   </div>
 </template>

@@ -2,7 +2,6 @@
 defineProps({
   icon: { type: String, default: '' },
 })
-defineEmits(['click'])
 </script>
 
 <template>

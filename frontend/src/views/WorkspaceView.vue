@@ -60,6 +60,12 @@ const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history
 
 const lastWorkspaceView = ref('workspace')
 
+const NAV_ITEMS = [
+  { id: 'workspace', label: '录题工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
+  { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
+  { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
+]
+
 const currentView = computed({
   get() {
     const view = route.params.view || 'workspace'
@@ -75,6 +81,26 @@ const currentView = computed({
 
 watch(currentView, (v) => {
   if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
+})
+
+const navIndicatorStyle = computed(() => {
+  const idx = NAV_ITEMS.findIndex(item => item.match(currentView.value))
+  if (idx === -1) return { opacity: 0, transform: 'translateY(0)' }
+  
+  // 精确计算：
+  // 1. 核心功能标题：text-xs (16px) + mb-2 (8px) = 24px
+  // 2. Flex Gap: gap-1.5 (6px)
+  // 3. 按钮高度：py-3 (12px * 2) + text-lg 图标高度 (28px) = 52px
+  const headerHeight = 24
+  const gap = 6
+  const itemHeight = 52
+  
+  const offset = headerHeight + gap
+  return {
+    opacity: 1,
+    transform: `translateY(${idx * (itemHeight + gap) + offset}px)`,
+    height: `${itemHeight}px`
+  }
 })
 
 // ---- 状态定义 ----
@@ -652,37 +678,35 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- 视图切换菜单 -->
-        <nav class="mt-6 flex flex-col gap-1.5 px-4">
+        <nav class="mt-6 flex flex-col gap-1.5 px-4 relative">
           <div class="mb-2 px-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
 
-          <button
-            @click="currentView = lastWorkspaceView"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="WORKSPACE_VIEWS.has(currentView) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
-          >
-            <i class="fa-solid fa-wand-magic-sparkles w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>录题工作台</span>
-            <div v-if="WORKSPACE_VIEWS.has(currentView)" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
-          </button>
+          <!-- 悬浮指示器背景 -->
+          <div
+            class="absolute left-4 right-4 z-0 rounded-xl bg-blue-600 shadow-lg shadow-blue-600/20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] dark:bg-indigo-500 dark:shadow-indigo-500/20"
+            :style="navIndicatorStyle"
+          ></div>
+
+          <!-- 激活指示小圆点 -->
+          <div
+            class="absolute right-6 z-20 h-1.5 w-1.5 rounded-full bg-white/80 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
+            :style="{
+              opacity: navIndicatorStyle.opacity,
+              transform: `translateY(calc(${navIndicatorStyle.transform.match(/translateY\(([^)]+)\)/)[1]} + 25.25px))`,
+            }"
+          ></div>
 
           <button
-            @click="currentView = 'dashboard'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="currentView === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+            v-for="item in NAV_ITEMS"
+            :key="item.id"
+            @click="currentView = (item.id === 'workspace' ? lastWorkspaceView : item.id)"
+            class="group relative z-10 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
+            :class="item.match(currentView)
+              ? 'text-white'
+              : 'text-slate-600 hover:bg-slate-100/50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
           >
-            <i class="fa-solid fa-chart-pie w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>数据面板</span>
-            <div v-if="currentView === 'dashboard'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
-          </button>
-
-          <button
-            @click="currentView = 'error-bank'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="currentView === 'error-bank' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
-          >
-            <i class="fa-solid fa-database w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
-            <span>错题库</span>
-            <div v-if="currentView === 'error-bank'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
+            <i class="w-5 text-center text-lg transition-transform group-hover:scale-110" :class="[item.icon, 'fa-solid']"></i>
+            <span>{{ item.label }}</span>
           </button>
 
           <button
@@ -692,7 +716,6 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg"></i>
             <span>刷题</span>
           </button>
-
         </nav>
       </div>
 
