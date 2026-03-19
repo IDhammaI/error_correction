@@ -48,16 +48,16 @@
 .loading-overlay {
   position: absolute;
   inset: 0;
-  z-index: 50;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
 }
 
 :root.dark .loading-overlay {
-  background: rgba(10, 10, 15, 0.6);
+  background: rgba(10, 10, 15, 0.8);
 }
 
 .loading-content {

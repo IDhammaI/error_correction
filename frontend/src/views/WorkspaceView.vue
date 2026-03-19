@@ -746,8 +746,9 @@ onBeforeUnmount(() => {
     <!-- ================== 右侧主内容区 ================== -->
     <main class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-0">
 
-      <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
-        <div v-show="currentView === 'workspace' || currentView === 'workspace_review'" class="relative h-full flex flex-col overflow-hidden">
+      <Transition name="view-fade" mode="out-in">
+        <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
+        <div v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace" class="relative h-full flex flex-col overflow-hidden">
           <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-6xl flex-col px-4 py-4 sm:px-8 sm:py-6">
             <Transition name="flip" mode="out-in">
               <!-- 第一页：录题与分析 -->
@@ -846,143 +847,145 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-            <!-- 第二页：解析结果核对 -->
-            <div v-else-if="currentView === 'workspace_review'" key="review" class="flex flex-1 flex-col overflow-hidden">
-              <div class="mb-4 flex items-center justify-between pl-2 sm:pl-0 shrink-0">
-                <div class="flex items-center gap-4">
-                  <button
-                    @click="() => { doReset(); currentView = 'workspace' }"
-                    class="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-md transition-all hover:border-blue-500/50 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
-                  >
-                    <i class="fa-solid fa-arrow-left-long transition-transform group-hover:-translate-x-1"></i>
-                  </button>
-                  <div>
-                    <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-                      题目数据核对
-                    </h2>
-                    <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">请确认解析结果的准确性并进行导出或存档</p>
+              <!-- 第二页：解析结果核对 -->
+              <div v-else-if="currentView === 'workspace_review'" key="review" class="flex flex-1 flex-col overflow-hidden">
+                <div class="mb-4 flex items-center justify-between pl-2 sm:pl-0 shrink-0">
+                  <div class="flex items-center gap-4">
+                    <button
+                      @click="() => { doReset(); currentView = 'workspace' }"
+                      class="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-md transition-all hover:border-blue-500/50 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
+                    >
+                      <i class="fa-solid fa-arrow-left-long transition-transform group-hover:-translate-x-1"></i>
+                    </button>
+                    <div>
+                      <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+                        题目数据核对
+                      </h2>
+                      <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">请确认解析结果的准确性并进行导出或存档</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
+                      <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+                        @click="selectAll"
+                      >
+                        全选
+                      </button>
+                      <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+                        @click="deselectAll"
+                      >
+                        清空
+                      </button>
+                    </div>
+                    <div class="flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-black text-white shadow-md dark:bg-white dark:text-slate-900 dark:shadow-none">
+                      <i class="fa-solid fa-square-check text-blue-400"></i>
+                      <span class="tracking-widest">已选 {{ selectedIds.size }} 项</span>
+                    </div>
                   </div>
                 </div>
-                <div class="flex items-center gap-4">
-                  <div class="flex items-center gap-1 rounded-xl border border-slate-100 bg-white/50 p-1 shadow-sm backdrop-blur-md dark:border-white/5 dark:bg-slate-800/50">
-                    <button
-                      type="button"
-                      class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
-                      @click="selectAll"
-                    >
-                      全选
-                    </button>
-                    <button
-                      type="button"
-                      class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black text-slate-600 hover:bg-white hover:text-rose-500 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
-                      @click="deselectAll"
-                    >
-                      清空
-                    </button>
-                  </div>
-                  <div class="flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-black text-white shadow-md dark:bg-white dark:text-slate-900 dark:shadow-none">
-                    <i class="fa-solid fa-square-check text-blue-400"></i>
-                    <span class="tracking-widest">已选 {{ selectedIds.size }} 项</span>
-                  </div>
-                </div>
-              </div>
 
-              <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2">
-                <QuestionList
-                  ref="questionListRef"
-                  :questions="questions"
-                  :selected-ids="selectedIds"
-                  @toggle-select="toggleQuestion"
-                  @select-all="selectAll"
-                  @deselect-all="deselectAll"
-                  @open-image="openModal"
-                  @reorder="reorderQuestions"
+                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2">
+                  <QuestionList
+                    ref="questionListRef"
+                    :questions="questions"
+                    :selected-ids="selectedIds"
+                    @toggle-select="toggleQuestion"
+                    @select-all="selectAll"
+                    @deselect-all="deselectAll"
+                    @open-image="openModal"
+                    @reorder="reorderQuestions"
+                  />
+                </div>
+
+                <ActionBar
+                  class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
+                  :split-enabled="false"
+                  :export-enabled="exportEnabled"
+                  :splitting="false"
+                  :split-completed="true"
+                  @export="doExport"
+                  @save-to-db="doSaveToDb"
                 />
               </div>
-
-              <ActionBar
-                class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
-                :split-enabled="false"
-                :export-enabled="exportEnabled"
-                :splitting="false"
-                :split-completed="true"
-                @export="doExport"
-                @save-to-db="doSaveToDb"
-              />
-            </div>
             </Transition>
-          </div>
 
-          <!-- AI 分割任务全局遮罩 -->
-          <SplitLoading v-if="splitting" />
+          </div>
         </div>
 
-      <!-- 视图 2：待复习 -->
-      <div v-show="currentView === 'review'" class="h-full">
-        <ReviewView
-          :theme="theme"
-          :visible="currentView === 'review'"
-          @go-workspace="currentView = 'workspace'"
-          @push-toast="pushToast"
-          @open-image="openModal"
-          @start-chat="openChat"
-        />
-      </div>
+        <!-- 视图 2：待复习 -->
+        <div v-else-if="currentView === 'review'" key="review_view" class="h-full">
+          <ReviewView
+            :theme="theme"
+            :visible="currentView === 'review'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @start-chat="openChat"
+          />
+        </div>
 
-      <!-- 视图 3：数据面板 -->
-      <div v-show="currentView === 'dashboard'" class="h-full">
-        <Dashboard
-          :theme="theme"
-          :visible="currentView === 'dashboard'"
-          @go-workspace="currentView = 'workspace'"
-          @push-toast="pushToast"
-        />
-      </div>
+        <!-- 视图 3：数据面板 -->
+        <div v-else-if="currentView === 'dashboard'" key="dashboard_view" class="h-full">
+          <Dashboard
+            :theme="theme"
+            :visible="currentView === 'dashboard'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+          />
+        </div>
 
-      <!-- 视图 4：错题库 -->
-      <div v-show="currentView === 'error-bank'" class="h-full">
-        <ErrorBank
-          ref="errorBankRef"
-          :theme="theme"
-          :visible="currentView === 'error-bank'"
-          @go-workspace="currentView = 'workspace'"
-          @push-toast="pushToast"
-          @open-image="openModal"
-          @start-chat="openChat"
-        />
-      </div>
+        <!-- 视图 4：错题库 -->
+        <div v-else-if="currentView === 'error-bank'" key="error_bank_view" class="h-full">
+          <ErrorBank
+            ref="errorBankRef"
+            :theme="theme"
+            :visible="currentView === 'error-bank'"
+            @go-workspace="currentView = 'workspace'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @start-chat="openChat"
+          />
+        </div>
 
-      <!-- 视图 5：分割历史 -->
-      <div v-show="currentView === 'split-history'" class="h-full">
-        <SplitHistory
-          :theme="theme"
-          :visible="currentView === 'split-history'"
-          @push-toast="pushToast"
-          @open-image="openModal"
-          @load-record="handleLoadRecord"
-          @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-        />
-      </div>
+        <!-- 视图 5：分割历史 -->
+        <div v-else-if="currentView === 'split-history'" key="split_history_view" class="h-full">
+          <SplitHistory
+            :theme="theme"
+            :visible="currentView === 'split-history'"
+            @push-toast="pushToast"
+            @open-image="openModal"
+            @load-record="handleLoadRecord"
+            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+          />
+        </div>
 
-      <!-- 视图 6：系统设置 -->
-      <div v-show="currentView === 'settings'" class="h-full">
-        <SettingsView
-          :visible="currentView === 'settings'"
-          @saved="doFetchStatus"
-        />
-      </div>
+        <!-- 视图 6：系统设置 -->
+        <div v-else-if="currentView === 'settings'" key="settings_view" class="h-full">
+          <SettingsView
+            :visible="currentView === 'settings'"
+            @saved="doFetchStatus"
+          />
+        </div>
 
-      <!-- 视图 7：AI 辅导对话 -->
-      <div v-show="currentView === 'chat'" class="h-full">
-        <ChatView
-          v-if="chatActive"
-          :session-id="chatSessionId"
-          :question="chatQuestion"
-          :model-provider="selectedProvider"
-          :model-name="selectedModel"
-          @back="backToErrorBank"
-        />
-      </div>
+        <!-- 视图 7：AI 辅导对话 -->
+        <div v-else-if="currentView === 'chat'" key="chat_view" class="h-full">
+          <ChatView
+            v-if="chatActive"
+            :session-id="chatSessionId"
+            :question="chatQuestion"
+            :model-provider="selectedProvider"
+            :model-name="selectedModel"
+            @back="backToErrorBank"
+          />
+        </div>
+      </Transition>
+
+      <!-- AI 分割任务全局遮罩：置于 main 顶层，覆盖除侧边栏外的所有区域 -->
+      <SplitLoading v-if="splitting" />
     </main>
 
     <!-- 全局弹窗与通知 -->
@@ -1069,6 +1072,33 @@ onBeforeUnmount(() => {
 @keyframes wsLoadProgress {
   from { width: 0%; }
   to   { width: 100%; }
+}
+
+/* 视图切换：极简淡入淡出 (Simple Fade) */
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
+}
+
+/* 工作台内部页面切换：左右滑动淡入 (Flip) */
+.flip-enter-active,
+.flip-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flip-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.flip-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
 </style>
