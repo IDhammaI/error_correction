@@ -186,7 +186,11 @@ const onDialogSave = async (draft) => {
   if (dialogSaving.value || !dialogQuestion.value) return
   dialogSaving.value = true
   try {
-    if (dialogField.value === 'answer') {
+    if (dialogField.value === 'question') {
+      await api.updateQuestion(dialogQuestion.value.id, { content: draft.content, answer: draft.answer })
+      dialogQuestion.value.content_json = [{ block_type: 'text', content: draft.content }]
+      dialogQuestion.value.answer = draft.answer
+    } else if (dialogField.value === 'answer') {
       await api.saveQuestionAnswer(dialogQuestion.value.id, draft)
       dialogQuestion.value.answer = draft
     } else {
@@ -302,7 +306,7 @@ onBeforeUnmount(() => {
       >
         <template #extra>
           <div class="flex items-center gap-4">
-            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="btn-secondary h-10 w-[150px] px-6 shadow-sm">
+            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="group inline-flex h-10 w-[150px] items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-6 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]">
               <i class="fa-solid" :class="selectMode ? 'fa-xmark' : 'fa-file-export'"></i>
               {{ selectMode ? '退出选择' : '导出题目' }}
             </button>
@@ -310,7 +314,7 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
               录入新题目
             </button>
-            <button @click="resetFilters" class="btn-secondary h-10 px-4 shadow-sm transition-all" title="重置筛选">
+            <button @click="resetFilters" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-sm text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]" title="重置筛选">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </button>
           </div>
@@ -420,9 +424,9 @@ onBeforeUnmount(() => {
                   </button>
                   <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
                   <div class="px-3 pb-1 pt-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
-                  <button @click.stop="openEditDialog(question, 'answer')"
+                  <button @click.stop="openEditDialog(question, 'question')"
                     class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
-                    <i class="fa-solid fa-pen-to-square text-xs opacity-70"></i>{{ question.answer ? '编辑答案' : '录入答案' }}
+                    <i class="fa-solid fa-pen-to-square text-xs opacity-70"></i>编辑
                   </button>
                   <button @click.stop="openEditDialog(question, 'user_answer')"
                     class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
@@ -477,7 +481,10 @@ onBeforeUnmount(() => {
     <EditNoteDialog
       :open="dialogOpen"
       :field="dialogField"
-      :value="dialogQuestion?.[dialogField] || ''"
+      :value="dialogField === 'question'
+        ? (dialogQuestion?.content_json?.filter(b => b.block_type === 'text').map(b => b.content).join('\n') || '')
+        : (dialogQuestion?.[dialogField] || '')"
+      :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''"
       :saving="dialogSaving"
       @close="dialogOpen = false"
       @save="onDialogSave"

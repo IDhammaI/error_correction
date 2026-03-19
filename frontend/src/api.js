@@ -238,6 +238,18 @@ export async function requestAiAnalysis(questionIds) {
 
 // ── AI 辅导对话 API ──────────────────────────────────────
 
+export async function updateQuestion(questionId, payload) {
+  const resp = await fetch(`/api/question/${questionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data
+  throw new Error((data && data.error) || '保存失败')
+}
+
 export async function saveQuestionAnswer(questionId, answer) {
   const resp = await fetch(`/api/question/${questionId}/answer`, {
     method: 'PUT',

@@ -10,6 +10,7 @@ const props = defineProps({
   question: { type: Object, default: null },
   modelProvider: { type: String, default: 'openai' },
   modelName: { type: String, default: '' },
+  username: { type: String, default: '' },
 })
 
 const emit = defineEmits(['back'])
@@ -295,9 +296,9 @@ onBeforeUnmount(() => {
           <!-- user 头像 -->
           <div
             v-if="msg.role === 'user'"
-            class="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+            class="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 text-xs font-extrabold text-white shadow-sm"
           >
-            <i class="fa-solid fa-user"></i>
+            {{ username?.[0]?.toUpperCase() ?? '?' }}
           </div>
         </div>
       </div>

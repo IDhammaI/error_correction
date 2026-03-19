@@ -1,5 +1,6 @@
 <script setup>
-import { getQuestionSnippet } from '../utils.js'
+import { ref, watch, nextTick } from 'vue'
+import { getQuestionSnippet, typesetMath } from '../utils.js'
 
 const props = defineProps({
   question: { type: Object, required: true },
@@ -11,7 +12,16 @@ const props = defineProps({
 
 const emit = defineEmits(['click', 'toggle-select'])
 
+const optionsEl = ref(null)
+
 const summary = () => getQuestionSnippet(props.question)
+
+watch(() => props.question.options_json, async (val) => {
+  if (val?.length && optionsEl.value) {
+    await nextTick()
+    typesetMath(optionsEl.value)
+  }
+}, { immediate: true, flush: 'post' })
 
 const tags = () => {
   const all = props.question.knowledge_tags || []
@@ -57,21 +67,32 @@ const statusIcon = (status) => {
             <i class="fa-solid" :class="statusIcon(question.review_status)"></i>
             {{ question.review_status || '待复习' }}
           </span>
-          <span v-else class="ml-auto text-xs font-bold text-slate-400">{{ question.created_at ? new Date(question.created_at).toLocaleDateString() : '' }}</span>
         </div>
 
         <!-- 摘要 -->
         <p class="line-clamp-2 text-sm font-bold leading-relaxed text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">{{ summary() }}</p>
 
-        <!-- 底部信息（答案/笔记状态） -->
-        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs" @click.stop>
-          <span v-if="question.answer" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <i class="fa-solid fa-circle-check"></i>有答案
-          </span>
-          <span v-if="question.user_answer" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-            <i class="fa-solid fa-pen-to-square"></i>已记笔记
-          </span>
-          <span v-if="showStatus" class="ml-auto text-xs font-bold text-slate-400">{{ question.created_at ? new Date(question.created_at).toLocaleDateString() : '' }}</span>
+        <!-- 题目图片 -->
+        <div v-if="question.content_json?.some(b => b.block_type === 'image' && b.content)" class="mt-3 flex flex-wrap gap-2">
+          <img
+            v-for="(b, i) in question.content_json.filter(b => b.block_type === 'image' && b.content)"
+            :key="i"
+            :src="b.content"
+            class="max-h-32 rounded-xl border border-slate-100 object-contain dark:border-white/5"
+            @click.stop
+          />
+        </div>
+
+        <!-- 选择题选项 -->
+        <div v-if="question.options_json?.length" ref="optionsEl" class="mt-3 grid grid-cols-2 gap-1.5">
+          <div
+            v-for="(opt, idx) in question.options_json"
+            :key="idx"
+            class="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400"
+          >
+            <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ String.fromCharCode(65 + idx) }}.</span>
+            <span class="line-clamp-1">{{ String(opt).replace(/^[A-Da-d][.、．]\s*/, '') }}</span>
+          </div>
         </div>
 
         <!-- 扩展插槽（内联编辑等） -->

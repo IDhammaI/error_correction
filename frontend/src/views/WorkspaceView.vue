@@ -949,6 +949,7 @@ onBeforeUnmount(() => {
             :question="chatQuestion"
             :model-provider="selectedProvider"
             :model-name="selectedModel"
+            :username="currentUser?.username"
             @back="backToErrorBank"
           />
         </div>

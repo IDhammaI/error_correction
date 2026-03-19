@@ -1344,6 +1344,34 @@ def get_question_types():
         return jsonify({'success': False, 'error': '获取题型列表失败'}), 500
 
 
+@app.route('/api/question/<int:question_id>', methods=['PATCH'])
+def update_question(question_id):
+    """编辑题目内容和/或答案"""
+    try:
+        data = request.get_json(silent=True) or {}
+        with SessionLocal() as db:
+            question = db.get(Question, question_id)
+            if not question:
+                return jsonify({'success': False, 'error': '题目不存在'}), 404
+            try:
+                if 'content' in data:
+                    text = str(data['content'])[:20000]
+                    blocks = [{'block_type': 'text', 'content': text}]
+                    question.content_json = json.dumps(blocks, ensure_ascii=False)
+                    question.content_hash = crud.compute_content_hash(blocks)
+                if 'answer' in data:
+                    question.answer = str(data['answer'])[:10000] if data['answer'] else None
+                question.updated_at = datetime.utcnow()
+                db.commit()
+                return jsonify({'success': True})
+            except Exception:
+                db.rollback()
+                raise
+    except Exception:
+        logger.exception("编辑题目失败")
+        return jsonify({'success': False, 'error': '保存失败，请稍后重试'}), 500
+
+
 @app.route('/api/question/<int:question_id>/answer', methods=['PATCH'])
 def update_question_answer(question_id):
     """保存用户答案"""
