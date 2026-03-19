@@ -45,27 +45,48 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
     </button>
 
     <!-- 导出按钮：极简现代感 -->
-    <button
-      v-if="exportEnabled"
-      type="button"
-      class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
-      @click="emit('export')"
-    >
-      <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
-      导出错题本
-    </button>
+    <Transition name="action-btn">
+      <button
+        v-if="exportEnabled"
+        type="button"
+        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
+        @click="emit('export')"
+      >
+        <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
+        导出错题本
+      </button>
+    </Transition>
 
     <!-- 导入错题库按钮：极简现代感 -->
-    <button
-      v-if="exportEnabled"
-      type="button"
-      class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
-      @click="emit('save-to-db')"
-    >
-      <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>
-      导入错题库
-    </button>
+    <Transition name="action-btn">
+      <button
+        v-if="exportEnabled"
+        type="button"
+        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-[13px] font-black tracking-widest text-slate-900 shadow-sm hover:border-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800"
+        @click="emit('save-to-db')"
+      >
+        <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>
+        导入错题库
+      </button>
+    </Transition>
 
     </div>
   </div>
 </template>
+
+<style scoped>
+.action-btn-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.action-btn-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.action-btn-enter-from {
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+}
+.action-btn-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+}
+</style>

@@ -5,21 +5,35 @@ import gfm from '@bytemd/plugin-gfm'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  field: { type: String, default: 'answer' },
+  field: { type: String, default: 'answer' }, // 'answer' | 'user_answer' | 'question'
   value: { type: String, default: '' },
+  valueAnswer: { type: String, default: '' }, // 仅 field='question' 时使用
   saving: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close', 'save'])
-const draft = ref('')
-
 const plugins = computed(() => [gfm()])
 
+const draft = ref('')         // answer / user_answer / question content
+const draftAnswer = ref('')   // 仅 field='question' 时的答案草稿
+
 watch(() => props.open, (v) => {
-  if (v) draft.value = props.value || ''
+  if (v) {
+    draft.value = props.value || ''
+    draftAnswer.value = props.valueAnswer || ''
+  }
 })
 
 const handleChange = (v) => { draft.value = v }
+const handleAnswerChange = (v) => { draftAnswer.value = v }
+
+const onSave = () => {
+  if (props.field === 'question') {
+    emit('save', { content: draft.value, answer: draftAnswer.value })
+  } else {
+    emit('save', draft.value)
+  }
+}
 
 const config = () => {
   if (props.field === 'answer') {
@@ -29,6 +43,15 @@ const config = () => {
       iconBg: 'bg-emerald-50 dark:bg-emerald-500/10',
       iconCls: 'text-emerald-600 dark:text-emerald-400',
       btnCls: 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600',
+    }
+  }
+  if (props.field === 'question') {
+    return {
+      title: '编辑题目',
+      icon: 'fa-pen-to-square',
+      iconBg: 'bg-indigo-50 dark:bg-indigo-500/10',
+      iconCls: 'text-indigo-600 dark:text-indigo-400',
+      btnCls: 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600',
     }
   }
   return {
@@ -49,7 +72,8 @@ const config = () => {
         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
         <!-- 弹窗 -->
-        <div class="relative w-full max-w-2xl rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]">
+        <div class="relative w-full max-w-2xl rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]"
+             :class="field === 'question' ? 'max-w-3xl' : 'max-w-2xl'">
           <!-- 头部 -->
           <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-white/5">
             <div class="flex items-center gap-3">
@@ -63,8 +87,24 @@ const config = () => {
             </button>
           </div>
 
-          <!-- ByteMD 编辑器 -->
-          <div class="bytemd-wrapper px-6 py-4">
+          <!-- 编辑区 -->
+          <div v-if="field === 'question'" class="px-6 py-4 space-y-4">
+            <!-- 题目内容 -->
+            <div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">题目内容</p>
+              <div class="bytemd-wrapper">
+                <Editor :value="draft" :plugins="plugins" @change="handleChange" />
+              </div>
+            </div>
+            <!-- 答案 -->
+            <div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">正确答案</p>
+              <div class="bytemd-wrapper">
+                <Editor :value="draftAnswer" :plugins="plugins" @change="handleAnswerChange" />
+              </div>
+            </div>
+          </div>
+          <div v-else class="bytemd-wrapper px-6 py-4">
             <Editor :value="draft" :plugins="plugins" @change="handleChange" />
           </div>
 
@@ -74,7 +114,7 @@ const config = () => {
               取消
             </button>
             <button
-              @click="emit('save', draft)"
+              @click="onSave"
               :disabled="saving"
               class="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
               :class="config().btnCls"
@@ -103,7 +143,7 @@ const config = () => {
 <style>
 /* ByteMD 暗色主题适配 */
 .bytemd-wrapper .bytemd {
-  height: 320px;
+  height: 220px;
   border-radius: 0.75rem;
   border: 1px solid rgba(226, 232, 240, 0.6);
   overflow: hidden;

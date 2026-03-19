@@ -38,11 +38,11 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 
 <template>
   <div
-    class="question-card group relative overflow-hidden rounded-[2rem] border bg-white p-6 hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] dark:bg-slate-900/40"
+    class="question-card group relative overflow-hidden rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md dark:bg-white/[0.03]"
     :class="
       selected
-        ? 'border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.1)] dark:border-indigo-500/50 dark:shadow-[0_0_40px_rgba(99,102,241,0.2)]'
-        : 'border-slate-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-white/10'
+        ? 'border-blue-500/50 shadow-blue-500/10 dark:border-indigo-500/50 dark:shadow-indigo-500/20'
+        : 'border-slate-200/60 dark:border-white/10 hover:border-blue-200 dark:hover:border-white/15'
     "
     @click="emit('toggle', question.question_id)"
   >
@@ -56,6 +56,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
     <div class="mb-6 flex items-start gap-4">
       <!-- 题型与标签 -->
       <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-bold tracking-widest text-slate-400 dark:text-slate-500">AI 识别标签</span>
         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">
           {{ question.question_type }}
         </span>
@@ -83,7 +84,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
     </div>
 
     <!-- 题目内容区 -->
-    <div class="question-content relative pl-2 border-l-2 border-slate-50 dark:border-white/5">
+    <div class="question-content relative">
       <template v-if="question.content_blocks?.length">
         <div v-for="(b, i) in question.content_blocks" :key="i">
           <div v-if="b.block_type === 'text'" class="my-4 text-base font-medium leading-relaxed text-slate-800 dark:text-slate-200" v-html="isHtml(b.content) ? sanitizeHtml(b.content) : b.content"></div>
@@ -109,58 +110,6 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
       </div>
     </div>
 
-    <!-- 录入区 -->
-    <div class="mt-8 grid gap-4 border-t border-slate-50 pt-8 dark:border-white/5 sm:grid-cols-2" @click.stop>
-      <!-- 正确答案 -->
-      <div class="group/box relative rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 transition-colors hover:bg-emerald-50/50 dark:border-emerald-500/10 dark:bg-emerald-500/5">
-        <div class="mb-3 flex items-center justify-between">
-          <span class="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">正确答案</span>
-          <button @click="startEditAnswer" class="text-xs font-bold text-emerald-600 underline-offset-4 hover:underline">
-            {{ question.answer ? '编辑' : '录入' }}
-          </button>
-        </div>
-        
-        <div v-if="editingAnswer" class="space-y-3">
-          <textarea
-            v-model="answerDraft"
-            rows="3"
-            class="w-full rounded-xl border-none bg-white p-3 text-sm font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:text-white"
-          ></textarea>
-          <div class="flex justify-end gap-3">
-            <button @click="cancelAnswer" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">取消</button>
-            <button @click="saveAnswer" class="h-8 rounded-lg bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-500">完成</button>
-          </div>
-        </div>
-        <div v-else class="text-sm font-bold leading-relaxed text-slate-700 dark:text-slate-300">
-          {{ question.answer || '点击上方按钮录入参考答案...' }}
-        </div>
-      </div>
-
-      <!-- 错因笔记 -->
-      <div class="group/box relative rounded-2xl border border-blue-100 bg-blue-50/30 p-4 transition-colors hover:bg-blue-50/50 dark:border-indigo-500/10 dark:bg-indigo-500/5">
-        <div class="mb-3 flex items-center justify-between">
-          <span class="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-indigo-400">我的笔记</span>
-          <button @click="startEditUserAnswer" class="text-xs font-bold text-blue-600 underline-offset-4 hover:underline dark:text-indigo-400">
-            {{ question.user_answer ? '编辑' : '录入' }}
-          </button>
-        </div>
-        
-        <div v-if="editingUserAnswer" class="space-y-3">
-          <textarea
-            v-model="userAnswerDraft"
-            rows="3"
-            class="w-full rounded-xl border-none bg-white p-3 text-sm font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-800 dark:text-white"
-          ></textarea>
-          <div class="flex justify-end gap-3">
-            <button @click="cancelUserAnswer" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">取消</button>
-            <button @click="saveUserAnswer" class="h-8 rounded-lg bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-500 dark:bg-indigo-600 dark:hover:bg-indigo-500">完成</button>
-          </div>
-        </div>
-        <div v-else class="text-sm font-bold leading-relaxed text-slate-700 dark:text-slate-300">
-          {{ question.user_answer || '记录你的错因或学习笔记...' }}
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 

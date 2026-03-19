@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
 import CustomSelect from './CustomSelect.vue'
@@ -39,8 +39,8 @@ const reviewStatusIcon = (status) => {
 }
 
 const reviewStatusClass = (status) => {
-  if (status === '待复习') return 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border-slate-200/50 dark:border-slate-500/30'
-  if (status === '复习中') return 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-500/30'
+  if (status === '待复习') return 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-200/50 dark:border-rose-500/30'
+  if (status === '复习中') return 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200/50 dark:border-amber-500/30'
   return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/30'
 }
 
@@ -155,28 +155,36 @@ const doExport = async () => {
 
 
 // ---- 内联操作 ----
-const menuOpenId = ref(null)
-const menuStyle = ref({})
 const dialogOpen = ref(false)
 const dialogField = ref('answer')
 const dialogQuestion = ref(null)
 const dialogSaving = ref(false)
 
-const toggleMenu = (id, event) => {
-  if (menuOpenId.value === id) { menuOpenId.value = null; return }
-  const btn = event.currentTarget
-  const rect = btn.getBoundingClientRect()
-  menuStyle.value = {
+// hover dropdown
+const hoverMenuId = ref(null)
+const hoverMenuStyle = ref({})
+let hoverCloseTimer = null
+
+const onMenuEnter = (id, el) => {
+  clearTimeout(hoverCloseTimer)
+  const rect = el.getBoundingClientRect()
+  hoverMenuStyle.value = {
     position: 'fixed',
     top: rect.bottom + 4 + 'px',
-    left: (rect.right - 160) + 'px',
+    right: (window.innerWidth - rect.right) + 'px',
     zIndex: 9999,
   }
-  menuOpenId.value = id
+  hoverMenuId.value = id
 }
 
+const onMenuLeave = () => {
+  hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150)
+}
+
+const onMenuContentEnter = () => { clearTimeout(hoverCloseTimer) }
+const onMenuContentLeave = () => { hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150) }
+
 const openEditDialog = (q, field) => {
-  menuOpenId.value = null
   dialogQuestion.value = q
   dialogField.value = field
   dialogOpen.value = true
@@ -186,7 +194,11 @@ const onDialogSave = async (draft) => {
   if (dialogSaving.value || !dialogQuestion.value) return
   dialogSaving.value = true
   try {
-    if (dialogField.value === 'answer') {
+    if (dialogField.value === 'question') {
+      await api.updateQuestion(dialogQuestion.value.id, { content: draft.content, answer: draft.answer })
+      dialogQuestion.value.content_json = [{ block_type: 'text', content: draft.content }]
+      dialogQuestion.value.answer = draft.answer
+    } else if (dialogField.value === 'answer') {
       await api.saveQuestionAnswer(dialogQuestion.value.id, draft)
       dialogQuestion.value.answer = draft
     } else {
@@ -248,10 +260,6 @@ const refreshTags = async () => {
 
 const scrollContainerRef = ref(null)
 
-const handleScroll = () => {
-  if (menuOpenId.value) menuOpenId.value = null
-}
-
 const loadFilters = async () => {
   try {
     const [s, qt] = await Promise.all([
@@ -284,11 +292,8 @@ watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { imm
 
 defineExpose({ refresh: doQuery })
 
-const closeMenu = () => { menuOpenId.value = null }
-onMounted(() => { document.addEventListener('click', closeMenu) })
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
-  document.removeEventListener('click', closeMenu)
 })
 </script>
 
@@ -302,7 +307,7 @@ onBeforeUnmount(() => {
       >
         <template #extra>
           <div class="flex items-center gap-4">
-            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="btn-secondary h-10 w-[150px] px-6 shadow-sm">
+            <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="group inline-flex h-10 w-[150px] items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-6 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]">
               <i class="fa-solid" :class="selectMode ? 'fa-xmark' : 'fa-file-export'"></i>
               {{ selectMode ? '退出选择' : '导出题目' }}
             </button>
@@ -310,7 +315,7 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
               录入新题目
             </button>
-            <button @click="resetFilters" class="btn-secondary h-10 px-4 shadow-sm transition-all" title="重置筛选">
+            <button @click="resetFilters" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-sm text-slate-700 shadow-sm backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.06]" title="重置筛选">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </button>
           </div>
@@ -381,61 +386,61 @@ onBeforeUnmount(() => {
           @toggle-select="toggleSelect"
         >
           <template #actions="{ question }">
-            <!-- 更多菜单 -->
-            <div>
-              <button @click.stop="toggleMenu(question.id, $event)"
-                class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
-                <i class="fa-solid fa-ellipsis"></i>
-              </button>
-            </div>
+            <button
+              @mouseenter="onMenuEnter(question.id, $event.currentTarget)"
+              @mouseleave="onMenuLeave"
+              class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
+              <i class="fa-solid fa-ellipsis text-sm"></i>
+            </button>
             <Teleport to="body">
               <Transition
-                enter-active-class="transition duration-200 ease-out"
-                enter-from-class="translate-y-2 opacity-0 scale-95"
-                enter-to-class="translate-y-0 opacity-100 scale-100"
-                leave-active-class="transition duration-150 ease-in"
-                leave-from-class="translate-y-0 opacity-100 scale-100"
-                leave-to-class="translate-y-2 opacity-0 scale-95"
+                enter-active-class="transition duration-150 ease-out"
+                enter-from-class="opacity-0 scale-95 -translate-y-1"
+                enter-to-class="opacity-100 scale-100 translate-y-0"
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="opacity-100 scale-100 translate-y-0"
+                leave-to-class="opacity-0 scale-95 -translate-y-1"
               >
-                <div v-if="menuOpenId === question.id" :style="menuStyle"
-                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle"
+                  @mouseenter="onMenuContentEnter" @mouseleave="onMenuContentLeave"
+                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
                   <div class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</div>
-                  <button @click.stop="quickMarkStatus(question, '待复习'); menuOpenId = null"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-slate-500/10 hover:text-slate-600 dark:hover:bg-slate-500/20 dark:hover:text-slate-400"
-                    :class="question.review_status === '待复习' || !question.review_status ? 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400' : 'text-slate-600 dark:text-slate-300'">
-                    <i class="fa-solid fa-clock text-xs opacity-70"></i>待复习
-                    <i v-if="question.review_status === '待复习' || !question.review_status" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  <button @click.stop="quickMarkStatus(question, '待复习')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'">
+                    <i class="fa-solid fa-clock text-xs"></i>待复习
+                    <i v-if="!question.review_status || question.review_status === '待复习'" class="fa-solid fa-check ml-auto text-[10px]"></i>
                   </button>
-                  <button @click.stop="quickMarkStatus(question, '复习中'); menuOpenId = null"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
-                    :class="question.review_status === '复习中' ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'">
-                    <i class="fa-solid fa-spinner text-xs opacity-70"></i>复习中
+                  <button @click.stop="quickMarkStatus(question, '复习中')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-400'">
+                    <i class="fa-solid fa-spinner text-xs"></i>复习中
                     <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
                   </button>
-                  <button @click.stop="quickMarkStatus(question, '已掌握'); menuOpenId = null"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400"
-                    :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'">
-                    <i class="fa-solid fa-circle-check text-xs opacity-70"></i>已掌握
+                  <button @click.stop="quickMarkStatus(question, '已掌握')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400'">
+                    <i class="fa-solid fa-circle-check text-xs"></i>已掌握
                     <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
                   </button>
                   <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
-                  <div class="px-3 pb-1 pt-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
-                  <button @click.stop="openEditDialog(question, 'answer')"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
-                    <i class="fa-solid fa-pen-to-square text-xs opacity-70"></i>{{ question.answer ? '编辑答案' : '录入答案' }}
+                  <div class="px-3 pb-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
+                  <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
                   </button>
-                  <button @click.stop="openEditDialog(question, 'user_answer')"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
-                    <i class="fa-solid fa-note-sticky text-xs opacity-70"></i>{{ question.user_answer ? '编辑笔记' : '记笔记' }}
+                  <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
                   </button>
-                  <button @click.stop="emit('start-chat', question); menuOpenId = null"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
-                    <i class="fa-solid fa-wand-magic-sparkles text-xs opacity-70"></i>AI 辅导
+                  <button @click.stop="emit('start-chat', question); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
                   </button>
                   <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
-                  <button @click.stop="doDelete(question); menuOpenId = null"
-                    class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
-                    <i class="fa-solid fa-trash-can text-xs opacity-70"></i>删除题目
+                  <button @click.stop="doDelete(question); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                    <i class="fa-solid fa-trash-can text-xs"></i>删除题目
                   </button>
                 </div>
               </Transition>
@@ -477,7 +482,10 @@ onBeforeUnmount(() => {
     <EditNoteDialog
       :open="dialogOpen"
       :field="dialogField"
-      :value="dialogQuestion?.[dialogField] || ''"
+      :value="dialogField === 'question'
+        ? (dialogQuestion?.content_json?.filter(b => b.block_type === 'text').map(b => b.content).join('\n') || '')
+        : (dialogQuestion?.[dialogField] || '')"
+      :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''"
       :saving="dialogSaving"
       @close="dialogOpen = false"
       @save="onDialogSave"
