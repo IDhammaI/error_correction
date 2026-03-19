@@ -984,8 +984,8 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
 
-      <!-- AI 分割任务全局遮罩：置于 main 顶层，覆盖除侧边栏外的所有区域 -->
-      <SplitLoading v-if="splitting" />
+      <!-- AI 分割任务全局遮罩：置于 main 顶层，仅在录题视图且正在分割时显示 -->
+      <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
     </main>
 
     <!-- 全局弹窗与通知 -->
