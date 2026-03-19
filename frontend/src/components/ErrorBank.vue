@@ -169,12 +169,19 @@ let hoverCloseTimer = null
 const onMenuEnter = (id, el) => {
   clearTimeout(hoverCloseTimer)
   const rect = el.getBoundingClientRect()
-  hoverMenuStyle.value = {
+  const menuHeight = 280
+  const spaceBelow = window.innerHeight - rect.bottom
+  const style = {
     position: 'fixed',
-    top: rect.bottom + 4 + 'px',
     right: (window.innerWidth - rect.right) + 'px',
     zIndex: 9999,
   }
+  if (spaceBelow < menuHeight) {
+    style.bottom = (window.innerHeight - rect.top + 4) + 'px'
+  } else {
+    style.top = rect.bottom + 4 + 'px'
+  }
+  hoverMenuStyle.value = style
   hoverMenuId.value = id
 }
 
@@ -505,6 +512,7 @@ onBeforeUnmount(() => {
     <EditNoteDialog
       :open="dialogOpen"
       :field="dialogField"
+      :question="dialogQuestion"
       :value="dialogField === 'question'
         ? (dialogQuestion?.content_json?.filter(b => b.block_type === 'text').map(b => b.content).join('\n') || '')
         : (dialogQuestion?.[dialogField] || '')"
