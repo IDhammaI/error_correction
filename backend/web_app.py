@@ -523,9 +523,10 @@ def split_questions():
                 'error': '请先上传文件'
             }), 400
 
-        # 擦除手写字迹（如果 EnsExam 已接入，则自动执行）
+        # 擦除手写字迹（EnsExam 已接入且前端未关闭擦除开关时执行）
+        erase = data.get("erase", True)
         ensexam_configured = settings.model_path.exists()
-        if ensexam_configured:
+        if ensexam_configured and erase:
             try:
                 from models.inference import InferenceEngine
                 engine = InferenceEngine()
