@@ -286,28 +286,56 @@ def _identify_subject(
     return ""
 
 
-def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按 question_id 去重
+def _content_fingerprint(q: Dict[str, Any]) -> str:
+    """取第一个非空文本块的前 50 字作为内容指纹。
 
-    当多个批次产出相同 question_id 的题目时（因为重叠页），
-    保留内容更丰富的版本（总文本更长）。
+    重叠页产生的真重复：OCR 源文本相同，LLM 输出高度一致，前 50 字必然相同。
+    不同板块的同号题（如小学试卷各板块都有第 1 题）：内容截然不同，指纹不同。
+    """
+    for block in q.get("content_blocks", []):
+        content = block.get("content", "").strip()
+        if content:
+            return content[:50]
+    return ""
+
+
+def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """按「题号 + 内容指纹」去重。
+
+    - 同题号 + 相同指纹 → 重叠页产生的真重复，保留内容更丰富的版本
+    - 同题号 + 不同指纹 → 不同板块的同号题（如小学试卷各大题下均有第1题），全部保留
     """
     if not questions:
         return []
 
-    seen: Dict[str, Dict[str, Any]] = {}
+    from collections import defaultdict
+
+    groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    no_id: List[Dict[str, Any]] = []
+
     for q in questions:
         qid = q.get("question_id", "")
         if not qid:
-            continue
-        if qid not in seen:
-            seen[qid] = q
+            no_id.append(q)
         else:
-            # 保留内容更丰富的版本
-            if _question_richness(q) > _question_richness(seen[qid]):
-                seen[qid] = q
+            groups[qid].append(q)
 
-    result = list(seen.values())
+    result: List[Dict[str, Any]] = list(no_id)
+
+    for qs in groups.values():
+        if len(qs) == 1:
+            result.append(qs[0])
+            continue
+
+        # 按内容指纹二次分组
+        fp_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for q in qs:
+            fp_groups[_content_fingerprint(q)].append(q)
+
+        # 每个指纹组只保留最丰富的版本
+        for fp_qs in fp_groups.values():
+            result.append(max(fp_qs, key=_question_richness))
+
     result.sort(key=lambda q: _sort_key(q.get("question_id", "")))
     return result
 
