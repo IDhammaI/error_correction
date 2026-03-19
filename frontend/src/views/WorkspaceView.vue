@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { fileKey, typesetMath as _typesetMathEl } from '../utils.js'
 import * as api from '../api.js'
 import { useAuth } from '../composables/useAuth.js'
+import { usePageTransition } from '../composables/usePageTransition.js'
 // 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
 import StatusBar from '../components/StatusBar.vue'
 import StepIndicator from '../components/StepIndicator.vue'
@@ -66,7 +67,8 @@ const currentView = computed({
   },
 })
 
-// ---- 主题 ----
+// ---- 状态定义 ----
+const { loading: globalLoading } = usePageTransition()
 const theme = ref('dark')
 const applyTheme = (nextTheme) => {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light'
@@ -558,8 +560,25 @@ const pageLoading = ref(true)
 onMounted(() => {
   applyTheme('dark')
   document.addEventListener('keydown', onKeydown)
-  doFetchStatus()
-  setTimeout(() => { pageLoading.value = false }, 2000)
+  
+  // 延迟系统状态检查，直到入场加载动画完全结束
+  // 这能确保在动画过程中不会因为网络请求导致掉帧，且视觉上更连贯
+  setTimeout(() => {
+    pageLoading.value = false
+    
+    // 如果全局 loading 已经结束（说明动画已经淡出或不需要淡出），开始检查
+    if (!globalLoading.value) {
+      doFetchStatus()
+    } else {
+      // 否则，监听全局 loading 状态，待其变为 false（即 AppLoading 彻底消失）后触发
+      const unwatch = watch(globalLoading, (val) => {
+        if (!val) {
+          doFetchStatus()
+          unwatch()
+        }
+      })
+    }
+  }, 2000)
 })
 
 onBeforeUnmount(() => {
@@ -652,13 +671,11 @@ onBeforeUnmount(() => {
           </button>
 
           <button
-            @click="currentView = 'review'"
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
-            :class="currentView === 'review' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:bg-indigo-500 dark:shadow-indigo-500/20' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+            disabled
+            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold cursor-not-allowed opacity-40 text-slate-400 dark:text-slate-600"
           >
-            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg transition-transform group-hover:scale-110"></i>
+            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg"></i>
             <span>刷题</span>
-            <div v-if="currentView === 'review'" class="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/60"></div>
           </button>
 
         </nav>
@@ -703,7 +720,7 @@ onBeforeUnmount(() => {
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
           <span class="mt-1 text-xs font-bold">录题</span>
         </button>
-        <button @click="currentView = 'review'" class="flex flex-col items-center p-2" :class="currentView === 'review' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button disabled class="flex flex-col items-center p-2 cursor-not-allowed opacity-40 text-slate-400 dark:text-slate-600">
           <i class="fa-solid fa-clock-rotate-left text-lg"></i>
           <span class="mt-1 text-xs font-bold">刷题</span>
         </button>
