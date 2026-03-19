@@ -569,6 +569,11 @@ const pageLoading = ref(true)
 onMounted(() => {
   applyTheme('dark')
   document.addEventListener('keydown', onKeydown)
+
+  // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
+  if (currentView.value === 'workspace_review' && !splitCompleted.value) {
+    router.replace('/app/workspace')
+  }
   
   // 延迟系统状态检查，直到入场加载动画完全结束
   // 这能确保在动画过程中不会因为网络请求导致掉帧，且视觉上更连贯
