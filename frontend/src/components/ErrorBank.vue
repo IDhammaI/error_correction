@@ -39,8 +39,8 @@ const reviewStatusIcon = (status) => {
 }
 
 const reviewStatusClass = (status) => {
-  if (status === '待复习') return 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border-slate-200/50 dark:border-slate-500/30'
-  if (status === '复习中') return 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-500/30'
+  if (status === '待复习') return 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-200/50 dark:border-rose-500/30'
+  if (status === '复习中') return 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200/50 dark:border-amber-500/30'
   return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/30'
 }
 
@@ -159,6 +159,30 @@ const dialogOpen = ref(false)
 const dialogField = ref('answer')
 const dialogQuestion = ref(null)
 const dialogSaving = ref(false)
+
+// hover dropdown
+const hoverMenuId = ref(null)
+const hoverMenuStyle = ref({})
+let hoverCloseTimer = null
+
+const onMenuEnter = (id, el) => {
+  clearTimeout(hoverCloseTimer)
+  const rect = el.getBoundingClientRect()
+  hoverMenuStyle.value = {
+    position: 'fixed',
+    top: rect.bottom + 4 + 'px',
+    right: (window.innerWidth - rect.right) + 'px',
+    zIndex: 9999,
+  }
+  hoverMenuId.value = id
+}
+
+const onMenuLeave = () => {
+  hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150)
+}
+
+const onMenuContentEnter = () => { clearTimeout(hoverCloseTimer) }
+const onMenuContentLeave = () => { hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150) }
 
 const openEditDialog = (q, field) => {
   dialogQuestion.value = q
@@ -362,52 +386,65 @@ onBeforeUnmount(() => {
           @toggle-select="toggleSelect"
         >
           <template #actions="{ question }">
-            <div class="flex flex-col items-end gap-2">
-              <!-- 复习状态切换 -->
-              <div class="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-slate-50/80 p-1 dark:border-white/10 dark:bg-white/[0.03]">
-                <button @click.stop="quickMarkStatus(question, '待复习')"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-all"
-                  :class="!question.review_status || question.review_status === '待复习' ? 'bg-slate-500/20 text-slate-600 dark:bg-slate-500/30 dark:text-slate-300' : 'text-slate-400 hover:bg-slate-500/10 dark:text-slate-600 dark:hover:bg-slate-500/10'"
-                  title="待复习">
-                  <i class="fa-solid fa-clock text-xs"></i>
-                </button>
-                <button @click.stop="quickMarkStatus(question, '复习中')"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-all"
-                  :class="question.review_status === '复习中' ? 'bg-indigo-500/20 text-indigo-600 dark:bg-indigo-500/30 dark:text-indigo-400' : 'text-slate-400 hover:bg-indigo-500/10 dark:text-slate-600 dark:hover:bg-indigo-500/10'"
-                  title="复习中">
-                  <i class="fa-solid fa-spinner text-xs"></i>
-                </button>
-                <button @click.stop="quickMarkStatus(question, '已掌握')"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-all"
-                  :class="question.review_status === '已掌握' ? 'bg-emerald-500/20 text-emerald-600 dark:bg-emerald-500/30 dark:text-emerald-400' : 'text-slate-400 hover:bg-emerald-500/10 dark:text-slate-600 dark:hover:bg-emerald-500/10'"
-                  title="已掌握">
-                  <i class="fa-solid fa-circle-check text-xs"></i>
-                </button>
-              </div>
-              <!-- 操作按钮 -->
-              <div class="flex items-center gap-1">
-                <button @click.stop="openEditDialog(question, 'question')"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-blue-500/20 dark:hover:text-blue-400"
-                  title="编辑">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button @click.stop="openEditDialog(question, 'user_answer')"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-blue-500/20 dark:hover:text-blue-400"
-                  title="记笔记">
-                  <i class="fa-solid fa-note-sticky text-xs"></i>
-                </button>
-                <button @click.stop="emit('start-chat', question)"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400"
-                  title="AI 辅导">
-                  <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
-                </button>
-                <button @click.stop="doDelete(question)"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-rose-500/10 hover:text-rose-500 dark:hover:bg-rose-500/20 dark:hover:text-rose-400"
-                  title="删除题目">
-                  <i class="fa-solid fa-trash-can text-xs"></i>
-                </button>
-              </div>
-            </div>
+            <button
+              @mouseenter="onMenuEnter(question.id, $event.currentTarget)"
+              @mouseleave="onMenuLeave"
+              class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
+              <i class="fa-solid fa-ellipsis text-sm"></i>
+            </button>
+            <Teleport to="body">
+              <Transition
+                enter-active-class="transition duration-150 ease-out"
+                enter-from-class="opacity-0 scale-95 -translate-y-1"
+                enter-to-class="opacity-100 scale-100 translate-y-0"
+                leave-active-class="transition duration-100 ease-in"
+                leave-from-class="opacity-100 scale-100 translate-y-0"
+                leave-to-class="opacity-0 scale-95 -translate-y-1"
+              >
+                <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle"
+                  @mouseenter="onMenuContentEnter" @mouseleave="onMenuContentLeave"
+                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                  <div class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</div>
+                  <button @click.stop="quickMarkStatus(question, '待复习')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'">
+                    <i class="fa-solid fa-clock text-xs"></i>待复习
+                    <i v-if="!question.review_status || question.review_status === '待复习'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <button @click.stop="quickMarkStatus(question, '复习中')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-400'">
+                    <i class="fa-solid fa-spinner text-xs"></i>复习中
+                    <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <button @click.stop="quickMarkStatus(question, '已掌握')"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                    :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400'">
+                    <i class="fa-solid fa-circle-check text-xs"></i>已掌握
+                    <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                  </button>
+                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                  <div class="px-3 pb-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
+                  <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
+                  </button>
+                  <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                    <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
+                  </button>
+                  <button @click.stop="emit('start-chat', question); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
+                  </button>
+                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                  <button @click.stop="doDelete(question); hoverMenuId = null"
+                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                    <i class="fa-solid fa-trash-can text-xs"></i>删除题目
+                  </button>
+                </div>
+              </Transition>
+            </Teleport>
           </template>
 
         </QuestionItem>

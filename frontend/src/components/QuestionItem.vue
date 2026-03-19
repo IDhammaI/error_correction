@@ -30,8 +30,14 @@ const tags = () => {
 
 const statusClass = (status) => {
   if (status === '已掌握') return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30'
-  if (status === '复习中') return 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30'
-  return 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border border-slate-200/50 dark:border-slate-500/30'
+  if (status === '复习中') return 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30'
+  return 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/30'
+}
+
+const statusColor = (status) => {
+  if (status === '已掌握') return 'text-emerald-500 dark:text-emerald-400'
+  if (status === '复习中') return 'text-amber-500 dark:text-amber-400'
+  return 'text-rose-500 dark:text-rose-400'
 }
 
 const statusIcon = (status) => {
@@ -59,14 +65,11 @@ const statusIcon = (status) => {
       <div class="min-w-0 flex-1">
         <!-- 标签行 -->
         <div class="mb-2 flex flex-wrap items-center gap-2">
+          <!-- 复习状态图标 -->
+          <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
           <span v-if="question.subject" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">{{ question.subject }}</span>
           <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">{{ question.question_type }}</span>
           <span v-for="tag in tags()" :key="tag" class="rounded-full border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">{{ tag }}</span>
-          <!-- 复习状态 -->
-          <span v-if="showStatus" class="ml-auto flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold" :class="statusClass(question.review_status)">
-            <i class="fa-solid" :class="statusIcon(question.review_status)"></i>
-            {{ question.review_status || '待复习' }}
-          </span>
         </div>
 
         <!-- 摘要 -->
