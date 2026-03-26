@@ -1,0 +1,39 @@
+"""用户认证 CRUD"""
+
+import logging
+from sqlalchemy import func
+
+from db.models import User
+
+logger = logging.getLogger(__name__)
+
+
+def create_user(db, email, password_hash, username, is_admin=False):
+    """创建用户"""
+    user = User(email=email, password_hash=password_hash, username=username, is_admin=is_admin)
+    db.add(user)
+    try:
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception as e:
+        db.rollback()
+        raise
+
+
+def get_user_by_email(db, email):
+    """按邮箱查询用户"""
+    return db.query(User).filter(User.email == email).first()
+
+
+def get_user_by_id(db, user_id):
+    """按 ID 查询用户"""
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def get_user_by_login(db, identifier):
+    """按邮箱或用户名查询用户（登录用，大小写不敏感邮箱）"""
+    identifier = identifier.strip()
+    return db.query(User).filter(
+        (func.lower(User.email) == identifier.lower()) | (User.username == identifier)
+    ).first()
