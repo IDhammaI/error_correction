@@ -271,7 +271,7 @@ class Settings(BaseSettings):
     def _clear_agent_cache(self):
         """清除 agent 缓存"""
         try:
-            from error_correction_agent.agent import _agent_cache, _agent_cache_lock
+            from agents.error_correction.agent import _agent_cache, _agent_cache_lock
             with _agent_cache_lock:
                 _agent_cache.clear()
         except ImportError:

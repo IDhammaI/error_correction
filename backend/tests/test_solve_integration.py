@@ -55,7 +55,7 @@ EXPECTED_ANSWERS = {
 @pytest.fixture(scope="session")
 def solve_results(model_provider):
     """session 级 fixture：只调用一次 API，所有测试共享结果"""
-    from solve_agent import invoke_solve
+    from agents.solve import invoke_solve
     return invoke_solve(SAMPLE_QUESTIONS, provider=model_provider)
 
 

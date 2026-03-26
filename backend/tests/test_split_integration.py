@@ -48,7 +48,7 @@ def ocr_data():
 @pytest.fixture(scope="session")
 def split_result(ocr_data, model_provider):
     """调用 split_batch 一次，所有测试共享结果（节省 API 调用）"""
-    from error_correction_agent.tools import split_batch
+    from agents.error_correction.tools import split_batch
 
     result = split_batch.invoke({
         "ocr_data": json.dumps(ocr_data, ensure_ascii=False),
@@ -79,7 +79,7 @@ class TestSplitIntegration:
 
     def test_question_schema(self, split_result):
         """每道题目应符合 Question schema"""
-        from error_correction_agent.schemas import Question
+        from agents.error_correction.schemas import Question
 
         for q_data in split_result:
             q = Question(**q_data)

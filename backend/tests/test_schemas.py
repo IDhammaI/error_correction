@@ -11,7 +11,7 @@ Pydantic schema 模型的单元测试
 
 import pytest
 from pydantic import ValidationError
-from error_correction_agent.schemas import (
+from agents.error_correction.schemas import (
     ContentBlock,
     Question,
     QuestionSplitResult,

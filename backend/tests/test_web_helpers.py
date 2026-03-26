@@ -8,7 +8,8 @@ web_app.py 中纯函数的单元测试
 
 import os
 import pytest
-from web_app import allowed_file, _safe_join
+from routes.upload import allowed_file
+from web_app import _safe_join
 
 
 # ═══════════════════════════════════════════════════════════

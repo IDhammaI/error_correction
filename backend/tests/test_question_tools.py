@@ -10,7 +10,7 @@ import os
 import json
 import pytest
 from unittest.mock import patch
-from error_correction_agent.tools.question_tools import save_questions, log_issue
+from agents.error_correction.tools.question_tools import save_questions, log_issue
 
 
 # ═══════════════════════════════════════════════════════════

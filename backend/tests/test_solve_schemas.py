@@ -8,7 +8,7 @@ solve_agent/schemas.py 单元测试
 
 import pytest
 from pydantic import ValidationError
-from solve_agent.schemas import SolveResult, SolveBatchResult
+from agents.solve.schemas import SolveResult, SolveBatchResult
 
 
 # ═══════════════════════════════════════════════════════════

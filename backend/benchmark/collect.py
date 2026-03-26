@@ -93,7 +93,7 @@ def ocr_and_split(image_paths: List[str], provider: str = "openai") -> List[Dict
     batches = _build_overlapping_batches(ocr_data, batch_size=2, overlap=1)
 
     # 分割
-    from error_correction_agent.tools import split_batch
+    from agents.error_correction.tools import split_batch
 
     all_questions = []
     for batch_data in batches:

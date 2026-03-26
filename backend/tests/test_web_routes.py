@@ -54,10 +54,19 @@ def client(test_db):
         def __exit__(self, *args):
             pass
 
-    with patch("web_app.SessionLocal", FakeSessionLocal()):
+    fake = FakeSessionLocal()
+    with patch("routes.settings.SessionLocal", fake), \
+         patch("routes.questions.SessionLocal", fake), \
+         patch("routes.stats.SessionLocal", fake), \
+         patch("routes.upload.SessionLocal", fake), \
+         patch("routes.chat.SessionLocal", fake), \
+         patch("routes.auth.SessionLocal", fake):
         from web_app import app
         app.config["TESTING"] = True
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess['user_id'] = 1
+                sess['username'] = 'test'
             yield c
 
 
