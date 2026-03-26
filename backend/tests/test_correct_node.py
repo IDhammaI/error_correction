@@ -62,7 +62,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write(agent_input)
 
-        with patch("config.settings.results_dir", Path(results_dir)):
+        with patch("core.config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1, q2, q3]}
             result = correct_questions_node(state)
 
@@ -89,7 +89,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write("{}")
 
-        with patch("config.settings.results_dir", Path(results_dir)):
+        with patch("core.config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1]}
             result = correct_questions_node(state)
 

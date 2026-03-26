@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from rich.console import Console
 
-from config import settings
+from core.config import settings
 
 load_dotenv()
 console = Console()

@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from werkzeug.security import generate_password_hash
-from config import settings
+from core.config import settings
 from db import engine, SessionLocal
 from db.models import Base
 from db import crud

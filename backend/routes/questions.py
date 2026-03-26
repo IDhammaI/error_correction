@@ -8,7 +8,7 @@ from flask import Blueprint, request, jsonify, session
 from db import SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
-from config import settings
+from core.config import settings
 from src.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)
@@ -453,7 +453,7 @@ def save_to_db():
         # 读取科目信息
         subject = _read_split_subject()
 
-        from state import session_lock, session_files, session_file_order
+        from core.state import session_lock, session_files, session_file_order
         with session_lock:
             batch_info = {
                 "original_filename": ", ".join(

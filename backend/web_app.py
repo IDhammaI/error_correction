@@ -18,7 +18,7 @@ from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from config import settings
+from core.config import settings
 from db import init_db, SessionLocal
 from routes import register_routes
 

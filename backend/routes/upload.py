@@ -7,8 +7,8 @@ from typing import Optional
 
 from flask import Blueprint, request, jsonify, session
 
-import state
-from state import (
+import core.state as state
+from core.state import (
     workflow_graph,
     session_files,
     session_file_order,
@@ -17,7 +17,7 @@ from state import (
 )
 from db import SessionLocal
 from db import crud
-from config import settings
+from core.config import settings
 from src.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)

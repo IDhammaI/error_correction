@@ -7,7 +7,7 @@ from typing import Generator, List, Dict, Any
 
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-from llm import init_model
+from core.llm import init_model
 from .prompts import build_teach_prompt
 
 logger = logging.getLogger(__name__)

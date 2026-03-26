@@ -8,7 +8,7 @@ from flask import Blueprint, request, jsonify, session, Response
 from db import SessionLocal
 from db import crud
 from db.models import Question, ChatSession as ChatSessionModel, QuestionTagMapping
-from config import settings
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 

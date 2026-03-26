@@ -6,7 +6,7 @@ import logging
 import requests as http_requests
 from flask import Blueprint, request, jsonify, session
 
-from config import settings
+from core.config import settings
 from db import SessionLocal
 from db import crud
 

@@ -5,7 +5,7 @@
 供应商配置和工厂方法统一在 config.py 的 LLMProviderConfig 子类中定义。
 """
 
-from config import settings
+from core.config import settings
 
 
 def init_model(
@@ -33,7 +33,7 @@ def init_model(
     """
     if api_key:
         # 用传入的凭据动态构建配置，跳过环境变量
-        from config import OpenAICompatibleConfig, AnthropicCompatibleConfig
+        from core.config import OpenAICompatibleConfig, AnthropicCompatibleConfig
         if provider == "anthropic":
             cfg = AnthropicCompatibleConfig(
                 api_key=api_key,

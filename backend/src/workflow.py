@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from config import settings
+from core.config import settings
 from .utils import prepare_input, export_wrongbook, simplify_ocr_results, run_async
 console = Console()
 
