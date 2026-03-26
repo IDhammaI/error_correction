@@ -1,5 +1,14 @@
 """
 错题本生成系统 - Web应用（纯 API 服务）
+
+职责：
+  - 创建 Flask 应用实例，配置全局参数
+  - 注册所有 Blueprint 路由（routes/ 目录）
+  - 提供全局错误处理和登录鉴权中间件
+  - 提供 OCR 图片、下载文件、擦除结果等静态资源接口
+
+前端由 Vite dev server 独立运行（localhost:5173），
+通过代理将 /api 等请求转发到本服务（localhost:5001）。
 """
 
 import os
@@ -13,20 +22,29 @@ from config import settings
 from db import init_db, SessionLocal
 from routes import register_routes
 
-# 加载环境变量
+# 加载项目根目录的 .env 文件（SECRET_KEY、FLASK_DEBUG 等）
+# load_dotenv() 会自动从当前目录向上查找 .env 文件
 load_dotenv()
 
+# 模块级日志记录器，日志名称为 'web_app'
 logger = logging.getLogger(__name__)
 
+# ============================================================
+# Flask 应用初始化
+# ============================================================
+
 app = Flask(__name__)
+
+# 会话密钥：用于加密 Flask session cookie，生产环境必须修改
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-change-in-production')
 
-# 跨域支持（前端 dev server 端口不同）
+# 跨域支持：前端 dev server (5173) 和后端 (5001) 端口不同，需要 CORS
+# supports_credentials=True 允许携带 cookie（登录态依赖 session cookie）
 CORS(app, supports_credentials=True)
 
-# 配置
+# 文件上传配置
 app.config['UPLOAD_FOLDER'] = settings.upload_dir
-app.config['MAX_CONTENT_LENGTH'] = settings.max_file_size_mb * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = settings.max_file_size_mb * 1024 * 1024  # MB → 字节
 
 
 # ============================================================
@@ -35,6 +53,7 @@ app.config['MAX_CONTENT_LENGTH'] = settings.max_file_size_mb * 1024 * 1024
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
+    """上传文件超出 MAX_CONTENT_LENGTH 限制时触发"""
     return jsonify({
         'success': False,
         'error': f'文件大小超出限制，最大允许 {settings.max_file_size_mb}MB'
@@ -43,6 +62,7 @@ def request_entity_too_large(error):
 
 @app.errorhandler(404)
 def not_found(error):
+    """请求的路由不存在"""
     return jsonify({
         'success': False,
         'error': '请求的资源不存在'
@@ -51,6 +71,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
+    """未捕获的服务端异常"""
     return jsonify({
         'success': False,
         'error': '服务器内部错误，请稍后重试'
@@ -63,7 +84,12 @@ def internal_error(error):
 
 @app.before_request
 def require_login():
-    """所有 /api/ 路由（除 /api/auth/ 和 /api/status）要求登录"""
+    """登录鉴权：所有 /api/ 路由默认要求登录
+
+    豁免列表：
+      - /api/auth/*  — 登录、注册、获取当前用户等认证接口
+      - /api/status  — 系统状态查询（前端初始化时需要）
+    """
     if request.path.startswith('/api/'):
         if request.path.startswith('/api/auth/') or request.path == '/api/status':
             return None
@@ -75,15 +101,31 @@ def require_login():
 # ============================================================
 # 注册 Blueprint 路由
 # ============================================================
+# 各 Blueprint 定义在 routes/ 目录下：
+#   - auth.py      → /api/auth/*     用户认证
+#   - upload.py    → /api/*          文件上传、分割、导出
+#   - questions.py → /api/*          题目 CRUD、错题库、搜索
+#   - chat.py      → /api/*          AI 对话
+#   - stats.py     → /api/*          统计分析
+#   - settings.py  → /api/*          系统配置、模型管理
 
 register_routes(app)
 
 
 # ============================================================
-# 静态资源服务（OCR 图片、下载、擦除结果）
+# 静态资源服务
 # ============================================================
+# 以下路由提供后端生成的文件资源，前端通过 Vite 代理访问：
+#   /download/*  — 导出的 Markdown 错题本文件
+#   /images/*    — PaddleOCR 解析出的图片（存储在 struct_dir/imgs/）
+#   /erased/*    — EnsExam 擦除手写字迹后的图片
 
 def _safe_join(base_dir: str, rel_path: str) -> str | None:
+    """安全路径拼接，防止目录遍历攻击（如 ../../etc/passwd）
+
+    将 rel_path 拼接到 base_dir 后，检查结果路径是否仍在 base_dir 内。
+    如果路径跳出了 base_dir，返回 None。
+    """
     base = os.path.abspath(base_dir)
     target = os.path.abspath(os.path.join(base, rel_path))
     if os.path.normcase(target).startswith(os.path.normcase(base + os.sep)):
@@ -93,7 +135,10 @@ def _safe_join(base_dir: str, rel_path: str) -> str | None:
 
 @app.route('/download/<path:filename>')
 def download_file(filename):
-    """下载结果文件"""
+    """下载结果文件（如导出的 Markdown 错题本）
+
+    禁用浏览器缓存，确保每次下载都是最新版本。
+    """
     file_path = _safe_join(settings.results_dir, filename)
     if not file_path:
         return jsonify({'success': False, 'error': '非法文件路径'}), 400
@@ -102,12 +147,13 @@ def download_file(filename):
 
     resp = send_file(
         file_path,
-        as_attachment=True,
-        download_name=os.path.basename(filename),
+        as_attachment=True,                          # 触发浏览器下载而非预览
+        download_name=os.path.basename(filename),    # 下载时显示的文件名
         conditional=False,
         etag=False,
         max_age=0,
     )
+    # 强制禁用缓存，避免浏览器返回旧文件
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
@@ -116,7 +162,11 @@ def download_file(filename):
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
-    """提供 OCR 解析出的图片资源"""
+    """提供 PaddleOCR 解析出的图片资源
+
+    OCR 处理后的结构化图片存储在 struct_dir/imgs/ 目录下，
+    前端题目卡片中的图片通过此接口加载。
+    """
     base = os.path.join(settings.struct_dir, "imgs")
     file_path = _safe_join(base, filename)
     if not file_path or not os.path.exists(file_path):
@@ -126,7 +176,11 @@ def serve_image(filename):
 
 @app.route('/erased/<path:filename>')
 def serve_erased_image(filename):
-    """提供擦除结果图片"""
+    """提供 EnsExam 擦除手写字迹后的图片
+
+    用户上传试卷后，EnsExam 模型会擦除手写笔迹，
+    还原干净的题目底图，结果保存在 erased_dir。
+    """
     file_path = _safe_join(str(settings.erased_dir), filename)
     if not file_path or not os.path.exists(file_path):
         return jsonify({'success': False, 'error': '图片不存在'}), 404
@@ -138,7 +192,10 @@ def serve_erased_image(filename):
 # ============================================================
 
 if __name__ == '__main__':
+    # 创建运行时目录（uploads、pages、results 等）
     settings.ensure_dirs()
+
+    # 初始化数据库（建表 + 自动迁移）
     init_db()
     from db.migrate import migrate
     migrate()
@@ -151,8 +208,10 @@ if __name__ == '__main__':
     print("前端开发: cd frontend && npm run dev")
     print("=" * 60)
 
+    # 从环境变量读取调试模式开关（默认关闭）
+    # 开启后 Flask 会自动重载代码变更，并在浏览器显示详细错误信息
     debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     app.run(
         host='0.0.0.0', port=5001, debug=debug,
-        exclude_patterns=["*site-packages*"],
+        exclude_patterns=["*site-packages*"],    # 排除第三方库文件变更触发的重载
     )
