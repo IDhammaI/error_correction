@@ -1,15 +1,12 @@
 """
-错题本生成系统 - Web应用
+错题本生成系统 - Web应用（纯 API 服务）
 """
 
 import os
 import logging
-import mimetypes
 
-# Windows 注册表可能将 .js 映射为 text/plain，导致浏览器拒绝加载 ES module
-mimetypes.add_type('application/javascript', '.js')
-
-from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, session
+from flask import Flask, request, jsonify, send_file, session
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 from config import settings
@@ -24,12 +21,12 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-change-in-production')
 
-# 配置（统一从 config.py 导入）
+# 跨域支持（前端 dev server 端口不同）
+CORS(app, supports_credentials=True)
+
+# 配置
 app.config['UPLOAD_FOLDER'] = settings.upload_dir
 app.config['MAX_CONTENT_LENGTH'] = settings.max_file_size_mb * 1024 * 1024
-
-# 前端构建产物目录
-FRONTEND_DIST = os.path.join(settings.project_root, 'frontend', 'dist')
 
 
 # ============================================================
@@ -38,7 +35,6 @@ FRONTEND_DIST = os.path.join(settings.project_root, 'frontend', 'dist')
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    """文件大小超出Flask限制"""
     return jsonify({
         'success': False,
         'error': f'文件大小超出限制，最大允许 {settings.max_file_size_mb}MB'
@@ -47,7 +43,6 @@ def request_entity_too_large(error):
 
 @app.errorhandler(404)
 def not_found(error):
-    """页面未找到"""
     return jsonify({
         'success': False,
         'error': '请求的资源不存在'
@@ -56,7 +51,6 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    """服务器内部错误"""
     return jsonify({
         'success': False,
         'error': '服务器内部错误，请稍后重试'
@@ -86,61 +80,7 @@ register_routes(app)
 
 
 # ============================================================
-# 前端页面路由
-# ============================================================
-
-@app.route('/')
-def index():
-    """主页 - 返回 Vue SPA"""
-    return send_from_directory(FRONTEND_DIST, 'app.html')
-
-
-@app.route('/app.html')
-def app_page_redirect():
-    """旧路径重定向到规范 URL"""
-    return redirect('/app', code=301)
-
-
-@app.route('/app')
-@app.route('/app/<path:subpath>')
-def app_page(subpath=''):
-    """工作台及子路由 - 返回 Vue SPA"""
-    return send_from_directory(FRONTEND_DIST, 'app.html')
-
-
-@app.route('/auth')
-def auth_page():
-    """登录/注册页 - 返回 Vue SPA"""
-    return send_from_directory(FRONTEND_DIST, 'app.html')
-
-
-@app.route('/static/vue/<path:filename>')
-def serve_vue_dist(filename):
-    """提供 Vue 前端构建产物"""
-    return send_from_directory(FRONTEND_DIST, filename)
-
-
-@app.route('/record')
-def record_page():
-    """错题本记录页面"""
-    record_file = os.path.join(settings.project_root, 'record.html')
-    if os.path.exists(record_file):
-        return send_from_directory(settings.project_root, 'record.html')
-    return "记录页文件不存在", 404
-
-
-@app.route('/preview')
-def preview():
-    """显示预览页面"""
-    preview_file = os.path.join(settings.results_dir, "preview.html")
-    if os.path.exists(preview_file):
-        with open(preview_file, 'r', encoding='utf-8') as f:
-            return f.read()
-    return "预览文件不存在，请先分割题目", 404
-
-
-# ============================================================
-# 静态资源服务
+# 静态资源服务（OCR 图片、下载、擦除结果）
 # ============================================================
 
 def _safe_join(base_dir: str, rel_path: str) -> str | None:
@@ -198,22 +138,21 @@ def serve_erased_image(filename):
 # ============================================================
 
 if __name__ == '__main__':
-    # 确保运行时目录存在
     settings.ensure_dirs()
-    # 初始化数据库
     init_db()
-    # 自动迁移（添加新列等）
     from db.migrate import migrate
     migrate()
     print("[数据库] 初始化完成")
 
     print("=" * 60)
-    print("错题本生成系统 - Web应用")
+    print("错题本生成系统 - API 服务")
     print("=" * 60)
-    print("访问地址: http://localhost:5001")
+    print("API 地址: http://localhost:5001")
+    print("前端开发: cd frontend && npm run dev")
     print("=" * 60)
 
+    debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     app.run(
-        host='0.0.0.0', port=5001, debug=True,
+        host='0.0.0.0', port=5001, debug=debug,
         exclude_patterns=["*site-packages*"],
     )
