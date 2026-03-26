@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 _CONNECTION_CACHE_TTL = 60  # 连通性检测缓存有效期（秒）
 _providers_lock = threading.Lock()  # 保护 llm_providers 并发读写
 
-_BACKEND_ROOT = Path(__file__).resolve().parent
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent  # backend/core/ → backend/
 _PROJECT_ROOT = _BACKEND_ROOT.parent
 _ENV_FILE = _PROJECT_ROOT / ".env"
 

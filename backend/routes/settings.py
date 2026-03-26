@@ -9,6 +9,7 @@ from flask import Blueprint, request, jsonify, session
 from core.config import settings
 from db import SessionLocal
 from db import crud
+from db.models import ProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ def list_models():
             if user_id:
                 with SessionLocal() as db:
                     if provider_id:
-                        provider = db.query(crud.ProviderConfig).filter_by(
+                        provider = db.query(ProviderConfig).filter_by(
                             id=provider_id, user_id=user_id
                         ).first()
                     else:
@@ -272,7 +273,7 @@ def test_paddleocr():
             if user_id:
                 with SessionLocal() as db:
                     if provider_id:
-                        provider = db.query(crud.ProviderConfig).filter_by(
+                        provider = db.query(ProviderConfig).filter_by(
                             id=provider_id, user_id=user_id
                         ).first()
                     else:
