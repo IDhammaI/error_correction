@@ -280,7 +280,7 @@ onUnmounted(() => {
     <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10" style="transform-origin: center 55%; will-change: transform;">
       <div class="flex-1 text-center lg:text-left">
         <div class="hero-anim">
-          <div class="mb-10 flex items-center justify-center lg:justify-start">
+          <div class="mb-4 flex items-center justify-center lg:justify-start">
             <div class="relative flex items-center gap-3 py-1 text-xs font-black tracking-widest text-blue-700/90 dark:text-indigo-300/90">
               <div class="relative flex h-5 w-5 items-center justify-center">
                 <Zap class="absolute w-4 h-4 text-orange-500 dark:text-yellow-400 animate-pulse" />
