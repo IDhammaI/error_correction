@@ -221,7 +221,7 @@ async function doDelete(noteId) {
             <CustomSelect v-model="filterSubject" :options="subjects" label="学科" placeholder="全部学科" />
             <CustomSelect v-model="filterTag" :options="tagNames" label="知识点" placeholder="全部知识点" />
             <div>
-              <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400">统计</label>
+              <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">统计</label>
               <div class="flex h-10 items-center rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
                 共 {{ total }} 条笔记
               </div>

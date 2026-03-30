@@ -7,8 +7,9 @@ const router = useRouter()
 const transitionName = ref('auth-slide-left')
 
 onMounted(() => {
-  document.documentElement.classList.add('dark')
-  localStorage.setItem('theme', 'dark')
+  // 读取用户主题偏好，不强制暗色
+  const savedTheme = localStorage.getItem('theme') || 'dark'
+  document.documentElement.classList.toggle('dark', savedTheme === 'dark')
 })
 
 router.beforeEach((to, from) => {
