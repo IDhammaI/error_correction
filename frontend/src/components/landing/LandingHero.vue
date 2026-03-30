@@ -23,7 +23,7 @@ const TERMINAL_SCRIPT = [
   { type: 'blank', delay: 5600 },
   { type: 'comment', text: '# Fixing OCR artifacts & converting to LaTeX', delay: 6000 },
   { type: 'diff-del', text: 'original: f(x)=sin(wx+φ)', delay: 6800 },
-  { type: 'diff-add', text: 'fixed:    $f(x) = \\sin(\\omega x + \\varphi)$', delay: 7600 },
+  { type: 'diff-add', text: 'fixed:    f(x) = sin(ωx + φ)', delay: 7600 },
   { type: 'blank', delay: 8400 },
   { type: 'success', text: '[agent] 知识点标签: 三角函数, 诱导公式, 周期性', delay: 9000 },
   { type: 'info', text: 'Generating Markdown structured output...', delay: 10000 },
