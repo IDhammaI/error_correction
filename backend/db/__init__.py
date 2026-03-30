@@ -41,6 +41,16 @@ def _migrate_schema():
         if 'answer' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN answer TEXT")
             conn.commit()
+
+        # chat_sessions 表：新增 user_id、title 列，question_id 改为可选
+        cursor.execute("PRAGMA table_info(chat_sessions)")
+        cs_columns = {row[1] for row in cursor.fetchall()}
+        if 'user_id' not in cs_columns:
+            cursor.execute("ALTER TABLE chat_sessions ADD COLUMN user_id INTEGER REFERENCES users(id)")
+            conn.commit()
+        if 'title' not in cs_columns:
+            cursor.execute("ALTER TABLE chat_sessions ADD COLUMN title TEXT DEFAULT '新对话'")
+            conn.commit()
     finally:
         conn.close()
 

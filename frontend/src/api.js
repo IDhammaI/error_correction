@@ -387,3 +387,48 @@ export async function deleteNote(noteId) {
   if (data.success) return true
   throw new Error(data.error || '删除笔记失败')
 }
+
+// ── 独立对话 ─────────────────────────────────────────────
+
+/** 创建独立对话 */
+export async function createIndependentChat(title = '新对话') {
+  const resp = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  const data = await resp.json()
+  if (data.success) return data.session
+  throw new Error(data.error || '创建对话失败')
+}
+
+/** 获取用户的独立对话列表 */
+export async function fetchMyChatSessions(params = {}) {
+  const query = new URLSearchParams()
+  if (params.page) query.set('page', params.page)
+  if (params.limit) query.set('limit', params.limit)
+  const resp = await fetch(`/api/chat/my-sessions?${query}`)
+  const data = await resp.json()
+  if (data.success) return data
+  throw new Error(data.error || '获取对话列表失败')
+}
+
+/** 更新对话标题 */
+export async function updateChatTitle(sessionId, title) {
+  const resp = await fetch(`/api/chat/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  const data = await resp.json()
+  if (data.success) return data.session
+  throw new Error(data.error || '更新标题失败')
+}
+
+/** 删除对话 */
+export async function deleteChat(sessionId) {
+  const resp = await fetch(`/api/chat/${sessionId}`, { method: 'DELETE' })
+  const data = await resp.json()
+  if (data.success) return true
+  throw new Error(data.error || '删除对话失败')
+}

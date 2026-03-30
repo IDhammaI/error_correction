@@ -15,13 +15,14 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('chat', __name__)
 
 
-def _serialize_chat_session(session) -> dict:
+def _serialize_chat_session(s) -> dict:
     """将 ChatSession ORM 对象序列化为前端 JSON"""
     return {
-        'id': session.id,
-        'question_id': session.question_id,
-        'created_at': session.created_at.isoformat() if session.created_at else None,
-        'updated_at': session.updated_at.isoformat() if session.updated_at else None,
+        'id': s.id,
+        'title': s.title or '新对话',
+        'question_id': s.question_id,
+        'created_at': s.created_at.isoformat() if s.created_at else None,
+        'updated_at': s.updated_at.isoformat() if s.updated_at else None,
     }
 
 
@@ -68,27 +69,81 @@ def get_question_chats(question_id):
 
 @bp.route('/chat', methods=['POST'])
 def create_chat():
-    """创建新对话"""
+    """创建新对话（支持绑定题目或独立对话）"""
     try:
         data = request.get_json(silent=True) or {}
-        question_id = data.get('question_id')
-        if not question_id:
-            return jsonify({'success': False, 'error': '缺少 question_id'}), 400
+        question_id = data.get('question_id')  # 可选
+        title = data.get('title', '新对话')
+        user_id = session.get('user_id')
 
-        with SessionLocal() as db:
-            question = db.query(Question).filter(Question.id == question_id).first()
-            if not question:
-                return jsonify({'success': False, 'error': '题目不存在'}), 404
-
-            chat_session = crud.create_chat_session(db, question_id)
-            return jsonify({
-                'success': True,
-                'session': _serialize_chat_session(chat_session),
-            })
+        if question_id:
+            with SessionLocal() as db:
+                question = db.query(Question).filter(Question.id == question_id).first()
+                if not question:
+                    return jsonify({'success': False, 'error': '题目不存在'}), 404
+                chat_session = crud.create_chat_session(db, question_id=question_id, user_id=user_id, title=title)
+                return jsonify({'success': True, 'session': _serialize_chat_session(chat_session)})
+        else:
+            # 独立对话
+            with SessionLocal() as db:
+                chat_session = crud.create_chat_session(db, user_id=user_id, title=title)
+                return jsonify({'success': True, 'session': _serialize_chat_session(chat_session)})
 
     except Exception as e:
         logger.exception("创建对话失败")
         return jsonify({'success': False, 'error': '创建对话失败'}), 500
+
+
+@bp.route('/chat/my-sessions', methods=['GET'])
+def get_my_chat_sessions():
+    """获取当前用户的独立对话列表"""
+    try:
+        user_id = session.get('user_id')
+        page = max(1, request.args.get('page', 1, type=int))
+        page_size = min(50, max(1, request.args.get('limit', 20, type=int)))
+
+        with SessionLocal() as db:
+            sessions_list, total = crud.get_user_chat_sessions(db, user_id, page=page, page_size=page_size)
+            return jsonify({
+                'success': True,
+                'sessions': [_serialize_chat_session(s) for s in sessions_list],
+                'total': total,
+            })
+    except Exception as e:
+        logger.exception("获取对话列表失败")
+        return jsonify({'success': False, 'error': '获取对话列表失败'}), 500
+
+
+@bp.route('/chat/<int:session_id>', methods=['PATCH'])
+def update_chat_title(session_id):
+    """更新对话标题"""
+    try:
+        data = request.get_json(silent=True) or {}
+        title = data.get('title', '').strip()
+        if not title:
+            return jsonify({'success': False, 'error': '标题不能为空'}), 400
+
+        with SessionLocal() as db:
+            s = crud.update_chat_session_title(db, session_id, title)
+            if not s:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            return jsonify({'success': True, 'session': _serialize_chat_session(s)})
+    except Exception as e:
+        logger.exception("更新对话标题失败")
+        return jsonify({'success': False, 'error': '更新失败'}), 500
+
+
+@bp.route('/chat/<int:session_id>', methods=['DELETE'])
+def delete_chat(session_id):
+    """删除对话"""
+    try:
+        with SessionLocal() as db:
+            if not crud.delete_chat_session(db, session_id):
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            return jsonify({'success': True})
+    except Exception as e:
+        logger.exception("删除对话失败")
+        return jsonify({'success': False, 'error': '删除失败'}), 500
 
 
 @bp.route('/chat/sessions', methods=['GET'])
@@ -169,12 +224,9 @@ def stream_chat(session_id):
             if not chat_session:
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
 
+            # 独立对话或题目绑定对话
             question = chat_session.question
-            if not question:
-                return jsonify({'success': False, 'error': '关联题目不存在'}), 404
-
-            # 序列化题目数据
-            q_data = _serialize_question(question)
+            q_data = _serialize_question(question) if question else None
 
             # 加载历史消息（最近 20 条）
             history_result = crud.get_chat_messages(db, session_id, limit=20)

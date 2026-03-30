@@ -74,6 +74,9 @@ from db.crud.chat import (
     get_chat_messages,
     get_chat_sessions_by_question,
     get_all_chat_sessions,
+    get_user_chat_sessions,
+    update_chat_session_title,
+    delete_chat_session,
 )
 
 from db.crud.split_records import (
@@ -144,6 +147,9 @@ __all__ = [
     "get_chat_messages",
     "get_chat_sessions_by_question",
     "get_all_chat_sessions",
+    "get_user_chat_sessions",
+    "update_chat_session_title",
+    "delete_chat_session",
     # split_records
     "MAX_SPLIT_RECORDS",
     "save_split_record",

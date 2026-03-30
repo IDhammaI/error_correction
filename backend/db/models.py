@@ -101,14 +101,17 @@ class Question(Base):
 
 
 class ChatSession(Base):
-    """教学辅导对话会话"""
+    """对话会话（可绑定题目，也可独立对话）"""
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=True, index=True)
+    title = Column(String(255), default="新对话")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    user = relationship("User")
     question = relationship("Question", back_populates="chat_sessions")
     messages = relationship("ChatMessage", back_populates="session", order_by="ChatMessage.id")
 
