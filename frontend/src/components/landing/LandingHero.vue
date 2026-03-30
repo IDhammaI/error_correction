@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Zap, UploadCloud, ArrowRight, Terminal, CheckCircle2, Sparkles } from 'lucide-vue-next'
 
+const emit = defineEmits(['scrollToSection'])
+
 const canvasRef = ref(null)
 const terminalRef = ref(null)
 
