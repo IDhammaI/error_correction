@@ -23,6 +23,7 @@ import ChatView from '../components/ChatView.vue'
 import SettingsView from '../components/SettingsView.vue'
 import SplitHistory from '../components/SplitHistory.vue'
 import NoteView from '../components/NoteView.vue'
+import ChatPage from '../components/ChatPage.vue'
 import GlassButton from '../components/GlassButton.vue'
 
 // ---- 认证状态 ----
@@ -53,6 +54,7 @@ const VIEW_TO_PATH = {
   review: '/app/review',
   'error-bank': '/app/error-bank',
   notes: '/app/notes',
+  'ai-chat': '/app/ai-chat',
   settings: '/app/settings',
   'split-history': '/app/split-history',
   chat: '/app/chat',
@@ -67,6 +69,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
   { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
   { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
+  { id: 'ai-chat', label: 'AI 对话', icon: 'fa-comments', match: (v) => v === 'ai-chat' },
 ]
 
 const currentView = computed({
@@ -1022,6 +1025,16 @@ onBeforeUnmount(() => {
             :model-provider="selectedProvider"
             :model-name="selectedModel"
             :theme="theme"
+            @push-toast="pushToast"
+          />
+        </div>
+
+        <!-- 视图 9：AI 对话 -->
+        <div v-else-if="currentView === 'ai-chat'" key="ai_chat_view" class="h-full">
+          <ChatPage
+            :visible="currentView === 'ai-chat'"
+            :model-provider="selectedProvider"
+            :model-name="selectedModel"
             @push-toast="pushToast"
           />
         </div>
