@@ -51,9 +51,9 @@ function startTerminalAnimation() {
     }, line.delay))
   })
 
-  // 循环播放
-  const totalDuration = TERMINAL_SCRIPT[TERMINAL_SCRIPT.length - 1].delay + 4000
-  typeTimers.push(setTimeout(() => startTerminalAnimation(), totalDuration))
+  // 动画结束后停止光标闪烁
+  const totalDuration = TERMINAL_SCRIPT[TERMINAL_SCRIPT.length - 1].delay + 2000
+  typeTimers.push(setTimeout(() => { cursorVisible.value = false }, totalDuration))
 }
 
 // 光标闪烁
