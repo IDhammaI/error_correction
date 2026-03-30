@@ -263,7 +263,8 @@ const pageButtons = computed(() => {
 })
 
 const refreshTags = async () => {
-  tagNames.value = await api.fetchTagNames(filters.subject || undefined)
+  const raw = await api.fetchTagNames(filters.subject || undefined)
+  tagNames.value = [...new Set(raw)]
 }
 
 const scrollContainerRef = ref(null)
@@ -359,7 +360,13 @@ onBeforeUnmount(() => {
           leave-to-class="opacity-0 -translate-y-1"
         >
           <div v-if="tagNames.length">
-            <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+            <div class="mb-2 flex items-center gap-2">
+              <label class="block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+              <button v-if="selectedTags.size" @click="clearTagSelection"
+                class="rounded-full px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
+                <i class="fa-solid fa-xmark mr-1"></i>清除
+              </button>
+            </div>
             <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
               <button v-for="(tag, i) in tagNames" :key="tag"
                 @click="toggleTagSelect(tag)"
@@ -371,10 +378,6 @@ onBeforeUnmount(() => {
               >
                 <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
                 {{ tag }}
-              </button>
-              <button v-if="selectedTags.size" @click="clearTagSelection"
-                class="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
-                <i class="fa-solid fa-xmark mr-1"></i>清除
               </button>
             </div>
           </div>
