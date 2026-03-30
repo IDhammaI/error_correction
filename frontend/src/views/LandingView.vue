@@ -240,7 +240,7 @@ onUnmounted(() => {
     <!-- 主内容包裹层 -->
     <div class="relative">
 
-      <LandingHero />
+      <LandingHero @scrollToSection="scrollToSectionSnap" />
 
       <!-- ② 滚动叠盖层 -->
       <div class="relative z-10 overflow-x-hidden">
