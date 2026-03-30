@@ -58,13 +58,11 @@ function startTerminalAnimation() {
 // 光标闪烁
 let blinkTimer = null
 
-// ── Canvas neural animation ──
+// ── Canvas 微光粒子动画 ──
 function initCanvas(canvas) {
   const ctx = canvas.getContext('2d')
-  const NODE_COUNT = 72
-  const CONNECT_DIST = 180
-  const MAX_CONNECTIONS = 4
-  let W, H, nodes, edges, pulses
+  const COUNT = 60
+  let W, H, particles
 
   function isDark() { return document.documentElement.classList.contains('dark') }
 
@@ -75,161 +73,58 @@ function initCanvas(canvas) {
   }
 
   function init() {
-    nodes = Array.from({ length: NODE_COUNT }, () => ({
+    particles = Array.from({ length: COUNT }, () => ({
       x: Math.random() * W,
       y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      r: 2 + Math.random() * 2,
-      activation: 0,
+      vx: (Math.random() - 0.5) * 0.15,
+      vy: (Math.random() - 0.5) * 0.1 - 0.05, // 微微上飘
+      r: 1 + Math.random() * 2,
+      baseAlpha: 0.15 + Math.random() * 0.35,
+      phase: Math.random() * Math.PI * 2, // 呼吸闪烁相位
+      speed: 0.005 + Math.random() * 0.01,
     }))
-    pulses = []
-    for (let i = 0; i < 18; i++) spawnPulse()
   }
 
-  function buildEdges() {
-    edges = []
-    const used = new Array(NODE_COUNT).fill(0)
-    for (let i = 0; i < NODE_COUNT; i++) {
-      const neighbors = []
-      for (let j = 0; j < NODE_COUNT; j++) {
-        if (i === j) continue
-        const dx = nodes[i].x - nodes[j].x
-        const dy = nodes[i].y - nodes[j].y
-        const d = Math.sqrt(dx * dx + dy * dy)
-        if (d < CONNECT_DIST) neighbors.push({ j, d })
-      }
-      neighbors.sort((a, b) => a.d - b.d)
-      neighbors.slice(0, MAX_CONNECTIONS).forEach(({ j, d }) => {
-        if (used[i] < MAX_CONNECTIONS && used[j] < MAX_CONNECTIONS) {
-          if (!edges.find(e => (e.a === i && e.b === j) || (e.a === j && e.b === i))) {
-            edges.push({ a: i, b: j, alpha: 1 - d / CONNECT_DIST })
-            used[i]++
-            used[j]++
-          }
-        }
-      })
-    }
-  }
-
-  function spawnPulse() {
-    if (!edges || edges.length === 0) return
-    const edge = edges[Math.floor(Math.random() * edges.length)]
-    pulses.push({
-      edge,
-      progress: 0,
-      speed: 0.012 + Math.random() * 0.012,
-    })
-  }
-
-  let lastSpawn = 0
-  function update(ts) {
-    nodes.forEach(n => {
-      n.x += n.vx
-      n.y += n.vy
-      if (n.x < 0 || n.x > W) n.vx *= -1
-      if (n.y < 0 || n.y > H) n.vy *= -1
-      n.activation *= 0.94
-    })
-
-    buildEdges()
-
-    for (let i = pulses.length - 1; i >= 0; i--) {
-      const p = pulses[i]
-      p.progress += p.speed
-      if (p.progress >= 1) {
-        const targetIdx = p.edge.b
-        nodes[targetIdx].activation = 1
-        pulses.splice(i, 1)
-        const outEdges = edges.filter(e => e.a === targetIdx || e.b === targetIdx)
-        if (outEdges.length && Math.random() < 0.7) {
-          const next = outEdges[Math.floor(Math.random() * outEdges.length)]
-          const fwd = next.a === targetIdx ? next : { a: next.b, b: next.a, alpha: next.alpha }
-          pulses.push({ edge: fwd, progress: 0, speed: 0.012 + Math.random() * 0.012 })
-        }
-      }
-    }
-
-    if (ts - lastSpawn > 800) {
-      spawnPulse()
-      lastSpawn = ts
-    }
-  }
-
-  function draw() {
+  function draw(ts) {
     ctx.clearRect(0, 0, W, H)
     const dark = isDark()
 
-    edges.forEach(({ a, b, alpha }) => {
-      const na = nodes[a], nb = nodes[b]
-      const act = Math.max(na.activation, nb.activation)
-      const baseAlpha = dark ? 0.08 : 0.06
-      const lineAlpha = baseAlpha + act * (dark ? 0.25 : 0.2)
+    particles.forEach(p => {
+      // 移动
+      p.x += p.vx
+      p.y += p.vy
+      if (p.x < -10) p.x = W + 10
+      if (p.x > W + 10) p.x = -10
+      if (p.y < -10) p.y = H + 10
+      if (p.y > H + 10) p.y = -10
+
+      // 呼吸闪烁
+      const breath = Math.sin(ts * p.speed + p.phase) * 0.5 + 0.5
+      const alpha = p.baseAlpha * (0.3 + breath * 0.7)
+
+      // 外发光
+      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 6)
+      glow.addColorStop(0, dark
+        ? `rgba(165,180,252,${(alpha * 0.4).toFixed(3)})`
+        : `rgba(99,102,241,${(alpha * 0.3).toFixed(3)})`)
+      glow.addColorStop(1, 'transparent')
       ctx.beginPath()
-      ctx.moveTo(na.x, na.y)
-      ctx.lineTo(nb.x, nb.y)
-      ctx.strokeStyle = dark
-        ? `rgba(99,102,241,${(lineAlpha * alpha).toFixed(3)})`
-        : `rgba(59,130,246,${(lineAlpha * alpha).toFixed(3)})`
-      ctx.lineWidth = 0.8 + act * 0.6
-      ctx.stroke()
-    })
+      ctx.arc(p.x, p.y, p.r * 6, 0, Math.PI * 2)
+      ctx.fillStyle = glow
+      ctx.fill()
 
-    nodes.forEach(n => {
-      const act = n.activation
-      const baseR = n.r
-      const r = baseR + act * 4
-
-      if (act > 0.05) {
-        const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 4)
-        grd.addColorStop(0, dark ? `rgba(165,180,252,${act * 0.5})` : `rgba(59,130,246,${act * 0.4})`)
-        grd.addColorStop(1, 'transparent')
-        ctx.beginPath()
-        ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2)
-        ctx.fillStyle = grd
-        ctx.fill()
-      }
-
+      // 粒子核心
       ctx.beginPath()
-      ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
       ctx.fillStyle = dark
-        ? `rgba(${act > 0.1 ? '165,180,252' : '99,102,241'},${0.2 + act * 0.7})`
-        : `rgba(${act > 0.1 ? '59,130,246' : '148,163,184'},${0.25 + act * 0.6})`
-      ctx.fill()
-    })
-
-    pulses.forEach(p => {
-      const na = nodes[p.edge.a], nb = nodes[p.edge.b]
-      const x = na.x + (nb.x - na.x) * p.progress
-      const y = na.y + (nb.y - na.y) * p.progress
-
-      const grd2 = ctx.createRadialGradient(x, y, 0, x, y, 22)
-      grd2.addColorStop(0, dark ? 'rgba(99,102,241,0.45)' : 'rgba(59,130,246,0.35)')
-      grd2.addColorStop(1, 'transparent')
-      ctx.beginPath()
-      ctx.arc(x, y, 22, 0, Math.PI * 2)
-      ctx.fillStyle = grd2
-      ctx.fill()
-
-      const grd = ctx.createRadialGradient(x, y, 0, x, y, 10)
-      grd.addColorStop(0, dark ? 'rgba(224,231,255,1)' : 'rgba(59,130,246,0.95)')
-      grd.addColorStop(0.35, dark ? 'rgba(99,102,241,0.7)' : 'rgba(99,102,241,0.55)')
-      grd.addColorStop(1, 'transparent')
-      ctx.beginPath()
-      ctx.arc(x, y, 10, 0, Math.PI * 2)
-      ctx.fillStyle = grd
-      ctx.fill()
-
-      ctx.beginPath()
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2)
-      ctx.fillStyle = dark ? 'rgba(224,231,255,1)' : 'rgba(59,130,246,1)'
+        ? `rgba(199,210,254,${alpha.toFixed(3)})`
+        : `rgba(99,102,241,${alpha.toFixed(3)})`
       ctx.fill()
     })
   }
 
   function loop(ts) {
-    update(ts)
-    draw()
+    draw(ts)
     raf = requestAnimationFrame(loop)
   }
 

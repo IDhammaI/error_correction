@@ -34,12 +34,8 @@ function toggleTheme() {
         :class="navScrolled ? 'h-16' : 'h-20'"
       >
         <div class="flex items-center gap-3">
-          <div class="relative group">
-            <div class="absolute inset-0 bg-blue-500/60 dark:bg-indigo-500/60 blur-xl opacity-0 group-hover:opacity-100 transition duration-500 rounded-2xl"></div>
-            <div class="relative bg-gradient-to-br from-blue-500 to-indigo-700 dark:from-indigo-500 dark:to-indigo-800 p-2.5 rounded-2xl shadow-md shadow-indigo-500/30 border border-white/10">
-              <img src="/logo.svg" class="w-7 h-7 brightness-0 invert" alt="logo" />
-            </div>
-          </div>
+          <img src="/logo-dark.svg" class="w-7 h-7 block dark:hidden" alt="logo" />
+          <img src="/logo.svg" class="w-7 h-7 hidden dark:block" alt="logo" />
           <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:via-indigo-200 dark:to-indigo-200 tracking-wide">
             智卷错题本
           </span>
