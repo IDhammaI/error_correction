@@ -403,14 +403,14 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 底部弹跳箭头 -->
-      <button
-        @click="emit('scrollToSection', 'features')"
-        class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-slate-400 hover:text-white transition-colors cursor-pointer"
-      >
-        <i class="fa-solid fa-chevron-down text-xl animate-bounce"></i>
-      </button>
     </section>
 
+    <!-- 底部弹跳箭头（相对于整个屏幕区域） -->
+    <button
+      @click="emit('scrollToSection', 'features')"
+      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-slate-400 hover:text-white transition-colors cursor-pointer"
+    >
+      <i class="fa-solid fa-chevron-down text-xl animate-bounce"></i>
+    </button>
   </div><!-- /sticky-hero -->
 </template>
