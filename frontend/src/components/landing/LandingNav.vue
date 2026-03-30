@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { ArrowRight } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -9,6 +10,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['scrollToSection'])
+
+const isDark = ref(document.documentElement.classList.contains('dark'))
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
 </script>
 
 <template>
@@ -46,6 +55,9 @@ const emit = defineEmits(['scrollToSection'])
           <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors">
             <i class="fa-brands fa-github text-xl"></i>
           </a>
+          <button @click="toggleTheme" class="text-slate-400 hover:text-white transition-colors" title="切换主题">
+            <i class="fa-solid text-xl" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
+          </button>
           <RouterLink to="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
             <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
             <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all">

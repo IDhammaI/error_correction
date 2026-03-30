@@ -182,8 +182,9 @@ function setupRevealObserver() {
 }
 
 onMounted(async () => {
-  // Landing page is always dark
-  document.documentElement.classList.add('dark')
+  // 读取用户主题偏好，默认暗色
+  const savedTheme = localStorage.getItem('theme') || 'dark'
+  document.documentElement.classList.toggle('dark', savedTheme === 'dark')
 
   // Set overflow-hidden on body for wheel snap
   document.body.style.overflow = 'hidden'
