@@ -165,13 +165,15 @@ onUnmounted(() => {
       <div class="absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-[0.03] dark:opacity-20 mix-blend-overlay"></div>
     </div>
 
-    <!-- 电路板背景动画 -->
+    <!-- 背景粒子动画（已关闭） -->
+    <!--
     <canvas
       ref="canvasRef"
       id="circuit-canvas"
       class="absolute inset-0 pointer-events-none z-0"
       style="height:100vh;width:100%;opacity:0;transition:opacity 1.2s ease;"
     ></canvas>
+    -->
 
     <!-- 首屏区块 -->
     <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10" style="transform-origin: center 55%; will-change: transform;">
@@ -200,7 +202,7 @@ onUnmounted(() => {
           <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start" style="transition-delay: 450ms;">
             <RouterLink to="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
               <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-3 bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border dark:border-white/30 dark:backdrop-blur-md">
+              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-3 border border-transparent bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border-white/30 dark:backdrop-blur-md">
                 <UploadCloud class="w-5 h-5" />
                 上传试卷分析
               </span>
@@ -260,30 +262,30 @@ onUnmounted(() => {
                     <div v-if="line.type === 'blank'" class="h-2"></div>
                     <!-- 命令行 -->
                     <div v-else-if="line.type === 'cmd'" class="flex items-start gap-2">
-                      <span class="text-cyan-500 shrink-0">❯</span>
-                      <span class="text-slate-300">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                      <span class="text-blue-600 dark:text-cyan-500 shrink-0">❯</span>
+                      <span class="text-slate-700 dark:text-slate-300">{{ (line.text || '').slice(0, line.charIndex) }}</span>
                     </div>
                     <!-- 成功 -->
-                    <div v-else-if="line.type === 'success'" class="flex items-start gap-2 text-emerald-400">
+                    <div v-else-if="line.type === 'success'" class="flex items-start gap-2 text-emerald-600 dark:text-emerald-400">
                       <span class="shrink-0">✓</span>
                       <span>{{ (line.text || '').slice(0, line.charIndex) }}</span>
                     </div>
                     <!-- 注释 -->
-                    <div v-else-if="line.type === 'comment'" class="text-indigo-400">
+                    <div v-else-if="line.type === 'comment'" class="text-indigo-600 dark:text-indigo-400">
                       {{ (line.text || '').slice(0, line.charIndex) }}
                     </div>
                     <!-- diff 删除 -->
                     <div v-else-if="line.type === 'diff-del'" class="flex items-start gap-2">
-                      <span class="text-rose-500 shrink-0">-</span>
-                      <span class="text-rose-400/70 line-through">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                      <span class="text-rose-600 dark:text-rose-500 shrink-0">-</span>
+                      <span class="text-rose-500 dark:text-rose-400/70 line-through">{{ (line.text || '').slice(0, line.charIndex) }}</span>
                     </div>
                     <!-- diff 新增 -->
                     <div v-else-if="line.type === 'diff-add'" class="flex items-start gap-2">
-                      <span class="text-emerald-500 shrink-0">+</span>
-                      <span class="text-emerald-400">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                      <span class="text-emerald-600 dark:text-emerald-500 shrink-0">+</span>
+                      <span class="text-emerald-600 dark:text-emerald-400">{{ (line.text || '').slice(0, line.charIndex) }}</span>
                     </div>
                     <!-- 普通信息 -->
-                    <div v-else class="text-slate-400">
+                    <div v-else class="text-slate-600 dark:text-slate-400">
                       {{ (line.text || '').slice(0, line.charIndex) }}
                     </div>
                   </div>
@@ -292,7 +294,7 @@ onUnmounted(() => {
                 <span
                   v-if="termLines.length > 0"
                   class="inline-block w-[7px] h-[15px] ml-0.5 -mb-0.5 align-middle"
-                  :class="cursorVisible ? 'bg-cyan-400' : 'bg-transparent'"
+                  :class="cursorVisible ? 'bg-blue-600 dark:bg-cyan-400' : 'bg-transparent'"
                 ></span>
               </div>
             </div>

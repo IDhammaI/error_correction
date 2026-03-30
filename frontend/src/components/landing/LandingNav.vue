@@ -1,5 +1,4 @@
 <script setup>
-import { ArrowRight } from 'lucide-vue-next'
 import { useTheme } from '../../composables/useTheme.js'
 
 const { isDark, toggleTheme } = useTheme()
@@ -18,7 +17,7 @@ const emit = defineEmits(['scrollToSection'])
   <!-- 导航栏 -->
   <nav
     id="top-nav"
-    class="fixed top-0 left-0 w-full z-50 transition-all duration-300 border-b border-transparent"
+    class="fixed top-0 left-0 w-full z-50 border-b border-transparent transition-[border-color,backdrop-filter] duration-300"
     :class="navScrolled ? 'glass-panel !border-white/5' : 'border-transparent'"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,7 +49,7 @@ const emit = defineEmits(['scrollToSection'])
           </button>
           <RouterLink to="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
             <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-            <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold rounded-full transition-all bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border dark:border-white/30 dark:backdrop-blur-md">
+            <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold rounded-full transition-all border border-transparent bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:text-white dark:hover:bg-white/25 dark:border-white/30 dark:backdrop-blur-md dark:shadow-[0_0_15px_rgba(255,255,255,0.15)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.25)]">
               进入工作台
             </span>
           </RouterLink>
@@ -66,7 +65,7 @@ const emit = defineEmits(['scrollToSection'])
     <!-- 激活指示器 -->
     <div
       id="section-nav-indicator"
-      class="absolute w-2 h-2 bg-blue-600 dark:bg-indigo-400 rounded-full pointer-events-none z-10 transition-all duration-500 shadow-blue-600/70 dark:shadow-indigo-400/80"
+      class="absolute w-2 h-2 bg-blue-600 dark:bg-indigo-400 rounded-full pointer-events-none z-10 transition-[top] duration-500 shadow-blue-600/70 dark:shadow-indigo-400/80"
       :style="{ top: indicatorTop + 'px', transform: 'translateY(-50%)' }"
     ></div>
 
@@ -79,7 +78,7 @@ const emit = defineEmits(['scrollToSection'])
       @click="emit('scrollToSection', s.id)"
     >
       <div
-        class="section-dot w-1.5 h-1.5 rounded-full transition-all duration-300"
+        class="section-dot w-1.5 h-1.5 rounded-full transition-[transform,box-shadow] duration-300"
         :class="activeSection === s.id
           ? 'bg-blue-600 dark:bg-indigo-400 scale-125 shadow-[0_0_8px_3px_rgba(99,102,241,0.7)] dark:shadow-[0_0_10px_4px_rgba(99,102,241,0.9)]'
           : 'bg-slate-300 dark:bg-white/20 group-hover:bg-blue-400 dark:group-hover:bg-indigo-300'"
