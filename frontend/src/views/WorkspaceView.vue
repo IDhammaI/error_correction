@@ -195,6 +195,51 @@ const chatSessionId = ref(null)
 const chatQuestion = ref(null)
 const chatActive = ref(false)
 
+// ---- 独立 AI 对话 ----
+const aiChatSessions = ref([])
+const activeAiChatId = ref(null)
+
+async function loadAiChatSessions() {
+  try {
+    const data = await api.fetchMyChatSessions({ limit: 50 })
+    aiChatSessions.value = data.sessions || []
+  } catch (_) {}
+}
+
+async function createAiChat() {
+  try {
+    const session = await api.createIndependentChat('新对话')
+    aiChatSessions.value.unshift(session)
+    activeAiChatId.value = session.id
+    if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
+  } catch (e) {
+    pushToast('error', e.message)
+  }
+}
+
+function selectAiChat(s) {
+  activeAiChatId.value = s.id
+  if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
+}
+
+async function onAiChatTitleUpdated(sessionId, title) {
+  const s = aiChatSessions.value.find(s => s.id === sessionId)
+  if (s && s.title === '新对话') {
+    s.title = title
+    try { await api.updateChatTitle(sessionId, title) } catch (_) {}
+  }
+}
+
+async function deleteAiChat(id) {
+  try {
+    await api.deleteChat(id)
+    aiChatSessions.value = aiChatSessions.value.filter(s => s.id !== id)
+    if (activeAiChatId.value === id) activeAiChatId.value = null
+  } catch (e) {
+    pushToast('error', e.message)
+  }
+}
+
 // 答案录入弹窗（AI 辅导前置）
 const answerModalOpen = ref(false)
 const answerModalTarget = ref(null)
@@ -593,11 +638,13 @@ const doReset = () => {
 
 watch(currentView, async (newView) => {
   if (newView === 'workspace_review') {
-    // 等待翻页动画结束
     await nextTick()
     setTimeout(() => {
       questionListRef.value?.triggerTypeset?.()
     }, 650)
+  }
+  if (newView === 'ai-chat') {
+    loadAiChatSessions()
   }
 })
 
@@ -729,6 +776,41 @@ onBeforeUnmount(() => {
             <span>刷题</span>
           </button>
         </nav>
+
+        <!-- AI 对话历史列表（仅 ai-chat 视图时显示） -->
+        <Transition name="view-fade">
+          <div v-if="currentView === 'ai-chat'" class="flex-1 min-h-0 flex flex-col mt-4 border-t border-slate-100 dark:border-white/5">
+            <div class="flex items-center justify-between px-4 pt-4 pb-2">
+              <span class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">对话记录</span>
+              <button @click="createAiChat" class="text-xs font-bold text-blue-600 dark:text-indigo-400 hover:underline">
+                <i class="fa-solid fa-plus mr-1"></i>新建
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-3 pb-2 custom-scrollbar">
+              <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                暂无对话
+              </div>
+              <div
+                v-for="s in aiChatSessions"
+                :key="s.id"
+                @click="selectAiChat(s)"
+                class="group flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
+                :class="activeAiChatId === s.id
+                  ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
+              >
+                <i class="fa-solid fa-message text-[10px] shrink-0 opacity-50"></i>
+                <span class="flex-1 truncate text-xs">{{ s.title }}</span>
+                <button
+                  @click.stop="deleteAiChat(s.id)"
+                  class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
+                >
+                  <i class="fa-solid fa-xmark text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <!-- 底部控制与返回栏 -->
@@ -1033,9 +1115,12 @@ onBeforeUnmount(() => {
         <div v-else-if="currentView === 'ai-chat'" key="ai_chat_view" class="h-full">
           <ChatPage
             :visible="currentView === 'ai-chat'"
+            :session-id="activeAiChatId"
             :model-provider="selectedProvider"
             :model-name="selectedModel"
             @push-toast="pushToast"
+            @create-chat="createAiChat"
+            @session-title-updated="onAiChatTitleUpdated"
           />
         </div>
       </Transition>

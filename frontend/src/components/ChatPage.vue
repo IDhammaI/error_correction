@@ -1,78 +1,35 @@
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import * as api from '../api.js'
 import { renderMarkdown, typesetMath } from '../utils.js'
 
 const props = defineProps({
   visible: Boolean,
+  sessionId: { type: Number, default: null },
   modelProvider: { type: String, default: 'openai' },
   modelName: { type: String, default: '' },
 })
-const emit = defineEmits(['push-toast'])
-
-// ---- 会话列表 ----
-const sessions = ref([])
-const activeSessionId = ref(null)
-const loadingSessions = ref(false)
-
-async function loadSessions() {
-  loadingSessions.value = true
-  try {
-    const data = await api.fetchMyChatSessions({ limit: 50 })
-    sessions.value = data.sessions || []
-  } catch (e) {
-    emit('push-toast', 'error', e.message)
-  } finally {
-    loadingSessions.value = false
-  }
-}
-
-watch(() => props.visible, (v) => { if (v) loadSessions() }, { immediate: true })
-
-async function createNewChat() {
-  try {
-    const session = await api.createIndependentChat('新对话')
-    sessions.value.unshift(session)
-    activeSessionId.value = session.id
-    messages.value = []
-  } catch (e) {
-    emit('push-toast', 'error', e.message)
-  }
-}
-
-function selectSession(s) {
-  activeSessionId.value = s.id
-  loadMessages()
-}
-
-async function deleteSession(id) {
-  try {
-    await api.deleteChat(id)
-    sessions.value = sessions.value.filter(s => s.id !== id)
-    if (activeSessionId.value === id) {
-      activeSessionId.value = null
-      messages.value = []
-    }
-  } catch (e) {
-    emit('push-toast', 'error', e.message)
-  }
-}
+const emit = defineEmits(['push-toast', 'create-chat', 'session-title-updated'])
 
 // ---- 对话消息 ----
 const messages = ref([])
 const inputText = ref('')
 const streaming = ref(false)
 const messagesContainer = ref(null)
-const abortCtrl = ref(null)
+
+watch(() => props.sessionId, (id) => {
+  if (id) loadMessages()
+  else messages.value = []
+}, { immediate: true })
 
 async function loadMessages() {
-  if (!activeSessionId.value) return
+  if (!props.sessionId) return
   try {
-    const result = await api.fetchMessages(activeSessionId.value, { limit: 50 })
+    const result = await api.fetchMessages(props.sessionId, { limit: 50 })
     messages.value = result.messages || []
     await nextTick()
     scrollToBottom()
-    typesetMath(messagesContainer.value)
+    if (messagesContainer.value) typesetMath(messagesContainer.value)
   } catch (e) {
     emit('push-toast', 'error', e.message)
   }
@@ -86,7 +43,7 @@ function scrollToBottom() {
 
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text || !activeSessionId.value || streaming.value) return
+  if (!text || !props.sessionId || streaming.value) return
 
   inputText.value = ''
   messages.value.push({ role: 'user', content: text })
@@ -95,15 +52,13 @@ async function sendMessage() {
   scrollToBottom()
 
   streaming.value = true
-  const ctrl = new AbortController()
-  abortCtrl.value = ctrl
 
   try {
     const resp = await api.streamChat(
-      activeSessionId.value,
+      props.sessionId,
       text,
       props.modelProvider,
-      ctrl.signal,
+      null,
       props.modelName,
     )
 
@@ -129,15 +84,9 @@ async function sendMessage() {
             scrollToBottom()
           }
           if (payload.done) {
-            // 更新会话标题（用第一条消息的前 20 字）
+            // 自动更新标题
             const firstMsg = text.slice(0, 20) + (text.length > 20 ? '...' : '')
-            const session = sessions.value.find(s => s.id === activeSessionId.value)
-            if (session && session.title === '新对话') {
-              try {
-                await api.updateChatTitle(activeSessionId.value, firstMsg)
-                session.title = firstMsg
-              } catch (_) {}
-            }
+            emit('session-title-updated', props.sessionId, firstMsg)
           }
           if (payload.error) {
             messages.value[messages.value.length - 1].content += `\n\n⚠️ ${payload.error}`
@@ -147,14 +96,13 @@ async function sendMessage() {
     }
 
     await nextTick()
-    typesetMath(messagesContainer.value)
+    if (messagesContainer.value) typesetMath(messagesContainer.value)
   } catch (e) {
     if (e.name !== 'AbortError') {
       messages.value[messages.value.length - 1].content += `\n\n⚠️ ${e.message}`
     }
   } finally {
     streaming.value = false
-    abortCtrl.value = null
   }
 }
 
@@ -167,110 +115,75 @@ function handleKeydown(e) {
 </script>
 
 <template>
-  <div class="flex h-full overflow-hidden">
-    <!-- 左侧：对话历史列表 -->
-    <div class="w-72 shrink-0 flex flex-col border-r border-slate-200/60 dark:border-white/5 bg-white/50 dark:bg-white/[0.02]">
-      <!-- 新建对话按钮 -->
-      <div class="p-4">
-        <button
-          @click="createNewChat"
-          class="w-full h-10 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <i class="fa-solid fa-plus"></i> 新建对话
-        </button>
+  <div class="flex flex-col h-full">
+    <!-- 空状态 -->
+    <div v-if="!sessionId" class="flex-1 flex flex-col items-center justify-center text-center px-8">
+      <div class="mb-6 flex size-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/[0.04]">
+        <i class="fa-solid fa-comments text-2xl text-slate-400 dark:text-slate-500"></i>
+      </div>
+      <p class="text-xl font-bold text-slate-700 dark:text-slate-200">AI 学习助手</p>
+      <p class="mt-2 text-sm text-slate-400 dark:text-slate-500 max-w-sm">在左侧选择一个对话，或新建一个开始提问</p>
+      <button @click="emit('create-chat')" class="mt-6 h-10 px-6 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
+        <i class="fa-solid fa-plus mr-2"></i>新建对话
+      </button>
+    </div>
+
+    <!-- 有活跃对话 -->
+    <template v-else>
+      <!-- 消息区域 -->
+      <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-6 sm:px-8 custom-scrollbar">
+        <div class="mx-auto max-w-3xl space-y-6">
+          <!-- 空对话提示 -->
+          <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center py-20 text-center">
+            <i class="fa-solid fa-paper-plane text-3xl text-slate-300 dark:text-slate-600 mb-4"></i>
+            <p class="text-sm text-slate-400 dark:text-slate-500">发送一条消息开始对话</p>
+          </div>
+
+          <div v-for="(msg, i) in messages" :key="i" class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+            <div
+              class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
+              :class="msg.role === 'user'
+                ? 'bg-blue-600 text-white rounded-br-lg'
+                : 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-bl-lg'"
+            >
+              <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-slate dark:prose-invert max-w-none"></div>
+              <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
+            </div>
+          </div>
+
+          <!-- 流式加载指示 -->
+          <div v-if="streaming && messages.length && !messages[messages.length - 1].content" class="flex justify-start">
+            <div class="bg-slate-100 dark:bg-white/[0.06] rounded-2xl rounded-bl-lg px-4 py-3">
+              <div class="flex gap-1">
+                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 0ms"></span>
+                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 150ms"></span>
+                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 300ms"></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- 历史列表 -->
-      <div class="flex-1 overflow-y-auto px-2 pb-4 custom-scrollbar">
-        <div v-if="sessions.length === 0 && !loadingSessions" class="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-          暂无对话记录
-        </div>
-        <div
-          v-for="s in sessions"
-          :key="s.id"
-          @click="selectSession(s)"
-          class="group flex items-center gap-2 px-3 py-2.5 rounded-xl mb-1 cursor-pointer transition-colors"
-          :class="activeSessionId === s.id
-            ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
-        >
-          <i class="fa-solid fa-message text-xs shrink-0" :class="activeSessionId === s.id ? '' : 'opacity-40'"></i>
-          <span class="flex-1 truncate text-sm">{{ s.title }}</span>
+      <!-- 输入区域 -->
+      <div class="shrink-0 border-t border-slate-200/60 dark:border-white/5 px-4 py-4 sm:px-8">
+        <div class="mx-auto max-w-3xl flex gap-3">
+          <textarea
+            v-model="inputText"
+            @keydown="handleKeydown"
+            :disabled="streaming"
+            rows="1"
+            placeholder="输入你的问题..."
+            class="flex-1 resize-none rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm outline-none transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-indigo-500/50 custom-scrollbar"
+          ></textarea>
           <button
-            @click.stop="deleteSession(s.id)"
-            class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
+            @click="sendMessage"
+            :disabled="!inputText.trim() || streaming"
+            class="h-10 w-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i class="fa-solid fa-trash text-xs"></i>
+            <i class="fa-solid fa-paper-plane text-sm"></i>
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- 右侧：对话窗口 -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <!-- 空状态 -->
-      <div v-if="!activeSessionId" class="flex-1 flex flex-col items-center justify-center text-center px-8">
-        <div class="mb-6 flex size-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/[0.04]">
-          <i class="fa-solid fa-comments text-2xl text-slate-400 dark:text-slate-500"></i>
-        </div>
-        <p class="text-xl font-bold text-slate-700 dark:text-slate-200">AI 学习助手</p>
-        <p class="mt-2 text-sm text-slate-400 dark:text-slate-500 max-w-sm">选择一个对话继续，或点击"新建对话"开始提问</p>
-        <button @click="createNewChat" class="mt-6 h-10 px-6 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
-          <i class="fa-solid fa-plus mr-2"></i>新建对话
-        </button>
-      </div>
-
-      <!-- 有活跃对话 -->
-      <template v-else>
-        <!-- 消息区域 -->
-        <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-6 sm:px-8 custom-scrollbar">
-          <div class="mx-auto max-w-3xl space-y-6">
-            <div v-for="(msg, i) in messages" :key="i" class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-              <div
-                class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
-                :class="msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-lg'
-                  : 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-bl-lg'"
-              >
-                <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-slate dark:prose-invert max-w-none"></div>
-                <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
-              </div>
-            </div>
-
-            <!-- 流式加载指示 -->
-            <div v-if="streaming && messages.length && !messages[messages.length - 1].content" class="flex justify-start">
-              <div class="bg-slate-100 dark:bg-white/[0.06] rounded-2xl rounded-bl-lg px-4 py-3">
-                <div class="flex gap-1">
-                  <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 0ms"></span>
-                  <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 150ms"></span>
-                  <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 300ms"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 输入区域 -->
-        <div class="shrink-0 border-t border-slate-200/60 dark:border-white/5 px-4 py-4 sm:px-8">
-          <div class="mx-auto max-w-3xl flex gap-3">
-            <textarea
-              v-model="inputText"
-              @keydown="handleKeydown"
-              :disabled="streaming"
-              rows="1"
-              placeholder="输入你的问题..."
-              class="flex-1 resize-none rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm outline-none transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-indigo-500/50 custom-scrollbar"
-            ></textarea>
-            <button
-              @click="sendMessage"
-              :disabled="!inputText.trim() || streaming"
-              class="h-10 w-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <i class="fa-solid fa-paper-plane text-sm"></i>
-            </button>
-          </div>
-        </div>
-      </template>
-    </div>
+    </template>
   </div>
 </template>
