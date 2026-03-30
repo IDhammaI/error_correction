@@ -1,5 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useTheme } from '../composables/useTheme.js'
+
+const { initTheme } = useTheme()
 
 import LandingNav from '../components/landing/LandingNav.vue'
 import LandingHero from '../components/landing/LandingHero.vue'
@@ -182,9 +185,7 @@ function setupRevealObserver() {
 }
 
 onMounted(async () => {
-  // 读取用户主题偏好，默认暗色
-  const savedTheme = localStorage.getItem('theme') || 'dark'
-  document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+  initTheme()
 
   // Set overflow-hidden on body for wheel snap
   document.body.style.overflow = 'hidden'

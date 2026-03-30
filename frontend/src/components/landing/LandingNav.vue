@@ -1,6 +1,8 @@
 <script setup>
-import { ref } from 'vue'
 import { ArrowRight } from 'lucide-vue-next'
+import { useTheme } from '../../composables/useTheme.js'
+
+const { isDark, toggleTheme } = useTheme()
 
 const props = defineProps({
   navScrolled: Boolean,
@@ -10,14 +12,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['scrollToSection'])
-
-const isDark = ref(document.documentElement.classList.contains('dark'))
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
 </script>
 
 <template>

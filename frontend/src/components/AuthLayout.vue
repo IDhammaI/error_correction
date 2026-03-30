@@ -1,15 +1,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useTheme } from '../composables/useTheme.js'
 
+const { initTheme } = useTheme()
 const route = useRoute()
 const router = useRouter()
 const transitionName = ref('auth-slide-left')
 
 onMounted(() => {
-  // 读取用户主题偏好，不强制暗色
-  const savedTheme = localStorage.getItem('theme') || 'dark'
-  document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+  initTheme()
 })
 
 router.beforeEach((to, from) => {

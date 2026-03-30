@@ -108,22 +108,19 @@ const navIndicatorStyle = computed(() => {
 
 // ---- 状态定义 ----
 const { loading: globalLoading } = usePageTransition()
-const theme = ref('dark')
-const applyTheme = (nextTheme) => {
-  theme.value = nextTheme === 'dark' ? 'dark' : 'light'
-  const root = document.documentElement
-  if (theme.value === 'dark') root.classList.add('dark')
-  else root.classList.remove('dark')
-}
+
+import { useTheme } from '../composables/useTheme.js'
+const { isDark, setTheme, initTheme } = useTheme()
+// 兼容旧代码中 theme 的引用
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 const toggleTheme = async (btnEl) => {
-  const nextTheme = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('theme', nextTheme)
+  const nextTheme = isDark.value ? 'light' : 'dark'
 
   const prefersReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const canTransition = !prefersReduce && typeof document.startViewTransition === 'function'
   if (!canTransition || !btnEl) {
-    applyTheme(nextTheme)
+    setTheme(nextTheme === 'dark')
     return
   }
 
@@ -132,7 +129,7 @@ const toggleTheme = async (btnEl) => {
   const y = rect.top + rect.height / 2
   const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
 
-  const transition = document.startViewTransition(() => applyTheme(nextTheme))
+  const transition = document.startViewTransition(() => setTheme(nextTheme === 'dark'))
   try {
     await transition.ready
     const duration = 1000
@@ -147,7 +144,7 @@ const toggleTheme = async (btnEl) => {
     )
     await transition.finished
   } catch (_) {
-    applyTheme(nextTheme)
+    setTheme(nextTheme === 'dark')
   }
 }
 // ---- 系统状态 ----
@@ -640,7 +637,7 @@ const pageLoading = ref(true)
 
 // ---- 生命周期 ----
 onMounted(() => {
-  applyTheme('dark')
+  initTheme()
   document.addEventListener('keydown', onKeydown)
 
   // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
@@ -715,7 +712,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             @click="(e) => toggleTheme(e.currentTarget)"
-            class="hidden"
+            class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200 transition-colors"
             title="切换主题"
           >
             <i class="fa-solid fa-sun text-[18px] hidden dark:block"></i>
@@ -768,7 +765,7 @@ onBeforeUnmount(() => {
       <!-- 底部控制与返回栏 -->
       <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
         <!-- 用户信息 -->
-        <div class="flex items-center gap-2 rounded-2xl px-3 py-2 mb-2 bg-white/70 backdrop-blur-xl border border-slate-200/60 dark:bg-white/[0.06] dark:backdrop-blur-xl dark:border-white/10">
+        <div class="flex items-center gap-2 px-3 py-2 mb-2">
           <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 flex items-center justify-center text-white text-sm font-extrabold shadow-sm">
             {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
           </div>
@@ -820,9 +817,9 @@ onBeforeUnmount(() => {
           <i class="fa-solid fa-sliders text-lg"></i>
           <span class="mt-1 text-xs font-bold">设置</span>
         </button>
-        <button @click="(e) => toggleTheme(e.currentTarget)" class="hidden">
-          <i class="fa-solid mb-1 text-xl" :class="theme === 'dark' ? 'fa-sun text-indigo-400' : 'fa-moon'"></i>
-          <span class="text-xs font-bold">主题</span>
+        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 dark:text-slate-400">
+          <i class="fa-solid text-lg" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
+          <span class="mt-1 text-xs font-bold">主题</span>
         </button>
       </div>
     </nav>
