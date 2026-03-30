@@ -332,7 +332,7 @@ onUnmounted(() => {
                   <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-[#FFBD2E]"></div>
                   <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-[#28C840]"></div>
                 </div>
-                <div class="flex items-center gap-2 text-xs font-mono text-slate-400 dark:text-slate-600">
+                <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
                   <Terminal class="w-3 h-3" />
                   error_bank.py
                 </div>
