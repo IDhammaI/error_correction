@@ -47,7 +47,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境配置
 
-复制 `.env.example` → `.env`，至少配置一组 LLM API key（DeepSeek 或 ERNIE）和 PaddleOCR token。详见 `.env.example` 注释。
+复制 `.env.example` → `.env`，必须配置 `SECRET_KEY`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理 API Key 和供应商配置。
 
 ---
 
@@ -72,13 +72,14 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 关键模块关系
 
 - **`backend/src/workflow.py`** — LangGraph StateGraph 主工作流，串联所有处理步骤
-- **`backend/error_correction_agent/`** — 题目分割 + OCR 纠错 Agent（`create_agent` 工厂函数）
-- **`backend/solve_agent/`** — 独立的解题 Agent
-- **`backend/teach_agent/`** — 教学讲解 Agent，用于 AI 分析功能
-- **`backend/web_app.py`** — Flask 主应用，路由 + 全局会话状态（`session_lock` 保护）
-- **`backend/config.py`** — 所有运行时路径集中管理，`ensure_dirs()` 显式初始化
-- **`backend/llm.py`** — `init_model()` 统一 LLM 初始化，支持 deepseek / ernie
-- **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化
+- **`backend/agents/error_correction/`** — 题目分割 + OCR 纠错 Agent（`create_agent` 工厂函数）
+- **`backend/agents/solve/`** — 独立的解题 Agent
+- **`backend/agents/teach/`** — 教学讲解 Agent，用于 AI 分析功能
+- **`backend/web_app.py`** — Flask 主应用，路由入口
+- **`backend/core/config.py`** — 所有运行时路径集中管理，`ensure_dirs()` 显式初始化
+- **`backend/core/llm.py`** — `init_model()` 统一 LLM 初始化，支持多 provider（OpenAI 兼容 / Anthropic）
+- **`backend/core/state.py`** — 全局会话状态（`session_lock` 保护），供各 Blueprint 共享
+- **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化 + API Provider 配置
 - **`frontend/src/App.vue`** — 根组件，全局状态集中于此（无 Pinia/Vuex）
 
 ### Flask 路由
@@ -209,7 +210,7 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 模块级副作用
 
 - **禁止在模块顶层执行有副作用的操作**（创建目录、写文件、启动连接等）
-- `config.py` 目录创建通过 `ensure_dirs()` 显式调用
+- `core/config.py` 目录创建通过 `ensure_dirs()` 显式调用
 - `load_dotenv()` 仅在入口文件或需要环境变量的模块中调用
 
 ### 数据库
@@ -220,7 +221,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 线程安全
 
-- Flask 全局状态修改必须在 `session_lock` 保护下
+- 全局会话状态集中在 `core/state.py`，修改必须在 `session_lock` 保护下
 - 锁内用原地修改（`.remove()`, `.append()`），**不要用推导式重新赋值**
 - Agent 缓存通过 `_agent_cache_lock` 保护并发初始化
 
@@ -228,9 +229,9 @@ cd frontend && npm install               # 前端（Node 18+）
 
 - 结构化输出优先用 `create_agent` + `ToolStrategy`
 - 已知问题：`ToolStrategy` 与 DeepSeek 的 `handle_errors` 重试不兼容，大数据量可能触发 400
-- ernie 用 `model.with_structured_output()`（不支持 function calling）
-- 轻量任务用 `DEEPSEEK_LIGHT_MODEL_NAME` / `ERNIE_LIGHT_MODEL_NAME` 小模型
+- 不支持 function calling 的模型用 `model.with_structured_output()`
 - `invoke_split` / `invoke_correction` 是统一调用入口，屏蔽 provider 差异
+- API Provider 配置（key、模型名）存储在数据库中，用户通过系统设置页面管理
 
 ### OCR 数据处理
 
@@ -240,14 +241,16 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 文件与路径
 
-- 所有运行时路径通过 `config.py` 集中管理，禁止硬编码
+- 所有运行时路径通过 `core/config.py` 集中管理，禁止硬编码
 - 文件名解析用 `os.path.splitext()`，**不要用 `rsplit('.', 1)`**
 - 文件上传用 `uuid.uuid4().hex` 生成安全文件名
 
 ### 环境变量
 
 - `.env` 不入版本控制，`.env.example` 作为模板
-- 新增配置项必须同步更新 `.env.example`
+- LLM API Provider 配置已迁移到数据库，不再通过 `.env` 管理
+- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`）仍通过 `.env` 管理
+- 新增 `.env` 配置项必须同步更新 `.env.example`
 - 可选项用 `os.getenv("KEY")` + 代码中提供默认值
 
 ---
