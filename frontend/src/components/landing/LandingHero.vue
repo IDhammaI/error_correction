@@ -343,8 +343,6 @@ onUnmounted(() => {
 
           <!-- 前层：有内容的卡片 -->
           <div class="relative overflow-hidden rounded-2xl z-10 transition-transform duration-500 ease-out group-hover:-translate-x-2 group-hover:translate-y-1">
-            <div class="absolute inset-0 bg-gradient-to-tr from-blue-200 to-indigo-200 dark:from-indigo-500 dark:to-indigo-500 rounded-3xl transform rotate-6 scale-105 opacity-60 dark:opacity-20 blur-xl"></div>
-            <div class="absolute inset-0 bg-gradient-to-bl from-cyan-200 to-blue-200 dark:from-cyan-500 dark:to-blue-500 rounded-3xl transform -rotate-3 scale-105 opacity-60 dark:opacity-20 blur-xl"></div>
             <div class="bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 relative overflow-hidden shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.2)]">
               <div class="bg-slate-50 dark:bg-[#0A0A0F]/80 backdrop-blur-md rounded-t-xl p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
                 <div class="flex gap-2">
