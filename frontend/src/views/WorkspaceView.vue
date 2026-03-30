@@ -63,7 +63,7 @@ const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history
 const lastWorkspaceView = ref('workspace')
 
 const NAV_ITEMS = [
-  { id: 'workspace', label: '录题工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
+  { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
   { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
   { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
   { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
@@ -765,7 +765,7 @@ onBeforeUnmount(() => {
       <div class="flex justify-around">
         <button @click="currentView = lastWorkspaceView" class="flex flex-col items-center p-2" :class="WORKSPACE_VIEWS.has(currentView) ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
-          <span class="mt-1 text-xs font-bold">录题</span>
+          <span class="mt-1 text-xs font-bold">录入</span>
         </button>
         <button @click="currentView = 'notes'" class="flex flex-col items-center p-2" :class="currentView === 'notes' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-book-open text-lg"></i>
@@ -794,11 +794,11 @@ onBeforeUnmount(() => {
     <main class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-0">
 
       <Transition name="view-fade" mode="out-in">
-        <!-- 视图 1：录题工作台（分两页：上传解析页 / 题目核对页） -->
+        <!-- 视图 1：录入工作台（分两页：上传解析页 / 题目核对页） -->
         <div v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace" class="relative h-full flex flex-col overflow-hidden">
           <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-6xl flex-col px-4 py-4 sm:px-8 sm:py-6">
             <Transition name="flip" mode="out-in">
-              <!-- 第一页：录题与分析 -->
+              <!-- 第一页：录入与分析 -->
               <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
                 <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
                   <div>
@@ -813,7 +813,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <span class="relative z-10 uppercase pb-0.5">
-                          新一代 AI 错题处理架构 <span class="ml-1 font-extrabold text-blue-600 dark:text-indigo-300">V2.0</span>
+                          上传试卷或笔记，AI 自动识别、整理、归档
                         </span>
                       </div>
                     </div>
@@ -1038,7 +1038,7 @@ onBeforeUnmount(() => {
         @clear="deselectAll"
       />
 
-      <!-- AI 分割任务全局遮罩：置于 main 顶层，仅在录题视图且正在分割时显示 -->
+      <!-- AI 分割任务全局遮罩：置于 main 顶层，仅在录入视图且正在分割时显示 -->
       <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
     </main>
 
