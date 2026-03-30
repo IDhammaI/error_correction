@@ -14,20 +14,17 @@ const cursorVisible = ref(true)
 let typeTimers = []
 
 const TERMINAL_SCRIPT = [
-  { type: 'cmd', text: 'init PaddleOCR-VL --async --model=v1.5', delay: 500 },
-  { type: 'info', text: '[upload] 正在上传 exam_scan_001.jpg (2.4MB)...', delay: 1200 },
-  { type: 'success', text: '[OCR] 文档结构解析完成 (1.2s) — 提取 3,847 字符, 12 blocks', delay: 2800 },
-  { type: 'blank', delay: 3200 },
-  { type: 'cmd', text: 'LangGraph.invoke(note_agent, provider="deepseek")', delay: 3600 },
-  { type: 'info', text: '[agent] 识别知识结构 & 归纳要点...', delay: 4800 },
-  { type: 'blank', delay: 5600 },
-  { type: 'comment', text: '# Fixing OCR artifacts & converting to LaTeX', delay: 6000 },
-  { type: 'diff-del', text: 'original: f(x)=sin(wx+φ)', delay: 6800 },
-  { type: 'diff-add', text: 'fixed:    f(x) = sin(ωx + φ)', delay: 7600 },
-  { type: 'blank', delay: 8400 },
-  { type: 'success', text: '[agent] 知识点标签: 三角函数, 诱导公式, 周期性', delay: 9000 },
-  { type: 'info', text: 'Generating Markdown structured output...', delay: 10000 },
-  { type: 'success', text: '✓ 笔记整理完成 — 已保存到笔记库', delay: 11500 },
+  { type: 'cmd', text: 'init PaddleOCR-VL --async', delay: 500 },
+  { type: 'success', text: '[OCR] 解析完成 (1.2s) — 3,847 字符', delay: 2200 },
+  { type: 'blank', delay: 2800 },
+  { type: 'cmd', text: 'LangGraph.invoke(note_agent)', delay: 3200 },
+  { type: 'comment', text: '# Fixing OCR artifacts', delay: 4500 },
+  { type: 'diff-del', text: 'f(x)=sin(wx+φ)', delay: 5300 },
+  { type: 'diff-add', text: 'f(x) = sin(ωx + φ)', delay: 6100 },
+  { type: 'blank', delay: 6800 },
+  { type: 'success', text: '标签: 三角函数, 诱导公式, 周期性', delay: 7400 },
+  { type: 'info', text: 'Generating Markdown output...', delay: 8500 },
+  { type: 'success', text: '笔记整理完成 — 已保存', delay: 9800 },
 ]
 
 function startTerminalAnimation() {
