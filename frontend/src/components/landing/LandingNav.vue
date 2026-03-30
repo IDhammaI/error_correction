@@ -48,15 +48,15 @@ function toggleTheme() {
         </div>
 
         <div class="flex items-center gap-4">
-          <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors">
+          <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors">
             <i class="fa-brands fa-github text-xl"></i>
           </a>
-          <button @click="toggleTheme" class="text-slate-400 hover:text-white transition-colors" title="切换主题">
+          <button @click="toggleTheme" class="text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors" title="切换主题">
             <i class="fa-solid text-xl" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
           </button>
           <RouterLink to="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
             <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-            <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all">
+            <span class="relative inline-flex items-center justify-center px-6 py-2 text-sm font-bold rounded-full transition-all bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border dark:border-white/30 dark:backdrop-blur-md">
               进入工作台
             </span>
           </RouterLink>

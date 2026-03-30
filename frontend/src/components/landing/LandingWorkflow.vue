@@ -72,20 +72,20 @@ onUnmounted(() => {
 
 <template>
   <!-- 工作流演示区 -->
-  <section id="workflow" class="relative z-10 min-h-screen flex flex-col justify-center py-24 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 dark:from-[#0A0A0F] dark:via-slate-950 dark:to-[#0A0A0F]">
+  <section id="workflow" class="relative z-10 min-h-screen flex flex-col justify-center py-24 overflow-hidden bg-white dark:bg-gradient-to-b dark:from-[#0A0A0F] dark:via-slate-950 dark:to-[#0A0A0F]">
     <!-- 装饰光晕 -->
     <div class="pointer-events-none absolute inset-0 z-0">
-      <div class="absolute top-1/4 left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 blur-[140px]"></div>
-      <div class="absolute bottom-1/4 right-[-10%] w-[400px] h-[400px] rounded-full bg-cyan-600/10 blur-[120px]"></div>
+      <div class="absolute top-1/4 left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-100/60 dark:bg-indigo-600/10 blur-[140px]"></div>
+      <div class="absolute bottom-1/4 right-[-10%] w-[400px] h-[400px] rounded-full bg-indigo-100/60 dark:bg-cyan-600/10 blur-[120px]"></div>
     </div>
     <div class="reveal relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-20">
-        <h2 class="text-3xl md:text-4xl font-bold mb-6 text-white">极简四步，自动运转</h2>
-        <p class="text-slate-400 text-base">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
+        <h2 class="text-3xl md:text-4xl font-bold mb-6 text-slate-900 dark:text-white">极简四步，自动运转</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-base">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
       </div>
 
       <div class="relative max-w-5xl mx-auto">
-        <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-white/8 -translate-y-1/2 z-0 rounded-full">
+        <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-slate-200 dark:bg-white/8 -translate-y-1/2 z-0 rounded-full">
           <div
             id="progress-bar"
             class="absolute top-0 left-0 h-full bg-blue-500 dark:bg-gradient-to-r dark:from-cyan-500 dark:via-indigo-500 dark:to-indigo-500 shadow-blue-500/50 dark:shadow-indigo-500/50 transition-all duration-700 ease-in-out"

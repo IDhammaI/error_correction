@@ -200,14 +200,14 @@ onUnmounted(() => {
           <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start" style="transition-delay: 450ms;">
             <RouterLink to="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
               <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all gap-3">
+              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-3 bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border dark:border-white/30 dark:backdrop-blur-md">
                 <UploadCloud class="w-5 h-5" />
                 上传试卷分析
               </span>
             </RouterLink>
             <a href="#demo" class="relative inline-flex group h-14 w-full sm:w-auto">
-              <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-full backdrop-blur-md transition-all gap-2">
+              <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500 dark:block hidden"></div>
+              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-2 border border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600 dark:text-white dark:bg-white/15 dark:hover:bg-white/25 dark:border-white/30 dark:backdrop-blur-md">
                 查看实时演示
                 <ArrowRight class="w-5 h-5" />
               </span>
