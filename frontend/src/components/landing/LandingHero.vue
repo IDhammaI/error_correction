@@ -3,9 +3,61 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { Zap, UploadCloud, ArrowRight, Terminal, CheckCircle2, Sparkles } from 'lucide-vue-next'
 
 const canvasRef = ref(null)
+const terminalRef = ref(null)
 
 let raf = null
 let resizeUnlisten = null
+
+// ── 终端打字机动画 ──
+const termLines = ref([])
+const cursorVisible = ref(true)
+let typeTimers = []
+
+const TERMINAL_SCRIPT = [
+  { type: 'cmd', text: 'init PaddleOCR-VL --async --model=v1.5', delay: 500 },
+  { type: 'info', text: '[upload] 正在上传 exam_scan_001.jpg (2.4MB)...', delay: 1200 },
+  { type: 'success', text: '[OCR] 文档结构解析完成 (1.2s) — 提取 3,847 字符, 12 blocks', delay: 2800 },
+  { type: 'blank', delay: 3200 },
+  { type: 'cmd', text: 'LangGraph.invoke(note_agent, provider="deepseek")', delay: 3600 },
+  { type: 'info', text: '[agent] 识别知识结构 & 归纳要点...', delay: 4800 },
+  { type: 'blank', delay: 5600 },
+  { type: 'comment', text: '# Fixing OCR artifacts & converting to LaTeX', delay: 6000 },
+  { type: 'diff-del', text: 'original: f(x)=sin(wx+φ)', delay: 6800 },
+  { type: 'diff-add', text: 'fixed:    $f(x) = \\sin(\\omega x + \\varphi)$', delay: 7600 },
+  { type: 'blank', delay: 8400 },
+  { type: 'success', text: '[agent] 知识点标签: 三角函数, 诱导公式, 周期性', delay: 9000 },
+  { type: 'info', text: 'Generating Markdown structured output...', delay: 10000 },
+  { type: 'success', text: '✓ 笔记整理完成 — 已保存到笔记库', delay: 11500 },
+]
+
+function startTerminalAnimation() {
+  termLines.value = []
+  typeTimers.forEach(clearTimeout)
+  typeTimers = []
+
+  TERMINAL_SCRIPT.forEach((line, i) => {
+    typeTimers.push(setTimeout(() => {
+      termLines.value.push({ ...line, charIndex: 0 })
+      // 逐字打出
+      const lineIdx = termLines.value.length - 1
+      const text = line.text || ''
+      for (let c = 0; c <= text.length; c++) {
+        typeTimers.push(setTimeout(() => {
+          if (termLines.value[lineIdx]) {
+            termLines.value[lineIdx].charIndex = c
+          }
+        }, c * 18))
+      }
+    }, line.delay))
+  })
+
+  // 循环播放
+  const totalDuration = TERMINAL_SCRIPT[TERMINAL_SCRIPT.length - 1].delay + 4000
+  typeTimers.push(setTimeout(() => startTerminalAnimation(), totalDuration))
+}
+
+// 光标闪烁
+let blinkTimer = null
 
 // ── Canvas neural animation ──
 function initCanvas(canvas) {
@@ -195,11 +247,15 @@ onMounted(() => {
   if (canvasRef.value) {
     initCanvas(canvasRef.value)
   }
+  startTerminalAnimation()
+  blinkTimer = setInterval(() => { cursorVisible.value = !cursorVisible.value }, 530)
 })
 
 onUnmounted(() => {
   if (resizeUnlisten) resizeUnlisten()
   if (raf) cancelAnimationFrame(raf)
+  typeTimers.forEach(clearTimeout)
+  if (blinkTimer) clearInterval(blinkTimer)
 })
 </script>
 
@@ -305,37 +361,47 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div class="bg-white dark:bg-[#0A0A0F]/90 p-6 rounded-b-xl font-mono text-sm space-y-5 h-[340px] overflow-hidden relative">
-                <div class="flex items-start gap-3">
-                  <span class="text-blue-500 dark:text-cyan-500 mt-0.5">❯</span>
-                  <div>
-                    <span class="text-slate-700 dark:text-slate-300">init </span>
-                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">PaddleOCR_v2 </span>
-                    <span class="text-slate-400 dark:text-slate-500">--async</span>
-                  </div>
-                </div>
-                <div class="flex items-start gap-3 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 class="w-4 h-4 mt-0.5" />
-                  <span>[OCR] 解析完成 (0.8s) - 提取 2,451 字符</span>
-                </div>
-
-                <div class="flex items-start gap-3 relative">
-                  <div class="absolute -left-2 top-0 w-0.5 h-full bg-indigo-500 shadow-indigo-500/50"></div>
-                  <Sparkles class="w-4 h-4 mt-0.5 text-indigo-500 dark:text-indigo-400" />
-                  <div class="flex-1">
-                    <p class="text-indigo-600 dark:text-indigo-300 mb-2 font-semibold">LangGraph.invoke(solve_agent)...</p>
-                    <div class="bg-slate-50 dark:bg-[#0A0A0F] border border-slate-200 dark:border-white/5 rounded-lg p-3 text-xs text-slate-500 dark:text-slate-400">
-                      <p class="text-indigo-600 dark:text-indigo-400 mb-1"># Fixing OCR artifacts &amp; converting to LaTeX</p>
-                      <p>original: <span class="text-red-500/80 dark:text-red-400/70 line-through">f(x)=sin(wx+φ)</span></p>
-                      <p>fixed: &nbsp;&nbsp;<span class="text-emerald-600 dark:text-green-400">$f(x) = \sin(\omega x + \varphi)$</span></p>
+              <div ref="terminalRef" class="bg-white dark:bg-[#0A0A0F]/90 p-5 rounded-b-xl font-mono text-[13px] leading-relaxed h-[340px] overflow-hidden relative">
+                <div class="space-y-1.5">
+                  <div v-for="(line, i) in termLines" :key="i">
+                    <!-- 空行 -->
+                    <div v-if="line.type === 'blank'" class="h-2"></div>
+                    <!-- 命令行 -->
+                    <div v-else-if="line.type === 'cmd'" class="flex items-start gap-2">
+                      <span class="text-cyan-500 shrink-0">❯</span>
+                      <span class="text-slate-300">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                    </div>
+                    <!-- 成功 -->
+                    <div v-else-if="line.type === 'success'" class="flex items-start gap-2 text-emerald-400">
+                      <span class="shrink-0">✓</span>
+                      <span>{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                    </div>
+                    <!-- 注释 -->
+                    <div v-else-if="line.type === 'comment'" class="text-indigo-400">
+                      {{ (line.text || '').slice(0, line.charIndex) }}
+                    </div>
+                    <!-- diff 删除 -->
+                    <div v-else-if="line.type === 'diff-del'" class="flex items-start gap-2">
+                      <span class="text-rose-500 shrink-0">-</span>
+                      <span class="text-rose-400/70 line-through">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                    </div>
+                    <!-- diff 新增 -->
+                    <div v-else-if="line.type === 'diff-add'" class="flex items-start gap-2">
+                      <span class="text-emerald-500 shrink-0">+</span>
+                      <span class="text-emerald-400">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                    </div>
+                    <!-- 普通信息 -->
+                    <div v-else class="text-slate-400">
+                      {{ (line.text || '').slice(0, line.charIndex) }}
                     </div>
                   </div>
                 </div>
-
-                <div class="flex items-center gap-3 text-slate-400 dark:text-slate-500 animate-pulse">
-                  <span class="text-blue-500 dark:text-cyan-500">❯</span>
-                  Generating Markdown structured output_
-                </div>
+                <!-- 光标 -->
+                <span
+                  v-if="termLines.length > 0"
+                  class="inline-block w-[7px] h-[15px] ml-0.5 -mb-0.5 align-middle"
+                  :class="cursorVisible ? 'bg-cyan-400' : 'bg-transparent'"
+                ></span>
               </div>
             </div>
           </div><!-- /光晕裁切层 -->
