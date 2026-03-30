@@ -110,43 +110,9 @@ const navIndicatorStyle = computed(() => {
 const { loading: globalLoading } = usePageTransition()
 
 import { useTheme } from '../composables/useTheme.js'
-const { isDark, setTheme, initTheme } = useTheme()
+const { isDark, toggleTheme, initTheme } = useTheme()
 // 兼容旧代码中 theme 的引用
 const theme = computed(() => isDark.value ? 'dark' : 'light')
-
-const toggleTheme = async (btnEl) => {
-  const nextTheme = isDark.value ? 'light' : 'dark'
-
-  const prefersReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const canTransition = !prefersReduce && typeof document.startViewTransition === 'function'
-  if (!canTransition || !btnEl) {
-    setTheme(nextTheme === 'dark')
-    return
-  }
-
-  const rect = btnEl.getBoundingClientRect()
-  const x = rect.left + rect.width / 2
-  const y = rect.top + rect.height / 2
-  const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
-
-  const transition = document.startViewTransition(() => setTheme(nextTheme === 'dark'))
-  try {
-    await transition.ready
-    const duration = 1000
-    const grow = [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`]
-    document.documentElement.animate(
-      { clipPath: grow },
-      { duration, easing: 'cubic-bezier(0.2, 0, 0, 1)', pseudoElement: '::view-transition-new(root)' },
-    )
-    document.documentElement.animate(
-      { opacity: [1, 0.98] },
-      { duration, easing: 'linear', pseudoElement: '::view-transition-old(root)' },
-    )
-    await transition.finished
-  } catch (_) {
-    setTheme(nextTheme === 'dark')
-  }
-}
 // ---- 系统状态 ----
 const statusLoading = ref(true)
 const systemStatus = ref(null)

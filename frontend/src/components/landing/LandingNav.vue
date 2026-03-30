@@ -44,7 +44,7 @@ const emit = defineEmits(['scrollToSection'])
           <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors">
             <i class="fa-brands fa-github text-xl"></i>
           </a>
-          <button @click="toggleTheme" class="text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors" title="切换主题">
+          <button @click="(e) => toggleTheme(e.currentTarget)" class="text-slate-400 hover:text-blue-600 dark:hover:text-white transition-colors" title="切换主题">
             <i class="fa-solid text-xl" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
           </button>
           <RouterLink to="/auth" class="relative inline-flex group h-12 active:scale-95 transition-transform">
