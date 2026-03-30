@@ -402,6 +402,15 @@ onUnmounted(() => {
           </div><!-- /光晕裁切层 -->
         </div>
       </div>
+
+      <!-- 底部弹跳箭头 -->
+      <button
+        @click="emit('scrollToSection', 'features')"
+        class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+      >
+        <span class="text-xs font-bold tracking-widest uppercase">探索更多</span>
+        <i class="fa-solid fa-chevron-down text-lg animate-bounce"></i>
+      </button>
     </section>
 
   </div><!-- /sticky-hero -->
