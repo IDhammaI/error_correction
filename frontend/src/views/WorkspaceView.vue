@@ -69,7 +69,6 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
   { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
   { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
-  { id: 'ai-chat', label: 'AI 对话', icon: 'fa-comments', match: (v) => v === 'ai-chat' },
 ]
 
 const currentView = computed({
@@ -655,6 +654,7 @@ const pageLoading = ref(true)
 onMounted(() => {
   initTheme()
   document.addEventListener('keydown', onKeydown)
+  loadAiChatSessions()
 
   // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
   if (currentView.value === 'workspace_review' && !splitCompleted.value) {
@@ -777,40 +777,39 @@ onBeforeUnmount(() => {
           </button>
         </nav>
 
-        <!-- AI 对话历史列表（仅 ai-chat 视图时显示） -->
-        <Transition name="view-fade">
-          <div v-if="currentView === 'ai-chat'" class="flex-1 min-h-0 flex flex-col mt-4 border-t border-slate-100 dark:border-white/5">
-            <div class="flex items-center justify-between px-4 pt-4 pb-2">
-              <span class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">对话记录</span>
-              <button @click="createAiChat" class="text-xs font-bold text-blue-600 dark:text-indigo-400 hover:underline">
-                <i class="fa-solid fa-plus mr-1"></i>新建
-              </button>
-            </div>
-            <div class="flex-1 overflow-y-auto px-3 pb-2 custom-scrollbar">
-              <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
-                暂无对话
-              </div>
-              <div
-                v-for="s in aiChatSessions"
-                :key="s.id"
-                @click="selectAiChat(s)"
-                class="group flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
-                :class="activeAiChatId === s.id
-                  ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
-              >
-                <i class="fa-solid fa-message text-[10px] shrink-0 opacity-50"></i>
-                <span class="flex-1 truncate text-xs">{{ s.title }}</span>
-                <button
-                  @click.stop="deleteAiChat(s.id)"
-                  class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
-                >
-                  <i class="fa-solid fa-xmark text-[10px]"></i>
-                </button>
-              </div>
-            </div>
+      </div>
+
+      <!-- AI 对话历史列表（常显示） -->
+      <div class="flex-1 min-h-0 flex flex-col border-t border-slate-100 dark:border-white/5">
+        <div class="flex items-center justify-between px-4 pt-3 pb-2">
+          <span class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">对话</span>
+          <button @click="createAiChat" class="text-xs font-bold text-blue-600 dark:text-indigo-400 hover:underline">
+            <i class="fa-solid fa-plus mr-1"></i>新建
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-3 pb-2 custom-scrollbar">
+          <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+            暂无对话
           </div>
-        </Transition>
+          <div
+            v-for="s in aiChatSessions"
+            :key="s.id"
+            @click="selectAiChat(s)"
+            class="group flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
+            :class="activeAiChatId === s.id && currentView === 'ai-chat'
+              ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
+          >
+            <i class="fa-solid fa-message text-[10px] shrink-0 opacity-50"></i>
+            <span class="flex-1 truncate text-xs">{{ s.title }}</span>
+            <button
+              @click.stop="deleteAiChat(s.id)"
+              class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
+            >
+              <i class="fa-solid fa-xmark text-[10px]"></i>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 底部控制与返回栏 -->
