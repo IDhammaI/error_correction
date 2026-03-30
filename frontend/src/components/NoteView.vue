@@ -82,6 +82,37 @@ watch(filterKeyword, () => {
 
 // ---- 上传笔记 ----
 const fileInput = ref(null)
+const processingSteps = ref([])
+const currentStepIdx = ref(-1)
+
+const STEP_TIMELINE = [
+  { text: 'init PaddleOCR-VL --async', delay: 0 },
+  { text: '上传图片到 OCR 服务...', delay: 800 },
+  { text: '[OCR] 文档结构解析中...', delay: 2000 },
+  { text: '[OCR] 解析完成 ✓ 提取文本块', delay: 5000 },
+  { text: 'LangGraph.invoke(note_agent)...', delay: 6500 },
+  { text: '识别知识结构 & 归纳要点...', delay: 8000 },
+  { text: 'Fixing OCR artifacts & converting to LaTeX...', delay: 11000 },
+  { text: 'Generating Markdown structured output...', delay: 14000 },
+]
+
+function startFakeTimeline() {
+  processingSteps.value = []
+  currentStepIdx.value = -1
+  const timers = []
+  STEP_TIMELINE.forEach((step, i) => {
+    timers.push(setTimeout(() => {
+      if (!creating.value) return
+      processingSteps.value.push({ text: step.text, done: false })
+      currentStepIdx.value = i
+      // 前一步标记完成
+      if (i > 0 && processingSteps.value[i - 1]) {
+        processingSteps.value[i - 1].done = true
+      }
+    }, step.delay))
+  })
+  return timers
+}
 
 function triggerUpload() {
   fileInput.value?.click()
@@ -99,29 +130,44 @@ function handleFiles(e) {
   formData.append('model_provider', props.modelProvider)
   if (props.modelName) formData.append('model_name', props.modelName)
 
+  // 启动终端风格的假进度
+  const timers = startFakeTimeline()
+
   api.createNote(formData, {
-    onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
+    onProgress: (ratio) => { createProgress.value = Math.round(ratio * 30) },
     onSuccess: (data) => {
-      creating.value = false
+      timers.forEach(clearTimeout)
+      // 标记所有步骤完成
+      processingSteps.value.forEach(s => s.done = true)
+      processingSteps.value.push({ text: '笔记整理完成 ✓', done: true, success: true })
       createProgress.value = 100
-      emit('push-toast', 'success', '笔记整理完成')
-      loadNotes()
-      // 自动打开新创建的笔记
-      if (data.note) selectedNote.value = data.note
+
+      setTimeout(() => {
+        creating.value = false
+        processingSteps.value = []
+        emit('push-toast', 'success', '笔记整理完成')
+        loadNotes()
+        if (data.note) selectedNote.value = data.note
+      }, 1000)
     },
     onError: (msg) => {
-      creating.value = false
-      emit('push-toast', 'error', msg)
+      timers.forEach(clearTimeout)
+      processingSteps.value.push({ text: `✗ 失败: ${msg}`, done: true, error: true })
+      setTimeout(() => {
+        creating.value = false
+        processingSteps.value = []
+        emit('push-toast', 'error', msg)
+      }, 2000)
     },
   })
 
-  // 模拟 OCR + LLM 处理进度
-  let fakeProgress = 50
-  const timer = setInterval(() => {
-    if (!creating.value) { clearInterval(timer); return }
-    fakeProgress = Math.min(fakeProgress + 2, 95)
+  // 进度条缓慢推进
+  let fakeProgress = 30
+  const progressTimer = setInterval(() => {
+    if (!creating.value) { clearInterval(progressTimer); return }
+    fakeProgress = Math.min(fakeProgress + 1, 95)
     createProgress.value = fakeProgress
-  }, 500)
+  }, 800)
 
   e.target.value = ''
 }
@@ -228,12 +274,43 @@ async function doDelete(noteId) {
             </div>
           </div>
 
-          <!-- 进度条 -->
+          <!-- 终端风格进度面板 -->
           <div v-if="creating" class="mt-4">
-            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
-              <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
+            <div class="rounded-2xl border border-slate-200/60 bg-slate-900 p-4 font-mono text-sm dark:border-white/10">
+              <!-- 进度条 -->
+              <div class="mb-3 h-1.5 rounded-full bg-slate-700">
+                <div class="h-full rounded-full bg-emerald-500 transition-all duration-500" :style="{ width: createProgress + '%' }"></div>
+              </div>
+              <!-- 步骤日志 -->
+              <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                <TransitionGroup name="step-line">
+                  <div
+                    v-for="(step, i) in processingSteps"
+                    :key="i"
+                    class="flex items-center gap-2"
+                  >
+                    <!-- 状态图标 -->
+                    <span v-if="step.success" class="text-emerald-400">✓</span>
+                    <span v-else-if="step.error" class="text-rose-400">✗</span>
+                    <span v-else-if="step.done" class="text-emerald-400">✓</span>
+                    <span v-else class="text-blue-400 animate-pulse">❯</span>
+                    <!-- 文字 -->
+                    <span
+                      :class="[
+                        step.success ? 'text-emerald-400 font-bold' :
+                        step.error ? 'text-rose-400' :
+                        step.done ? 'text-slate-500' :
+                        'text-slate-300'
+                      ]"
+                    >{{ step.text }}</span>
+                  </div>
+                </TransitionGroup>
+                <!-- 光标闪烁 -->
+                <div v-if="processingSteps.length && !processingSteps[processingSteps.length - 1]?.success" class="flex items-center gap-2">
+                  <span class="inline-block w-2 h-4 bg-emerald-400 animate-blink"></span>
+                </div>
+              </div>
             </div>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
           </div>
         </div>
 
