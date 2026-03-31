@@ -27,7 +27,7 @@ if not test_img_path.exists():
     sys.exit(1)
 
 # ── 路径配置 ──────────────────────────────────────────
-MODEL_PATH = Path(__file__).parent.parent / "runtime_data" / "models" / "latest.pth"
+MODEL_PATH = Path(__file__).parent / "weight" / "best.pth"
 OUTPUT_DIR = Path(__file__).parent.parent / "runtime_data" / "erased"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

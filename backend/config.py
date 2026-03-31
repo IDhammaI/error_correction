@@ -198,7 +198,7 @@ class Settings(BaseSettings):
         if self.erased_dir is None:
             self.erased_dir = self.runtime_dir / "erased"
         if self.model_path is None:
-            self.model_path = self.runtime_dir / "models" / "latest.pth"
+            self.model_path = _BACKEND_ROOT / "models" / "weight" / "best.pth"
 
         # 初始化 LLM 供应商注册表
         if self.llm_providers is None:
