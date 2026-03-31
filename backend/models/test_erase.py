@@ -9,8 +9,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.enabled = False   # cuDNN v8 frontend 与 A30+PyTorch2.1 不兼容
 from pathlib import Path
 from PIL import Image
 import numpy as np
