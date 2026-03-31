@@ -62,19 +62,35 @@ function getSectionTops() {
 }
 
 function onWheel(e) {
-  e.preventDefault()
   if (wheelLock) return
   const y = window.scrollY
   const tops = getSectionTops()
+  if (tops.length < 2) return
   const dir = e.deltaY > 0 ? 1 : -1
+
+  // 找到当前所在 section
   let cur = 0
   for (let i = tops.length - 1; i >= 0; i--) {
     if (y >= tops[i] - 10) { cur = i; break }
   }
-  const next = Math.max(0, Math.min(tops.length - 1, cur + dir))
-  if (next === cur) return
-  wheelLock = true
-  scrollToY(tops[next], 1000)
+
+  const lastIdx = tops.length - 1
+  const secondLastIdx = lastIdx - 1
+
+  // 只在以下两个边界做 snap，其他正常滚动：
+  // 1. Hero(0) ↔ Features(1)
+  // 2. 倒数第二页 ↔ 最后一页(CTA)
+  const isHeroBoundary = (cur === 0 && dir === 1) || (cur === 1 && dir === -1 && y <= tops[1] + 50)
+  const isCtaBoundary = (cur === secondLastIdx && dir === 1) || (cur === lastIdx && dir === -1)
+
+  if (isHeroBoundary || isCtaBoundary) {
+    e.preventDefault()
+    const next = Math.max(0, Math.min(lastIdx, cur + dir))
+    if (next === cur) return
+    wheelLock = true
+    scrollToY(tops[next], 800)
+  }
+  // 其他位置：不 preventDefault，浏览器正常滚动
 }
 
 // ── Scroll handler ──
@@ -187,8 +203,7 @@ function setupRevealObserver() {
 onMounted(async () => {
   initTheme()
 
-  // Set overflow-hidden on body for wheel snap
-  document.body.style.overflow = 'hidden'
+  // 不再锁定 body overflow，中间页面允许正常滚动
 
   await nextTick()
 
@@ -218,9 +233,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Restore body overflow
-  document.body.style.overflow = ''
-
   if (wheelUnlisten) wheelUnlisten()
   if (scrollUnlisten) scrollUnlisten()
   if (revealObserver) revealObserver.disconnect()
