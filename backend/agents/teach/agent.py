@@ -93,7 +93,10 @@ def stream_teach(
             reasoning = chunk.additional_kwargs.get('reasoning_content')
 
         token = chunk.content
-        if reasoning:
+        # 安全处理：确保 token 是字符串（某些模型返回 list）
+        if isinstance(token, list):
+            token = ''.join(str(t) for t in token if t)
+        if reasoning and isinstance(reasoning, str):
             yield {"type": "reasoning", "content": reasoning}
-        if token:
+        if token and isinstance(token, str):
             yield {"type": "content", "content": token}
