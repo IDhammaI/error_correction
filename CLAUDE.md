@@ -19,9 +19,11 @@ cd frontend && npm run dev               # Vite dev server, proxy /api → :5001
 ### 生产构建
 
 ```bash
-cd frontend && npm run build             # 输出到 backend 静态目录
-cd backend && python web_app.py          # Flask 托管前端产物，访问 :5001
+cd frontend && npm run build             # 构建前端产物（目前仅用于部署，Flask 不再托管）
+cd backend && python web_app.py          # 启动纯 API 服务，仅监听 :5001
 ```
+
+> **注意**：`web_app.py` 已重构为纯 API 服务器，不提供前端页面。前端必须通过 Vite dev server（`:5173`）或独立部署访问，直接访问 `:5001` 只会得到 JSON 404。
 
 ### 测试
 
@@ -72,23 +74,29 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 关键模块关系
 
 - **`backend/src/workflow.py`** — LangGraph StateGraph 主工作流，串联所有处理步骤
-- **`backend/error_correction_agent/`** — 题目分割 + OCR 纠错 Agent（`create_agent` 工厂函数）
-- **`backend/solve_agent/`** — 独立的解题 Agent
-- **`backend/teach_agent/`** — 教学讲解 Agent，用于 AI 分析功能
-- **`backend/web_app.py`** — Flask 主应用，路由 + 全局会话状态（`session_lock` 保护）
-- **`backend/config.py`** — 所有运行时路径集中管理，`ensure_dirs()` 显式初始化
-- **`backend/llm.py`** — `init_model()` 统一 LLM 初始化，支持 deepseek / ernie
-- **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化
-- **`frontend/src/App.vue`** — 根组件，全局状态集中于此（无 Pinia/Vuex）
+- **`backend/agents/error_correction/`** — 题目分割 + OCR 纠错 Agent（`create_inner_split_agent` / `create_inner_correct_agent`）
+- **`backend/agents/solve/`** — 独立的解题 Agent（`invoke_solve`）
+- **`backend/agents/teach/`** — 教学讲解 Agent，流式多轮对话（`stream_teach`）
+- **`backend/web_app.py`** — Flask 应用工厂，注册 6 个 Blueprint，全局 session 状态在 `state.py`
+- **`backend/routes/`** — 6 个 Blueprint 模块（upload、questions、chat、stats、auth、settings）
+- **`backend/state.py`** — 全局会话状态（`session_files`、`session_lock`）
+- **`backend/core/config.py`** — 所有运行时路径 + LLM provider 注册集中管理，`ensure_dirs()` 显式初始化
+- **`backend/core/llm.py`** — `init_model()` 统一 LLM 初始化，支持多 provider
+- **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化；`db/crud/providers.py` 管理用户存储的 API key
 
 ### Flask 路由
 
+路由实现在 `backend/routes/` 的 6 个 Blueprint 模块中，`web_app.py` 仅做注册：
+
 - `GET /` → 介绍页 | `GET /app` → Vue 工作台
-- `POST /api/upload` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API
-- `GET /api/status` — 系统状态（OCR 配置、可用模型列表）
-- `/api/error-bank` / `/api/subjects` / `/api/question-types` / `/api/stats` — 错题库 CRUD + 统计
-- `/api/chat` / `/api/chat/<id>/messages` / `/api/chat/<id>/stream` — AI 对话（SSE 流式）
-- `/api/ai-analysis` — AI 分析（teach_agent）
+- `POST /api/upload` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API（upload.py）
+- `GET /api/status` — 系统状态（OCR 配置、可用模型列表）（upload.py）
+- `/api/error-bank` / `/api/subjects` / `/api/question-types` — 错题库 CRUD（questions.py）
+- `/api/stats` — 统计数据（stats.py）
+- `/api/chat` / `/api/chat/<id>/messages` / `/api/chat/<id>/stream` — AI 对话（SSE 流式）（chat.py）
+- `/api/ai-analysis` — AI 分析（teach_agent）（chat.py）
+- `/api/auth` — 认证（auth.py）
+- `/api/settings` — LLM provider 配置（settings.py）
 
 ---
 
@@ -209,7 +217,7 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 模块级副作用
 
 - **禁止在模块顶层执行有副作用的操作**（创建目录、写文件、启动连接等）
-- `config.py` 目录创建通过 `ensure_dirs()` 显式调用
+- `core/config.py` 目录创建通过 `ensure_dirs()` 显式调用
 - `load_dotenv()` 仅在入口文件或需要环境变量的模块中调用
 
 ### 数据库
@@ -240,7 +248,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 文件与路径
 
-- 所有运行时路径通过 `config.py` 集中管理，禁止硬编码
+- 所有运行时路径通过 `core/config.py` 集中管理，禁止硬编码
 - 文件名解析用 `os.path.splitext()`，**不要用 `rsplit('.', 1)`**
 - 文件上传用 `uuid.uuid4().hex` 生成安全文件名
 
