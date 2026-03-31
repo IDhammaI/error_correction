@@ -115,6 +115,7 @@ import { useTheme } from '../composables/useTheme.js'
 const { isDark, toggleTheme, initTheme } = useTheme()
 // 兼容旧代码中 theme 的引用
 const theme = computed(() => isDark.value ? 'dark' : 'light')
+const userMenuOpen = ref(false)
 // ---- 系统状态 ----
 const statusLoading = ref(true)
 const systemStatus = ref(null)
@@ -227,6 +228,33 @@ async function onAiChatTitleUpdated(sessionId, title) {
     s.title = title
     try { await api.updateChatTitle(sessionId, title) } catch (_) {}
   }
+}
+
+const chatMenuOpenId = ref(null)
+const renamingChatId = ref(null)
+const renameText = ref('')
+
+function toggleChatMenu(id) {
+  chatMenuOpenId.value = chatMenuOpenId.value === id ? null : id
+}
+
+function startRenameChat(s) {
+  chatMenuOpenId.value = null
+  renamingChatId.value = s.id
+  renameText.value = s.title
+}
+
+async function confirmRenameChat(s) {
+  const title = renameText.value.trim()
+  if (title && title !== s.title) {
+    try {
+      await api.updateChatTitle(s.id, title)
+      s.title = title
+    } catch (e) {
+      pushToast('error', e.message)
+    }
+  }
+  renamingChatId.value = null
 }
 
 async function deleteAiChat(id) {
@@ -717,7 +745,7 @@ onBeforeUnmount(() => {
       <div>
         <!-- Logo 标题区 -->
         <div class="flex h-20 items-center gap-2 border-b border-slate-100 px-4 dark:border-white/5">
-          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" title="返回介绍页">
+          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-xl px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" title="返回介绍页">
             <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 dark:shadow-indigo-500/20">
               <img src="/logo.svg" class="w-6 h-6 brightness-0 invert relative z-10" alt="logo" />
               <div class="absolute inset-0 animate-pulse rounded-xl bg-blue-400/20 blur-md"></div>
@@ -725,14 +753,6 @@ onBeforeUnmount(() => {
             <span class="text-xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:to-indigo-200">
               智卷系统
             </span>
-          </button>
-          <button
-            @click="(e) => toggleTheme(e.currentTarget)"
-            class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200 transition-colors"
-            title="切换主题"
-          >
-            <i class="fa-solid fa-sun text-[18px] hidden dark:block"></i>
-            <i class="fa-solid fa-moon text-[18px] block dark:hidden"></i>
           </button>
         </div>
 
@@ -759,7 +779,7 @@ onBeforeUnmount(() => {
             v-for="item in NAV_ITEMS"
             :key="item.id"
             @click="currentView = (item.id === 'workspace' ? lastWorkspaceView : item.id)"
-            class="group relative z-10 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200"
+            class="group relative z-10 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-all duration-200"
             :class="item.match(currentView)
               ? 'text-white'
               : 'text-slate-600 hover:bg-slate-100/50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
@@ -770,77 +790,145 @@ onBeforeUnmount(() => {
 
           <button
             disabled
-            class="group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold cursor-not-allowed opacity-40 text-slate-400 dark:text-slate-600"
+            class="group relative flex items-center justify-between rounded-xl px-3 py-3 text-sm font-bold cursor-not-allowed text-slate-400 dark:text-slate-500"
           >
-            <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg"></i>
-            <span>刷题</span>
+            <div class="flex items-center gap-3 opacity-60">
+              <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg"></i>
+              <span>刷题</span>
+            </div>
+            <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400">敬请期待</span>
           </button>
         </nav>
 
       </div>
 
       <!-- AI 对话历史列表（常显示） -->
-      <div class="flex-1 min-h-0 flex flex-col border-t border-slate-100 dark:border-white/5">
-        <div class="flex items-center justify-between px-4 pt-3 pb-2">
+      <div class="flex-1 min-h-0 flex flex-col border-t border-slate-100 dark:border-white/5 mt-4 px-4">
+        <div class="flex items-center justify-between px-3 pt-5 pb-2">
           <span class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">对话</span>
           <button @click="createAiChat" class="text-xs font-bold text-blue-600 dark:text-indigo-400 hover:underline">
             <i class="fa-solid fa-plus mr-1"></i>新建
           </button>
         </div>
-        <div class="flex-1 overflow-y-auto px-3 pb-2 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto pb-2 custom-scrollbar" @click="chatMenuOpenId = null">
           <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
             暂无对话
           </div>
           <div
             v-for="s in aiChatSessions"
             :key="s.id"
-            @click="selectAiChat(s)"
-            class="group flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
+            class="group relative flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
             :class="activeAiChatId === s.id && currentView === 'ai-chat'
               ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
               : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
+            @click="renamingChatId !== s.id && selectAiChat(s)"
           >
             <i class="fa-solid fa-message text-[10px] shrink-0 opacity-50"></i>
-            <span class="flex-1 truncate text-xs">{{ s.title }}</span>
+
+            <!-- 重命名输入框 -->
+            <input
+              v-if="renamingChatId === s.id"
+              v-model="renameText"
+              @click.stop
+              @keydown.enter="confirmRenameChat(s)"
+              @keydown.escape="renamingChatId = null"
+              @blur="confirmRenameChat(s)"
+              class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-blue-500 dark:border-indigo-400 py-0.5"
+              autofocus
+            />
+            <span v-else class="flex-1 truncate text-xs">{{ s.title }}</span>
+
+            <!-- 三个点按钮 -->
             <button
-              @click.stop="deleteAiChat(s.id)"
-              class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
+              @click.stop="toggleChatMenu(s.id)"
+              class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all"
             >
-              <i class="fa-solid fa-xmark text-[10px]"></i>
+              <i class="fa-solid fa-ellipsis text-[10px]"></i>
             </button>
+
+            <!-- Dropdown 菜单 -->
+            <Transition
+              enter-active-class="transition duration-100 ease-out"
+              enter-from-class="opacity-0 scale-95"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition duration-75 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div
+                v-if="chatMenuOpenId === s.id"
+                class="absolute right-2 top-full mt-1 z-50 w-32 rounded-xl border border-slate-200/60 bg-white shadow-lg dark:border-white/10 dark:bg-[#0A0A0F] overflow-hidden"
+                @click.stop
+              >
+                <button
+                  @click="startRenameChat(s)"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+                >
+                  <i class="fa-solid fa-pen text-[10px] w-4 text-center"></i> 重命名
+                </button>
+                <button
+                  @click="chatMenuOpenId = null; deleteAiChat(s.id)"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                >
+                  <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
+                </button>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
 
-      <!-- 底部控制与返回栏 -->
-      <div class="space-y-1.5 border-t border-slate-100 p-4 dark:border-white/5">
-        <!-- 用户信息 -->
-        <div class="flex items-center gap-2 px-3 py-2 mb-2">
+      <!-- 底部用户区 -->
+      <div class="relative border-t border-slate-100 p-4 dark:border-white/5">
+        <!-- Dropdown 菜单（在用户信息上方弹出） -->
+        <Transition
+          enter-active-class="transition duration-150 ease-out"
+          enter-from-class="opacity-0 translate-y-2"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-100 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-2"
+        >
+          <div v-if="userMenuOpen" class="absolute bottom-full left-4 right-4 mb-2 rounded-xl border border-slate-200/60 bg-white shadow-lg dark:border-white/10 dark:bg-[#0A0A0F] overflow-hidden z-50">
+            <button
+              @click="currentView = 'settings'; userMenuOpen = false"
+              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+            >
+              <i class="fa-solid fa-gear w-5 text-center"></i>
+              系统设置
+            </button>
+            <button
+              @click="(e) => { userMenuOpen = false; toggleTheme(e.currentTarget) }"
+              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+            >
+              <i class="fa-solid w-5 text-center" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
+              {{ isDark ? '浅色模式' : '深色模式' }}
+            </button>
+            <div class="border-t border-slate-100 dark:border-white/5"></div>
+            <button
+              @click="handleLogout; userMenuOpen = false"
+              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            >
+              <i class="fas fa-right-from-bracket w-5 text-center"></i>
+              退出登录
+            </button>
+          </div>
+        </Transition>
+
+        <!-- 用户信息（点击弹出菜单） -->
+        <button
+          @click="userMenuOpen = !userMenuOpen"
+          class="flex w-full items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100/50 dark:hover:bg-white/[0.04] transition-colors"
+        >
           <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 flex items-center justify-center text-white text-sm font-extrabold shadow-sm">
             {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
           </div>
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 text-left">
             <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate leading-tight">{{ currentUser?.username }}</p>
             <p class="text-xs text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
           </div>
-          <button
-            @click="handleLogout"
-            title="退出登录"
-            class="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50/80 dark:hover:bg-rose-500/10 transition-all"
-          >
-            <i class="fas fa-right-from-bracket text-sm"></i>
-          </button>
-        </div>
-
-        <button
-          @click="currentView = 'settings'"
-          class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
-          :class="currentView === 'settings' ? 'bg-white/70 backdrop-blur-xl border border-blue-200/60 text-blue-600 shadow-sm dark:bg-white/10 dark:backdrop-blur-xl dark:border-indigo-500/30 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' : 'text-slate-600 hover:bg-white/60 hover:backdrop-blur-xl hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
-        >
-          <i class="fa-solid fa-gear w-5 text-center text-lg"></i>
-          系统设置
+          <i class="fa-solid fa-ellipsis text-slate-400 dark:text-slate-500 text-sm"></i>
         </button>
-
       </div>
     </aside>
 
@@ -1117,6 +1205,7 @@ onBeforeUnmount(() => {
             :session-id="activeAiChatId"
             :model-provider="selectedProvider"
             :model-name="selectedModel"
+            :username="currentUser?.username"
             @push-toast="pushToast"
             @create-chat="createAiChat"
             @session-title-updated="onAiChatTitleUpdated"

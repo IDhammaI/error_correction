@@ -8,6 +8,7 @@ const props = defineProps({
   sessionId: { type: Number, default: null },
   modelProvider: { type: String, default: 'openai' },
   modelName: { type: String, default: '' },
+  username: { type: String, default: '' },
 })
 const emit = defineEmits(['push-toast', 'create-chat', 'session-title-updated'])
 
@@ -106,42 +107,42 @@ async function sendMessage() {
   }
 }
 
+const textareaRef = ref(null)
+
 function handleKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     sendMessage()
   }
 }
+
+function autoResize() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+}
 </script>
 
 <template>
   <div class="flex flex-col h-full">
-    <!-- 空状态 -->
-    <div v-if="!sessionId" class="flex-1 flex flex-col items-center justify-center text-center px-8">
-      <div class="mb-6 flex size-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/[0.04]">
-        <i class="fa-solid fa-comments text-2xl text-slate-400 dark:text-slate-500"></i>
-      </div>
-      <p class="text-xl font-bold text-slate-700 dark:text-slate-200">AI 学习助手</p>
-      <p class="mt-2 text-sm text-slate-400 dark:text-slate-500 max-w-sm">在左侧选择一个对话，或新建一个开始提问</p>
-      <button @click="emit('create-chat')" class="mt-6 h-10 px-6 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
-        <i class="fa-solid fa-plus mr-2"></i>新建对话
-      </button>
-    </div>
+    <!-- 消息区域（含空状态） -->
+    <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="mx-auto max-w-5xl px-4 sm:px-8">
 
-    <!-- 有活跃对话 -->
-    <template v-else>
-      <!-- 消息区域 -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-6 sm:px-8 custom-scrollbar">
-        <div class="mx-auto max-w-3xl space-y-6">
-          <!-- 空对话提示 -->
-          <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center py-20 text-center">
-            <i class="fa-solid fa-paper-plane text-3xl text-slate-300 dark:text-slate-600 mb-4"></i>
-            <p class="text-sm text-slate-400 dark:text-slate-500">发送一条消息开始对话</p>
-          </div>
+        <!-- 空状态：居中问候 -->
+        <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center" style="min-height: calc(100vh - 200px)">
+          <p class="text-2xl font-bold text-slate-800 dark:text-white">
+            Hi，{{ username || '同学' }}
+          </p>
+          <p class="mt-2 text-sm text-slate-400 dark:text-slate-500">有问题，尽管问</p>
+        </div>
 
+        <!-- 消息列表 -->
+        <div v-else class="space-y-6 py-6">
           <div v-for="(msg, i) in messages" :key="i" class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
             <div
-              class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
+              class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
               :class="msg.role === 'user'
                 ? 'bg-blue-600 text-white rounded-br-lg'
                 : 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-bl-lg'"
@@ -162,28 +163,73 @@ function handleKeydown(e) {
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 输入区域 -->
-      <div class="shrink-0 border-t border-slate-200/60 dark:border-white/5 px-4 py-4 sm:px-8">
-        <div class="mx-auto max-w-3xl flex gap-3">
+      </div>
+    </div>
+
+    <!-- 底部输入区域 -->
+    <div class="shrink-0 px-4 pb-4 pt-2 sm:px-8">
+      <div class="mx-auto max-w-5xl">
+        <div class="rounded-2xl border border-slate-200/60 bg-white dark:border-white/10 dark:bg-[#1a1a24] overflow-hidden">
+          <!-- 文本输入 -->
           <textarea
+            ref="textareaRef"
             v-model="inputText"
             @keydown="handleKeydown"
-            :disabled="streaming"
+            @input="autoResize"
+            :disabled="streaming || !sessionId"
             rows="1"
-            placeholder="输入你的问题..."
-            class="flex-1 resize-none rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm outline-none transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-indigo-500/50 custom-scrollbar"
+            :placeholder="sessionId ? '有问题，尽管问，shift+enter 换行' : '请先新建或选择一个对话'"
+            class="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+            style="min-height: 24px; max-height: 200px;"
           ></textarea>
-          <button
-            @click="sendMessage"
-            :disabled="!inputText.trim() || streaming"
-            class="h-10 w-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <i class="fa-solid fa-paper-plane text-sm"></i>
-          </button>
+
+          <!-- 底部工具栏 -->
+          <div class="flex items-center justify-between px-3 pb-2.5 pt-1">
+            <!-- 左侧功能按钮 -->
+            <div class="flex items-center gap-0.5">
+              <button
+                disabled
+                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                title="深度思考（敬请期待）"
+              >
+                <i class="fa-solid fa-brain text-sm"></i>
+                <span class="hidden sm:inline">深度思考</span>
+              </button>
+              <button
+                disabled
+                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                title="联网搜索（敬请期待）"
+              >
+                <i class="fa-solid fa-globe text-sm"></i>
+                <span class="hidden sm:inline">联网搜索</span>
+              </button>
+            </div>
+
+            <!-- 右侧操作按钮 -->
+            <div class="flex items-center gap-1.5">
+              <button
+                disabled
+                class="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-not-allowed"
+                title="附件（敬请期待）"
+              >
+                <i class="fa-solid fa-plus text-sm"></i>
+              </button>
+              <button
+                @click="sessionId ? sendMessage() : emit('create-chat')"
+                :disabled="sessionId ? (!inputText.trim() || streaming) : false"
+                class="h-8 w-8 rounded-full flex items-center justify-center transition-all"
+                :class="inputText.trim() && sessionId
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                  : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-slate-500 opacity-50'"
+              >
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+          </div>
         </div>
+        <p class="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">内容由 AI 生成，仅供参考</p>
       </div>
-    </template>
+    </div>
   </div>
 </template>
