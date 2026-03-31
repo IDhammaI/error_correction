@@ -157,11 +157,33 @@ onUnmounted(() => {
   <!-- ① Sticky Hero 容器 — Linear 风格 -->
   <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex items-center bg-[#0A0A0F]">
 
-    <!-- 极简背景：微弱渐变光晕 -->
-    <div class="absolute inset-0 pointer-events-none">
-      <div class="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-indigo-600/[0.07] blur-[150px]"></div>
-      <div class="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-blue-600/[0.05] blur-[120px]"></div>
-    </div>
+    <!-- 顶部装饰椭圆 -->
+    <div class="absolute pointer-events-none z-0" style="
+      top: -60%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140%;
+      aspect-ratio: 1.3 / 1;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
+      border: 1px solid transparent;
+      border-image: linear-gradient(to bottom, rgba(129,115,223,0), rgba(129,115,223,1)) 1;
+      box-shadow:
+        inset 0 -20px 24px 0 rgba(255,255,255,0.15),
+        0 16px 32px 0 rgba(97,62,210,0.32);
+    "></div>
+    <!-- 椭圆内描边（用伪元素模拟，因为 border-image 和 border-radius 不兼容） -->
+    <div class="absolute pointer-events-none z-0" style="
+      top: -60%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140%;
+      aspect-ratio: 1.3 / 1;
+      border-radius: 50%;
+      border: 1px solid;
+      border-color: transparent transparent rgba(129,115,223,1) transparent;
+      box-shadow: inset 0 -20px 24px 0 rgba(255,255,255,0.15);
+    "></div>
 
     <!-- 首屏区块 -->
     <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20 z-10">
