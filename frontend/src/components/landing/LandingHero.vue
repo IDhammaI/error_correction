@@ -159,31 +159,29 @@ onUnmounted(() => {
 
     <!-- 顶部装饰椭圆 -->
     <div class="absolute pointer-events-none z-0" style="
-      top: -60%;
+      top: -150%;
       left: 50%;
       transform: translateX(-50%);
       width: 140%;
       aspect-ratio: 1.3 / 1;
       border-radius: 50%;
       background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
-      border: 1px solid transparent;
-      border-image: linear-gradient(to bottom, rgba(129,115,223,0), rgba(129,115,223,1)) 1;
       box-shadow:
         inset 0 -20px 24px 0 rgba(255,255,255,0.15),
-        0 16px 32px 0 rgba(97,62,210,0.32);
+        0 16px 32px 0 rgba(97,62,210,0.32),
+        inset 0 -1px 0 0 rgba(129,115,223,0.6);
     "></div>
-    <!-- 椭圆内描边（用伪元素模拟，因为 border-image 和 border-radius 不兼容） -->
-    <div class="absolute pointer-events-none z-0" style="
-      top: -60%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 140%;
-      aspect-ratio: 1.3 / 1;
-      border-radius: 50%;
-      border: 1px solid;
-      border-color: transparent transparent rgba(129,115,223,1) transparent;
-      box-shadow: inset 0 -20px 24px 0 rgba(255,255,255,0.15);
-    "></div>
+
+    <!-- 浮动数学公式装饰 -->
+    <div class="absolute inset-0 pointer-events-none z-[1] overflow-hidden">
+      <span class="formula-float absolute text-white/[0.06] font-mono text-sm" style="top:12%;left:8%;animation-delay:0s">∫ f(x)dx</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-lg" style="top:8%;right:15%;animation-delay:2s">Σ</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-xs" style="top:18%;left:25%;animation-delay:4s">sin²θ + cos²θ = 1</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-sm" style="top:6%;right:30%;animation-delay:1s">x² + y²</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-xs" style="top:22%;right:8%;animation-delay:3s">lim(n→∞)</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-sm" style="top:15%;left:45%;animation-delay:5s">∂f/∂x</span>
+      <span class="formula-float absolute text-white/[0.06] font-mono text-xs" style="top:10%;left:65%;animation-delay:2.5s">√(a²+b²)</span>
+    </div>
 
     <!-- 首屏区块 -->
     <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20 z-10">
