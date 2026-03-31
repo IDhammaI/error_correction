@@ -174,14 +174,3 @@ mjx-container[jax="SVG"] > svg {
   scrollbar-width: thin;
 }
 
-/* ============================================================
-   浮动公式装饰动画
-   ============================================================ */
-@keyframes formulaFloat {
-  0%, 100% { transform: translateY(0px); opacity: 0.04; }
-  50% { transform: translateY(-12px); opacity: 0.08; }
-}
-.formula-float {
-  animation: formulaFloat 8s ease-in-out infinite;
-}
-
