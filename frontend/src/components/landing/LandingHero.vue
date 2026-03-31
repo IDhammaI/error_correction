@@ -154,162 +154,109 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- ① Sticky Hero 容器 -->
-  <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex items-center bg-slate-50 dark:bg-[#0A0A0F]">
+  <!-- ① Sticky Hero 容器 — Linear 风格 -->
+  <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex items-center bg-[#0A0A0F]">
 
-    <!-- 动态背景环境光 -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 h-screen">
-      <div class="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-300/20 dark:bg-indigo-600/20 dark:mix-blend-screen filter blur-[100px] animate-blob"></div>
-      <div class="absolute top-[20%] right-[-10%] w-[35vw] h-[35vw] rounded-full bg-indigo-200/25 dark:bg-indigo-600/20 dark:mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
-      <div class="absolute bottom-[-20%] left-[20%] w-[50vw] h-[50vw] rounded-full bg-cyan-200/20 dark:bg-cyan-600/10 dark:mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000"></div>
-      <div class="absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] opacity-[0.03] dark:opacity-20 mix-blend-overlay"></div>
+    <!-- 极简背景：微弱渐变光晕 -->
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-indigo-600/[0.07] blur-[150px]"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-blue-600/[0.05] blur-[120px]"></div>
     </div>
 
-    <!-- 背景粒子动画（已关闭） -->
-    <!--
-    <canvas
-      ref="canvasRef"
-      id="circuit-canvas"
-      class="absolute inset-0 pointer-events-none z-0"
-      style="height:100vh;width:100%;opacity:0;transition:opacity 1.2s ease;"
-    ></canvas>
-    -->
-
     <!-- 首屏区块 -->
-    <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 z-10" style="transform-origin: center 55%; will-change: transform;">
+    <section id="hero" class="relative w-full pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20 z-10">
+
+      <!-- 左侧文案 -->
       <div class="flex-1 text-center lg:text-left">
-        <div class="hero-anim">
-          <div class="mb-4 flex items-center justify-center lg:justify-start">
-            <div class="relative flex items-center gap-3 py-1 text-xs font-black tracking-widest text-blue-700/90 dark:text-indigo-300/90">
-              <div class="relative flex h-5 w-5 items-center justify-center">
-                <Zap class="absolute w-4 h-4 text-orange-500 dark:text-yellow-400 animate-pulse" />
-                <div class="absolute h-full w-full animate-ping rounded-full bg-orange-400/10 dark:bg-yellow-400/10"></div>
-              </div>
-              <span class="relative z-10 uppercase pb-0.5">
-                新一代 AI 错题处理架构 <span class="ml-1 font-extrabold text-blue-600 dark:text-indigo-300">V2.0</span>
-              </span>
-            </div>
-          </div>
-          <h1 class="text-4xl font-extrabold tracking-tight leading-[1.1] mb-6 text-slate-900 dark:text-white">
-            重塑错题整理 <br />
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-cyan-400 dark:via-indigo-400 dark:to-indigo-400 animate-pulse">
-              一键生成知识图谱
-            </span>
-          </h1>
-          <p class="text-base md:text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-            专为中学生与大学生研发。上传凌乱试卷，AI 自动完成图片分割、OCR 纠错及 LaTeX 公式还原。释放你的双手，将时间交还给真正的思考。
-          </p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start" style="transition-delay: 450ms;">
-            <RouterLink to="/auth" class="relative inline-flex group h-14 w-full sm:w-auto">
-              <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500"></div>
-              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-3 border border-transparent bg-blue-600 text-white hover:bg-blue-700 dark:bg-white/15 dark:hover:bg-white/25 dark:border-white/30 dark:backdrop-blur-md">
-                <UploadCloud class="w-5 h-5" />
-                上传试卷分析
-              </span>
-            </RouterLink>
-            <a href="#demo" class="relative inline-flex group h-14 w-full sm:w-auto">
-              <div class="absolute -inset-px bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500 rounded-full blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-500 dark:block hidden"></div>
-              <span class="relative inline-flex items-center justify-center w-full px-8 py-4 text-base font-bold rounded-full transition-all gap-2 border border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600 dark:text-white dark:bg-white/15 dark:hover:bg-white/25 dark:border-white/30 dark:backdrop-blur-md">
-                查看实时演示
-                <ArrowRight class="w-5 h-5" />
-              </span>
-            </a>
-          </div>
+        <!-- 标签 -->
+        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-white/50">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          PaddleOCR + LangChain Agent
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.15] mb-6 text-white">
+          重塑错题整理<br />
+          <span class="text-white/40">一键生成知识图谱</span>
+        </h1>
+
+        <p class="text-base text-white/40 mb-10 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+          上传试卷或手写笔记，AI 自动完成 OCR 识别、题目分割、公式还原、知识点标注。专为中学生与大学生设计。
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+          <RouterLink to="/auth" class="inline-flex items-center justify-center h-10 px-6 text-sm font-medium rounded-lg bg-white text-[#0A0A0F] hover:bg-white/90 transition-colors gap-2">
+            <UploadCloud class="w-4 h-4" />
+            开始使用
+          </RouterLink>
+          <a href="#demo" class="inline-flex items-center justify-center h-10 px-6 text-sm font-medium rounded-lg border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition-colors gap-2">
+            查看演示
+            <ArrowRight class="w-4 h-4" />
+          </a>
         </div>
       </div>
 
-      <!-- 右侧代码状态图 -->
-      <div class="hero-anim flex-1 relative w-full max-w-xl lg:max-w-none" style="transition-delay: 200ms;">
-        <div class="relative animate-float group">
-
-          <!-- 后层：空窗口 -->
-          <div class="absolute inset-0 translate-x-6 -translate-y-5 z-0 opacity-80 dark:opacity-60 pointer-events-none transition-transform duration-500 ease-out group-hover:translate-x-10 group-hover:-translate-y-8">
-            <div class="relative bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.2)] h-full">
-              <div class="bg-slate-50 dark:bg-[#0A0A0F]/80 backdrop-blur-md rounded-t-xl p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
-                <div class="flex gap-2">
-                  <div class="w-3 h-3 rounded-full bg-red-400 dark:bg-[#FF5F57]"></div>
-                  <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-[#FFBD2E]"></div>
-                  <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-[#28C840]"></div>
-                </div>
-                <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
-                  <Terminal class="w-3 h-3" />
-                  error_bank.py
-                </div>
+      <!-- 右侧终端 -->
+      <div class="flex-1 relative w-full max-w-xl lg:max-w-none">
+        <div class="relative">
+          <!-- 终端窗口 -->
+          <div class="rounded-lg border border-white/[0.06] bg-[#111118] overflow-hidden">
+            <!-- 标题栏 -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+              <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
               </div>
-              <div class="bg-white dark:bg-[#0A0A0F]/90 rounded-b-xl h-[340px]"></div>
+              <span class="text-[11px] font-mono text-white/25">agent_workflow.py</span>
             </div>
-          </div>
 
-          <!-- 前层：有内容的卡片 -->
-          <div class="relative z-10 transition-transform duration-500 ease-out group-hover:-translate-x-2 group-hover:translate-y-1">
-            <div class="relative bg-white dark:bg-transparent dark:glass-panel rounded-2xl p-1 shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-              <div class="bg-slate-50 dark:bg-[#0A0A0F]/80 backdrop-blur-md rounded-t-xl p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
-                <div class="flex gap-2">
-                  <div class="w-3 h-3 rounded-full bg-red-400 dark:bg-[#FF5F57]"></div>
-                  <div class="w-3 h-3 rounded-full bg-yellow-400 dark:bg-[#FFBD2E]"></div>
-                  <div class="w-3 h-3 rounded-full bg-green-400 dark:bg-[#28C840]"></div>
-                </div>
-                <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
-                  <Terminal class="w-3 h-3" />
-                  agent_workflow.py
-                </div>
-              </div>
-
-              <div ref="terminalRef" class="bg-white dark:bg-[#0A0A0F]/90 p-5 rounded-b-xl font-mono text-[13px] leading-relaxed h-[340px] overflow-hidden relative">
-                <div class="space-y-1.5">
-                  <div v-for="(line, i) in termLines" :key="i">
-                    <!-- 空行 -->
-                    <div v-if="line.type === 'blank'" class="h-2"></div>
-                    <!-- 命令行 -->
-                    <div v-else-if="line.type === 'cmd'" class="flex items-start gap-2">
-                      <span class="text-blue-600 dark:text-cyan-500 shrink-0">❯</span>
-                      <span class="text-slate-700 dark:text-slate-300">{{ (line.text || '').slice(0, line.charIndex) }}</span>
-                    </div>
-                    <!-- 成功 -->
-                    <div v-else-if="line.type === 'success'" class="flex items-start gap-2 text-emerald-600 dark:text-emerald-400">
-                      <span class="shrink-0">✓</span>
-                      <span>{{ (line.text || '').slice(0, line.charIndex) }}</span>
-                    </div>
-                    <!-- 注释 -->
-                    <div v-else-if="line.type === 'comment'" class="text-indigo-600 dark:text-indigo-400">
-                      {{ (line.text || '').slice(0, line.charIndex) }}
-                    </div>
-                    <!-- diff 删除 -->
-                    <div v-else-if="line.type === 'diff-del'" class="flex items-start gap-2">
-                      <span class="text-rose-600 dark:text-rose-500 shrink-0">-</span>
-                      <span class="text-rose-500 dark:text-rose-400/70 line-through">{{ (line.text || '').slice(0, line.charIndex) }}</span>
-                    </div>
-                    <!-- diff 新增 -->
-                    <div v-else-if="line.type === 'diff-add'" class="flex items-start gap-2">
-                      <span class="text-emerald-600 dark:text-emerald-500 shrink-0">+</span>
-                      <span class="text-emerald-600 dark:text-emerald-400">{{ (line.text || '').slice(0, line.charIndex) }}</span>
-                    </div>
-                    <!-- 普通信息 -->
-                    <div v-else class="text-slate-600 dark:text-slate-400">
-                      {{ (line.text || '').slice(0, line.charIndex) }}
-                    </div>
+            <!-- 终端内容 -->
+            <div ref="terminalRef" class="p-5 font-mono text-[13px] leading-relaxed h-[320px] overflow-hidden">
+              <div class="space-y-1.5">
+                <div v-for="(line, i) in termLines" :key="i">
+                  <div v-if="line.type === 'blank'" class="h-2"></div>
+                  <div v-else-if="line.type === 'cmd'" class="flex items-start gap-2">
+                    <span class="text-indigo-400 shrink-0">❯</span>
+                    <span class="text-white/70">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                  </div>
+                  <div v-else-if="line.type === 'success'" class="flex items-start gap-2 text-emerald-400/80">
+                    <span class="shrink-0">✓</span>
+                    <span>{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                  </div>
+                  <div v-else-if="line.type === 'comment'" class="text-white/25">
+                    {{ (line.text || '').slice(0, line.charIndex) }}
+                  </div>
+                  <div v-else-if="line.type === 'diff-del'" class="flex items-start gap-2">
+                    <span class="text-rose-400/70 shrink-0">-</span>
+                    <span class="text-rose-400/50 line-through">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                  </div>
+                  <div v-else-if="line.type === 'diff-add'" class="flex items-start gap-2">
+                    <span class="text-emerald-400/70 shrink-0">+</span>
+                    <span class="text-emerald-400/70">{{ (line.text || '').slice(0, line.charIndex) }}</span>
+                  </div>
+                  <div v-else class="text-white/30">
+                    {{ (line.text || '').slice(0, line.charIndex) }}
                   </div>
                 </div>
-                <!-- 光标 -->
-                <span
-                  v-if="termLines.length > 0"
-                  class="inline-block w-[7px] h-[15px] ml-0.5 -mb-0.5 align-middle"
-                  :class="cursorVisible ? 'bg-blue-600 dark:bg-cyan-400' : 'bg-transparent'"
-                ></span>
               </div>
+              <span
+                v-if="termLines.length > 0"
+                class="inline-block w-[6px] h-[14px] ml-0.5 -mb-0.5 align-middle"
+                :class="cursorVisible ? 'bg-indigo-400' : 'bg-transparent'"
+              ></span>
             </div>
-          </div><!-- /光晕裁切层 -->
+          </div>
         </div>
       </div>
 
     </section>
 
-    <!-- 底部弹跳箭头（相对于整个屏幕区域） -->
+    <!-- 底部箭头 -->
     <button
       @click="emit('scrollToSection', 'features')"
-      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-slate-400 hover:text-white transition-colors cursor-pointer"
+      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-white/20 hover:text-white/50 transition-colors cursor-pointer"
     >
-      <i class="fa-solid fa-chevron-down text-xl animate-bounce"></i>
+      <i class="fa-solid fa-chevron-down text-lg animate-bounce"></i>
     </button>
-  </div><!-- /sticky-hero -->
+  </div>
 </template>
