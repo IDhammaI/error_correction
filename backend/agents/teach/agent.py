@@ -87,6 +87,13 @@ def stream_teach(
     model = init_model(temperature=0.4, provider=provider, model_name=model_name)
 
     for chunk in model.stream(lc_messages):
+        # DeepSeek reasoner 模型会在 additional_kwargs 里返回 reasoning_content
+        reasoning = None
+        if hasattr(chunk, 'additional_kwargs'):
+            reasoning = chunk.additional_kwargs.get('reasoning_content')
+
         token = chunk.content
+        if reasoning:
+            yield {"type": "reasoning", "content": reasoning}
         if token:
-            yield token
+            yield {"type": "content", "content": token}

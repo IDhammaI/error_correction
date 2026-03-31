@@ -17,6 +17,7 @@ const messages = ref([])
 const inputText = ref('')
 const streaming = ref(false)
 const messagesContainer = ref(null)
+const deepThink = ref(false)
 
 watch(() => props.sessionId, (id) => {
   if (id) loadMessages()
@@ -47,12 +48,16 @@ async function sendMessage() {
   if (!text || !props.sessionId || streaming.value) return
 
   inputText.value = ''
+  // 消息结构：{ role, content, reasoning?, reasoningOpen? }
   messages.value.push({ role: 'user', content: text })
-  messages.value.push({ role: 'assistant', content: '' })
+  messages.value.push({ role: 'assistant', content: '', reasoning: '', reasoningOpen: false })
   await nextTick()
   scrollToBottom()
+  // 重置 textarea 高度
+  if (textareaRef.value) textareaRef.value.style.height = 'auto'
 
   streaming.value = true
+  const useDeepThink = deepThink.value
 
   try {
     const resp = await api.streamChat(
@@ -61,11 +66,13 @@ async function sendMessage() {
       props.modelProvider,
       null,
       props.modelName,
+      { deepThink: useDeepThink },
     )
 
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    const lastMsg = () => messages.value[messages.value.length - 1]
 
     while (true) {
       const { done, value } = await reader.read()
@@ -79,18 +86,27 @@ async function sendMessage() {
         if (!line.startsWith('data: ')) continue
         try {
           const payload = JSON.parse(line.slice(6))
+          if (payload.reasoning) {
+            lastMsg().reasoning += payload.reasoning
+            lastMsg().reasoningOpen = true  // 思考中自动展开
+            await nextTick()
+            scrollToBottom()
+          }
           if (payload.token) {
-            messages.value[messages.value.length - 1].content += payload.token
+            // 收到正文 token 时折叠思考过程
+            if (lastMsg().reasoningOpen && lastMsg().reasoning) {
+              lastMsg().reasoningOpen = false
+            }
+            lastMsg().content += payload.token
             await nextTick()
             scrollToBottom()
           }
           if (payload.done) {
-            // 自动更新标题
             const firstMsg = text.slice(0, 20) + (text.length > 20 ? '...' : '')
             emit('session-title-updated', props.sessionId, firstMsg)
           }
           if (payload.error) {
-            messages.value[messages.value.length - 1].content += `\n\n⚠️ ${payload.error}`
+            lastMsg().content += `\n\n⚠️ ${payload.error}`
           }
         } catch (_) {}
       }
@@ -147,6 +163,28 @@ function autoResize() {
                 ? 'bg-blue-600 text-white rounded-br-lg'
                 : 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-bl-lg'"
             >
+              <!-- 思考过程折叠面板 -->
+              <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
+                <button
+                  @click="msg.reasoningOpen = !msg.reasoningOpen"
+                  class="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                >
+                  <i class="fa-solid fa-brain text-indigo-500 dark:text-indigo-400"></i>
+                  <span>{{ streaming && i === messages.length - 1 && !msg.content ? '思考中...' : '已深度思考' }}</span>
+                  <i class="fa-solid text-[10px] transition-transform" :class="msg.reasoningOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                </button>
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  enter-from-class="opacity-0 max-h-0"
+                  enter-to-class="opacity-100 max-h-[400px]"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  leave-from-class="opacity-100 max-h-[400px]"
+                  leave-to-class="opacity-0 max-h-0"
+                >
+                  <div v-if="msg.reasoningOpen" class="mt-2 overflow-auto max-h-[400px] rounded-xl bg-slate-200/60 dark:bg-white/[0.04] p-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed custom-scrollbar whitespace-pre-wrap">{{ msg.reasoning }}</div>
+                </Transition>
+              </div>
+              <!-- 正文内容 -->
               <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-slate dark:prose-invert max-w-none"></div>
               <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
             </div>
@@ -189,9 +227,12 @@ function autoResize() {
             <!-- 左侧功能按钮 -->
             <div class="flex items-center gap-0.5">
               <button
-                disabled
-                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
-                title="深度思考（敬请期待）"
+                @click="deepThink = !deepThink"
+                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                :class="deepThink
+                  ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'"
+                title="深度思考"
               >
                 <i class="fa-solid fa-brain text-sm"></i>
                 <span class="hidden sm:inline">深度思考</span>

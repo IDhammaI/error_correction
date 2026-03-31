@@ -292,11 +292,11 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   throw new Error((data && data.error) || '获取消息失败')
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false } = {}) {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message })),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message, deep_think: deepThink })),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)

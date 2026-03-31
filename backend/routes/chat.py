@@ -201,6 +201,11 @@ def stream_chat(session_id):
         message = data.get('message', '').strip()
         model_provider = data.get('model_provider', 'openai')
         model_name = data.get('model_name') or None
+        deep_think = data.get('deep_think', False)
+
+        # 深度思考模式：切换到 reasoner 模型
+        if deep_think and model_provider == 'openai':
+            model_name = 'deepseek-reasoner'
 
         if not message:
             return jsonify({'success': False, 'error': '消息不能为空'}), 400
@@ -238,20 +243,31 @@ def stream_chat(session_id):
 
         def generate():
             full_response = []
+            full_reasoning = []
             try:
-                for token in stream_teach(
+                for chunk in stream_teach(
                     question=q_data,
                     messages=history,
                     provider=model_provider,
                     model_name=model_name,
                 ):
-                    full_response.append(token)
-                    yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
+                    # stream_teach 现在 yield dict: {"type": "reasoning"|"content", "content": "..."}
+                    if isinstance(chunk, dict):
+                        if chunk["type"] == "reasoning":
+                            full_reasoning.append(chunk["content"])
+                            yield f"data: {json.dumps({'reasoning': chunk['content']}, ensure_ascii=False)}\n\n"
+                        else:
+                            full_response.append(chunk["content"])
+                            yield f"data: {json.dumps({'token': chunk['content']}, ensure_ascii=False)}\n\n"
+                    else:
+                        # 兼容旧格式（纯字符串）
+                        full_response.append(chunk)
+                        yield f"data: {json.dumps({'token': chunk}, ensure_ascii=False)}\n\n"
             except Exception as e:
                 logger.exception("流式对话错误")
                 yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
 
-            # 保存完整的 assistant 回复
+            # 保存完整的 assistant 回复（思考过程不保存到消息历史）
             assistant_content = "".join(full_response)
             if assistant_content:
                 try:
