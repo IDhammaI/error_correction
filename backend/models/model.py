@@ -1,232 +1,213 @@
+"""
+生成器网络：CoarseNet（粗擦除 + 掩码预测） + RefineNet（精细修复）。
+
+结构对照 EraseNet (STRnet2)，核心改动：
+  - 编码器：EraseNet 残差块风格（conv1/conva/convb + ResBlock×8）
+  - 跳跃连接：LateralConnection 特征精炼（替代简单 cat）
+  - 掩码分支：从 x_mask（瓶颈前 H/16 特征）出发，与 EraseNet 对齐
+  - 保留：CBAM 注意力、双 sigmoid 掩码（Ms/Mb）、RefineNet 输入含 Ms
+  - RefineNet：EraseNet 风格多尺度空洞卷积，输入保持 cat([Iin, Ms, Ic1])
+"""
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn
+
+from models.blocks import (DownSample, UpSample, DilatedConvBlock,
+                            ResBlock, LateralConnection)
 
 
-class CBAM(nn.Module):
-    def __init__(self, in_channels, reduction=16):
-        super().__init__()
-        # 通道注意力（标准实现）
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.mlp = nn.Sequential(
-            nn.Linear(in_channels, in_channels // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_channels // reduction, in_channels, bias=False)
-        )
-        self.sigmoid = nn.Sigmoid()
-
-        # 空间注意力（关键修正：7×7卷积 + 无BatchNorm）
-        self.spatial = nn.Sequential(
-            nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False),  # ✅ 7×7
-            nn.Sigmoid()  # ✅ 无BatchNorm
-        )
-
-    def forward(self, x):
-        b, c, h, w = x.shape
-
-        # ========== 通道注意力 ==========
-        avg_out = self.mlp(self.avg_pool(x).view(b, c)).view(b, c, 1, 1)
-        max_out = self.mlp(self.max_pool(x).view(b, c)).view(b, c, 1, 1)
-        channel_att = self.sigmoid(avg_out + max_out)
-        x = x * channel_att  # 广播相乘 [B,C,H,W] * [B,C,1,1]
-
-        # ========== 空间注意力 ==========
-        avg_out = torch.mean(x, dim=1, keepdim=True)  # [B,1,H,W]
-        max_out, _ = torch.max(x, dim=1, keepdim=True)  # [B,1,H,W]
-        spatial_att = self.spatial(torch.cat([avg_out, max_out], dim=1))  # [B,1,H,W]
-        x = x * spatial_att  # 广播相乘 [B,C,H,W] * [B,1,H,W]
-
-        return x
-
-
-# 空洞卷积块（Refine网络用）
-class DilatedConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, dilation=2):
-        super().__init__()
-        padding = dilation * (3 - 1) // 2
-        self.block = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=padding, dilation=dilation, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.block(x)
-
-
-# U-Net下采样块（Coarse/Refine网络编码器）
-class DownSample(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.2, inplace=True)
-        )
-
-    def forward(self, x):
-        x = self.conv(x)
-        return x
-
-
-# U-Net上采样块（Coarse网络解码器）
-class UpSample(nn.Module):
-    def __init__(self, in_channels, out_channels, use_cbam=False):
-        super().__init__()
-        self.conv = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-        self.cbam = CBAM(out_channels) if use_cbam else nn.modules.Identity()
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.cbam(x)
-        return x
-
-
-# 带空洞卷积的上采样块（Refine网络解码器）
-class DilatedUpSample(nn.Module):
-    def __init__(self, in_channels, out_channels, dilation=2):
-        super().__init__()
-        self.conv = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-        self.dilated = DilatedConvBlock(out_channels, out_channels, dilation)
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.dilated(x)
-        return x
-
-
-# Coarse网络
 class CoarseNet(nn.Module):
-    def __init__(self, in_channels=3):
+    """粗擦除网络：EraseNet 残差编码器 + 双解码器（修复 + 掩码）。
+
+    Args:
+        in_channels:    输入通道数，RGB 固定为 3
+        cbam_reduction: CBAM 通道压缩比
+    """
+    def __init__(self, in_channels: int = 3, cbam_reduction: int = 16):
         super().__init__()
-        # 编码器：下采样+CBAM
-        self.down1 = DownSample(in_channels, 64)  # 1/2
-        self.down2 = DownSample(64, 128)  # 1/4
-        self.down3 = DownSample(128, 256)  # 1/8
-        self.down4 = DownSample(256, 512)  # 1/16
-        self.down5 = DownSample(512, 512)  # 1/32
-        # 解码器：上采样
-        self.up1 = UpSample(512, 512, use_cbam=True)  # 1/16
-        self.up2 = UpSample(1024, 256, use_cbam=True)  # 1/8
-        self.up3 = UpSample(512, 128, use_cbam=True)  # 1/4 → Ic4
-        self.up4 = UpSample(256, 64, use_cbam=True)  # 1/2 → Ic2
-        self.up5 = UpSample(128, 64, use_cbam=True)  # 1/1 → Ic1
-        # 输出层：Ms(笔画掩码), Mb(文本块掩码), 多尺度Ic
-        self.up1_seg = UpSample(512, 512, use_cbam=True)
-        self.up2_seg = UpSample(1024, 256, use_cbam=True)
-        self.up3_seg = UpSample(512, 128, use_cbam=True)
-        self.up4_seg = UpSample(256, 64, use_cbam=True)
-        self.up5_seg = UpSample(128, 64, use_cbam=True)
+        r = cbam_reduction
 
-        self.out_ms = nn.Conv2d(64, 1, 3, 1, 1, bias=True)
-        self.out_mb = nn.Conv2d(64, 1, 3, 1, 1, bias=True)
-        self.out_ic4 = nn.Conv2d(128, 3, 3, 1, 1, bias=False)
-        self.out_ic2 = nn.Conv2d(64, 3, 3, 1, 1, bias=False)
-        self.out_ic1 = nn.Conv2d(64, 3, 3, 1, 1, bias=False)
+        # ── 编码器（EraseNet 风格） ──────────────────────────────────────
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, 32, 4, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(32), nn.LeakyReLU(0.2, inplace=True))   # H/2,  32
+        self.conva = nn.Sequential(
+            nn.Conv2d(32, 32, 3, padding=1, bias=False),
+            nn.BatchNorm2d(32), nn.LeakyReLU(0.2, inplace=True))   # H/2,  32
+        self.convb = nn.Sequential(
+            nn.Conv2d(32, 64, 4, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(64), nn.LeakyReLU(0.2, inplace=True))   # H/4,  64
+        self.res1  = ResBlock(64,  64)
+        self.res2  = ResBlock(64,  64)
+        self.res3  = ResBlock(64,  128, stride=2)                   # H/8,  128
+        self.res4  = ResBlock(128, 128)
+        self.res5  = ResBlock(128, 256, stride=2)                   # H/16, 256
+        self.res6  = ResBlock(256, 256)
+        self.res7  = ResBlock(256, 512, stride=2)                   # H/32, 512
+        self.res8  = ResBlock(512, 512)
+        self.conv2 = nn.Conv2d(512, 512, 1)                         # H/32, 512（瓶颈）
 
-    def forward(self, x):
-        # 编码器（下采样）
-        d1 = self.down1(x)  # H/2
-        d2 = self.down2(d1)  # H/4
-        d3 = self.down3(d2)  # H/8
-        d4 = self.down4(d3)  # H/16
-        d5 = self.down5(d4)  # H/32
+        # ── 修复解码器（LateralConnection + CBAM UpSample） ─────────────
+        self.lat1    = LateralConnection(256)
+        self.lat2    = LateralConnection(128)
+        self.lat3    = LateralConnection(64)
+        self.lat4    = LateralConnection(32)
+        self.up1     = UpSample(512, 256, use_cbam=True, reduction=r)
+        self.up2     = UpSample(512, 128, use_cbam=True, reduction=r)
+        self.up3     = UpSample(256, 64,  use_cbam=True, reduction=r)
+        self.up4     = UpSample(128, 32,  use_cbam=True, reduction=r)
+        self.up5     = UpSample(64,  32,  use_cbam=True, reduction=r)
+        self.out_ic4 = nn.Conv2d(64, 3, 1)
+        self.out_ic2 = nn.Conv2d(32, 3, 1)
+        self.out_ic1 = nn.Conv2d(32, 3, 3, padding=1)
 
-        # 解码器（上采样 + 跳跃连接）
-        u1 = self.up1(d5)
-        u1 = torch.cat([u1, d4], dim=1)  # 拼接H/16特征
+        # ── 掩码解码器（从瓶颈 d5 出发，保留全局上下文，双 sigmoid 头） ──
+        self.mask_up_0   = UpSample(512, 256, use_cbam=True, reduction=r)  # H/32→H/16
+        self.mask_up_a   = UpSample(512, 256, use_cbam=True, reduction=r)
+        self.mask_conv_a = nn.Sequential(
+            nn.Conv2d(256, 128, 3, padding=1, bias=False),
+            nn.BatchNorm2d(128), nn.ReLU(inplace=True))
+        self.mask_up_b   = UpSample(256, 128, use_cbam=True, reduction=r)
+        self.mask_conv_b = nn.Sequential(
+            nn.Conv2d(128, 64, 3, padding=1, bias=False),
+            nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+        self.mask_up_c   = UpSample(128, 64, use_cbam=True, reduction=r)
+        self.mask_conv_c = nn.Sequential(
+            nn.Conv2d(64, 32, 3, padding=1, bias=False),
+            nn.BatchNorm2d(32), nn.ReLU(inplace=True))
+        self.mask_up_d   = UpSample(64, 32, use_cbam=True, reduction=r)
+        self.out_ms      = nn.Conv2d(32, 1, 1)                      # 软笔画掩码
+        self.out_mb      = nn.Conv2d(32, 1, 1)                      # 文本块掩码
 
-        u2 = self.up2(u1)
-        u2 = torch.cat([u2, d3], dim=1)  # 拼接H/8特征
+    def forward(self, x: torch.Tensor):
+        # 编码
+        x      = self.conv1(x)
+        x      = self.conva(x)
+        con_x1 = x                                   # H/2,  32
+        x      = self.convb(x)
+        x      = self.res1(x)
+        con_x2 = x                                   # H/4,  64
+        x      = self.res2(x)
+        x      = self.res3(x)
+        con_x3 = x                                   # H/8,  128
+        x      = self.res4(x)
+        x      = self.res5(x)
+        con_x4 = x                                   # H/16, 256
+        x      = self.res6(x)
+        x      = self.res7(x)
+        x      = self.res8(x)
+        d5     = self.conv2(x)                       # H/32, 512（瓶颈）
 
-        u3 = self.up3(u2)  # H/4 → 输出 Ic4
-        Ic4 = torch.tanh(self.out_ic4(u3))
-        u3 = torch.cat([u3, d2], dim=1)  # 拼接H/4特征
+        # 修复解码
+        u1  = torch.cat([self.lat1(con_x4), self.up1(d5)],  dim=1)  # H/16, 512
+        u2  = torch.cat([self.lat2(con_x3), self.up2(u1)],  dim=1)  # H/8,  256
+        xo1 = self.up3(u2)                                           # H/4,  64
+        Ic4 = torch.tanh(self.out_ic4(xo1))
+        u3  = torch.cat([self.lat3(con_x2), xo1], dim=1)            # H/4,  128
+        xo2 = self.up4(u3)                                           # H/2,  32
+        Ic2 = torch.tanh(self.out_ic2(xo2))
+        u4  = torch.cat([self.lat4(con_x1), xo2], dim=1)            # H/2,  64
+        Ic1 = torch.tanh(self.out_ic1(self.up5(u4)))                 # H,    3
 
-        u4 = self.up4(u3)  # H/2 → 输出 Ic2
-        Ic2 = torch.tanh(self.out_ic2(u4))
-        u4 = torch.cat([u4, d1], dim=1)  # 拼接H/2特征
-
-        u5 = self.up5(u4)  # H → 输出 Ic1, Mb, Ms
-        Ic1 = torch.tanh(self.out_ic1(u5))
-
-        u1_seg = self.up1_seg(d5)
-        u1_seg = torch.cat([u1_seg, d4], dim=1)
-        u2_seg = self.up2_seg(u1_seg)
-        u2_seg = torch.cat([u2_seg, d3], dim=1)
-        u3_seg = self.up3_seg(u2_seg)
-        u3_seg = torch.cat([u3_seg, d2], dim=1)
-        u4_seg = self.up4_seg(u3_seg)
-        u4_seg = torch.cat([u4_seg, d1], dim=1)
-        u5_seg = self.up5_seg(u4_seg)
-        Mb = torch.sigmoid(self.out_mb(u5_seg))
-        Ms = torch.sigmoid(self.out_ms(u5_seg))
+        # 掩码解码（从瓶颈 d5 出发，保留全局上下文）
+        mm = self.mask_up_a(torch.cat([self.mask_up_0(d5), con_x4], dim=1))  # H/8,  256
+        mm = self.mask_conv_a(mm)                                     # H/8,  128
+        mm = self.mask_up_b(torch.cat([mm, con_x3], dim=1))         # H/4,  128
+        mm = self.mask_conv_b(mm)                                     # H/4,  64
+        mm = self.mask_up_c(torch.cat([mm, con_x2], dim=1))         # H/2,  64
+        mm = self.mask_conv_c(mm)                                     # H/2,  32
+        mm = self.mask_up_d(torch.cat([mm, con_x1], dim=1))         # H,    32
+        Ms = torch.sigmoid(self.out_ms(mm))
+        Mb = torch.sigmoid(self.out_mb(mm))
 
         return Ms, Mb, Ic4, Ic2, Ic1
 
 
-# Refine网络
 class RefineNet(nn.Module):
-    def __init__(self, in_channels=7):  # 3(Iin)+1(Ms)+3(Ic1) =7
+    """精细修复网络：EraseNet 风格多尺度空洞卷积，感受野更大。
+
+    Args:
+        in_channels: 输入通道数 = Iin(3) + Ms(1) + Ic1(3) = 7
+    """
+    def __init__(self, in_channels: int = 7):
         super().__init__()
-        # 编码器：下采样
-        self.down1 = DownSample(in_channels, 64)  # 1/2
-        self.down2 = DownSample(64, 128)  # 1/4
-        self.down3 = DownSample(128, 256)  # 1/8
-        self.down4 = DownSample(256, 512)  # 1/16
-        # 解码器：带空洞卷积的上采样
-        self.up1 = DilatedUpSample(512, 256)  # 1/8
-        self.up2 = DilatedUpSample(512, 128)  # 1/4
-        self.up3 = DilatedUpSample(256, 64)  # 1/2
-        self.up4 = DilatedUpSample(128, 64)  # 1/1
-        # 输出层：精细化擦除结果Ire
-        self.out_ire = nn.Conv2d(64, 3, 3, 1, 1)
+        cnum = 32
 
-    def forward(self, x):
-        # 编码器
-        d1 = self.down1(x)
-        d2 = self.down2(d1)
-        d3 = self.down3(d2)
-        d4 = self.down4(d3)
-        # 解码器
-        u1 = self.up1(d4)
-        u1 = torch.cat([u1, d3], dim=1)
+        # 编码
+        self.conva = nn.Sequential(
+            nn.Conv2d(in_channels, cnum, 5, padding=2, bias=False),
+            nn.BatchNorm2d(cnum), nn.ReLU(inplace=True))
+        self.down1 = DownSample(cnum,     cnum * 2)                  # H/2, 64
+        self.convc = nn.Sequential(
+            nn.Conv2d(cnum * 2, cnum * 2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 2), nn.ReLU(inplace=True))
+        self.down2 = DownSample(cnum * 2, cnum * 4)                  # H/4, 128
+        self.conve = nn.Sequential(
+            nn.Conv2d(cnum * 4, cnum * 4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 4), nn.ReLU(inplace=True))
+        self.convf = nn.Sequential(
+            nn.Conv2d(cnum * 4, cnum * 4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 4), nn.ReLU(inplace=True))
 
-        u2 = self.up2(u1)
-        u2 = torch.cat([u2, d2], dim=1)
+        # 多尺度空洞卷积（参照 EraseNet astrous_net）
+        self.astrous = nn.Sequential(
+            DilatedConvBlock(cnum * 4, cnum * 4, dilation=2),
+            DilatedConvBlock(cnum * 4, cnum * 4, dilation=4),
+            DilatedConvBlock(cnum * 4, cnum * 4, dilation=8),
+            DilatedConvBlock(cnum * 4, cnum * 4, dilation=16),
+        )
+        self.convk = nn.Sequential(
+            nn.Conv2d(cnum * 4, cnum * 4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 4), nn.ReLU(inplace=True))
+        self.convl = nn.Sequential(
+            nn.Conv2d(cnum * 4, cnum * 4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 4), nn.ReLU(inplace=True))
 
-        u3 = self.up3(u2)
-        u3 = torch.cat([u3, d1], dim=1)
+        # 解码（cat 自身跳跃连接）
+        self.up1   = UpSample(cnum * 8, cnum * 2)                    # cat([x,x_c2]) H/4→H/2
+        self.convm = nn.Sequential(
+            nn.Conv2d(cnum * 2, cnum * 2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum * 2), nn.ReLU(inplace=True))
+        self.up2   = UpSample(cnum * 4, cnum)                        # cat([x,x_c1]) H/2→H
+        self.convn = nn.Sequential(
+            nn.Conv2d(cnum, cnum // 2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(cnum // 2), nn.ReLU(inplace=True),
+            nn.Conv2d(cnum // 2, 3, 3, padding=1))
 
-        u4 = self.up4(u3)
-        # 输出
-        Ire = torch.tanh(self.out_ire(u4))
-        return Ire
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x    = self.conva(x)
+        x    = self.down1(x)
+        x    = self.convc(x)
+        x_c1 = x                                      # H/2, 64
+        x    = self.down2(x)
+        x    = self.conve(x)
+        x    = self.convf(x)
+        x_c2 = x                                      # H/4, 128
+        x    = self.astrous(x)
+        x    = self.convk(x)
+        x    = self.convl(x)
+        x    = self.up1(torch.cat([x, x_c2], dim=1)) # H/2, 64
+        x    = self.convm(x)
+        x    = self.up2(torch.cat([x, x_c1], dim=1)) # H,   32
+        return torch.tanh(self.convn(x))
 
 
-# 生成器整体
 class Generator(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.coarse = CoarseNet()
-        self.refine = RefineNet()
+    """完整生成器：CoarseNet → RefineNet → 融合输出。
 
-    def forward(self, Iin):
-        # Coarse网络输出
+    Args:
+        cfg: model 子配置字典，含 coarse_in_channels / refine_in_channels / cbam_reduction
+    """
+    def __init__(self, cfg: dict = None):
+        super().__init__()
+        if cfg is None:
+            cfg = {'coarse_in_channels': 3, 'refine_in_channels': 7, 'cbam_reduction': 16}
+        self.coarse = CoarseNet(in_channels=cfg['coarse_in_channels'],
+                                cbam_reduction=cfg['cbam_reduction'])
+        self.refine = RefineNet(in_channels=cfg['refine_in_channels'])
+
+    def forward(self, Iin: torch.Tensor):
         Ms, Mb, Ic4, Ic2, Ic1 = self.coarse(Iin)
-        # 拼接输入：Iin + Ms + Ic1（通道维度）
-        refine_in = torch.cat([Iin, Ms, Ic1], dim=1)
-        # Refine网络输出
-        Ire = self.refine(refine_in)
-        # 融合得到最终结果Icomp
+        Ire   = self.refine(torch.cat([Iin, Ms, Ic1], dim=1))
         Icomp = Ire * Mb + Iin * (1 - Mb)
         return Ms, Mb, Ic4, Ic2, Ic1, Ire, Icomp
