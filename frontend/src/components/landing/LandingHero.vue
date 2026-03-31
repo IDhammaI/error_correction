@@ -159,30 +159,17 @@ onUnmounted(() => {
 
     <!-- 顶部装饰椭圆 -->
     <div class="absolute pointer-events-none z-0" style="
-      top: -60%;
+      top: -150%;
       left: 50%;
       transform: translateX(-50%);
       width: 140%;
       aspect-ratio: 1.3 / 1;
       border-radius: 50%;
       background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
-      border: 1px solid transparent;
-      border-image: linear-gradient(to bottom, rgba(129,115,223,0), rgba(129,115,223,1)) 1;
       box-shadow:
         inset 0 -20px 24px 0 rgba(255,255,255,0.15),
-        0 16px 32px 0 rgba(97,62,210,0.32);
-    "></div>
-    <!-- 椭圆内描边（用伪元素模拟，因为 border-image 和 border-radius 不兼容） -->
-    <div class="absolute pointer-events-none z-0" style="
-      top: -60%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 140%;
-      aspect-ratio: 1.3 / 1;
-      border-radius: 50%;
-      border: 1px solid;
-      border-color: transparent transparent rgba(129,115,223,1) transparent;
-      box-shadow: inset 0 -20px 24px 0 rgba(255,255,255,0.15);
+        0 16px 32px 0 rgba(97,62,210,0.32),
+        inset 0 -1px 0 0 rgba(129,115,223,0.6);
     "></div>
 
     <!-- 首屏区块 -->
