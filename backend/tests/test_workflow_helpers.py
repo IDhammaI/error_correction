@@ -519,7 +519,7 @@ class TestIdentifySubject:
     @pytest.fixture(autouse=True)
     def _mock_llm(self):
         with patch(
-            "error_correction_agent.agent.detect_subject_via_llm",
+            "agents.error_correction.agent.detect_subject_via_llm",
             return_value="",
         ) as mock:
             self.mock_llm = mock
@@ -655,7 +655,7 @@ class TestIdentifySubjectLLM:
             }]
         }]
 
-    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="高中数学")
+    @patch("agents.error_correction.agent.detect_subject_via_llm", return_value="高中数学")
     def test_llm_success(self, mock_llm):
         """LLM 返回有效科目时直接采用"""
         ocr = self._make_ocr("普通内容无关键词")
@@ -663,14 +663,14 @@ class TestIdentifySubjectLLM:
         assert result == "高中数学"
         mock_llm.assert_called_once()
 
-    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="初中地理")
+    @patch("agents.error_correction.agent.detect_subject_via_llm", return_value="初中地理")
     def test_llm_returns_new_subject(self, mock_llm):
         """LLM 返回不在 db_subjects 中的新科目也应采用"""
         ocr = self._make_ocr("普通内容")
         result = _identify_subject(ocr, ["高中数学"])
         assert result == "初中地理"
 
-    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="")
+    @patch("agents.error_correction.agent.detect_subject_via_llm", return_value="")
     def test_llm_empty_fallback_to_keyword(self, mock_llm):
         """LLM 返回空时应 fallback 到关键词匹配"""
         ocr = self._make_ocr("数学试卷")
@@ -678,7 +678,7 @@ class TestIdentifySubjectLLM:
         assert result == "高中数学"
 
     @patch(
-        "error_correction_agent.agent.detect_subject_via_llm",
+        "agents.error_correction.agent.detect_subject_via_llm",
         side_effect=Exception("API error"),
     )
     def test_llm_exception_fallback(self, mock_llm):
@@ -687,7 +687,7 @@ class TestIdentifySubjectLLM:
         result = _identify_subject(ocr, [])
         assert result == "高中物理"
 
-    @patch("error_correction_agent.agent.detect_subject_via_llm", return_value="高中物理")
+    @patch("agents.error_correction.agent.detect_subject_via_llm", return_value="高中物理")
     def test_llm_receives_provider(self, mock_llm):
         """model_provider 应正确传递到 LLM 函数"""
         ocr = self._make_ocr("普通内容")

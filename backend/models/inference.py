@@ -54,7 +54,7 @@ class InferenceEngine:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
             from models.model import Generator
-            from config import settings
+            from core.config import settings
 
             model_path = settings.model_path
             if not model_path.exists():

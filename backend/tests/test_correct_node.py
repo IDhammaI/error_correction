@@ -40,7 +40,7 @@ class TestCorrectQuestionsNode:
         result = correct_questions_node(state)
         assert result["questions"] == qs
 
-    @patch("error_correction_agent.tools.correct_batch")
+    @patch("agents.error_correction.tools.correct_batch")
     def test_merge_corrected(self, mock_correct_batch, tmp_path):
         """纠错结果应按 question_id 合并回原列表"""
         q1 = _q("1")
@@ -62,7 +62,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write(agent_input)
 
-        with patch("config.settings.results_dir", Path(results_dir)):
+        with patch("core.config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1, q2, q3]}
             result = correct_questions_node(state)
 
@@ -79,7 +79,7 @@ class TestCorrectQuestionsNode:
         merged_q1 = next(q for q in merged if q["question_id"] == "1")
         assert merged_q1["content_blocks"][0]["content"] == "内容"
 
-    @patch("error_correction_agent.tools.correct_batch")
+    @patch("agents.error_correction.tools.correct_batch")
     def test_invalid_json_keeps_original(self, mock_correct_batch, tmp_path):
         """纠错返回无效 JSON 时应保留原始题目"""
         q1 = _q("1", needs_correction=True)
@@ -89,7 +89,7 @@ class TestCorrectQuestionsNode:
         with open(os.path.join(results_dir, "agent_input.json"), "w") as f:
             f.write("{}")
 
-        with patch("config.settings.results_dir", Path(results_dir)):
+        with patch("core.config.settings.results_dir", Path(results_dir)):
             state = {"questions": [q1]}
             result = correct_questions_node(state)
 

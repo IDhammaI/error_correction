@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 _CONNECTION_CACHE_TTL = 60  # 连通性检测缓存有效期（秒）
 _providers_lock = threading.Lock()  # 保护 llm_providers 并发读写
 
-_BACKEND_ROOT = Path(__file__).resolve().parent
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent  # backend/core/ → backend/
 _PROJECT_ROOT = _BACKEND_ROOT.parent
 _ENV_FILE = _PROJECT_ROOT / ".env"
 
@@ -271,7 +271,7 @@ class Settings(BaseSettings):
     def _clear_agent_cache(self):
         """清除 agent 缓存"""
         try:
-            from error_correction_agent.agent import _agent_cache, _agent_cache_lock
+            from agents.error_correction.agent import _agent_cache, _agent_cache_lock
             with _agent_cache_lock:
                 _agent_cache.clear()
         except ImportError:

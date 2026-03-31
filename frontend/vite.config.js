@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   plugins: [
     vue(),
     // 开发模式：将 /auth 和 /app 路径重写到 app.html（SPA 入口）
@@ -37,10 +37,13 @@ export default defineConfig(({ command }) => ({
         target: 'http://localhost:5001',
         changeOrigin: true,
       },
+      '/erased': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+      },
     },
   },
-  // 开发模式用 /，构建时才加 /static/vue/ 前缀给 Flask 托管
-  base: command === 'build' ? '/static/vue/' : '/',
+  base: '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -52,4 +55,4 @@ export default defineConfig(({ command }) => ({
       }
     }
   },
-}))
+})

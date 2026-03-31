@@ -9,7 +9,7 @@ import sys
 
 # 添加 backend 目录到路径以支持导入 config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import settings
+from core.config import settings
 
 # 确保数据库目录存在
 db_dir = settings.db_path.parent

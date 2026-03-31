@@ -62,7 +62,7 @@ def run_evaluation(provider: str, targets: List[Dict[str, Any]]) -> Dict[str, An
     Returns:
         评测报告 dict
     """
-    from solve_agent import invoke_solve
+    from agents.solve import invoke_solve
 
     # 提取题目数据
     questions = []

@@ -9,7 +9,7 @@ import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
-from config import settings
+from core.config import settings
 from src.utils import simplify_ocr_results, run_async
 
 load_dotenv()

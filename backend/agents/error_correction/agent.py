@@ -9,8 +9,8 @@ from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from config import settings
-from llm import init_model as _init_model
+from core.config import settings
+from core.llm import init_model as _init_model
 from .prompts import SPLIT_PROMPT, SPLIT_PROMPT_LITE, CORRECTION_PROMPT
 from .schemas import QuestionSplitResult, CorrectionResult
 

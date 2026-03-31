@@ -14,7 +14,7 @@ from src.utils import prepare_input
 def mock_env(monkeypatch, tmp_path):
     """使用临时目录作为 settings.pages_dir"""
     pages_dir = tmp_path / "pages"
-    monkeypatch.setattr("config.settings.pages_dir", pages_dir)
+    monkeypatch.setattr("core.config.settings.pages_dir", pages_dir)
     return pages_dir
 
 

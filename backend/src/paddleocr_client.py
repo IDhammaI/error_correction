@@ -120,7 +120,7 @@ class PaddleOCRClient:
     ) -> Dict[str, Any]:
         """解析文件并返回结构化结果（同步，任务轮询模式）"""
         if output_dir is None:
-            from config import settings
+            from core.config import settings
             output_dir = settings.struct_dir
 
         console.print(f"[cyan]正在解析: {file_path}[/cyan]")
@@ -270,7 +270,7 @@ class PaddleOCRClient:
     ) -> Dict[str, Any]:
         """异步解析单张图片（提交任务 → 轮询 → 下载结果）"""
         if output_dir is None:
-            from config import settings
+            from core.config import settings
             output_dir = settings.struct_dir
 
         console.print(f"[cyan]正在解析图片: {image_path}[/cyan]")

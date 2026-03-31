@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from config import settings
+from core.config import settings
 from .utils import prepare_input, export_wrongbook, simplify_ocr_results, run_async
 console = Console()
 
@@ -240,7 +240,7 @@ def _identify_subject(
 
     # ── 第 1 层：LLM 预检 ──
     try:
-        from error_correction_agent.agent import detect_subject_via_llm
+        from agents.error_correction.agent import detect_subject_via_llm
 
         llm_result = detect_subject_via_llm(text_sample, db_subjects, provider=model_provider)
         if llm_result:
@@ -441,7 +441,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     split_start = time.time()
     console.print(f"[cyan]并行分割 {len(batches)} 个批次...[/cyan]")
 
-    from error_correction_agent.tools import split_batch
+    from agents.error_correction.tools import split_batch
 
     existing_tags_str = ",".join(db_tags) if db_tags else ""
     max_workers = min(len(batches), 3)
@@ -575,7 +575,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
             ocr_context = f.read()
 
     # 调用纠错工具
-    from error_correction_agent.tools import correct_batch
+    from agents.error_correction.tools import correct_batch
 
     model_provider = state.get("model_provider", "openai")
     model_name = state.get("model_name")
