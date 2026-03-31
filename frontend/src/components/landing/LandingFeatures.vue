@@ -21,37 +21,26 @@ const iconMap = {
 </script>
 
 <template>
-  <!-- 核心功能区 -->
-  <section id="features" class="relative overflow-hidden min-h-screen flex flex-col justify-center py-24 rounded-t-3xl bg-slate-50 dark:bg-gradient-to-br dark:from-indigo-950 dark:via-[#0A0A0F] dark:to-slate-950 shadow-[0_-12px_60px_rgba(0,0,0,0.1)] dark:shadow-[0_-12px_60px_rgba(0,0,0,0.35)]">
-    <!-- 装饰光晕 -->
-    <div class="pointer-events-none absolute inset-0 z-0">
-      <div class="absolute top-[-15%] left-[-8%] h-[500px] w-[500px] rounded-full bg-blue-100/60 dark:bg-indigo-500/10 blur-[130px]"></div>
-      <div class="absolute bottom-[-10%] right-[-5%] h-[400px] w-[400px] rounded-full bg-indigo-100/60 dark:bg-blue-600/10 blur-[100px]"></div>
-    </div>
-
-    <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <section id="features" class="relative py-24 bg-[#0A0A0F]">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
       <div class="mb-12 text-center">
-        <h2 class="reveal mb-6 text-3xl font-bold text-slate-900 dark:text-white">驱动学习效率的 <span class="text-blue-600 dark:text-indigo-300">核心引擎</span></h2>
-        <p class="reveal mx-auto max-w-2xl text-base text-slate-500 dark:text-slate-400">不仅是简单的图像识别，而是真正理解学科内在逻辑的 AI 智能体系统。</p>
+        <h2 class="reveal mb-4 text-2xl font-semibold text-white/90">驱动学习效率的核心引擎</h2>
+        <p class="reveal mx-auto max-w-xl text-sm text-white/40">不仅是简单的图像识别，而是真正理解学科内在逻辑的 AI 智能体系统。</p>
       </div>
-      <div class="grid gap-6 md:grid-cols-3">
+      <div class="grid gap-4 md:grid-cols-3">
         <div
           v-for="f in FEATURES"
           :key="f.title"
-          class="reveal group relative rounded-3xl p-8 hover:-translate-y-2 transition-all duration-300 border border-slate-200/60 bg-white shadow-sm hover:shadow-md hover:border-blue-200 dark:border-white/15 dark:bg-white/10 dark:backdrop-blur-md dark:hover:bg-white/15 dark:hover:border-white/25"
+          class="reveal group rounded-lg p-6 transition-colors duration-200 border border-white/[0.06] bg-[#111118] hover:bg-white/[0.04]"
           :style="f.delay ? `transition-delay:${f.delay}ms` : ''"
         >
-          <div class="relative z-10">
-            <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 shadow-sm group-hover:scale-110 transition-transform duration-300 dark:border-white/20 dark:bg-white/15 dark:text-white">
-              <component :is="iconMap[f.icon]" class="h-7 w-7" />
-            </div>
-            <h3 class="mb-4 text-xl font-bold text-slate-900 dark:text-white">{{ f.title }}</h3>
-            <p class="text-sm leading-relaxed text-slate-500 dark:text-slate-300">{{ f.desc }}</p>
+          <div class="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-white/60">
+            <component :is="iconMap[f.icon]" class="h-5 w-5" />
           </div>
+          <h3 class="mb-2 text-sm font-semibold text-white/90">{{ f.title }}</h3>
+          <p class="text-xs leading-relaxed text-white/40">{{ f.desc }}</p>
         </div>
       </div>
     </div>
-    <!-- 底部过渡遮罩 -->
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-32 z-10 bg-gradient-to-t from-slate-50 to-transparent dark:from-[#0A0A0F] dark:to-transparent"></div>
   </section>
 </template>
