@@ -237,6 +237,9 @@ const renameText = ref('')
 function toggleChatMenu(id) {
   chatMenuOpenId.value = chatMenuOpenId.value === id ? null : id
 }
+function closeChatMenu() {
+  chatMenuOpenId.value = null
+}
 
 function startRenameChat(s) {
   chatMenuOpenId.value = null
@@ -682,6 +685,7 @@ const pageLoading = ref(true)
 onMounted(() => {
   initTheme()
   document.addEventListener('keydown', onKeydown)
+  document.addEventListener('click', closeChatMenu)
   loadAiChatSessions()
 
   // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
@@ -712,6 +716,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopFakeProgress()
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('click', closeChatMenu)
 })
 </script>
 
