@@ -303,11 +303,11 @@ def _content_fingerprint(q: Dict[str, Any]) -> str:
 
 
 def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按「(大题, 题号) + 内容指纹」去重。
+    """按「(大题, 题号)」去重，保留内容最丰富的版本。
 
-    - 同大题 + 同题号 + 相同指纹 → 重叠页产生的真重复，保留内容更丰富的版本
-    - 同大题 + 同题号 + 不同指纹 → 内容不同的同号题，全部保留
-    - 不同大题 + 同题号 → 独立题目，不跨大题合并
+    同一 (section_title, question_id) 下的多份必然来自重叠页，
+    无论 LLM 输出是否一致，均只保留 _question_richness 最高的那份。
+    不同大题的同号题因 key 不同，不会跨大题合并。
     """
     if not questions:
         return []
@@ -329,17 +329,8 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     result: List[Dict[str, Any]] = list(no_id)
 
     for qs in groups.values():
-        if len(qs) == 1:
-            result.append(qs[0])
-            continue
-
-        # 按内容指纹二次分组，相同指纹只保留最丰富版本
-        fp_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for q in qs:
-            fp_groups[_content_fingerprint(q)].append(q)
-
-        for fp_qs in fp_groups.values():
-            result.append(max(fp_qs, key=_question_richness))
+        # 同一 (section, qid) 下的多份只可能来自重叠页，直接保留内容最丰富的版本
+        result.append(max(qs, key=_question_richness))
 
     # 按「section 首次出现顺序 + 题号」排序，保证同一大题的题目连续排列
     # 以原始输入顺序确定各 section 的先后（批次并行时以先出现者为准）
@@ -617,19 +608,25 @@ def correct_questions_node(state: WorkflowState) -> dict:
         console.print("[red]⚠ 纠错结果解析失败，保留原始题目[/red]")
         return {"questions": questions}
 
-    # 按 question_id 合并纠错结果
-    corrected_map = {q["question_id"]: q for q in corrected}
+    # 按 (section_title, question_id) 复合键合并纠错结果，避免不同大题同号题互相覆盖
+    corrected_map = {
+        (q.get("section_title") or "", q["question_id"]): q
+        for q in corrected
+    }
 
     merged = []
     for q in questions:
         qid = q.get("question_id")
-        if qid in corrected_map:
-            cq = corrected_map[qid]
+        section = q.get("section_title") or ""
+        key = (section, qid)
+        if key in corrected_map:
+            cq = corrected_map[key]
             corrections = cq.pop("corrections_applied", [])
             cq["needs_correction"] = False
             cq["ocr_issues"] = None
+            cq["uid"] = q.get("uid")  # 纠错对象来自 LLM 输出，不含 uid，从原题还原
             merged.append(cq)
-            logger.info(f"题目 {qid} 已纠错: {corrections}")
+            logger.info(f"题目 {section}-{qid} 已纠错: {corrections}")
         else:
             merged.append(q)
 
