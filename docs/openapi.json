@@ -1,0 +1,1884 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "错题本生成系统 API",
+    "description": "上传试卷 PDF/图片 → OCR 结构化识别 → LLM Agent 智能分割题目 → 纠错 → 导出 Markdown / 存入错题库",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Error Correction System"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001",
+      "description": "本地开发服务器"
+    }
+  ],
+  "tags": [
+    { "name": "认证", "description": "用户注册、登录、登出" },
+    { "name": "文件上传与处理", "description": "文件上传、题目分割、导出" },
+    { "name": "题目管理", "description": "题目 CRUD、错题库查询" },
+    { "name": "AI 对话", "description": "AI 辅导对话（SSE 流式）" },
+    { "name": "统计", "description": "知识点统计、Dashboard 数据" },
+    { "name": "系统设置", "description": "系统状态、Provider 配置、模型管理" },
+    { "name": "静态资源", "description": "文件下载、图片访问" }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户注册",
+        "operationId": "authRegister",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "username", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "user@example.com" },
+                  "username": { "type": "string", "example": "张三" },
+                  "password": { "type": "string", "minLength": 6, "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "注册成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": {
+            "description": "邮箱已注册",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户登录",
+        "description": "支持邮箱或用户名登录",
+        "operationId": "authLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "email": { "type": "string", "description": "邮箱（与 identifier 二选一）" },
+                  "identifier": { "type": "string", "description": "邮箱或用户名（与 email 二选一）" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": {
+            "description": "账号或密码错误",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "退出登录",
+        "operationId": "authLogout",
+        "responses": {
+          "200": {
+            "description": "退出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["认证"],
+        "summary": "获取当前登录用户",
+        "operationId": "authMe",
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/upload": {
+      "post": {
+        "tags": ["文件上传与处理"],
+        "summary": "上传文件（支持多文件）",
+        "description": "上传试卷 PDF/图片，保存到服务器并登记到会话。支持 JPEG/PNG/PDF/JPG 格式。",
+        "operationId": "uploadFile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["files"],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "binary" },
+                    "description": "文件列表（JPEG/PNG/PDF/JPG）"
+                  },
+                  "file_key": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "文件标识符列表（可选，自动生成）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "上传成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "上传成功" },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "file_count": { "type": "integer", "example": 2 },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "file_key": { "type": "string" },
+                              "filename": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/cancel_file": {
+      "post": {
+        "tags": ["文件上传与处理"],
+        "summary": "撤销已上传文件",
+        "operationId": "cancelFile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["file_key"],
+                "properties": {
+                  "file_key": { "type": "string", "description": "文件标识符" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "撤销成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessMessage" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/split": {
+      "post": {
+        "tags": ["文件上传与处理"],
+        "summary": "开始分割题目",
+        "description": "执行标准化 + OCR + LLM Agent 分割。需先调用 /api/upload 上传文件。",
+        "operationId": "splitQuestions",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model_provider": {
+                    "type": "string",
+                    "enum": ["openai", "anthropic"],
+                    "default": "openai",
+                    "description": "LLM 供应商"
+                  },
+                  "model_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "模型名称（可选，使用 provider 默认模型）"
+                  },
+                  "erase": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "是否擦除手写字迹"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "分割成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "成功分割 5 道题目" },
+                    "questions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SplitQuestion" }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/split-records": {
+      "get": {
+        "tags": ["文件上传与处理"],
+        "summary": "获取分割历史记录",
+        "operationId": "getSplitRecords",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10, "minimum": 1 },
+            "description": "返回条数"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "records": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SplitRecord" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/split-records/{record_id}": {
+      "get": {
+        "tags": ["文件上传与处理"],
+        "summary": "获取单条分割记录详情",
+        "operationId": "getSplitRecordDetail",
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "record": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/SplitRecord" },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questions": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/SplitQuestion" }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/export": {
+      "post": {
+        "tags": ["文件上传与处理"],
+        "summary": "导出错题本（从分割结果）",
+        "description": "将分割后的选中题目导出为 Markdown 文件",
+        "operationId": "exportWrongbook",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["selected_ids"],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "example": ["q_0", "q_1", "q_2"],
+                    "description": "选中的题目 ID 列表"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "导出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "错题本导出成功" },
+                    "output_path": { "type": "string", "description": "导出文件路径" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/questions": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "获取已分割的题目列表",
+        "description": "从 questions.json 读取最近一次分割的结果",
+        "operationId": "getQuestions",
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "questions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SplitQuestion" }
+                    },
+                    "message": { "type": "string", "description": "当无数据时返回提示" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "分页查询历史题目",
+        "operationId": "getHistory",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "page_size", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "start_date", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "开始日期 YYYY-MM-DD" },
+          { "name": "end_date", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "结束日期 YYYY-MM-DD" }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaginatedQuestions" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "搜索题目",
+        "description": "按关键字、知识点、题型搜索，至少需要一个搜索条件",
+        "operationId": "searchQuestions",
+        "parameters": [
+          { "name": "keyword", "in": "query", "schema": { "type": "string" }, "description": "关键字搜索" },
+          { "name": "knowledge_tag", "in": "query", "schema": { "type": "string" }, "description": "知识点标签" },
+          { "name": "question_type", "in": "query", "schema": { "type": "string" }, "description": "题型" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "page_size", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "搜索成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaginatedQuestions" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/error-bank": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "错题库统一查询",
+        "description": "支持多维度筛选的错题库查询接口",
+        "operationId": "getErrorBank",
+        "parameters": [
+          { "name": "subject", "in": "query", "schema": { "type": "string" }, "description": "科目" },
+          { "name": "knowledge_tag", "in": "query", "schema": { "type": "string" }, "description": "知识点标签" },
+          { "name": "question_type", "in": "query", "schema": { "type": "string" }, "description": "题型" },
+          { "name": "keyword", "in": "query", "schema": { "type": "string" }, "description": "关键字搜索" },
+          { "name": "review_status", "in": "query", "schema": { "type": "string" }, "description": "复习状态" },
+          { "name": "start_date", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "开始日期 YYYY-MM-DD" },
+          { "name": "end_date", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "结束日期 YYYY-MM-DD" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "page_size", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaginatedQuestionDetails" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/subjects": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "获取所有科目列表",
+        "operationId": "getSubjects",
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "subjects": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["数学", "物理", "化学"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/question-types": {
+      "get": {
+        "tags": ["题目管理"],
+        "summary": "获取所有题型列表",
+        "operationId": "getQuestionTypes",
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "question_types": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["选择题", "填空题", "解答题"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/question/{question_id}": {
+      "patch": {
+        "tags": ["题目管理"],
+        "summary": "编辑题目内容和答案",
+        "operationId": "updateQuestion",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string", "maxLength": 20000, "description": "题目内容" },
+                  "answer": { "type": "string", "maxLength": 10000, "nullable": true, "description": "答案" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessOnly" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["题目管理"],
+        "summary": "删除题目",
+        "operationId": "deleteQuestion",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessMessage" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/question/{question_id}/answer": {
+      "patch": {
+        "tags": ["题目管理"],
+        "summary": "保存用户答案",
+        "operationId": "updateUserAnswer",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_answer"],
+                "properties": {
+                  "user_answer": { "type": "string", "maxLength": 10000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "保存成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "答案已保存" },
+                    "user_answer": { "type": "string" },
+                    "updated_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "put": {
+        "tags": ["题目管理"],
+        "summary": "保存题目答案（AI 辅导用）",
+        "description": "保存 Markdown 格式的答案，用于 AI 辅导场景",
+        "operationId": "saveQuestionAnswer",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["answer"],
+                "properties": {
+                  "answer": { "type": "string", "maxLength": 50000, "description": "Markdown 格式答案" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "保存成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "答案已保存" },
+                    "answer": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/question/{question_id}/review-status": {
+      "patch": {
+        "tags": ["题目管理"],
+        "summary": "更新题目复习状态",
+        "operationId": "updateReviewStatus",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["review_status"],
+                "properties": {
+                  "review_status": { "type": "string", "description": "复习状态", "example": "已掌握" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "复习状态已更新" },
+                    "review_status": { "type": "string" },
+                    "updated_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/save-to-db": {
+      "post": {
+        "tags": ["题目管理"],
+        "summary": "导入题目到错题库",
+        "description": "将分割好的题目导入数据库",
+        "operationId": "saveToDb",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["selected_ids"],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "example": ["q_0", "q_1"],
+                    "description": "选中的题目 ID 列表"
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question_id": { "type": "string" },
+                        "answer": { "type": "string" },
+                        "user_answer": { "type": "string" }
+                      }
+                    },
+                    "description": "题目答案列表（可选）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "导入成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "已导入 3 道题目（跳过 1 道重复）" },
+                    "created": { "type": "integer", "example": 3 },
+                    "duplicates": { "type": "integer", "example": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/ai-analysis": {
+      "post": {
+        "tags": ["题目管理"],
+        "summary": "AI 错题分析",
+        "description": "对选中的错题进行 AI 综合分析，返回薄弱知识点、错因归纳和复习建议",
+        "operationId": "aiAnalysis",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question_ids"],
+                "properties": {
+                  "question_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "example": [1, 2, 3]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "分析成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "analysis": { "$ref": "#/components/schemas/AiAnalysis" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/export-from-db": {
+      "post": {
+        "tags": ["题目管理"],
+        "summary": "从数据库导出错题本",
+        "description": "按数据库题目 ID 列表导出 Markdown 错题本",
+        "operationId": "exportFromDb",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["selected_ids"],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "example": [1, 2, 3]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "导出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "错题本导出成功" },
+                    "output_path": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/question/{question_id}/chats": {
+      "get": {
+        "tags": ["AI 对话"],
+        "summary": "获取题目的对话列表",
+        "operationId": "getQuestionChats",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "sessions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ChatSession" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "tags": ["AI 对话"],
+        "summary": "创建新对话",
+        "operationId": "createChat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question_id"],
+                "properties": {
+                  "question_id": { "type": "integer", "description": "关联的题目 ID" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "session": { "$ref": "#/components/schemas/ChatSession" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "tags": ["AI 对话"],
+        "summary": "分页获取所有对话会话",
+        "operationId": "getChatSessions",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "page_size", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "sessions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ChatSession" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "total_pages": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/chat/{session_id}/messages": {
+      "get": {
+        "tags": ["AI 对话"],
+        "summary": "获取对话消息（游标分页）",
+        "operationId": "getChatMessages",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 30, "minimum": 1, "maximum": 100 } },
+          { "name": "before_id", "in": "query", "schema": { "type": "integer" }, "description": "游标：获取此 ID 之前的消息" }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "messages": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ChatMessage" }
+                    },
+                    "hasMore": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/chat/{session_id}/stream": {
+      "post": {
+        "tags": ["AI 对话"],
+        "summary": "SSE 流式对话",
+        "description": "发送消息并以 Server-Sent Events 流式返回 AI 回复",
+        "operationId": "streamChat",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": { "type": "string", "description": "用户消息" },
+                  "model_provider": {
+                    "type": "string",
+                    "enum": ["openai", "anthropic"],
+                    "default": "openai"
+                  },
+                  "model_name": { "type": "string", "nullable": true, "description": "模型名称（可选）" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE 流式响应",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "SSE 数据流，每行格式：data: {\"token\": \"...\"} 或 data: {\"done\": true} 或 data: {\"error\": \"...\"}"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取知识点统计",
+        "operationId": "getStats",
+        "parameters": [
+          { "name": "subject", "in": "query", "schema": { "type": "string" }, "description": "按科目筛选" }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "stats": {
+                      "type": "array",
+                      "items": { "type": "object" }
+                    },
+                    "total_tags": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/dashboard-stats": {
+      "get": {
+        "tags": ["统计"],
+        "summary": "获取 Dashboard 完整统计数据",
+        "description": "返回科目列表、复习状态统计、知识点统计、每日趋势等 Dashboard 所需全部数据",
+        "operationId": "getDashboardStats",
+        "parameters": [
+          { "name": "subject", "in": "query", "schema": { "type": "string" }, "description": "按科目筛选" }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "subjects": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "review_stats": { "type": "object", "description": "复习状态统计" },
+                    "total_questions": { "type": "integer" },
+                    "by_subject": { "type": "object", "description": "按科目统计" },
+                    "tag_stats": { "type": "array", "items": { "type": "object" }, "description": "知识点 Top 10" },
+                    "tag_status_stats": { "type": "array", "items": { "type": "object" }, "description": "知识点×掌握状态（堆叠柱状图）" },
+                    "tag_type_stats": { "type": "array", "items": { "type": "object" }, "description": "知识点×题型（热力图）" },
+                    "daily_counts": { "type": "array", "items": { "type": "object" }, "description": "最近30天每日趋势" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/models/erase": {
+      "post": {
+        "tags": ["系统设置"],
+        "summary": "文字擦除（手写笔迹去除）",
+        "description": "使用 GAN 模型将试卷图片中的手写笔迹擦除",
+        "operationId": "eraseText",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "图片文件（JPEG/PNG/BMP/TIFF/WEBP）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "擦除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "result_url": { "type": "string", "example": "/erased/abc123.png" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "503": {
+            "description": "模型权重缺失",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorWithSuccess" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "tags": ["系统设置"],
+        "summary": "获取系统状态",
+        "description": "无需登录。返回 OCR 配置、可用模型列表、擦除模型状态等系统信息",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status": {
+                      "type": "object",
+                      "properties": {
+                        "paddleocr_configured": { "type": "boolean" },
+                        "ensexam_configured": { "type": "boolean" },
+                        "available_models": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": { "type": "string", "enum": ["openai", "anthropic"] },
+                              "label": { "type": "string" },
+                              "configured": { "type": "boolean" },
+                              "status": { "type": "string" },
+                              "default_model": { "type": "string" },
+                              "models": { "type": "array", "items": { "type": "string" } }
+                            }
+                          }
+                        },
+                        "langsmith_enabled": { "type": "boolean" },
+                        "output_dirs": {
+                          "type": "object",
+                          "properties": {
+                            "pages": { "type": "string" },
+                            "struct": { "type": "string" },
+                            "results": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": ["系统设置"],
+        "summary": "获取用户 Provider 配置",
+        "operationId": "getConfig",
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "config": { "type": "object", "description": "用户的 provider 配置" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "put": {
+        "tags": ["系统设置"],
+        "summary": "保存用户 Provider 配置",
+        "operationId": "updateConfig",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Provider 配置数据"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "保存成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessOnly" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/models/list": {
+      "post": {
+        "tags": ["系统设置"],
+        "summary": "获取模型列表",
+        "description": "代理请求目标 API 的模型列表，绕过浏览器 CORS 限制",
+        "operationId": "listModels",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["openai", "anthropic"],
+                    "default": "openai"
+                  },
+                  "api_key": { "type": "string", "description": "API Key（可选，留空使用已配置的）" },
+                  "base_url": { "type": "string", "description": "Base URL（可选）" },
+                  "provider_id": { "type": "integer", "description": "已有 provider 的 ID（可选）" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "502": {
+            "description": "上游 API 错误",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "504": {
+            "description": "请求超时",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/paddleocr/test": {
+      "post": {
+        "tags": ["系统设置"],
+        "summary": "测试 PaddleOCR 连接",
+        "description": "测试 PaddleOCR API Token 是否可用",
+        "operationId": "testPaddleocr",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "api_token": { "type": "string", "description": "API Token（可选）" },
+                  "api_url": { "type": "string", "description": "API URL（可选）" },
+                  "provider_id": { "type": "integer", "description": "已有 provider 的 ID（可选）" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "测试结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string", "example": "API Token 验证通过" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "502": {
+            "description": "无法连接",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorWithSuccess" }
+              }
+            }
+          },
+          "504": {
+            "description": "请求超时",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorWithSuccess" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/download/{filename}": {
+      "get": {
+        "tags": ["静态资源"],
+        "summary": "下载导出的错题本文件",
+        "operationId": "downloadFile",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文件内容",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "description": "非法路径" },
+          "404": { "description": "文件不存在" }
+        }
+      }
+    },
+    "/images/{filename}": {
+      "get": {
+        "tags": ["静态资源"],
+        "summary": "获取 OCR 处理后的图片",
+        "operationId": "getImage",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片内容",
+            "content": {
+              "image/*": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "404": { "description": "图片不存在" }
+        }
+      }
+    },
+    "/erased/{filename}": {
+      "get": {
+        "tags": ["静态资源"],
+        "summary": "获取擦除手写后的图片",
+        "operationId": "getErasedImage",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片内容",
+            "content": {
+              "image/png": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "404": { "description": "图片不存在" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "email": { "type": "string", "example": "user@example.com" },
+          "username": { "type": "string", "example": "张三" },
+          "is_admin": { "type": "boolean", "example": false }
+        }
+      },
+      "SplitQuestion": {
+        "type": "object",
+        "description": "分割后的题目（来自 questions.json）",
+        "properties": {
+          "question_id": { "type": "string", "example": "q_0" },
+          "question_type": { "type": "string", "example": "选择题" },
+          "content_blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "block_type": { "type": "string", "enum": ["text", "image", "formula"] },
+                "content": { "type": "string" }
+              }
+            }
+          },
+          "options": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" }
+          },
+          "has_formula": { "type": "boolean" },
+          "has_image": { "type": "boolean" },
+          "knowledge_tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "SplitRecord": {
+        "type": "object",
+        "description": "分割历史记录",
+        "properties": {
+          "id": { "type": "integer" },
+          "subject": { "type": "string", "nullable": true },
+          "model_provider": { "type": "string" },
+          "file_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "question_count": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "QuestionBase": {
+        "type": "object",
+        "description": "数据库中的题目（基础字段）",
+        "properties": {
+          "id": { "type": "integer" },
+          "question_type": { "type": "string" },
+          "content_json": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "block_type": { "type": "string" },
+                "content": { "type": "string" }
+              }
+            }
+          },
+          "options_json": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "string" }
+          },
+          "has_formula": { "type": "boolean" },
+          "has_image": { "type": "boolean" },
+          "needs_correction": { "type": "boolean" },
+          "answer": { "type": "string", "nullable": true },
+          "subject": { "type": "string", "nullable": true },
+          "knowledge_tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "QuestionDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/QuestionBase" },
+          {
+            "type": "object",
+            "properties": {
+              "original_filename": { "type": "string", "nullable": true },
+              "user_answer": { "type": "string", "nullable": true },
+              "updated_at": { "type": "string", "format": "date-time", "nullable": true },
+              "review_status": { "type": "string", "example": "待复习" },
+              "image_refs_json": { "type": "array", "nullable": true, "items": { "type": "string" } }
+            }
+          }
+        ]
+      },
+      "PaginatedQuestions": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QuestionBase" }
+          },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "page_size": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "PaginatedQuestionDetails": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QuestionDetail" }
+          },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "page_size": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "ChatSession": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "question_id": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "role": { "type": "string", "enum": ["user", "assistant"] },
+          "content": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AiAnalysis": {
+        "type": "object",
+        "properties": {
+          "summary": { "type": "string", "description": "综合诊断摘要" },
+          "weak_points": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "薄弱知识点"
+          },
+          "error_patterns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pattern": { "type": "string" },
+                "description": { "type": "string" },
+                "question_ids": { "type": "array", "items": { "type": "integer" } }
+              }
+            },
+            "description": "错因模式"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "复习建议"
+          },
+          "per_question": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question_id": { "type": "integer" },
+                "diagnosis": { "type": "string" },
+                "hint": { "type": "string" }
+              }
+            },
+            "description": "逐题分析"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      },
+      "ErrorWithSuccess": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string" }
+        }
+      },
+      "SuccessOnly": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true }
+        }
+      },
+      "SuccessMessage": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "请求参数错误",
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/Error" },
+                { "$ref": "#/components/schemas/ErrorWithSuccess" }
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "未登录",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "资源不存在",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorWithSuccess" }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "服务器内部错误",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorWithSuccess" }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Flask Session Cookie（登录后自动设置）"
+      }
+    }
+  },
+  "security": [
+    { "sessionCookie": [] }
+  ]
+}

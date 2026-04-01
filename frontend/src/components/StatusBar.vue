@@ -9,6 +9,29 @@ import {
 import deepseekLogo from '../assets/deepseek.svg'
 import ernieLogo from '../assets/ernie.svg'
 
+// Tooltip 相关状态
+const tooltipVisible = ref(false)
+const tooltipText = ref('')
+const tooltipPosition = ref({ x: 0, y: 0 })
+
+// 显示 tooltip
+const showTooltip = (event, text) => {
+  if (!text || text.length <= 20) return // 短文本不需要 tooltip
+  
+  tooltipText.value = text
+  const rect = event.currentTarget.getBoundingClientRect()
+  tooltipPosition.value = {
+    x: rect.left + rect.width / 2,
+    y: rect.top - 8
+  }
+  tooltipVisible.value = true
+}
+
+// 隐藏 tooltip
+const hideTooltip = () => {
+  tooltipVisible.value = false
+}
+
 const emit = defineEmits(['update:selectedModel'])
 const pushToast = inject('pushToast')
 
@@ -142,12 +165,12 @@ const modelStatusError = computed(() => {
     <!-- 模型下拉选择器 (按 provider 分组) -->
     <div v-if="!statusError" class="ml-auto flex items-center gap-2">
       <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled || noModels">
-        <div class="relative w-48">
+        <div class="relative w-56 min-w-0">
           <ListboxButton
             class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"
             :disabled="disabled"
           >
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
               <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-600 dark:bg-white/5 dark:text-indigo-400">
                 <Transition name="fade" mode="out-in">
                   <img
@@ -166,7 +189,11 @@ const modelStatusError = computed(() => {
                   :class="(statusLoading || isChecking) ? 'bg-amber-400 animate-pulse' : (!currentProvider.configured || currentProvider.key_valid === false) ? 'bg-rose-500' : 'bg-emerald-500'"
                 ></div>
               </div>
-              <span class="block max-w-[180px] truncate text-[11px] font-black tracking-tight text-slate-700 dark:text-slate-200">
+              <span 
+                class="block min-w-0 flex-1 truncate text-[11px] font-black tracking-tight text-slate-700 dark:text-slate-200"
+                @mouseenter="showTooltip($event, selectedLabel)"
+                @mouseleave="hideTooltip"
+              >
                 {{ selectedLabel }}
               </span>
             </div>
@@ -221,12 +248,14 @@ const modelStatusError = computed(() => {
                     ]"
                   >
                     <span
-                      class="block truncate text-sm transition-colors"
-                      :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
-                    >
-                      {{ item.model }}
-                      <span v-if="item.isDefault" class="ml-1 text-[10px] text-slate-400 dark:text-slate-500">默认</span>
-                    </span>
+                  class="block truncate text-sm transition-colors min-w-0"
+                  :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
+                  @mouseenter="showTooltip($event, item.model)"
+                  @mouseleave="hideTooltip"
+                >
+                  {{ item.model }}
+                  <span v-if="item.isDefault" class="ml-1 text-[10px] text-slate-400 dark:text-slate-500">默认</span>
+                </span>
                     <span
                       v-if="selected"
                       class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-indigo-400"
@@ -242,6 +271,40 @@ const modelStatusError = computed(() => {
       </Listbox>
     </div>
   </div>
+
+  <!-- Tooltip 组件 -->
+  <Teleport to="body">
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 scale-95 translate-y-1"
+      enter-to-class="opacity-100 scale-100 translate-y-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 scale-100 translate-y-0"
+      leave-to-class="opacity-0 scale-95 translate-y-1"
+    >
+      <div
+        v-if="tooltipVisible && tooltipText"
+        class="fixed z-[9999] pointer-events-none"
+        :style="{
+          left: `${tooltipPosition.x}px`,
+          top: `${tooltipPosition.y}px`,
+          transform: 'translateX(-50%) translateY(-100%)'
+        }"
+      >
+        <div class="relative">
+          <!-- 箭头 -->
+          <div class="absolute left-1/2 top-full -translate-x-1/2 w-2 h-2">
+            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-700 rotate-45"></div>
+          </div>
+          
+          <!-- 内容 -->
+          <div class="bg-slate-900 text-slate-100 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg">
+            {{ tooltipText }}
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
