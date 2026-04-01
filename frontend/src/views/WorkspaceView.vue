@@ -6,6 +6,7 @@ import * as api from '../api.js'
 import { useAuth } from '../composables/useAuth.js'
 import { usePageTransition } from '../composables/usePageTransition.js'
 // 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
+import BrandLogo from '../components/BrandLogo.vue'
 import StatusBar from '../components/StatusBar.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import FileList from '../components/FileList.vue'
@@ -727,16 +728,11 @@ onBeforeUnmount(() => {
   <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
 
     <Transition name="ws-loading-fade">
-      <div v-if="pageLoading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#05050A]">
-        <div class="relative">
-          <div class="absolute inset-0 rounded-2xl bg-indigo-500/40 blur-xl"></div>
-          <div class="relative bg-gradient-to-br from-indigo-500 to-indigo-700 p-3.5 rounded-2xl shadow-lg border border-white/10">
-            <img src="/logo.svg" class="w-9 h-9 brightness-0 invert" alt="logo" />
-          </div>
-        </div>
+      <div v-if="pageLoading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
+        <BrandLogo size="lg" breathe />
         <div class="w-48">
           <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-400 ws-loading-bar"></div>
+            <div class="h-full rounded-full ws-loading-bar" style="background: linear-gradient(to right, rgba(129,115,223,0.8), rgba(99,87,199,0.8));"></div>
           </div>
         </div>
       </div>
