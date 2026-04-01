@@ -31,7 +31,7 @@ SPLIT_PROMPT_LITE = """# 试卷题目分割
 ## 各字段填写
 
 - question_id：题号，如 "1"、"2"、"17"
-- section_title：所属大题标题（扫描时追踪的最近一个 paragraph_title 内容，如"四、我会计算。"）；无大题结构填 null
+- section_title：该题所属的大题标题，即题目之前最近出现的 `paragraph_title` block 的文字，如"四、我会计算。"；若试卷无大题结构则填 null
 - question_type：选择题/填空题/解答题/判断题
 - content_blocks：题干内容，每项 {"block_type": "text"/"image", "content": "..."}
 - options：选择题的选项列表，其他题型填 null

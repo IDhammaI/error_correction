@@ -16,7 +16,7 @@ class ContentBlock(BaseModel):
 class Question(BaseModel):
     """单道题目"""
     question_id: str = Field(description="题号，如 '1', '2', '(1)' 等")
-    section_title: Optional[str] = Field(default=None, description="所属大题标题，即当前题目前最近一个 paragraph_title 的内容，如'四、我会计算。'；无大题结构则为 null")
+    section_title: Optional[str] = Field(default=None, description="该题所属的大题标题，即题目之前最近出现的 paragraph_title block 的文字，如'四、我会计算。'；若试卷无大题结构则为 null")
     question_type: Literal["选择题", "填空题", "解答题", "判断题"] = Field(description="题目类型")
     content_blocks: List[ContentBlock] = Field(description="题干内容块列表（不含选项）")
     options: Optional[List[str]] = Field(default=None, description="选项列表，仅选择题需要，如 ['A. xxx', 'B. yyy']")
