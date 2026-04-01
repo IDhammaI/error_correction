@@ -1,5 +1,6 @@
 <script setup>
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
+import LandingButton from './LandingButton.vue'
 
 const emit = defineEmits(['scrollToSection'])
 </script>
@@ -114,14 +115,14 @@ const emit = defineEmits(['scrollToSection'])
         </p>
 
         <div class="flex gap-3 justify-center">
-          <RouterLink to="/auth" class="inline-flex items-center justify-center h-10 px-6 text-sm font-medium rounded-lg bg-white text-[#0A0A0F] hover:bg-white/90 transition-colors gap-2">
+          <LandingButton to="/auth">
             <UploadCloud class="w-4 h-4" />
             开始使用
-          </RouterLink>
-          <a href="#demo" class="inline-flex items-center justify-center h-10 px-6 text-sm font-medium rounded-lg border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition-colors gap-2">
+          </LandingButton>
+          <LandingButton variant="secondary" href="#demo">
             查看演示
             <ArrowRight class="w-4 h-4" />
-          </a>
+          </LandingButton>
         </div>
       </div>
     </section>

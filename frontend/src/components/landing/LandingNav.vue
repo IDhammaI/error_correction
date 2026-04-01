@@ -1,5 +1,6 @@
 <script setup>
 import { useTheme } from '../../composables/useTheme.js'
+import LandingButton from './LandingButton.vue'
 
 const { isDark, toggleTheme } = useTheme()
 
@@ -44,9 +45,9 @@ const emit = defineEmits(['scrollToSection'])
           <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 transition-colors">
             <i class="fa-brands fa-github text-base"></i>
           </a>
-          <RouterLink to="/auth" class="inline-flex items-center h-8 px-4 text-[13px] font-medium rounded-md bg-white text-[#0A0A0F] hover:bg-white/90 transition-colors">
+          <LandingButton to="/auth" size="sm">
             进入工作台
-          </RouterLink>
+          </LandingButton>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 <script setup>
+import LandingButton from './LandingButton.vue'
 </script>
 
 <template>
@@ -7,12 +8,9 @@
     <div class="flex-1 flex flex-col items-center justify-center text-center">
       <h2 class="text-3xl font-semibold mb-4 text-white/90">即刻开启高效学习模式</h2>
       <p class="text-white/40 text-sm mb-8 max-w-md mx-auto">告别低效抄录，让 AI 成为你的超级助教。注册即享完整试卷解析体验。</p>
-      <RouterLink
-        to="/auth"
-        class="inline-flex items-center px-6 py-2.5 text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-400 rounded-lg transition-colors"
-      >
+      <LandingButton variant="cta" to="/auth">
         免费创建错题库
-      </RouterLink>
+      </LandingButton>
     </div>
 
     <!-- Footer -->
