@@ -1,8 +1,27 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
 import LandingButton from './LandingButton.vue'
 
 const emit = defineEmits(['scrollToSection'])
+
+// ── 底部星星 ──
+const stars = ref([])
+
+onMounted(() => {
+  const count = 40
+  const list = []
+  for (let i = 0; i < count; i++) {
+    list.push({
+      left: Math.random() * 100,
+      top: 60 + Math.random() * 38, // 只出现在底部 60%~98% 区域
+      size: 1 + Math.random() * 2,
+      opacity: 0.08 + Math.random() * 0.35, // 0.08 ~ 0.43 随机透明度
+      delay: Math.random() * 4,
+    })
+  }
+  stars.value = list
+})
 </script>
 
 <template>
@@ -74,11 +93,6 @@ const emit = defineEmits(['scrollToSection'])
       </div>
     </div>
 
-    <!-- 装饰: 点阵网格 -->
-    <div class="absolute inset-0 pointer-events-none z-0 opacity-[0.03]"
-      style="background-image: radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px); background-size: 32px 32px;"
-    ></div>
-
     <!-- 装饰: 光斑 -->
     <div class="absolute pointer-events-none z-0 w-80 h-80 rounded-full blur-[120px] bg-indigo-600/[0.07]"
       style="top: 25%; left: 8%;"
@@ -126,6 +140,22 @@ const emit = defineEmits(['scrollToSection'])
         </div>
       </div>
     </section>
+
+    <!-- 星星点缀 -->
+    <div class="absolute inset-0 pointer-events-none z-[1]">
+      <div
+        v-for="(s, i) in stars"
+        :key="i"
+        class="absolute rounded-full bg-white"
+        :style="{
+          left: s.left + '%',
+          top: s.top + '%',
+          width: s.size + 'px',
+          height: s.size + 'px',
+          opacity: s.opacity,
+        }"
+      ></div>
+    </div>
 
     <!-- 底部箭头 -->
     <button
