@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import time
+import traceback
 from typing import List, Dict, Any, TypedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
@@ -106,14 +107,15 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
                 break
             except Exception as e:
                 last_error = e
+                tb = traceback.format_exc()
                 if attempt < max_retries:
                     delay = retry_delays[attempt - 1]
-                    logger.warning(f"OCR PDF 第 {attempt} 次失败 ({e})，{delay}s 后重试...")
-                    console.print(f"[yellow]OCR PDF 第 {attempt} 次失败，{delay}s 后重试...[/yellow]")
+                    logger.warning(f"OCR PDF 第 {attempt} 次失败 ({type(e).__name__}: {e})，{delay}s 后重试...\n{tb}")
+                    console.print(f"[yellow]OCR PDF 第 {attempt} 次失败 ({type(e).__name__}: {e})，{delay}s 后重试...[/yellow]")
                     time.sleep(delay)
                 else:
-                    logger.error(f"OCR PDF 全部 {max_retries} 次重试失败: {last_error}")
-                    console.print(f"[red]OCR PDF 解析失败（已重试 {max_retries} 次）: {last_error}[/red]")
+                    logger.error(f"OCR PDF 全部 {max_retries} 次重试失败 ({type(last_error).__name__}: {last_error})\n{tb}")
+                    console.print(f"[red]OCR PDF 解析失败（已重试 {max_retries} 次）: {type(last_error).__name__}: {last_error}[/red]")
         if result is not None:
             ocr_results.append(result)
 
@@ -128,14 +130,15 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
                 break
             except Exception as e:
                 last_error = e
+                tb = traceback.format_exc()
                 if attempt < max_retries:
                     delay = retry_delays[attempt - 1]
-                    logger.warning(f"OCR 图片第 {attempt} 次失败 ({e})，{delay}s 后重试...")
-                    console.print(f"[yellow]OCR 图片第 {attempt} 次失败，{delay}s 后重试...[/yellow]")
+                    logger.warning(f"OCR 图片第 {attempt} 次失败 ({type(e).__name__}: {e})，{delay}s 后重试...\n{tb}")
+                    console.print(f"[yellow]OCR 图片第 {attempt} 次失败 ({type(e).__name__}: {e})，{delay}s 后重试...[/yellow]")
                     time.sleep(delay)
                 else:
-                    logger.error(f"OCR 图片全部 {max_retries} 次重试失败: {last_error}")
-                    console.print(f"[red]OCR 图片解析失败（已重试 {max_retries} 次）: {last_error}[/red]")
+                    logger.error(f"OCR 图片全部 {max_retries} 次重试失败 ({type(last_error).__name__}: {last_error})\n{tb}")
+                    console.print(f"[red]OCR 图片解析失败（已重试 {max_retries} 次）: {type(last_error).__name__}: {last_error}[/red]")
         if img_results:
             ocr_results.extend(img_results)
 
@@ -300,17 +303,19 @@ def _content_fingerprint(q: Dict[str, Any]) -> str:
 
 
 def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按「题号 + 内容指纹」去重。
+    """按「(大题, 题号) + 内容指纹」去重。
 
-    - 同题号 + 相同指纹 → 重叠页产生的真重复，保留内容更丰富的版本
-    - 同题号 + 不同指纹 → 不同板块的同号题（如小学试卷各大题下均有第1题），全部保留
+    - 同大题 + 同题号 + 相同指纹 → 重叠页产生的真重复，保留内容更丰富的版本
+    - 同大题 + 同题号 + 不同指纹 → 内容不同的同号题，全部保留
+    - 不同大题 + 同题号 → 独立题目，不跨大题合并
     """
     if not questions:
         return []
 
     from collections import defaultdict
 
-    groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    # 以 (section_title, question_id) 为复合键分组，避免跨大题误合并
+    groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
     no_id: List[Dict[str, Any]] = []
 
     for q in questions:
@@ -318,7 +323,8 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not qid:
             no_id.append(q)
         else:
-            groups[qid].append(q)
+            section = q.get("section_title") or ""
+            groups[(section, qid)].append(q)
 
     result: List[Dict[str, Any]] = list(no_id)
 
@@ -327,16 +333,26 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             result.append(qs[0])
             continue
 
-        # 按内容指纹二次分组
+        # 按内容指纹二次分组，相同指纹只保留最丰富版本
         fp_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for q in qs:
             fp_groups[_content_fingerprint(q)].append(q)
 
-        # 每个指纹组只保留最丰富的版本
         for fp_qs in fp_groups.values():
             result.append(max(fp_qs, key=_question_richness))
 
-    result.sort(key=lambda q: _sort_key(q.get("question_id", "")))
+    # 按「section 首次出现顺序 + 题号」排序，保证同一大题的题目连续排列
+    # 以原始输入顺序确定各 section 的先后（批次并行时以先出现者为准）
+    section_order: Dict[str, int] = {}
+    for q in questions:
+        s = q.get("section_title") or ""
+        if s not in section_order:
+            section_order[s] = len(section_order)
+
+    result.sort(key=lambda q: (
+        section_order.get(q.get("section_title") or "", 0),
+        _sort_key(q.get("question_id", ""))
+    ))
     return result
 
 
@@ -509,6 +525,10 @@ def split_questions_node(state: WorkflowState) -> dict:
     if before_dedup > after_dedup:
         logger.info(f"去重: {before_dedup} → {after_dedup} 道题目（移除 {before_dedup - after_dedup} 道重复）")
         console.print(f"[yellow]去重: 移除 {before_dedup - after_dedup} 道重复题目[/yellow]")
+
+    # 为每道题赋全局唯一 uid（顺序字符串），供前端选择和导出时使用
+    for i, q in enumerate(deduped):
+        q["uid"] = str(i)
 
     # ── Step 7: 保存结果 ──
     with open(questions_file, 'w', encoding='utf-8') as f:
