@@ -12,7 +12,13 @@ import logging
 import threading
 
 import numpy as np
+import torch
 from PIL import Image
+
+from models.model import Generator
+
+# cuDNN v8 frontend 与 A30+PyTorch2.1 不兼容
+torch.backends.cudnn.enabled = False
 
 logger = logging.getLogger(__name__)
 
@@ -50,23 +56,18 @@ class InferenceEngine:
             if self._model is not None:
                 return
 
-            import torch
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-            from models.model import Generator
             from core.config import settings
 
             model_path = settings.model_path
             if not model_path.exists():
                 raise FileNotFoundError(
-                    f"模型权重不存在，请将 latest.pth 放到: {model_path}"
+                    f"模型权重不存在，请将 best.pth 放到: {model_path}"
                 )
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             generator = Generator().to(device)
 
             ckpt = torch.load(model_path, map_location=device, weights_only=False)
-            # train.py 保存格式：{'G_state_dict': ..., 'D_state_dict': ..., ...}
             state_dict = (
                 ckpt.get("G_state_dict")
                 or ckpt.get("generator_state_dict")
@@ -85,7 +86,7 @@ class InferenceEngine:
 
     @staticmethod
     def _preprocess(pil_img: Image.Image):
-        """PIL → float Tensor [-1, 1]，并 padding 到 512 的整数倍
+        """PIL → float ndarray [-1, 1]，并 padding 到 512 的整数倍
 
         Returns:
             arr_padded (np.ndarray): shape (H_pad, W_pad, 3)，float32 in [-1,1]
@@ -105,14 +106,12 @@ class InferenceEngine:
         arr = np.array(img, dtype=np.float32) / 127.5 - 1.0
         return arr, orig_w, orig_h
 
-    @staticmethod
-    def _to_tensor(arr: np.ndarray, device):
+    def _to_tensor(self, arr: np.ndarray) -> torch.Tensor:
         """(H, W, 3) ndarray → (1, 3, H, W) Tensor on device"""
-        import torch
-        return torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(device)
+        return torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(self._device)
 
     @staticmethod
-    def _to_numpy(tensor) -> np.ndarray:
+    def _to_numpy(tensor: torch.Tensor) -> np.ndarray:
         """(1, 3, H, W) Tensor → (H, W, 3) uint8 ndarray"""
         arr = tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
         return np.clip((arr + 1.0) * 127.5, 0, 255).astype(np.uint8)
@@ -123,8 +122,6 @@ class InferenceEngine:
 
     def _infer_sliding_window(self, arr: np.ndarray) -> np.ndarray:
         """滑动窗口推理，patch 重叠区域做加权平均以消除接缝"""
-        import torch
-
         h, w, _ = arr.shape
         result = np.zeros((h, w, 3), dtype=np.float32)
         weight = np.zeros((h, w, 1), dtype=np.float32)
@@ -141,9 +138,8 @@ class InferenceEngine:
             for y in _ticks(h):
                 for x in _ticks(w):
                     patch = arr[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE]
-                    tensor = self._to_tensor(patch, self._device)
+                    tensor = self._to_tensor(patch)
                     *_, Icomp = self._model(tensor)
-                    # 直接从 tensor 提取 float32，避免 uint8 截断精度损失
                     out = (Icomp.squeeze(0).permute(1, 2, 0).cpu().numpy() + 1.0) * 127.5
                     result[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += out
                     weight[y:y + _PATCH_SIZE, x:x + _PATCH_SIZE] += 1.0
@@ -167,7 +163,6 @@ class InferenceEngine:
 
         pil_img = Image.open(io.BytesIO(image_bytes))
         arr, orig_w, orig_h = self._preprocess(pil_img)
-        h, w, _ = arr.shape
 
         result_arr = self._infer_sliding_window(arr)
 

@@ -9,8 +9,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.enabled = False   # cuDNN v8 frontend 与 A30+PyTorch2.1 不兼容
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -27,7 +26,7 @@ if not test_img_path.exists():
     sys.exit(1)
 
 # ── 路径配置 ──────────────────────────────────────────
-MODEL_PATH = Path(__file__).parent.parent / "runtime_data" / "models" / "latest.pth"
+MODEL_PATH = Path(__file__).parent / "weight" / "best.pth"
 OUTPUT_DIR = Path(__file__).parent.parent / "runtime_data" / "erased"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
