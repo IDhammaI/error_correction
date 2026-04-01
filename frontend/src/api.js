@@ -292,12 +292,143 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   throw new Error((data && data.error) || '获取消息失败')
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false } = {}) {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message })),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message, deep_think: deepThink })),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)
+}
+
+// ── 笔记模块 ─────────────────────────────────────────────
+
+/**
+ * 上传笔记图片 → OCR → LLM 整理 → 保存
+ * @param {FormData} formData - 包含 files、model_provider、model_name
+ * @param {Object} callbacks - { onProgress, onSuccess, onError }
+ * @returns {XMLHttpRequest} xhr 对象，可用于取消
+ */
+export function createNote(formData, { onProgress, onSuccess, onError } = {}) {
+  const xhr = new XMLHttpRequest()
+  xhr.open('POST', '/api/notes/')
+  xhr.withCredentials = true
+
+  if (onProgress) {
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded / e.total)
+    }
+  }
+  xhr.onload = () => {
+    try {
+      const data = JSON.parse(xhr.responseText)
+      if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+        onSuccess?.(data)
+      } else {
+        onError?.(data.error || '笔记创建失败')
+      }
+    } catch {
+      onError?.('解析响应失败')
+    }
+  }
+  xhr.onerror = () => onError?.('网络错误')
+  xhr.send(formData)
+  return xhr
+}
+
+/**
+ * 分页查询笔记列表
+ */
+export async function fetchNotes(params = {}) {
+  const query = new URLSearchParams()
+  if (params.page) query.set('page', params.page)
+  if (params.limit) query.set('limit', params.limit)
+  if (params.subject) query.set('subject', params.subject)
+  if (params.knowledge_tag) query.set('knowledge_tag', params.knowledge_tag)
+  if (params.keyword) query.set('keyword', params.keyword)
+
+  const resp = await fetch(`/api/notes/?${query}`)
+  const data = await resp.json()
+  if (data.success) return data
+  throw new Error(data.error || '获取笔记列表失败')
+}
+
+/**
+ * 获取单条笔记详情
+ */
+export async function fetchNote(noteId) {
+  const resp = await fetch(`/api/notes/${noteId}`)
+  const data = await resp.json()
+  if (data.success) return data.note
+  throw new Error(data.error || '获取笔记详情失败')
+}
+
+/**
+ * 更新笔记
+ */
+export async function updateNote(noteId, payload) {
+  const resp = await fetch(`/api/notes/${noteId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await resp.json()
+  if (data.success) return data.note
+  throw new Error(data.error || '更新笔记失败')
+}
+
+/**
+ * 删除笔记
+ */
+export async function deleteNote(noteId) {
+  const resp = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' })
+  const data = await resp.json()
+  if (data.success) return true
+  throw new Error(data.error || '删除笔记失败')
+}
+
+// ── 独立对话 ─────────────────────────────────────────────
+
+/** 创建独立对话 */
+export async function createIndependentChat(title = '新对话') {
+  const resp = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  const data = await resp.json()
+  if (data.success) return data.session
+  throw new Error(data.error || '创建对话失败')
+}
+
+/** 获取用户的独立对话列表 */
+export async function fetchMyChatSessions(params = {}) {
+  const query = new URLSearchParams()
+  if (params.page) query.set('page', params.page)
+  if (params.limit) query.set('limit', params.limit)
+  const resp = await fetch(`/api/chat/my-sessions?${query}`)
+  const data = await resp.json()
+  if (data.success) return data
+  throw new Error(data.error || '获取对话列表失败')
+}
+
+/** 更新对话标题 */
+export async function updateChatTitle(sessionId, title) {
+  const resp = await fetch(`/api/chat/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  const data = await resp.json()
+  if (data.success) return data.session
+  throw new Error(data.error || '更新标题失败')
+}
+
+/** 删除对话 */
+export async function deleteChat(sessionId) {
+  const resp = await fetch(`/api/chat/${sessionId}`, { method: 'DELETE' })
+  const data = await resp.json()
+  if (data.success) return true
+  throw new Error(data.error || '删除对话失败')
 }
