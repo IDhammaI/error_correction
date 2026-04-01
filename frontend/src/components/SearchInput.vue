@@ -11,7 +11,7 @@ const emit = defineEmits(['update:modelValue'])
 
 <template>
   <div>
-    <label v-if="label" class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">{{ label }}</label>
+    <label v-if="label" class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{{ label }}</label>
     <div class="relative group">
       <i :class="icon" class="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm text-slate-400 transition-colors group-hover:text-slate-500 group-focus-within:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 dark:group-focus-within:text-slate-200"></i>
       <input

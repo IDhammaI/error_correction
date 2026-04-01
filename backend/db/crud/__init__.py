@@ -74,6 +74,9 @@ from db.crud.chat import (
     get_chat_messages,
     get_chat_sessions_by_question,
     get_all_chat_sessions,
+    get_user_chat_sessions,
+    update_chat_session_title,
+    delete_chat_session,
 )
 
 from db.crud.split_records import (
@@ -90,6 +93,14 @@ from db.crud.providers import (
     get_user_providers,
     save_user_providers,
     get_active_provider,
+)
+
+from db.crud.notes import (
+    save_note,
+    get_notes,
+    get_note_by_id,
+    update_note,
+    delete_note,
 )
 
 __all__ = [
@@ -136,6 +147,9 @@ __all__ = [
     "get_chat_messages",
     "get_chat_sessions_by_question",
     "get_all_chat_sessions",
+    "get_user_chat_sessions",
+    "update_chat_session_title",
+    "delete_chat_session",
     # split_records
     "MAX_SPLIT_RECORDS",
     "save_split_record",
@@ -148,4 +162,10 @@ __all__ = [
     "get_user_providers",
     "save_user_providers",
     "get_active_provider",
+    # notes
+    "save_note",
+    "get_notes",
+    "get_note_by_id",
+    "update_note",
+    "delete_note",
 ]
