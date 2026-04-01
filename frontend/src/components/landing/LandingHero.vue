@@ -28,6 +28,15 @@ onMounted(() => {
   <!-- ① Sticky Hero 容器 — Linear 风格 -->
   <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex flex-col justify-center bg-[#0A0A0F]">
 
+    <!-- 背景装饰：复杂流体拓扑波纹 (Fluid Topography) 基础层 -->
+    <div class="absolute inset-0 pointer-events-none z-0 opacity-20" style="
+      background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.005%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix type=%22matrix%22 values=%221 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4%22 /%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22 opacity=%220.3%22/%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%23ffffff%22 stroke-width=%221%22 fill=%22none%22 opacity=%220.15%22 /%3E%3C/svg%3E');
+      background-size: cover;
+      background-position: center;
+      mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+    "></div>
+
     <!-- 顶部装饰椭圆与土星光环 — 用 vw 统一大小和位置的缩放基准 -->
     <div class="absolute pointer-events-none z-0 flex items-center justify-center" style="
       top: -100vw;
@@ -119,7 +128,7 @@ onMounted(() => {
         <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-white">
           重塑错题整理<br />
           <span class="text-transparent bg-clip-text animate-gradient-sweep" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 40%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 60%, rgb(151, 137, 222) 100%);
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
             background-size: 200% auto;
           ">一键生成知识图谱</span>
         </h1>

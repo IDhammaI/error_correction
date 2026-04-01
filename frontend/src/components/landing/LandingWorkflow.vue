@@ -33,16 +33,16 @@ function onStepClick(idx) {
 
 function getStepIconClass(idx) {
   if (idx <= activeStep.value) {
-    return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+    return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,87,199,0.3)] transition-all duration-500'
   }
-  return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-white/[0.02] text-white/25 border border-white/[0.06]'
+  return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-white/[0.02] text-white/25 border border-white/[0.06] transition-all duration-500'
 }
 
 function getStepContainerClass(idx) {
   if (idx === activeStep.value) {
-    return 'relative p-4 rounded-lg cursor-pointer bg-white/[0.04] border border-white/[0.1]'
+    return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 backdrop-blur-md border border-white/[0.1] shadow-xl transition-all duration-500 transform scale-105'
   }
-  return 'relative p-4 rounded-lg cursor-pointer border border-transparent hover:bg-white/[0.02]'
+  return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-transparent to-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/[0.05] transition-all duration-500'
 }
 
 function getStepTitleClass(idx) {
@@ -69,10 +69,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section id="workflow" class="relative z-10 py-24 bg-[#0A0A0F]">
-    <div class="reveal max-w-5xl mx-auto px-4 sm:px-6">
+  <section id="workflow" class="relative z-10 py-24 overflow-hidden">
+    <div class="reveal max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
       <div class="text-center mb-16">
-        <h2 class="text-2xl font-semibold mb-4 text-white/90">极简四步，自动运转</h2>
+        <h2 class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep" style="
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-size: 200% auto;
+          ">极简四步，自动运转</h2>
         <p class="text-white/40 text-sm">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
       </div>
 
