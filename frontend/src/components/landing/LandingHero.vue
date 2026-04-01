@@ -8,20 +8,70 @@ const emit = defineEmits(['scrollToSection'])
   <!-- ① Sticky Hero 容器 — Linear 风格 -->
   <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex flex-col justify-center bg-[#0A0A0F]">
 
-    <!-- 顶部装饰椭圆 — 用 vw 统一大小和位置的缩放基准 -->
-    <div class="absolute pointer-events-none z-0" style="
-      top: -90vw;
+    <!-- 顶部装饰椭圆与土星光环 — 用 vw 统一大小和位置的缩放基准 -->
+    <div class="absolute pointer-events-none z-0 flex items-center justify-center" style="
+      top: -100vw;
       left: 50%;
       transform: translateX(-50%);
       width: 140vw;
       aspect-ratio: 1.3 / 1;
-      border-radius: 50%;
-      background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
-      box-shadow:
-        inset 0 -20px 24px 0 rgba(255,255,255,0.15),
-        0 16px 32px 0 rgba(97,62,210,0.32),
-        inset 0 -1px 0 0 rgba(129,115,223,0.6);
-    "></div>
+    ">
+      <!-- 椭圆本体 -->
+      <div class="absolute inset-0" style="
+        border-radius: 50%;
+        background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
+        box-shadow:
+          inset 0 -20px 24px 0 rgba(255,255,255,0.15),
+          0 16px 32px 0 rgba(97,62,210,0.32),
+          inset 0 -1px 0 0 rgba(129,115,223,0.6);
+      "></div>
+
+      <!-- 土星光环: LaTeX 公式 -->
+      <!-- 放大容器以远离"土星"本体，同时增加 Z 轴旋转(rotateX)和倾斜(rotateZ)产生悬浮交错的纵深感 -->
+      <div class="absolute pointer-events-none" style="
+        width: 120%;
+        height: 120%;
+        top: -10%;
+        left: -10%;
+        transform-origin: center center;
+        transform: rotateX(15deg) rotateZ(-4deg) translateY(5%);
+      ">
+        <svg viewBox="-100 -100 1200 1200" preserveAspectRatio="none" class="w-full h-full opacity-60" style="filter: drop-shadow(0 0 8px rgba(129, 115, 223, 0.6)) drop-shadow(0 0 20px rgba(97, 62, 210, 0.4)); overflow: visible;">          <!-- 第一圈光环 (内圈，顺时针旋转) -->
+          <g class="ring-spin-cw" style="transform-origin: 500px 500px;">
+            <!-- 光环轨道 (反向绘制路径以使文字正向朝外) -->
+            <path id="saturn-ring-path-1" d="M 500, 980 A 480,480 0 1,0 500,20 A 480,480 0 1,0 500,980" fill="none" />
+            
+            <!-- 轨道装饰线 -->
+            <path d="M 500, 500 m -488, 0 a 488,488 0 1,1 976,0 a 488,488 0 1,1 -976,0" fill="none" stroke="rgba(129,115,223,0.2)" stroke-width="1" />
+            <path d="M 500, 500 m -472, 0 a 472,472 0 1,1 944,0 a 472,472 0 1,1 -944,0" fill="none" stroke="rgba(129,115,223,0.2)" stroke-width="1" />
+
+            <!-- 公式文本 -->
+            <text fill="currentColor" class="text-indigo-100" font-family="'Times New Roman', Times, serif" font-size="18" font-style="italic" letter-spacing="5">
+              <textPath href="#saturn-ring-path-1" startOffset="0%">
+                ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt
+              </textPath>
+            </text>
+          </g>
+
+          <!-- 第二圈光环 (外圈，逆时针旋转，半径更大，文本不同) -->
+          <g class="ring-spin-ccw" style="transform-origin: 500px 500px;">
+            <!-- 光环轨道 (半径从 480 增加到 540) -->
+            <path id="saturn-ring-path-2" d="M 500, 1040 A 540,540 0 1,0 500,-40 A 540,540 0 1,0 500,1040" fill="none" />
+            
+            <!-- 轨道装饰线 -->
+            <path d="M 500, 500 m -546, 0 a 546,546 0 1,1 1092,0 a 546,546 0 1,1 -1092,0" fill="none" stroke="rgba(129,115,223,0.15)" stroke-width="1" />
+            <path d="M 500, 500 m -534, 0 a 534,534 0 1,1 1068,0 a 534,534 0 1,1 -1068,0" fill="none" stroke="rgba(129,115,223,0.15)" stroke-width="1" />
+
+            <!-- 公式文本 (换成另一组数学公式：傅里叶变换、高斯-博内定理、薛定谔、贝叶斯等) -->
+            <text fill="currentColor" class="text-indigo-200/70" font-family="'Times New Roman', Times, serif" font-size="14" font-style="italic" letter-spacing="6">
+              <textPath href="#saturn-ring-path-2" startOffset="0%">
+                F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2
+              </textPath>
+            </text>
+          </g>
+        </svg>
+      </div>
+    </div>
 
     <!-- 装饰: 点阵网格 -->
     <div class="absolute inset-0 pointer-events-none z-0 opacity-[0.03]"
@@ -36,6 +86,12 @@ const emit = defineEmits(['scrollToSection'])
       style="top: 55%; right: 10%;"
     ></div>
 
+    <!-- 装饰: 底部简约的环境光晕 -->
+    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80vw] h-[30vh] pointer-events-none z-0">
+      <div class="absolute inset-0 bg-indigo-500/10 blur-[100px] rounded-[100%] transform translate-y-1/2"></div>
+      <div class="absolute inset-0 bg-violet-500/5 blur-[120px] rounded-[100%] transform translate-y-1/2 scale-150"></div>
+    </div>
+
     <!-- 首屏区块 — 居中布局 -->
     <section id="hero" class="relative w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto z-10">
       <div class="text-center">
@@ -47,7 +103,10 @@ const emit = defineEmits(['scrollToSection'])
 
         <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-white">
           重塑错题整理<br />
-          <span class="text-white/40">一键生成知识图谱</span>
+          <span class="text-transparent bg-clip-text animate-gradient-sweep" style="
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 40%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 60%, rgb(151, 137, 222) 100%);
+            background-size: 200% auto;
+          ">一键生成知识图谱</span>
         </h1>
 
         <p class="text-base text-white/40 mb-8 max-w-lg mx-auto leading-relaxed">
@@ -76,3 +135,34 @@ const emit = defineEmits(['scrollToSection'])
     </button>
   </div>
 </template>
+
+<style scoped>
+@keyframes spin-cw {
+  0% { transform: rotate(0deg) translateZ(0); }
+  100% { transform: rotate(360deg) translateZ(0); }
+}
+
+@keyframes spin-ccw {
+  0% { transform: rotate(360deg) translateZ(0); }
+  100% { transform: rotate(0deg) translateZ(0); }
+}
+
+.ring-spin-cw {
+  animation: spin-cw 120s linear infinite;
+  will-change: transform;
+}
+
+.ring-spin-ccw {
+  animation: spin-ccw 180s linear infinite;
+  will-change: transform;
+}
+
+@keyframes gradient-sweep {
+  0% { background-position: -100% center; }
+  100% { background-position: 100% center; }
+}
+
+.animate-gradient-sweep {
+  animation: gradient-sweep 3s ease-in-out infinite alternate;
+}
+</style>
