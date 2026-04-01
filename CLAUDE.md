@@ -49,7 +49,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境配置
 
-复制 `.env.example` → `.env`，至少配置一组 LLM API key（DeepSeek 或 ERNIE）和 PaddleOCR token。详见 `.env.example` 注释。
+复制 `.env.example` → `.env`，必须配置 `SECRET_KEY`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理 API Key 和供应商配置。
 
 ---
 
@@ -228,7 +228,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 线程安全
 
-- Flask 全局状态修改必须在 `session_lock` 保护下
+- 全局会话状态集中在 `core/state.py`，修改必须在 `session_lock` 保护下
 - 锁内用原地修改（`.remove()`, `.append()`），**不要用推导式重新赋值**
 - Agent 缓存通过 `_agent_cache_lock` 保护并发初始化
 
@@ -236,9 +236,9 @@ cd frontend && npm install               # 前端（Node 18+）
 
 - 结构化输出优先用 `create_agent` + `ToolStrategy`
 - 已知问题：`ToolStrategy` 与 DeepSeek 的 `handle_errors` 重试不兼容，大数据量可能触发 400
-- ernie 用 `model.with_structured_output()`（不支持 function calling）
-- 轻量任务用 `DEEPSEEK_LIGHT_MODEL_NAME` / `ERNIE_LIGHT_MODEL_NAME` 小模型
+- 不支持 function calling 的模型用 `model.with_structured_output()`
 - `invoke_split` / `invoke_correction` 是统一调用入口，屏蔽 provider 差异
+- API Provider 配置（key、模型名）存储在数据库中，用户通过系统设置页面管理
 
 ### OCR 数据处理
 
@@ -255,7 +255,9 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 环境变量
 
 - `.env` 不入版本控制，`.env.example` 作为模板
-- 新增配置项必须同步更新 `.env.example`
+- LLM API Provider 配置已迁移到数据库，不再通过 `.env` 管理
+- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`）仍通过 `.env` 管理
+- 新增 `.env` 配置项必须同步更新 `.env.example`
 - 可选项用 `os.getenv("KEY")` + 代码中提供默认值
 
 ---
