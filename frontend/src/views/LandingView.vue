@@ -1,5 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useTheme } from '../composables/useTheme.js'
+
+const { initTheme } = useTheme()
 
 import LandingNav from '../components/landing/LandingNav.vue'
 import LandingHero from '../components/landing/LandingHero.vue'
@@ -22,6 +25,14 @@ const activeSection = ref('hero')
 const backToTopVisible = ref(false)
 const navScrolled = ref(false)
 const indicatorTop = ref(44)
+const isMouseInHero = ref(true) // 用于控制紫色波纹高亮层的显示/隐藏
+
+// ── 全局鼠标追踪 ──
+function handleGlobalMouseMove(e) {
+  // 更新全局的 fixed 遮罩鼠标坐标
+  document.documentElement.style.setProperty('--fixed-mouse-x', `${e.clientX}px`)
+  document.documentElement.style.setProperty('--fixed-mouse-y', `${e.clientY}px`)
+}
 
 // Cleanup holders
 let wheelUnlisten = null
@@ -59,19 +70,31 @@ function getSectionTops() {
 }
 
 function onWheel(e) {
-  e.preventDefault()
   if (wheelLock) return
   const y = window.scrollY
   const tops = getSectionTops()
+  if (tops.length < 2) return
   const dir = e.deltaY > 0 ? 1 : -1
+
+  // 找到当前所在 section
   let cur = 0
   for (let i = tops.length - 1; i >= 0; i--) {
     if (y >= tops[i] - 10) { cur = i; break }
   }
-  const next = Math.max(0, Math.min(tops.length - 1, cur + dir))
-  if (next === cur) return
-  wheelLock = true
-  scrollToY(tops[next], 1000)
+
+  const lastIdx = tops.length - 1
+
+  // 只在 Hero(0) ↔ Features(1) 边界做 snap，其他正常滚动
+  const isHeroBoundary = (cur === 0 && dir === 1) || (cur === 1 && dir === -1 && y <= tops[1] + 50)
+
+  if (isHeroBoundary) {
+    e.preventDefault()
+    const next = Math.max(0, Math.min(lastIdx, cur + dir))
+    if (next === cur) return
+    wheelLock = true
+    scrollToY(tops[next], 800)
+  }
+  // 其他位置：不 preventDefault，浏览器正常滚动
 }
 
 // ── Scroll handler ──
@@ -79,6 +102,9 @@ let ticking = false
 
 function onScroll() {
   const y = window.scrollY
+
+  // 判断是否在首屏
+  isMouseInHero.value = y < window.innerHeight * 0.5
 
   // Hero fade + 3D tilt
   const stickyHero = document.getElementById('sticky-hero')
@@ -182,11 +208,9 @@ function setupRevealObserver() {
 }
 
 onMounted(async () => {
-  // Landing page is always dark
-  document.documentElement.classList.add('dark')
+  initTheme()
 
-  // Set overflow-hidden on body for wheel snap
-  document.body.style.overflow = 'hidden'
+  // 不再锁定 body overflow，中间页面允许正常滚动
 
   await nextTick()
 
@@ -198,6 +222,9 @@ onMounted(async () => {
   // Scroll listener
   window.addEventListener('scroll', onScrollThrottled, { passive: true })
   scrollUnlisten = () => window.removeEventListener('scroll', onScrollThrottled)
+
+  // Mousemove listener
+  window.addEventListener('mousemove', handleGlobalMouseMove)
 
   // Hero anim
   setTimeout(() => {
@@ -216,17 +243,36 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Restore body overflow
-  document.body.style.overflow = ''
-
   if (wheelUnlisten) wheelUnlisten()
   if (scrollUnlisten) scrollUnlisten()
   if (revealObserver) revealObserver.disconnect()
+  window.removeEventListener('mousemove', handleGlobalMouseMove)
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 page-enter">
+
+    <!-- 🌟 真正的全局绝对底层固定背景 🌟 -->
+    <!-- 将背景移出任何可能带有 transform / overflow-hidden 的包裹层，确保 fixed 完美生效 -->
+    <div class="fixed inset-0 pointer-events-none z-0 opacity-20" style="
+      background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.005%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix type=%22matrix%22 values=%221 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4%22 /%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22 opacity=%220.3%22/%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%23ffffff%22 stroke-width=%221%22 fill=%22none%22 opacity=%220.15%22 /%3E%3C/svg%3E');
+      background-size: cover;
+      background-position: center;
+      mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+    "></div>
+
+    <!-- 全局鼠标高亮流体拓扑波纹层 (除了第一屏外，其余页面都有) -->
+    <div class="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700" 
+         :class="isMouseInHero ? 'opacity-0' : 'opacity-100'"
+         style="
+      background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%239789de%22 stroke-width=%223%22 fill=%22none%22 style=%22filter: drop-shadow(0 0 8px rgba(151,137,222,0.8));%22 /%3E%3C/svg%3E');
+      background-size: cover;
+      background-position: center;
+      mask-image: radial-gradient(400px circle at var(--fixed-mouse-x, -1000px) var(--fixed-mouse-y, -1000px), black 0%, transparent 100%);
+      -webkit-mask-image: radial-gradient(400px circle at var(--fixed-mouse-x, -1000px) var(--fixed-mouse-y, -1000px), black 0%, transparent 100%);
+    "></div>
 
     <LandingNav
       :navScrolled="navScrolled"
@@ -239,11 +285,11 @@ onUnmounted(() => {
     <!-- 主内容包裹层 -->
     <div class="relative">
 
-      <LandingHero />
+      <LandingHero @scrollToSection="scrollToSectionSnap" />
 
-      <!-- ② 滚动叠盖层 -->
-      <div class="relative z-10 overflow-x-hidden">
-
+      <!-- ② 滚动叠盖层 (由于父级背景已固定，这里使用透明或半透明背景让其透出来) -->
+      <div class="relative z-10 overflow-x-hidden bg-transparent">
+        
         <LandingFeatures />
 
         <LandingWorkflow />
@@ -251,6 +297,24 @@ onUnmounted(() => {
         <LandingDemo />
 
         <LandingCta />
+
+        <!-- 全局 Footer -->
+        <div class="border-t border-white/[0.06] py-4 relative z-10 backdrop-blur-sm bg-[#0A0A0F]/50 w-full mt-auto">
+          <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/30 px-4">
+            <div class="flex items-center gap-2">
+              <div class="bg-white/[0.04] border border-white/[0.06] p-1.5 rounded-lg">
+                <img src="/logo.svg" class="w-4 h-4 brightness-0 invert opacity-50" alt="logo" />
+              </div>
+              <span class="font-semibold text-white/50 tracking-wide">智卷错题本</span>
+            </div>
+            <p class="text-center">© 2026 Intelligent Error Book Generation System. All rights reserved.</p>
+            <div class="flex gap-6 pr-12 md:pr-0">
+              <a href="#" class="hover:text-white/70 transition-colors">架构文档</a>
+              <a href="#" class="hover:text-white/70 transition-colors">隐私政策</a>
+              <a href="#" class="hover:text-white/70 transition-colors">联系我们</a>
+            </div>
+          </div>
+        </div>
 
       </div><!-- /滚动叠盖层 -->
 

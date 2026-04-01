@@ -32,29 +32,27 @@ function onStepClick(idx) {
 }
 
 function getStepIconClass(idx) {
-  if (idx === activeStep.value) {
-    return 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-md shadow-blue-500/30 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]'
-  } else if (idx < activeStep.value) {
-    return 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-blue-600 text-white shadow-md dark:bg-gradient-to-br dark:from-indigo-500 dark:to-indigo-600 dark:shadow-[0_0_20px_rgba(99,102,241,0.4)]'
+  if (idx <= activeStep.value) {
+    return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,87,199,0.3)] transition-all duration-500'
   }
-  return 'step-icon w-16 h-16 rounded-xl flex items-center justify-center mb-6 relative bg-slate-200 text-slate-500 border border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/10'
+  return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-white/[0.02] text-white/25 border border-white/[0.06] transition-all duration-500'
 }
 
 function getStepContainerClass(idx) {
   if (idx === activeStep.value) {
-    return 'workflow-step relative p-6 rounded-2xl cursor-pointer bg-white border border-blue-500 shadow-md scale-105 dark:bg-transparent dark:glass-panel dark:border-indigo-500/50 dark:shadow-[0_0_30px_rgba(99,102,241,0.15)]'
+    return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 backdrop-blur-md border border-white/[0.1] shadow-xl transition-all duration-500 transform scale-105'
   }
-  return 'workflow-step relative p-6 rounded-2xl cursor-pointer bg-transparent border border-transparent hover:bg-slate-100 dark:hover:bg-white/5'
+  return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-transparent to-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/[0.05] transition-all duration-500'
 }
 
 function getStepTitleClass(idx) {
-  if (idx === activeStep.value) return 'step-title text-xl font-bold mb-2 text-slate-900 dark:text-white'
-  return 'step-title text-xl font-bold mb-2 text-slate-500 dark:text-slate-400'
+  if (idx === activeStep.value) return 'text-sm font-semibold mb-1 text-white/90'
+  return 'text-sm font-semibold mb-1 text-white/40'
 }
 
 function getStepDescClass(idx) {
-  if (idx === activeStep.value) return 'step-desc text-sm text-blue-600 dark:text-indigo-200'
-  return 'step-desc text-sm text-slate-500 dark:text-slate-500'
+  if (idx === activeStep.value) return 'text-xs text-white/50'
+  return 'text-xs text-white/25'
 }
 
 function getProgressWidth() {
@@ -71,29 +69,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- 工作流演示区 -->
-  <section id="workflow" class="relative z-10 min-h-screen flex flex-col justify-center py-24 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 dark:from-[#0A0A0F] dark:via-slate-950 dark:to-[#0A0A0F]">
-    <!-- 装饰光晕 -->
-    <div class="pointer-events-none absolute inset-0 z-0">
-      <div class="absolute top-1/4 left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 blur-[140px]"></div>
-      <div class="absolute bottom-1/4 right-[-10%] w-[400px] h-[400px] rounded-full bg-cyan-600/10 blur-[120px]"></div>
-    </div>
-    <div class="reveal relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-20">
-        <h2 class="text-3xl md:text-4xl font-bold mb-6 text-white">极简四步，自动运转</h2>
-        <p class="text-slate-400 text-base">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
+  <section id="workflow" class="relative z-10 py-24 overflow-hidden">
+    <div class="reveal max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
+      <div class="text-center mb-16">
+        <h2 class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep" style="
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-size: 200% auto;
+          ">极简四步，自动运转</h2>
+        <p class="text-white/40 text-sm">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
       </div>
 
-      <div class="relative max-w-5xl mx-auto">
-        <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-white/8 -translate-y-1/2 z-0 rounded-full">
+      <div class="relative max-w-4xl mx-auto">
+        <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-px bg-white/[0.06] -translate-y-1/2 z-0">
           <div
-            id="progress-bar"
-            class="absolute top-0 left-0 h-full bg-blue-500 dark:bg-gradient-to-r dark:from-cyan-500 dark:via-indigo-500 dark:to-indigo-500 shadow-blue-500/50 dark:shadow-indigo-500/50 transition-all duration-700 ease-in-out"
+            class="absolute top-0 left-0 h-full bg-indigo-500/40 transition-all duration-700 ease-in-out"
             :style="{ width: getProgressWidth() }"
           ></div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 relative z-10">
           <div
             v-for="(s, i) in STEPS"
             :key="s.num"
@@ -103,14 +97,10 @@ onUnmounted(() => {
           >
             <div class="flex flex-col items-center text-center">
               <div :class="getStepIconClass(i)">
-                <div
-                  class="step-ping absolute inset-0 rounded-2xl bg-indigo-400 animate-ping opacity-20"
-                  :class="i === activeStep ? '' : 'hidden'"
-                ></div>
-                <component :is="iconMap[s.icon]" class="w-6 h-6" />
+                <component :is="iconMap[s.icon]" class="w-5 h-5" />
               </div>
               <h4 :class="getStepTitleClass(i)">
-                <span class="text-blue-500 dark:text-indigo-500 mr-2 font-mono text-sm">{{ s.num }}</span> {{ s.title }}
+                <span class="text-indigo-400/60 mr-1.5 font-mono text-xs">{{ s.num }}</span> {{ s.title }}
               </h4>
               <p :class="getStepDescClass(i)">{{ s.desc }}</p>
             </div>
