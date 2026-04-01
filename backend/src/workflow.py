@@ -302,13 +302,32 @@ def _content_fingerprint(q: Dict[str, Any]) -> str:
     return ""
 
 
+def _question_text(q: Dict[str, Any], chars: int = 120) -> str:
+    """提取题目前 chars 字的纯文本，用于相似度计算"""
+    parts = []
+    for block in q.get("content_blocks", []):
+        if block.get("block_type") == "text":
+            parts.append(block.get("content", ""))
+    return "".join(parts)[:chars]
+
+
+def _text_similarity(q1: Dict[str, Any], q2: Dict[str, Any]) -> float:
+    """用 difflib.SequenceMatcher 计算两道题目内容相似度，返回 0~1"""
+    import difflib
+    t1 = _question_text(q1)
+    t2 = _question_text(q2)
+    if not t1 or not t2:
+        return 0.0
+    return difflib.SequenceMatcher(None, t1, t2).ratio()
+
+
 def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按「(大题, 题号)」去重，保留内容最丰富的版本；再按语义消除跨批次丢标题的重复。
+    """按「(大题, 题号)」去重，再用内容相似度消除跨批次重复。
 
     第一轮：同一 (section_title, question_id) 内保留最丰富版本。
-    第二轮：若同一 question_id 同时存在 section!=None 和 section=None 的版本，
-            说明 section=None 的版本来自重叠批次、未能读到大题标题，属于语义重复，
-            保留有 section 的版本，丢弃 section=None 的版本。
+    第二轮：同一 question_id 下若有多份，两两计算前 120 字相似度；
+            相似度 ≥ 0.75 视为重复，优先保留有 section_title 的版本，
+            相似度 < 0.75 视为不同大题下的同号题，全部保留。
     """
     if not questions:
         return []
@@ -327,26 +346,38 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             section = q.get("section_title") or ""
             groups[(section, qid)].append(q)
 
-    result: List[Dict[str, Any]] = list(no_id)
+    after_round1: List[Dict[str, Any]] = list(no_id)
     for qs in groups.values():
-        result.append(max(qs, key=_question_richness))
+        after_round1.append(max(qs, key=_question_richness))
 
-    # ── 第二轮：语义去重——section=None 与 section!=None 同 qid 时丢弃无标题版本 ──
+    # ── 第二轮：内容相似度去重 ────────────────────────────────
     by_qid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for q in result:
+    for q in after_round1:
         by_qid[q.get("question_id", "")].append(q)
 
-    final: List[Dict[str, Any]] = []
+    SIMILARITY_THRESHOLD = 0.75
+    final: List[Dict[str, Any]] = list(no_id)
+
     for qid, entries in by_qid.items():
         if not qid:
             continue
-        sectioned = [e for e in entries if e.get("section_title")]
-        unsectioned = [e for e in entries if not e.get("section_title")]
-        if sectioned and unsectioned:
-            # 有 section 的版本已完整包含该题，section=None 的是重叠批次的残缺副本
-            final.extend(sectioned)
-        else:
+        if len(entries) == 1:
             final.extend(entries)
+            continue
+
+        # 按「有 section > 无 section，内容丰富度降序」排列，确保保留最优版本
+        entries.sort(key=lambda q: (
+            0 if q.get("section_title") else 1,
+            -_question_richness(q)
+        ))
+
+        kept: List[Dict[str, Any]] = []
+        for candidate in entries:
+            # 若与已保留的任意一题相似度超过阈值，视为重复，丢弃
+            if any(_text_similarity(candidate, k) >= SIMILARITY_THRESHOLD for k in kept):
+                continue
+            kept.append(candidate)
+        final.extend(kept)
 
     # ── 排序：section 首次出现顺序 + 题号 ──────────────────────
     section_order: Dict[str, int] = {}
