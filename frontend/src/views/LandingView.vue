@@ -2,7 +2,10 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useTheme } from '../composables/useTheme.js'
 
-const { initTheme } = useTheme()
+const { initTheme, setTheme, isDark } = useTheme()
+
+// Landing 页固定深色：记住用户原始主题，离开时恢复
+let savedTheme = null
 
 import LandingNav from '../components/landing/LandingNav.vue'
 import LandingHero from '../components/landing/LandingHero.vue'
@@ -210,6 +213,10 @@ function setupRevealObserver() {
 onMounted(async () => {
   initTheme()
 
+  // Landing 页强制深色模式
+  savedTheme = isDark.value ? 'dark' : 'light'
+  if (!isDark.value) setTheme(true)
+
   // 不再锁定 body overflow，中间页面允许正常滚动
 
   await nextTick()
@@ -243,6 +250,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // 离开 Landing 页时恢复用户原有主题
+  if (savedTheme === 'light') setTheme(false)
+
   if (wheelUnlisten) wheelUnlisten()
   if (scrollUnlisten) scrollUnlisten()
   if (revealObserver) revealObserver.disconnect()
