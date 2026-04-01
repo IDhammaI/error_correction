@@ -1,6 +1,7 @@
 <script setup>
 import { useTheme } from '../../composables/useTheme.js'
 import LandingButton from './LandingButton.vue'
+import BrandLogo from '../BrandLogo.vue'
 
 const { isDark, toggleTheme } = useTheme()
 
@@ -25,7 +26,7 @@ const emit = defineEmits(['scrollToSection'])
       <div class="flex justify-between items-center h-14">
         <!-- Logo -->
         <div class="flex items-center gap-2.5">
-          <img src="/logo.svg" class="w-5 h-5" alt="logo" />
+          <BrandLogo size="sm" />
           <span class="text-sm font-semibold text-white/90 tracking-wide">智卷错题本</span>
         </div>
 
