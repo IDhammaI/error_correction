@@ -303,18 +303,19 @@ def _content_fingerprint(q: Dict[str, Any]) -> str:
 
 
 def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按「(大题, 题号)」去重，保留内容最丰富的版本。
+    """按「(大题, 题号)」去重，保留内容最丰富的版本；再按语义消除跨批次丢标题的重复。
 
-    同一 (section_title, question_id) 下的多份必然来自重叠页，
-    无论 LLM 输出是否一致，均只保留 _question_richness 最高的那份。
-    不同大题的同号题因 key 不同，不会跨大题合并。
+    第一轮：同一 (section_title, question_id) 内保留最丰富版本。
+    第二轮：若同一 question_id 同时存在 section!=None 和 section=None 的版本，
+            说明 section=None 的版本来自重叠批次、未能读到大题标题，属于语义重复，
+            保留有 section 的版本，丢弃 section=None 的版本。
     """
     if not questions:
         return []
 
     from collections import defaultdict
 
-    # 以 (section_title, question_id) 为复合键分组，避免跨大题误合并
+    # ── 第一轮：按 (section, qid) 复合键去重 ──────────────────
     groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
     no_id: List[Dict[str, Any]] = []
 
@@ -327,24 +328,38 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             groups[(section, qid)].append(q)
 
     result: List[Dict[str, Any]] = list(no_id)
-
     for qs in groups.values():
-        # 同一 (section, qid) 下的多份只可能来自重叠页，直接保留内容最丰富的版本
         result.append(max(qs, key=_question_richness))
 
-    # 按「section 首次出现顺序 + 题号」排序，保证同一大题的题目连续排列
-    # 以原始输入顺序确定各 section 的先后（批次并行时以先出现者为准）
+    # ── 第二轮：语义去重——section=None 与 section!=None 同 qid 时丢弃无标题版本 ──
+    by_qid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for q in result:
+        by_qid[q.get("question_id", "")].append(q)
+
+    final: List[Dict[str, Any]] = []
+    for qid, entries in by_qid.items():
+        if not qid:
+            continue
+        sectioned = [e for e in entries if e.get("section_title")]
+        unsectioned = [e for e in entries if not e.get("section_title")]
+        if sectioned and unsectioned:
+            # 有 section 的版本已完整包含该题，section=None 的是重叠批次的残缺副本
+            final.extend(sectioned)
+        else:
+            final.extend(entries)
+
+    # ── 排序：section 首次出现顺序 + 题号 ──────────────────────
     section_order: Dict[str, int] = {}
     for q in questions:
         s = q.get("section_title") or ""
         if s not in section_order:
             section_order[s] = len(section_order)
 
-    result.sort(key=lambda q: (
+    final.sort(key=lambda q: (
         section_order.get(q.get("section_title") or "", 0),
         _sort_key(q.get("question_id", ""))
     ))
-    return result
+    return final
 
 
 def _question_richness(q: Dict[str, Any]) -> int:
