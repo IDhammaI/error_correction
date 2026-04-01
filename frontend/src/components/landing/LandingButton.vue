@@ -6,6 +6,8 @@ const props = defineProps({
   size: { type: String, default: 'md' },            // sm | md
   to: { type: String, default: '' },                // RouterLink 目标
   href: { type: String, default: '' },              // 普通链接
+  type: { type: String, default: 'button' },        // button | submit
+  disabled: { type: Boolean, default: false },
 })
 
 const tag = computed(() => {
@@ -17,7 +19,7 @@ const tag = computed(() => {
 const bindProps = computed(() => {
   if (props.to) return { to: props.to }
   if (props.href) return { href: props.href }
-  return { type: 'button' }
+  return { type: props.type, disabled: props.disabled }
 })
 </script>
 
@@ -26,7 +28,7 @@ const bindProps = computed(() => {
     :is="tag"
     v-bind="bindProps"
     :class="[
-      'landing-btn relative overflow-hidden inline-flex items-center justify-center font-medium gap-2 transition-all duration-200',
+      'landing-btn relative overflow-hidden inline-flex items-center justify-center font-medium gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed',
       size === 'sm' ? 'h-8 px-4 text-xs rounded-lg' : 'h-10 px-6 text-sm rounded-xl',
       {
         'landing-btn--primary': variant === 'primary',
