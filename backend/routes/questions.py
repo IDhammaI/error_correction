@@ -423,9 +423,9 @@ def save_to_db():
     """
     try:
         data = request.get_json(silent=True) or {}
-        selected_ids = data.get('selected_ids', [])
+        selected_uids = data.get('selected_ids', [])
 
-        if not isinstance(selected_ids, list) or not selected_ids:
+        if not isinstance(selected_uids, list) or not selected_uids:
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
         results_dir = settings.results_dir
@@ -436,19 +436,20 @@ def save_to_db():
         with open(questions_file, 'r', encoding='utf-8') as f:
             questions = json.load(f)
 
-        selected_questions = [q for q in questions if q.get('question_id') in selected_ids]
+        uid_set = set(selected_uids)
+        selected_questions = [q for q in questions if q.get('uid') in uid_set]
         if not selected_questions:
             return jsonify({'success': False, 'error': '未找到选中的题目'}), 400
 
-        # 合并前端传来的 answer/user_answer（按 question_id 匹配）
-        answers_map = {a['question_id']: a for a in data.get('answers', []) if 'question_id' in a}
+        # 合并前端传来的 answer/user_answer（按 uid 匹配）
+        answers_map = {a['uid']: a for a in data.get('answers', []) if 'uid' in a}
         for sq in selected_questions:
-            qid = sq.get('question_id')
-            if qid and qid in answers_map:
-                if 'answer' in answers_map[qid]:
-                    sq['answer'] = answers_map[qid]['answer']
-                if 'user_answer' in answers_map[qid]:
-                    sq['user_answer'] = answers_map[qid]['user_answer']
+            uid = sq.get('uid')
+            if uid and uid in answers_map:
+                if 'answer' in answers_map[uid]:
+                    sq['answer'] = answers_map[uid]['answer']
+                if 'user_answer' in answers_map[uid]:
+                    sq['user_answer'] = answers_map[uid]['user_answer']
 
         # 读取科目信息
         subject = _read_split_subject()
@@ -601,8 +602,10 @@ def export_from_db():
                     'knowledge_tags': [m.tag.tag_name for m in (q.tags or []) if m.tag],
                 })
 
-            str_ids = [str(qid) for qid in selected_ids]
-            output_path = export_wrongbook_md(questions, str_ids)
+            # DB 导出的题目已按 selected_ids 过滤完毕，赋顺序 uid 后全部导出
+            for i, q in enumerate(questions):
+                q['uid'] = str(i)
+            output_path = export_wrongbook_md(questions, [str(i) for i in range(len(questions))])
 
         return jsonify({
             'success': True,

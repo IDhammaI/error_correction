@@ -62,7 +62,7 @@ def prepare_input(file_path: str) -> List[str]:
 
 def export_wrongbook(
     questions: List[Dict[str, Any]],
-    selected_ids: List[str],
+    selected_uids: List[str],
     output_path: str = None,
     batch_info: Dict[str, Any] = None
 ) -> str:
@@ -73,7 +73,7 @@ def export_wrongbook(
 
     Args:
         questions: 题目列表
-        selected_ids: 用户选择的题目ID列表
+        selected_uids: 用户选择的题目 uid 列表
         output_path: 输出Markdown文件路径（可选）
         batch_info: 批次信息（用于入库），包含 original_filename, subject 等
 
@@ -84,16 +84,30 @@ def export_wrongbook(
         os.makedirs(settings.results_dir, exist_ok=True)
         output_path = os.path.join(settings.results_dir, "wrongbook.md")
 
-    # 过滤选中的题目
-    selected_questions = [q for q in questions if q.get('question_id') in selected_ids]
+    # 用 uid 过滤选中的题目，保持原始顺序
+    uid_set = set(selected_uids)
+    selected_questions = [q for q in questions if q.get('uid') in uid_set]
 
     # 构建Markdown内容
     md_content = "# 错题本\n\n"
     md_content += f"> 共收录 {len(selected_questions)} 道题目\n\n"
     md_content += "---\n\n"
 
-    for i, q in enumerate(selected_questions, start=1):
-        md_content += f"## {i}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
+    current_section = object()  # 哨兵值，确保第一题一定触发section头输出
+    serial = 0  # 全局序号
+
+    for q in selected_questions:
+        section = q.get('section_title')
+
+        # 有大题结构时，输出大题分组标题
+        if section != current_section:
+            current_section = section
+            if section:
+                md_content += f"## {section}\n\n"
+
+        serial += 1
+        heading = "###" if section else "##"
+        md_content += f"{heading} {serial}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
 
         # 获取图片引用列表，用于填充空的 image block
         image_refs = q.get('image_refs') or []
@@ -130,13 +144,14 @@ def export_wrongbook(
                     image_path = f"{rel_struct_dir}/imgs/{image_path[len('/images/') :]}"
                 md_content += f"![图片]({image_path})\n\n"
 
-        md_content += "### 我的答案\n\n"
+        answer_prefix = "####" if section else "###"
+        md_content += f"{answer_prefix} 我的答案\n\n"
         md_content += "_（请在此处填写你的答案）_\n\n"
 
-        md_content += "### 正确答案\n\n"
+        md_content += f"{answer_prefix} 正确答案\n\n"
         md_content += "_（请在此处填写正确答案）_\n\n"
 
-        md_content += "### 解析\n\n"
+        md_content += f"{answer_prefix} 解析\n\n"
         md_content += "_（请在此处填写解题思路和知识点）_\n\n"
 
         md_content += "---\n\n"
