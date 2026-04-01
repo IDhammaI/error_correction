@@ -237,11 +237,17 @@ const renameText = ref('')
 function toggleChatMenu(id) {
   chatMenuOpenId.value = chatMenuOpenId.value === id ? null : id
 }
+function closeChatMenu() {
+  chatMenuOpenId.value = null
+}
 
-function startRenameChat(s) {
+async function startRenameChat(s) {
   chatMenuOpenId.value = null
   renamingChatId.value = s.id
   renameText.value = s.title
+  await nextTick()
+  const input = document.querySelector('input[data-rename-input]')
+  if (input) { input.focus(); input.selectionStart = input.selectionEnd = input.value.length }
 }
 
 async function confirmRenameChat(s) {
@@ -682,6 +688,7 @@ const pageLoading = ref(true)
 onMounted(() => {
   initTheme()
   document.addEventListener('keydown', onKeydown)
+  document.addEventListener('click', closeChatMenu)
   loadAiChatSessions()
 
   // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
@@ -712,6 +719,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopFakeProgress()
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('click', closeChatMenu)
 })
 </script>
 
@@ -829,12 +837,12 @@ onBeforeUnmount(() => {
             <input
               v-if="renamingChatId === s.id"
               v-model="renameText"
+              data-rename-input
               @click.stop
               @keydown.enter="confirmRenameChat(s)"
               @keydown.escape="renamingChatId = null"
               @blur="confirmRenameChat(s)"
               class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-blue-500 dark:border-indigo-400 py-0.5"
-              autofocus
             />
             <span v-else class="flex-1 truncate text-xs">{{ s.title }}</span>
 
