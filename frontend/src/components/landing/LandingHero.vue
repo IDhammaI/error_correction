@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
 import LandingButton from './LandingButton.vue'
+import LandingPill from './LandingPill.vue'
 
 const emit = defineEmits(['scrollToSection'])
 
@@ -120,10 +121,7 @@ onMounted(() => {
     <section id="hero" class="relative w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto z-10">
       <div class="text-center">
         <!-- 标签 -->
-        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-white/50">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          PaddleOCR + LangChain Agent
-        </div>
+        <LandingPill class="mb-6" />
 
         <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-white">
           重塑错题整理<br />
@@ -205,4 +203,5 @@ onMounted(() => {
 .animate-gradient-sweep {
   animation: gradient-sweep 3s ease-in-out infinite alternate;
 }
+
 </style>
