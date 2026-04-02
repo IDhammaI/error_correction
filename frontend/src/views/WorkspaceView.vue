@@ -350,7 +350,13 @@ const closeModal = () => {
   modalScale.value = 1
   document.body.style.overflow = ''
 }
-const onKeydown = (e) => { if (e.key === 'Escape' && modalOpen.value) closeModal() }
+const onKeydown = (e) => {
+  if (e.key === 'Escape' && modalOpen.value) closeModal()
+  if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
+    e.preventDefault()
+    selectAll()
+  }
+}
 
 // ---- 上传状态 ----
 const uploadMode = ref('exam')  // 'exam'（试卷分割）或 'note'（笔记整理）
