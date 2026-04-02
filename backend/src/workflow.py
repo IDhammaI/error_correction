@@ -410,6 +410,10 @@ def _fix_leading_images(questions: List[Dict[str, Any]]) -> None:
         if not leading_images:
             continue
 
+        # 若去掉 leading images 后该题没有任何文本，说明它本身是纯图片题，不搬移
+        if not any(b.get("block_type") == "text" for b in rest):
+            continue
+
         # 移到前一道题末尾
         prev_q = questions[i - 1]
         prev_blocks = prev_q.get("content_blocks") or []
