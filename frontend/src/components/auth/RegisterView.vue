@@ -1,8 +1,8 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '../composables/useAuth.js'
-import LandingButton from './landing/LandingButton.vue'
+import { useAuth } from '../../composables/useAuth.js'
+import LandingButton from '../landing/LandingButton.vue'
 
 const router = useRouter()
 const { currentUser } = useAuth()
@@ -11,7 +11,57 @@ const loading = ref(false)
 const showPwd = ref(false)
 const error = ref('')
 const success = ref('')
-const form = reactive({ username: '', email: '', password: '', confirm: '' })
+const form = reactive({ username: '', email: '', password: '', confirm: '', code: '' })
+
+// 验证码相关
+const codeSending = ref(false)
+const countdown = ref(0)
+let countdownTimer = null
+
+onUnmounted(() => { clearInterval(countdownTimer) })
+
+function startCountdown() {
+  countdown.value = 60
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) clearInterval(countdownTimer)
+  }, 1000)
+}
+
+async function sendCode() {
+  if (codeSending.value || countdown.value > 0) return
+  const email = form.email.trim()
+  if (!email || !email.includes('@')) {
+    error.value = '请先输入正确的邮箱'
+    return
+  }
+  error.value = ''
+  codeSending.value = true
+  try {
+    // TODO: 后端接口就绪后移除 mock
+    const useMock = true
+    if (useMock) {
+      await new Promise(r => setTimeout(r, 800))
+      startCountdown()
+      return
+    }
+    const res = await fetch('/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      error.value = data.error || '发送失败'
+    } else {
+      startCountdown()
+    }
+  } catch {
+    error.value = '网络错误，请重试'
+  } finally {
+    codeSending.value = false
+  }
+}
 
 const passwordMismatch = () => form.confirm && form.password !== form.confirm
 
@@ -19,12 +69,13 @@ async function handleRegister() {
   error.value = ''
   success.value = ''
   if (passwordMismatch()) { error.value = '两次密码不一致'; return }
+  if (!form.code.trim()) { error.value = '请输入验证码'; return }
   loading.value = true
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: form.username, email: form.email, password: form.password }),
+      body: JSON.stringify({ username: form.username, email: form.email, password: form.password, code: form.code.trim() }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -59,13 +110,42 @@ async function handleRegister() {
 
     <div>
       <label class="block text-sm font-medium text-white/60 mb-2">邮箱</label>
+      <div class="flex gap-2">
+        <input
+          v-model="form.email"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="your@email.com"
+          class="flex-1 min-w-0 h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        />
+        <button
+          type="button"
+          @click="sendCode"
+          :disabled="codeSending || countdown > 0"
+          class="shrink-0 h-10 px-4 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="countdown > 0
+            ? 'bg-white/[0.03] text-white/30 border border-white/[0.06]'
+            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/30'"
+        >
+          <i v-if="codeSending" class="fas fa-spinner fa-spin"></i>
+          <template v-else-if="countdown > 0">{{ countdown }}s</template>
+          <template v-else>发送验证码</template>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-white/60 mb-2">验证码</label>
       <input
-        v-model="form.email"
-        type="email"
+        v-model="form.code"
+        type="text"
         required
-        autocomplete="email"
-        placeholder="your@email.com"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        inputmode="numeric"
+        maxlength="6"
+        placeholder="6 位验证码"
+        autocomplete="one-time-code"
+        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm tracking-widest"
       />
     </div>
 
