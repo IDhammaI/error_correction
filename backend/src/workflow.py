@@ -301,6 +301,11 @@ def _identify_subject(
     return ""
 
 
+import re as _re
+import difflib as _difflib
+_HTML_TAG_RE = _re.compile(r"<[^>]+>")
+
+
 def _content_fingerprint(q: Dict[str, Any]) -> str:
     """取第一个非空文本块的前 50 字作为内容指纹。
 
@@ -314,23 +319,166 @@ def _content_fingerprint(q: Dict[str, Any]) -> str:
     return ""
 
 
-def _question_text(q: Dict[str, Any], chars: int = 120) -> str:
-    """提取题目前 chars 字的纯文本，用于相似度计算"""
+def _question_text(q: Dict[str, Any], chars: int = 400) -> str:
+    """提取题目纯文本，用于相似度计算。
+
+    包含：content_blocks 中的 text 块（去除 HTML 标签）+ options 选项列表。
+    image 块不参与计算。
+
+    chars 上限设为 400：覆盖大多数题目的完整内容，同时避免超长题目的 O(n²) 开销。
+
+    去除 HTML 标签的原因：表格题目在不同批次的 table 结构可能不同（th/td 排列差异），
+    但纯文本内容相同。去标签后两个版本的实验描述文字完全一致，相似度可正确判断。
+
+    纳入 options 的原因：跨页截断时题干可能不同，但选项往往相同，是最稳定的指纹。
+    """
     parts = []
     for block in q.get("content_blocks", []):
         if block.get("block_type") == "text":
-            parts.append(block.get("content", ""))
+            content = block.get("content", "")
+            content = _HTML_TAG_RE.sub("", content)   # 去除 HTML 标签，保留文本
+            parts.append(content)
+    for opt in q.get("options") or []:
+        if isinstance(opt, str):
+            parts.append(opt)
     return "".join(parts)[:chars]
 
 
+def _image_paths(q: Dict[str, Any]) -> set:
+    """提取题目所有 image block 的路径集合，用于图片指纹比对。"""
+    paths = set()
+    for block in q.get("content_blocks", []):
+        if block.get("block_type") == "image":
+            p = block.get("content", "").strip()
+            if p:
+                paths.add(p)
+    return paths
+
+
 def _text_similarity(q1: Dict[str, Any], q2: Dict[str, Any]) -> float:
-    """用 difflib.SequenceMatcher 计算两道题目内容相似度，返回 0~1"""
-    import difflib
+    """计算两道题目内容相似度，返回 0~1。
+
+    优先用文本相似度（difflib）；若两题文本均过短（图片题），
+    则用图片路径 Jaccard 系数兜底，避免纯图片题的重复无法被检测到。
+    """
     t1 = _question_text(q1)
     t2 = _question_text(q2)
-    if not t1 or not t2:
-        return 0.0
-    return difflib.SequenceMatcher(None, t1, t2).ratio()
+
+    # 文本足够长时直接用 difflib
+    if len(t1) >= 10 and len(t2) >= 10:
+        return _difflib.SequenceMatcher(None, t1, t2).ratio()
+
+    # 文本过短（图片题）：用图片路径 Jaccard 系数兜底
+    imgs1 = _image_paths(q1)
+    imgs2 = _image_paths(q2)
+    if imgs1 or imgs2:
+        intersection = len(imgs1 & imgs2)
+        union = len(imgs1 | imgs2)
+        return intersection / union if union else 0.0
+
+    # 文本和图片都为空：不认为是重复
+    return 0.0
+
+
+def _fix_leading_images(questions: List[Dict[str, Any]]) -> None:
+    """后处理：将题目 content_blocks 中排在所有文本之前的图片移到前一道题末尾。
+
+    产生原因：试卷某题的插图印在下一页顶部，OCR 按页面顺序扫描时，该图片
+    出现在下一题文字之前。Agent 在该批次里将其归入下一题的 content_blocks 首位，
+    实际上属于上一题。
+
+    判断规则：若一道题的 content_blocks 中第一个出现的 text block 之前存在
+    image block，则这些 leading image 属于上一道题，移至上一题末尾。
+    """
+    for i in range(1, len(questions)):
+        q = questions[i]
+        blocks = q.get("content_blocks") or []
+        if not blocks:
+            continue
+
+        # 分离开头的连续 image 块（在第一个 text 块之前）
+        leading_images: List[Dict[str, Any]] = []
+        rest: List[Dict[str, Any]] = []
+        found_text = False
+        for block in blocks:
+            if not found_text and block.get("block_type") == "image":
+                leading_images.append(block)
+            else:
+                if block.get("block_type") == "text":
+                    found_text = True
+                rest.append(block)
+
+        if not leading_images:
+            continue
+
+        # 移到前一道题末尾
+        prev_q = questions[i - 1]
+        prev_blocks = prev_q.get("content_blocks") or []
+        prev_q["content_blocks"] = prev_blocks + leading_images
+        q["content_blocks"] = rest
+        logger.info(
+            f"修复 leading image: {len(leading_images)} 张图片 "
+            f"从题目 {q.get('question_id')} 移至题目 {prev_q.get('question_id')}"
+        )
+
+
+def _propagate_section_between_batches(batch_results: List[List[Dict[str, Any]]]) -> None:
+    """跨批次传播 section_title，原地修改 batch_results。
+
+    并行批次处理完成后调用。若批次 i 开头若干题的 section_title=None，
+    说明大题标题在前一批次的页面里，当前批次窗口看不到。
+    从批次 i-1 的末尾向前找最后一个有 section_title 的题，将其 section_title
+    赋给批次 i 中连续的 section=None 开头题，遇到批次 i 自己识别出 section_title
+    的题时停止传播。
+
+    防误传：若待传播 section 是在批次 i-1 中由题号较大的题建立的，则不向题号
+    更小的题传播（说明该 None 题属于更早的大题，而非当前 last_section）。
+    """
+    def _to_int_id(q) -> int | None:
+        try:
+            return int(str(q.get("question_id", "")).strip())
+        except (ValueError, TypeError):
+            return None
+
+    for i in range(1, len(batch_results)):
+        # 找上一批次最后一个有 section_title 的题
+        last_section = None
+        for q in reversed(batch_results[i - 1]):
+            if q.get("section_title"):
+                last_section = q["section_title"]
+                break
+
+        if not last_section:
+            continue
+
+        # 找上一批次中 last_section 首次出现的题号（该节最小题号）
+        first_section_id: int | None = None
+        for q in batch_results[i - 1]:
+            if q.get("section_title") == last_section:
+                qid = _to_int_id(q)
+                if qid is not None:
+                    if first_section_id is None or qid < first_section_id:
+                        first_section_id = qid
+
+        # 将 last_section 赋给本批次开头连续的 section=None 题
+        # 防误传：若待传播题的题号 < first_section_id，说明它属于更早的大题，跳过
+        propagated = 0
+        for q in batch_results[i]:
+            if not q.get("section_title"):
+                qid = _to_int_id(q)
+                if first_section_id is not None and qid is not None and qid < first_section_id:
+                    # 该题题号比 last_section 第一题还小，不应继承该 section
+                    continue
+                q["section_title"] = last_section
+                propagated += 1
+            else:
+                break  # 本批次已有自己识别出的 section，停止传播
+
+        if propagated:
+            logger.info(
+                f"跨批次 section 传播: 批次 {i} 前 {propagated} 道题 "
+                f"继承 section_title={repr(last_section)}"
+            )
 
 
 def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -345,6 +493,12 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return []
 
     from collections import defaultdict
+
+    # ── 预处理：将 question_id 统一归一化为 str，防止 int/str 类型不一致导致去重失效 ──
+    for q in questions:
+        qid = q.get("question_id")
+        if qid is not None:
+            q["question_id"] = str(qid).strip()
 
     # ── 第一轮：按 (section, qid) 复合键去重 ──────────────────
     groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
@@ -362,13 +516,19 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for qs in groups.values():
         after_round1.append(max(qs, key=_question_richness))
 
-    # ── 第二轮：内容相似度去重 ────────────────────────────────
+    # ── 第二轮：结构优先 + 内容相似度去重 ───────────────────────
+    # 策略：
+    #   1. 同一 qid 下同时存在有 section 和无 section 版本 → 直接丢弃所有 section=None 版本
+    #      （section=None 说明该批次只捕获到选项/部分内容，有 section 的是完整版本）
+    #   2. 同一 qid 下均有 section（不同 section）→ difflib 相似度 ≥ 0.75 视为重复，保留最优
+    #   3. 同一 qid 下均无 section → 保留内容最丰富的一份
     by_qid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for q in after_round1:
         by_qid[q.get("question_id", "")].append(q)
 
     SIMILARITY_THRESHOLD = 0.75
     final: List[Dict[str, Any]] = list(no_id)
+    round2_removed = 0
 
     for qid, entries in by_qid.items():
         if not qid:
@@ -377,7 +537,25 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             final.extend(entries)
             continue
 
-        # 按「有 section > 无 section，内容丰富度降序」排列，确保保留最优版本
+        sectioned = [q for q in entries if q.get("section_title")]
+        unsectioned = [q for q in entries if not q.get("section_title")]
+
+        # 策略1：有 section 版本存在时，丢弃全部 section=None 版本
+        if sectioned and unsectioned:
+            dropped = len(unsectioned)
+            round2_removed += dropped
+            for q in unsectioned:
+                logger.debug(
+                    f"二次去重剔除(结构): qid={qid} "
+                    f"section=None，保留有大题标题的版本，richness={_question_richness(q)}"
+                )
+            entries = sectioned
+
+        if len(entries) == 1:
+            final.extend(entries)
+            continue
+
+        # 策略2/3：全部有 section 或全部无 section → difflib 去重
         entries.sort(key=lambda q: (
             0 if q.get("section_title") else 1,
             -_question_richness(q)
@@ -385,21 +563,35 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         kept: List[Dict[str, Any]] = []
         for candidate in entries:
-            # 若与已保留的任意一题相似度超过阈值，视为重复，丢弃
-            if any(_text_similarity(candidate, k) >= SIMILARITY_THRESHOLD for k in kept):
-                continue
-            kept.append(candidate)
+            sim = max(
+                (_text_similarity(candidate, k) for k in kept),
+                default=0.0,
+            )
+            if sim >= SIMILARITY_THRESHOLD:
+                round2_removed += 1
+                logger.debug(
+                    f"二次去重剔除(相似度): qid={qid} "
+                    f"section={repr(candidate.get('section_title'))} "
+                    f"相似度={sim:.2f}"
+                )
+            else:
+                kept.append(candidate)
         final.extend(kept)
 
-    # ── 排序：section 首次出现顺序 + 题号 ──────────────────────
+    if round2_removed:
+        logger.info(f"二次去重: 剔除 {round2_removed} 道重复题目（结构优先 + 相似度阈值={SIMILARITY_THRESHOLD}）")
+        console.print(f"[yellow]二次去重: 剔除 {round2_removed} 道重复题目[/yellow]")
+
+    # ── 排序：有 section 的题按首次出现顺序 + 题号，section=None 的题排最后 ──
     section_order: Dict[str, int] = {}
     for q in questions:
-        s = q.get("section_title") or ""
-        if s not in section_order:
+        s = q.get("section_title")
+        if s and s not in section_order:
             section_order[s] = len(section_order)
 
     final.sort(key=lambda q: (
-        section_order.get(q.get("section_title") or "", 0),
+        0 if q.get("section_title") else 1,          # 有 section 的排前，None 排后
+        section_order.get(q.get("section_title") or "", 999),
         _sort_key(q.get("question_id", ""))
     ))
     return final
@@ -562,7 +754,9 @@ def split_questions_node(state: WorkflowState) -> dict:
     split_elapsed = time.time() - split_start
     logger.info(f"并行分割完成, 耗时 {split_elapsed:.2f}s")
 
-    # ── Step 6: 合并 + 去重 ──
+    # ── Step 6: 跨批次 section 传播 + 合并 + 去重 ──
+    _propagate_section_between_batches(batch_results)
+
     all_questions = []
     for questions in batch_results:
         all_questions.extend(questions)
@@ -574,6 +768,9 @@ def split_questions_node(state: WorkflowState) -> dict:
     if before_dedup > after_dedup:
         logger.info(f"去重: {before_dedup} → {after_dedup} 道题目（移除 {before_dedup - after_dedup} 道重复）")
         console.print(f"[yellow]去重: 移除 {before_dedup - after_dedup} 道重复题目[/yellow]")
+
+    # 修复 leading image（页面顶部图属于上一题）
+    _fix_leading_images(deduped)
 
     # 为每道题赋全局唯一 uid（顺序字符串），供前端选择和导出时使用
     for i, q in enumerate(deduped):
