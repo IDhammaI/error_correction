@@ -153,28 +153,40 @@ def _build_overlapping_batches(
     batch_size: int = 2,
     overlap: int = 1,
 ) -> List[List[Dict[str, Any]]]:
-    """构建重叠批次
+    """构建重叠批次，并为每页打上 is_primary 标记。
 
     每批 batch_size 页，相邻批次重叠 overlap 页。
     例如 5 页, batch_size=2, overlap=1:
-        批次0: [page0, page1]
-        批次1: [page1, page2]
-        批次2: [page2, page3]
-        批次3: [page3, page4]
+        批次0: [page0(primary), page1(context)]
+        批次1: [page1(primary), page2(context)]
+        批次2: [page2(primary), page3(context)]
+        批次3: [page3(primary), page4(primary←最后一批)]
+
+    is_primary=True  → Agent 必须提取该页开始的所有题目
+    is_primary=False → 仅作跨页上下文，Agent 不提取该页独立开始的题目
+
+    最后一批次的所有页均为 primary（最后一页没有后续批次来处理它）。
     """
     if not ocr_data:
         return []
 
     n_pages = len(ocr_data)
     if n_pages <= batch_size:
-        return [ocr_data]
+        # 只有一批：全部页都是 primary
+        return [[dict(page, is_primary=True) for page in ocr_data]]
 
     step = batch_size - overlap
     batches = []
     for start in range(0, n_pages, step):
         end = min(start + batch_size, n_pages)
-        batches.append(ocr_data[start:end])
-        if end >= n_pages:
+        is_last = (end >= n_pages)
+        batch = []
+        for page_idx, page in enumerate(ocr_data[start:end]):
+            # 第一页始终 primary；最后批次的所有页都 primary
+            primary = (page_idx == 0) or is_last
+            batch.append(dict(page, is_primary=primary))
+        batches.append(batch)
+        if is_last:
             break
 
     return batches
@@ -455,11 +467,6 @@ def split_questions_node(state: WorkflowState) -> dict:
             "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
         }
 
-    # 保存 agent_input.json（供纠错节点使用）
-    agent_input_path = os.path.join(results_dir, "agent_input.json")
-    with open(agent_input_path, 'w', encoding='utf-8') as f:
-        json.dump(ocr_data, f, ensure_ascii=False, indent=2)
-
     total_blocks = sum(len(p.get("blocks", [])) for p in ocr_data)
     ocr_elapsed = time.time() - ocr_start
     logger.info(f"OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block, 耗时 {ocr_elapsed:.2f}s")
@@ -488,7 +495,12 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     # ── Step 4: 构建重叠批次 ──
     batches = _build_overlapping_batches(ocr_data, batch_size=2, overlap=1)
-    console.print(f"[cyan]构建 {len(batches)} 个批次（2页/批, 1页重叠）[/cyan]")
+    console.print(f"[cyan]构建 {len(batches)} 个批次（每批1主页+1上下文页）[/cyan]")
+
+    # 保存完整批次数据到 agent_input.json（含 is_primary 标记，供调试和纠错节点使用）
+    agent_input_path = os.path.join(results_dir, "agent_input.json")
+    with open(agent_input_path, 'w', encoding='utf-8') as f:
+        json.dump(batches, f, ensure_ascii=False, indent=2)
 
     # ── Step 5: 并行分割 ──
     split_start = time.time()
@@ -624,12 +636,26 @@ def correct_questions_node(state: WorkflowState) -> dict:
     console.print(f"[cyan]发现 {len(flagged)} 道题目需要纠错（共 {len(questions)} 道）[/cyan]")
     logger.info(f"开始纠错: {len(flagged)}/{len(questions)} 道题目")
 
-    # 加载原始 OCR 数据作为纠错上下文
+    # 加载 OCR 数据作为纠错上下文
+    # agent_input.json 现在保存的是批次数据（[[page, ...], ...]），需要还原为扁平页面列表
     ocr_context = "{}"
     agent_input_path = os.path.join(settings.results_dir, "agent_input.json")
     if os.path.exists(agent_input_path):
         with open(agent_input_path, 'r', encoding='utf-8') as f:
-            ocr_context = f.read()
+            raw = json.load(f)
+        # 兼容新格式（批次列表）和旧格式（扁平页面列表）
+        if raw and isinstance(raw[0], list):
+            # 新格式：按 page_index 去重，还原为扁平页面列表
+            seen = {}
+            for batch in raw:
+                for page in batch:
+                    idx = page.get("page_index", id(page))
+                    if idx not in seen:
+                        seen[idx] = page
+            flat_pages = [seen[k] for k in sorted(seen)]
+            ocr_context = json.dumps(flat_pages, ensure_ascii=False)
+        else:
+            ocr_context = json.dumps(raw, ensure_ascii=False)
 
     # 调用纠错工具
     from agents.error_correction.tools import correct_batch
