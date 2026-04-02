@@ -4,10 +4,12 @@
 """
 
 import os
+import re as _re
 import json
 import logging
 import time
 import traceback
+import difflib as _difflib
 from typing import List, Dict, Any, TypedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
@@ -15,6 +17,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from core.config import settings
 from .utils import prepare_input, export_wrongbook, simplify_ocr_results, run_async
+
+_HTML_TAG_RE = _re.compile(r"<[^>]+>")
 console = Console()
 
 # 配置日志
@@ -301,11 +305,6 @@ def _identify_subject(
     return ""
 
 
-import re as _re
-import difflib as _difflib
-_HTML_TAG_RE = _re.compile(r"<[^>]+>")
-
-
 def _content_fingerprint(q: Dict[str, Any]) -> str:
     """取第一个非空文本块的前 50 字作为内容指纹。
 
@@ -441,24 +440,23 @@ def _propagate_section_between_batches(batch_results: List[List[Dict[str, Any]]]
             return None
 
     for i in range(1, len(batch_results)):
-        # 找上一批次最后一个有 section_title 的题
+        # 单次遍历上一批次：同时找 last_section 和该节首次出现的最小题号
         last_section = None
-        for q in reversed(batch_results[i - 1]):
-            if q.get("section_title"):
-                last_section = q["section_title"]
-                break
-
-        if not last_section:
-            continue
-
-        # 找上一批次中 last_section 首次出现的题号（该节最小题号）
         first_section_id: int | None = None
         for q in batch_results[i - 1]:
-            if q.get("section_title") == last_section:
+            s = q.get("section_title")
+            if s:
+                if s != last_section:
+                    # 进入新节，重置首题号
+                    last_section = s
+                    first_section_id = None
                 qid = _to_int_id(q)
                 if qid is not None:
                     if first_section_id is None or qid < first_section_id:
                         first_section_id = qid
+
+        if not last_section:
+            continue
 
         # 将 last_section 赋给本批次开头连续的 section=None 题
         # 防误传：若待传播题的题号 < first_section_id，说明它属于更早的大题，跳过
@@ -542,8 +540,7 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         # 策略1：有 section 版本存在时，丢弃全部 section=None 版本
         if sectioned and unsectioned:
-            dropped = len(unsectioned)
-            round2_removed += dropped
+            round2_removed += len(unsectioned)
             for q in unsectioned:
                 logger.debug(
                     f"二次去重剔除(结构): qid={qid} "
