@@ -910,7 +910,7 @@ onBeforeUnmount(() => {
             </button>
             <div class="border-t border-slate-100 dark:border-white/5"></div>
             <button
-              @click="handleLogout; userMenuOpen = false"
+              @click="handleLogout(); userMenuOpen = false"
               class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
             >
               <i class="fas fa-right-from-bracket w-5 text-center"></i>

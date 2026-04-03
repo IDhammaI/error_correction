@@ -12,7 +12,7 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const url = req.url?.split('?')[0]
-          if (url === '/' || url === '/auth' || url === '/app' || url?.startsWith('/app/')) {
+          if (url === '/' || url === '/auth' || url === '/auth/login' || url === '/auth/register' || url === '/app' || url?.startsWith('/app/')) {
             req.url = '/app.html'
           }
           next()
