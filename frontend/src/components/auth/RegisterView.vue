@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onUnmounted } from 'vue'
+import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import LandingButton from '../landing/LandingButton.vue'
@@ -13,57 +13,65 @@ const error = ref('')
 const success = ref('')
 const form = reactive({ username: '', email: '', password: '', confirm: '', code: '' })
 
-// 验证码相关
-const codeSending = ref(false)
+const sendingCode = ref(false)
 const countdown = ref(0)
 let countdownTimer = null
+let sendDebounceTimer = null
 
-onUnmounted(() => { clearInterval(countdownTimer) })
+const passwordMismatch = () => form.confirm && form.password !== form.confirm
 
-function startCountdown() {
-  countdown.value = 60
+function clearCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
+
+function startCountdown(seconds = 60) {
+  clearCountdown()
+  countdown.value = seconds
   countdownTimer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) clearInterval(countdownTimer)
+    countdown.value -= 1
+    if (countdown.value <= 0) {
+      clearCountdown()
+      countdown.value = 0
+    }
   }, 1000)
 }
 
-async function sendCode() {
-  if (codeSending.value || countdown.value > 0) return
-  const email = form.email.trim()
+async function handleSendCode() {
+  error.value = ''
+  if (sendingCode.value || countdown.value > 0) return
+  const email = (form.email || '').trim()
   if (!email || !email.includes('@')) {
-    error.value = '请先输入正确的邮箱'
+    error.value = '请先填写有效邮箱'
     return
   }
-  error.value = ''
-  codeSending.value = true
-  try {
-    // TODO: 后端接口就绪后移除 mock
-    const useMock = true
-    if (useMock) {
-      await new Promise(r => setTimeout(r, 800))
-      startCountdown()
-      return
+  if (sendDebounceTimer) clearTimeout(sendDebounceTimer)
+  sendDebounceTimer = setTimeout(async () => {
+    sendDebounceTimer = null
+    sendingCode.value = true
+    try {
+      const res = await fetch('/api/auth/send-registration-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        error.value = data.error || '发送失败'
+        return
+      }
+      success.value = '验证码已发送到邮箱，请查收'
+      startCountdown(60)
+    } catch {
+      error.value = '网络错误，请重试'
+    } finally {
+      sendingCode.value = false
     }
-    const res = await fetch('/api/auth/send-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      error.value = data.error || '发送失败'
-    } else {
-      startCountdown()
-    }
-  } catch {
-    error.value = '网络错误，请重试'
-  } finally {
-    codeSending.value = false
-  }
+  }, 280)
 }
-
-const passwordMismatch = () => form.confirm && form.password !== form.confirm
 
 async function handleRegister() {
   error.value = ''
@@ -75,7 +83,13 @@ async function handleRegister() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: form.username, email: form.email, password: form.password, code: form.code.trim() }),
+      credentials: 'include',
+      body: JSON.stringify({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        code: form.code.trim(),
+      }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -91,6 +105,11 @@ async function handleRegister() {
     loading.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  clearCountdown()
+  if (sendDebounceTimer) clearTimeout(sendDebounceTimer)
+})
 </script>
 
 <template>
@@ -121,14 +140,14 @@ async function handleRegister() {
         />
         <button
           type="button"
-          @click="sendCode"
-          :disabled="codeSending || countdown > 0"
+          @click="handleSendCode"
+          :disabled="sendingCode || countdown > 0"
           class="shrink-0 h-10 px-4 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           :class="countdown > 0
             ? 'bg-white/[0.03] text-white/30 border border-white/[0.06]'
             : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/30'"
         >
-          <i v-if="codeSending" class="fas fa-spinner fa-spin"></i>
+          <i v-if="sendingCode" class="fas fa-spinner fa-spin"></i>
           <template v-else-if="countdown > 0">{{ countdown }}s</template>
           <template v-else>发送验证码</template>
         </button>
