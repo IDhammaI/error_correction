@@ -33,6 +33,13 @@ from db.crud.users import (
     get_user_by_login,
 )
 
+from db.crud.email_verification import (
+    get_verification_by_email,
+    upsert_registration_code,
+    delete_verification_by_email,
+    increment_verification_attempts,
+)
+
 from db.crud.tags import (
     _parse_tag_list,
     get_or_create_tag,
@@ -112,6 +119,11 @@ __all__ = [
     "get_user_by_email",
     "get_user_by_id",
     "get_user_by_login",
+    # email verification
+    "get_verification_by_email",
+    "upsert_registration_code",
+    "delete_verification_by_email",
+    "increment_verification_attempts",
     # tags
     "_parse_tag_list",
     "get_or_create_tag",
