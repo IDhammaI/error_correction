@@ -12,7 +12,14 @@
 """
 
 import os
+import sys
 import logging
+
+# 无论从项目根目录执行 `python backend/web_app.py` 还是在 `backend` 下执行 `python web_app.py`，
+# 都把 backend 目录加入 sys.path，保证 `core`、`routes`、`db` 等包解析一致。
+_BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, _BACKEND_ROOT)
 
 from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
@@ -216,6 +223,15 @@ if __name__ == '__main__':
     print("API 地址: http://localhost:5001")
     print("前端开发: cd frontend && npm run dev")
     print("=" * 60)
+    _auth_rules = sorted(
+        r.rule for r in app.url_map.iter_rules() if r.rule.startswith("/api/auth")
+    )
+    print("[路由] /api/auth 已注册:", ", ".join(_auth_rules) if _auth_rules else "(无)")
+    if not any(r.rule == "/api/auth/send-registration-code" for r in app.url_map.iter_rules()):
+        print(
+            "[警告] 未注册 POST /api/auth/send-registration-code，"
+            "请确认 backend/routes/auth.py 已包含该路由并完全重启后端进程。"
+        )
 
     # 从环境变量读取调试模式开关（默认关闭）
     # 开启后 Flask 会自动重载代码变更，并在浏览器显示详细错误信息
