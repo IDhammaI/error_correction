@@ -114,6 +114,11 @@ def auth_register():
     submitted_hash = _hash_registration_code(email, code, pepper)
     now = datetime.utcnow()
 
+    user_id = None
+    username_out = None
+    email_out = None
+    is_admin_out = None
+
     with SessionLocal() as db:
         if crud.get_user_by_email(db, email):
             return jsonify({"success": False, "error": "该邮箱已注册"}), 409
@@ -135,17 +140,22 @@ def auth_register():
         pwd_hash = generate_password_hash(password)
         user = crud.create_user(db, email=email, password_hash=pwd_hash, username=username)
         crud.delete_verification_by_email(db, email)
+        # 将需要的字段提前取出为纯 Python 变量，避免脱离 Session 后访问 ORM 对象触发 DetachedInstanceError
+        user_id = user.id
+        username_out = user.username
+        email_out = user.email
+        is_admin_out = user.is_admin
 
-    session["user_id"] = user.id
-    session["username"] = user.username
+    session["user_id"] = user_id
+    session["username"] = username_out
     return jsonify(
         {
             "success": True,
             "user": {
-                "id": user.id,
-                "email": user.email,
-                "username": user.username,
-                "is_admin": user.is_admin,
+                "id": user_id,
+                "email": email_out,
+                "username": username_out,
+                "is_admin": is_admin_out,
             },
         }
     ), 201
