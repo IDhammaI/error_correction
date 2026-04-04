@@ -350,7 +350,13 @@ const closeModal = () => {
   modalScale.value = 1
   document.body.style.overflow = ''
 }
-const onKeydown = (e) => { if (e.key === 'Escape' && modalOpen.value) closeModal() }
+const onKeydown = (e) => {
+  if (e.key === 'Escape' && modalOpen.value) closeModal()
+  if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
+    e.preventDefault()
+    selectAll()
+  }
+}
 
 // ---- 上传状态 ----
 const uploadMode = ref('exam')  // 'exam'（试卷分割）或 'note'（笔记整理）
@@ -515,7 +521,7 @@ const questionListRef = ref(null)
 const errorBankRef = ref(null)
 
 const toggleQuestion = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
-const selectAll = () => { for (const q of questions.value) selectedIds.add(q.question_id) }
+const selectAll = () => { for (const q of questions.value) selectedIds.add(q.uid) }
 const deselectAll = () => { selectedIds.clear() }
 const reorderQuestions = (oldIndex, newIndex) => {
   const arr = questions.value.slice()
@@ -633,8 +639,8 @@ const doSaveToDb = async () => {
   try {
     // 收集已录入的答案数据一并传给后端
     const answers = questions.value
-      .filter(q => selectedIds.has(q.question_id) && (q.answer || q.user_answer))
-      .map(q => ({ question_id: q.question_id, answer: q.answer || '', user_answer: q.user_answer || '' }))
+      .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
+      .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
     const data = await api.saveToDb(Array.from(selectedIds), answers)
     pushToast('success', data.message || '已导入错题库')
     errorBankRef.value?.refresh()

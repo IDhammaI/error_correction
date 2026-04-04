@@ -71,13 +71,22 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
         ? 'border-blue-500/50 shadow-blue-500/10 dark:border-indigo-500/50 dark:shadow-indigo-500/20'
         : 'border-slate-200/60 dark:border-white/10 hover:border-blue-200 dark:hover:border-white/15'
     "
-    @click="emit('toggle', question.question_id)"
+    @click="emit('toggle', question.uid)"
   >
     <!-- 选中态背景 -->
     <div
       v-if="selected"
       class="absolute inset-0 -z-10 bg-gradient-to-br from-blue-500/[0.03] to-indigo-500/[0.03] dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05]"
     ></div>
+
+    <!-- 大题标签 -->
+    <div
+      v-if="question.section_title"
+      class="mb-4 flex items-center gap-2 border-l-2 border-blue-400/60 pl-3 dark:border-indigo-400/50"
+    >
+      <i class="fa-solid fa-layer-group text-xs text-blue-400 dark:text-indigo-400"></i>
+      <span class="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-400">{{ question.section_title }}</span>
+    </div>
 
     <!-- 顶部状态栏 -->
     <div class="mb-6 flex items-start gap-4">
