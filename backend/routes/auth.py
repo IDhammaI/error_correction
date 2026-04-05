@@ -161,6 +161,125 @@ def auth_register():
     ), 201
 
 
+@bp.route("/send-code", methods=["POST"])
+def send_code():
+    """发送验证码（支持注册和找回密码两种场景）。
+
+    请求体：{ email, type: 'register' | 'reset' }
+    """
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    code_type = (data.get("type") or "register").strip().lower()
+
+    if not email or "@" not in email:
+        return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
+
+    now = datetime.utcnow()
+    with SessionLocal() as db:
+        user = crud.get_user_by_email(db, email)
+        if code_type == "register" and user:
+            return jsonify({"success": False, "error": "该邮箱已注册"}), 409
+        if code_type == "reset" and not user:
+            return jsonify({"success": False, "error": "该邮箱未注册"}), 404
+
+        row = crud.get_verification_by_email(db, email)
+        if row and row.last_sent_at:
+            delta = (now - row.last_sent_at).total_seconds()
+            if delta < settings.registration_send_interval_seconds:
+                wait = int(settings.registration_send_interval_seconds - delta)
+                return jsonify(
+                    {"success": False, "error": f"发送过于频繁，请 {wait} 秒后再试"}
+                ), 429
+
+    code = _generate_six_digit_code()
+    pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
+    code_hash = _hash_registration_code(email, code, pepper)
+    expires_at = now + timedelta(minutes=settings.registration_code_ttl_minutes)
+
+    with SessionLocal() as db:
+        crud.upsert_registration_code(db, email, code_hash, expires_at, now)
+
+    subject_text = "找回密码" if code_type == "reset" else "注册"
+    smtp_ok = bool(settings.smtp_host and settings.smtp_from)
+    if smtp_ok:
+        try:
+            send_smtp_email(
+                host=settings.smtp_host,
+                port=settings.smtp_port,
+                user=settings.smtp_user,
+                password=settings.smtp_password,
+                mail_from=settings.smtp_from,
+                use_tls=settings.smtp_use_tls,
+                to_addr=email,
+                subject=f"【智卷系统】{subject_text}验证码",
+                body=f"您的{subject_text}验证码为：{code}，{settings.registration_code_ttl_minutes} 分钟内有效。请勿泄露给他人。",
+            )
+        except Exception as e:
+            logger.exception("发送验证码邮件失败")
+            return jsonify({"success": False, "error": f"邮件发送失败：{e!s}"}), 502
+    else:
+        if current_app.debug:
+            logger.warning(
+                "[开发模式] 未配置 SMTP，验证码（仅调试用） email=%s code=%s",
+                email,
+                code,
+            )
+        else:
+            return jsonify(
+                {"success": False, "error": "服务器未配置发信，无法发送验证码"}
+            ), 503
+
+    return jsonify({"success": True, "message": "验证码已发送"})
+
+
+@bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    """通过邮箱验证码重置密码。
+
+    请求体：{ email, code, password }
+    """
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    code = (data.get("code") or "").strip()
+    password = data.get("password") or ""
+
+    if not email or "@" not in email:
+        return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
+    if not code or not code.isdigit() or len(code) != 6:
+        return jsonify({"success": False, "error": "请输入 6 位验证码"}), 400
+    if len(password) < 6:
+        return jsonify({"success": False, "error": "密码至少 6 位"}), 400
+
+    pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
+    submitted_hash = _hash_registration_code(email, code, pepper)
+    now = datetime.utcnow()
+
+    with SessionLocal() as db:
+        user = crud.get_user_by_email(db, email)
+        if not user:
+            return jsonify({"success": False, "error": "该邮箱未注册"}), 404
+
+        row = crud.get_verification_by_email(db, email)
+        if not row:
+            return jsonify({"success": False, "error": "请先获取验证码"}), 400
+        if row.expires_at < now:
+            crud.delete_verification_by_email(db, email)
+            return jsonify({"success": False, "error": "验证码已过期，请重新获取"}), 400
+        if (row.attempts or 0) >= settings.registration_max_attempts:
+            crud.delete_verification_by_email(db, email)
+            return jsonify({"success": False, "error": "验证失败次数过多，请重新获取验证码"}), 400
+
+        if not hmac.compare_digest(row.code_hash, submitted_hash):
+            crud.increment_verification_attempts(db, email)
+            return jsonify({"success": False, "error": "验证码错误"}), 400
+
+        new_hash = generate_password_hash(password)
+        crud.update_user_password(db, email, new_hash)
+        crud.delete_verification_by_email(db, email)
+
+    return jsonify({"success": True, "message": "密码重置成功"})
+
+
 @bp.route("/login", methods=["POST"])
 def auth_login():
     """用户登录（支持邮箱或用户名）"""

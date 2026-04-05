@@ -48,13 +48,6 @@ async function sendCode() {
   error.value = ''
   codeSending.value = true
   try {
-    // TODO: 后端接口就绪后移除 mock
-    const useMock = true
-    if (useMock) {
-      await new Promise(r => setTimeout(r, 800))
-      startCountdown()
-      return
-    }
     const res = await fetch('/api/auth/send-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,13 +78,6 @@ async function resetPassword() {
   if (form.password !== form.confirm) { error.value = '两次密码不一致'; return }
   loading.value = true
   try {
-    // TODO: 后端接口就绪后移除 mock
-    const useMock = true
-    if (useMock) {
-      await new Promise(r => setTimeout(r, 800))
-      step.value = 3
-      return
-    }
     const res = await fetch('/api/auth/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
