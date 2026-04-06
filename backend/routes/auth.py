@@ -273,6 +273,9 @@ def reset_password():
             crud.increment_verification_attempts(db, email)
             return jsonify({"success": False, "error": "验证码错误"}), 400
 
+        if check_password_hash(user.password_hash, password):
+            return jsonify({"success": False, "error": "新密码不能与原密码相同"}), 400
+
         new_hash = generate_password_hash(password)
         crud.update_user_password(db, email, new_hash)
         crud.delete_verification_by_email(db, email)
