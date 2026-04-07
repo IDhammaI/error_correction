@@ -29,11 +29,16 @@ const extraImages = computed(() => {
   })
 })
 
-// 图片与选项配对：当 extraImages 数量 >= 选项数量时按顺序配对，否则为 null
+// 图片与选项配对：优先使用 Agent 输出的 option_images，降级到按数量匹配
 const optionImages = computed(() => {
   const opts = props.question.options || []
-  if (!opts.length || extraImages.value.length < opts.length) return null
-  return extraImages.value
+  if (!opts.length) return null
+  // 优先使用 Agent 直接输出的 option_images
+  const agentImages = props.question.option_images
+  if (agentImages?.length === opts.length) return agentImages
+  // 降级：extraImages 数量匹配时按索引配对
+  if (extraImages.value.length >= opts.length) return extraImages.value
+  return null
 })
 
 // 本地答案编辑状态（工作台内存保存，入库时随 question 对象一同传递）

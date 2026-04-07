@@ -37,6 +37,7 @@ SPLIT_PROMPT_LITE = """# 试卷题目分割
 - question_type：选择题/填空题/解答题/判断题
 - content_blocks：题干内容，每项 {"block_type": "text"/"image", "content": "..."}
 - options：选择题的选项列表，其他题型填 null
+- option_images：选项对应的图片路径列表，与 options 按索引一一对应。若某个选项的内容是一张图片（如实验装置图），将图片路径填入对应位置，无图片的选项填空字符串 ""。非选择题或选项无图片时填 null
 - has_formula：含公式填 true
 - has_image：含图片填 true
 - knowledge_tags：1-3 个知识点标签，如 ["三角函数", "诱导公式"]

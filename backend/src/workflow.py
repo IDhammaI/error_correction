@@ -447,6 +447,8 @@ def _normalize_image_paths(questions: List[Dict[str, Any]]) -> None:
                 block["content"] = content.replace('src="imgs/', 'src="/images/')
         if q.get("image_refs"):
             q["image_refs"] = [_fix(ref) for ref in q["image_refs"]]
+        if q.get("option_images"):
+            q["option_images"] = [_fix(ref) if ref else ref for ref in q["option_images"]]
 
 
 def _propagate_section_between_batches(batch_results: List[List[Dict[str, Any]]]) -> None:
