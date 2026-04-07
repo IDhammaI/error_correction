@@ -3,7 +3,6 @@ import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import * as api from '../api.js'
 import CustomSelect from './CustomSelect.vue'
 import GlassCard from './GlassCard.vue'
-import PageHeader from './PageHeader.vue'
 import StatCard from './StatCard.vue'
 
 const props = defineProps({
@@ -202,27 +201,17 @@ onBeforeUnmount(() => {
 <template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 页面标题 + 学科筛选 -->
-      <PageHeader
-        title="数据面板"
-        subtitle="错题统计与学习趋势一览"
-      >
-        <template #extra>
-          <div class="flex items-center gap-4">
-            <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-            <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
-              <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
-            </button>
-          </div>
-        </template>
-      </PageHeader>
+      <!-- 学科筛选（Teleport 到 ContentPanel header） -->
+      <Teleport v-if="subjects.length" to="#panel-toolbar-数据面板">
+        <CustomSelect v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+      </Teleport>
 
       <!-- 骨架屏（加载中） -->
       <template v-if="statsLoading">
         <!-- 统计卡片骨架：精确复刻 StatCard 内部结构 -->
         <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div v-for="i in 4" :key="i"
-            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="flex items-center gap-4">
               <div class="size-12 shrink-0 rounded-lg bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="flex flex-col gap-2">
@@ -235,7 +224,7 @@ onBeforeUnmount(() => {
         <!-- 图表骨架：精确复刻 GlassCard + 标题行 + canvas 区域 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div v-for="i in 2" :key="i"
-            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
@@ -244,14 +233,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
             </div>
             <div class="h-[360px] w-full rounded-xl bg-slate-100/80 dark:bg-white/[0.04]"></div>
           </div>
-          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
@@ -305,13 +294,13 @@ onBeforeUnmount(() => {
               <table class="heatmap-table w-full text-center text-xs">
                 <thead>
                   <tr>
-                    <th class="sticky left-0 z-10 bg-white/80 px-2 py-2 text-left font-bold text-slate-500 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-400"></th>
+                    <th class="sticky left-0 z-10 bg-white/80 px-2 py-2 text-left font-bold text-slate-500 dark:bg-white/[0.03] dark:text-slate-400"></th>
                     <th v-for="t in heatmapData.types" :key="t" class="px-2 py-2 font-bold text-slate-500 dark:text-slate-400">{{ t }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(tag, ri) in heatmapData.tags" :key="tag">
-                    <td class="sticky left-0 z-10 max-w-[120px] truncate bg-white/80 px-2 py-1.5 text-left font-bold text-slate-600 backdrop-blur-sm dark:bg-white/[0.03] dark:text-slate-300">{{ tag }}</td>
+                    <td class="sticky left-0 z-10 max-w-[120px] truncate bg-white/80 px-2 py-1.5 text-left font-bold text-slate-600 dark:bg-white/[0.03] dark:text-slate-300">{{ tag }}</td>
                     <td v-for="(t, ci) in heatmapData.types" :key="t" class="px-1 py-1">
                       <div
                         class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold"

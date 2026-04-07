@@ -14,7 +14,7 @@
       </div>
 
       <!-- Card -->
-      <div class="bg-white/70 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-md p-8">
+      <div class="bg-white/70 dark:bg-white/5 rounded-3xl border border-slate-200/60 dark:border-white/10 shadow-md p-8">
         <!-- Tabs -->
         <div class="flex rounded-xl bg-slate-100/80 dark:bg-white/5 p-1 mb-6">
           <button

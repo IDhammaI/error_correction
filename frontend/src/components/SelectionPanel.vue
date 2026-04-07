@@ -19,7 +19,7 @@ const emit = defineEmits(['export', 'save', 'clear'])
     leave-to-class="translate-y-12"
   >
     <div v-if="visible && count" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 md:bottom-10">
-      <div class="flex items-center gap-6 rounded-full border border-slate-200/60 bg-white/70 px-6 py-3 shadow-md backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-6 rounded-full border border-slate-200/60 bg-white/70 px-6 py-3 shadow-md dark:border-white/10 dark:bg-white/[0.03]">
         <div class="flex items-center gap-3 border-r border-slate-200/60 pr-6 dark:border-white/10">
           <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-mono text-xs font-bold text-white shadow-sm dark:bg-indigo-500">
             {{ count }}

@@ -83,7 +83,7 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
 
 <template>
   <div class="custom-cal-wrapper relative w-full min-w-0">
-    <div class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/60 px-4 text-sm font-bold backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
+    <div class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/60 px-4 text-sm font-bold transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
          :class="open ? 'border-white/30 bg-white/80 shadow-sm ring-2 ring-white/10 dark:border-white/20 dark:bg-white/[0.06] dark:ring-white/5' : 'border-slate-200/60'"
          @click.stop="toggle">
       <i class="fa-regular fa-calendar mr-2 text-sm text-slate-400 transition-colors group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-300"></i>
@@ -92,7 +92,7 @@ useClickOutside('.custom-cal-wrapper', () => { open.value = false })
     </div>
     <Transition name="cal-dropdown">
       <div v-if="open"
-           class="absolute top-full z-50 mt-2 min-w-full w-64 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+           class="absolute top-full z-50 mt-2 min-w-full w-64 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
            :class="align === 'right' ? 'right-0' : 'left-0'">
         <!-- 月份导航 -->
         <div class="mb-4 flex items-center justify-between">

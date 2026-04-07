@@ -8,7 +8,7 @@ defineProps({
   <div class="space-y-4">
     <div
       v-for="i in count" :key="i"
-      class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]"
+      class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]"
     >
       <div class="flex items-start gap-4">
         <!-- 内容区：精确复刻 QuestionItem 的 min-w-0 flex-1 -->
