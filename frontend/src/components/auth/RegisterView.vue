@@ -52,11 +52,11 @@ async function handleSendCode() {
     sendDebounceTimer = null
     sendingCode.value = true
     try {
-      const res = await fetch('/api/auth/send-registration-code', {
+      const res = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, type: 'register' }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {

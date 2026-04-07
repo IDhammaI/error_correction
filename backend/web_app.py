@@ -215,23 +215,10 @@ if __name__ == '__main__':
     init_db()
     from db.migrate import migrate
     migrate()
-    print("[数据库] 初始化完成")
 
-    print("=" * 60)
-    print("错题本生成系统 - API 服务")
-    print("=" * 60)
-    print("API 地址: http://localhost:5001")
-    print("前端开发: cd frontend && npm run dev")
-    print("=" * 60)
-    _auth_rules = sorted(
-        r.rule for r in app.url_map.iter_rules() if r.rule.startswith("/api/auth")
-    )
-    print("[路由] /api/auth 已注册:", ", ".join(_auth_rules) if _auth_rules else "(无)")
-    if not any(r.rule == "/api/auth/send-registration-code" for r in app.url_map.iter_rules()):
-        print(
-            "[警告] 未注册 POST /api/auth/send-registration-code，"
-            "请确认 backend/routes/auth.py 已包含该路由并完全重启后端进程。"
-        )
+    logger.info("错题本生成系统 - API 服务")
+    logger.info("API 地址: http://localhost:5001")
+    logger.info("=" * 50)
 
     # 从环境变量读取调试模式开关（默认关闭）
     # 开启后 Flask 会自动重载代码变更，并在浏览器显示详细错误信息
