@@ -111,11 +111,7 @@ def send_code():
 
     now = datetime.utcnow()
     with SessionLocal() as db:
-        user = crud.get_user_by_email(db, email)
-        # 防邮箱枚举：注册时邮箱已存在、重置时邮箱不存在，均返回相同成功响应但不实际发送
-        if (code_type == "register" and user) or (code_type == "reset" and not user):
-            return jsonify({"success": True, "message": "验证码已发送"})
-
+        # 频率限制（无论邮箱是否存在都检查，防止通过频率差异探测）
         row = crud.get_verification_by_email(db, email)
         if row and row.last_sent_at:
             delta = (now - row.last_sent_at).total_seconds()
@@ -124,6 +120,11 @@ def send_code():
                 return jsonify(
                     {"success": False, "error": f"发送过于频繁，请 {wait} 秒后再试"}
                 ), 429
+
+        user = crud.get_user_by_email(db, email)
+        # 防邮箱枚举：注册时邮箱已存在、重置时邮箱不存在，均返回相同成功响应但不实际发送
+        if (code_type == "register" and user) or (code_type == "reset" and not user):
+            return jsonify({"success": True, "message": "验证码已发送"})
 
     code = _generate_six_digit_code()
     pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
@@ -147,6 +148,7 @@ def send_code():
                 to_addr=email,
                 subject=f"【智卷系统】{subject_text}验证码",
                 body=f"您的{subject_text}验证码为：{code}，{settings.registration_code_ttl_minutes} 分钟内有效。请勿泄露给他人。",
+                async_send=False,
             )
         except Exception as e:
             logger.exception("发送验证码邮件失败")
@@ -191,7 +193,8 @@ def reset_password():
     with SessionLocal() as db:
         user = crud.get_user_by_email(db, email)
         if not user:
-            return jsonify({"success": False, "error": "该邮箱未注册"}), 404
+            # 防枚举：与验证码错误返回相同提示
+            return jsonify({"success": False, "error": "验证码错误"}), 400
 
         row = crud.get_verification_by_email(db, email)
         if not row:
