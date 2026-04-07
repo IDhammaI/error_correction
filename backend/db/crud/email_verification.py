@@ -21,7 +21,7 @@ def upsert_registration_code(
         row.code_hash = code_hash
         row.expires_at = expires_at
         row.last_sent_at = last_sent_at
-        row.attempts = 0
+        # 不重置 attempts：防止攻击者反复请求新验证码来绕过尝试次数限制
     else:
         row = EmailVerification(
             email=email,

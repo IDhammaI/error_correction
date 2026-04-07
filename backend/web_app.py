@@ -102,6 +102,18 @@ def require_login():
             return None
         if 'user_id' not in session:
             return jsonify({'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401
+        # 密码重置后失效旧 session：比对 session_version
+        user_id = session.get('user_id')
+        sess_ver = session.get('session_version', 0)
+        with SessionLocal() as db:
+            from db import crud
+            user = crud.get_user_by_id(db, user_id)
+            if not user:
+                session.clear()
+                return jsonify({'error': '用户不存在', 'code': 'UNAUTHORIZED'}), 401
+            if (user.session_version or 0) != sess_ver:
+                session.clear()
+                return jsonify({'error': '登录已失效，请重新登录', 'code': 'SESSION_EXPIRED'}), 401
     return None
 
 

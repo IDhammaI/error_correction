@@ -45,6 +45,7 @@ def update_user_password(db, email: str, new_password_hash: str) -> bool:
     if not user:
         return False
     user.password_hash = new_password_hash
+    user.session_version = (user.session_version or 0) + 1
     try:
         db.commit()
         return True

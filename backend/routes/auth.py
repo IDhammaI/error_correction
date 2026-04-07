@@ -26,75 +26,9 @@ def _generate_six_digit_code() -> str:
     return f"{secrets.randbelow(900000) + 100000}"
 
 
-@bp.route("/send-registration-code", methods=["POST"])
-def send_registration_code():
-    """向未注册邮箱发送 6 位注册验证码（60 秒内不可重复发送）。"""
-    data = request.get_json() or {}
-    email = (data.get("email") or "").strip().lower()
-
-    if not email or "@" not in email:
-        return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
-
-    now = datetime.utcnow()
-    with SessionLocal() as db:
-        if crud.get_user_by_email(db, email):
-            return jsonify({"success": False, "error": "该邮箱已注册"}), 409
-
-        row = crud.get_verification_by_email(db, email)
-        if row and row.last_sent_at:
-            delta = (now - row.last_sent_at).total_seconds()
-            if delta < settings.registration_send_interval_seconds:
-                wait = int(settings.registration_send_interval_seconds - delta)
-                return jsonify(
-                    {"success": False, "error": f"发送过于频繁，请 {wait} 秒后再试"}
-                ), 429
-
-    code = _generate_six_digit_code()
-    pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
-    code_hash = _hash_registration_code(email, code, pepper)
-    expires_at = now + timedelta(minutes=settings.registration_code_ttl_minutes)
-
-    with SessionLocal() as db:
-        crud.upsert_registration_code(db, email, code_hash, expires_at, now)
-
-    smtp_ok = bool(settings.smtp_host and settings.smtp_from)
-    if smtp_ok:
-        try:
-            send_smtp_email(
-                host=settings.smtp_host,
-                port=settings.smtp_port,
-                user=settings.smtp_user,
-                password=settings.smtp_password,
-                mail_from=settings.smtp_from,
-                use_tls=settings.smtp_use_tls,
-                to_addr=email,
-                subject="【智卷系统】注册验证码",
-                body=f"您的注册验证码为：{code}，{settings.registration_code_ttl_minutes} 分钟内有效。请勿泄露给他人。",
-            )
-        except Exception as e:
-            logger.exception("发送验证码邮件失败")
-            return jsonify({"success": False, "error": f"邮件发送失败：{e!s}"}), 502
-    else:
-        if current_app.debug:
-            logger.warning(
-                "[开发模式] 未配置 SMTP，验证码（仅调试用） email=%s code=%s",
-                email,
-                code,
-            )
-        else:
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "服务器未配置发信（APP_SMTP_HOST / APP_SMTP_FROM），无法发送验证码",
-                }
-            ), 503
-
-    return jsonify({"success": True, "message": "验证码已发送"})
-
-
 @bp.route("/register", methods=["POST"])
 def auth_register():
-    """用户注册（需先调用 send-registration-code 并填写正确验证码）。"""
+    """用户注册（需先调用 /send-code?type=register 并填写正确验证码）。"""
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     username = (data.get("username") or "").strip()
@@ -148,6 +82,7 @@ def auth_register():
 
     session["user_id"] = user_id
     session["username"] = username_out
+    session["session_version"] = 0
     return jsonify(
         {
             "success": True,
@@ -177,10 +112,9 @@ def send_code():
     now = datetime.utcnow()
     with SessionLocal() as db:
         user = crud.get_user_by_email(db, email)
-        if code_type == "register" and user:
-            return jsonify({"success": False, "error": "该邮箱已注册"}), 409
-        if code_type == "reset" and not user:
-            return jsonify({"success": False, "error": "该邮箱未注册"}), 404
+        # 防邮箱枚举：注册时邮箱已存在、重置时邮箱不存在，均返回相同成功响应但不实际发送
+        if (code_type == "register" and user) or (code_type == "reset" and not user):
+            return jsonify({"success": True, "message": "验证码已发送"})
 
         row = crud.get_verification_by_email(db, email)
         if row and row.last_sent_at:
@@ -299,6 +233,7 @@ def auth_login():
             return jsonify({"error": "账号或密码错误"}), 401
         session["user_id"] = user.id
         session["username"] = user.username
+        session["session_version"] = user.session_version or 0
         return jsonify(
             {
                 "user": {
