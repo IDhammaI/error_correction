@@ -202,8 +202,8 @@ const selectOption = (field, value) => {
   <Teleport to="body">
     <!-- 背景遮罩 -->
     <div
-      class="fixed inset-0 z-[100] transition-[background-color,backdrop-filter] duration-200 md:left-64"
-      :class="open ? 'bg-black/40 backdrop-blur-sm pointer-events-auto' : 'bg-transparent backdrop-blur-none pointer-events-none'"
+      class="fixed inset-0 z-[100] transition-colors duration-200 md:left-64"
+      :class="open ? 'bg-black/40 pointer-events-auto' : 'bg-transparent pointer-events-none'"
       @click="emit('close')"
     ></div>
 
@@ -284,7 +284,7 @@ const selectOption = (field, value) => {
                   {{ type === 'paddleocr' ? 'OCR 模型' : '默认模型' }}
                   <span v-if="type !== 'paddleocr'" class="group relative">
                     <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
-                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg backdrop-blur-xl transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
                       用于题目分割、纠错等核心任务
                     </span>
                   </span>
@@ -294,14 +294,14 @@ const selectOption = (field, value) => {
                   <button
                     type="button"
                     @click.stop="toggleDropdown('model_name')"
-                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/60"
+                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
                     :class="form.model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
                   >
                     <span class="truncate">{{ form.model_name || '请选择模型' }}</span>
                     <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'model_name' ? 'rotate-180' : ''"></i>
                   </button>
                   <Transition name="dropdown">
-                    <div v-if="openDropdown === 'model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
+                    <div v-if="openDropdown === 'model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
                       <button
                         v-for="m in modelList" :key="m"
                         type="button"
@@ -330,7 +330,7 @@ const selectOption = (field, value) => {
                   <span class="font-normal text-slate-400">（可选）</span>
                   <span class="group relative">
                     <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
-                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg backdrop-blur-xl transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
                       用于科目识别等简单任务，更快更省 Token
                     </span>
                   </span>
@@ -339,14 +339,14 @@ const selectOption = (field, value) => {
                   <button
                     type="button"
                     @click.stop="toggleDropdown('light_model_name')"
-                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/60"
+                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
                     :class="form.light_model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
                   >
                     <span class="truncate">{{ form.light_model_name || '不使用' }}</span>
                     <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'light_model_name' ? 'rotate-180' : ''"></i>
                   </button>
                   <Transition name="dropdown">
-                    <div v-if="openDropdown === 'light_model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
+                    <div v-if="openDropdown === 'light_model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white/80 py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]/80">
                       <button
                         type="button"
                         @click.stop="selectOption('light_model_name', '')"

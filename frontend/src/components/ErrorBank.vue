@@ -4,13 +4,11 @@ import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
 import CustomSelect from './CustomSelect.vue'
 import GlassCard from './GlassCard.vue'
-import PageHeader from './PageHeader.vue'
 import SearchInput from './SearchInput.vue'
 import QuestionItem from './QuestionItem.vue'
 import QuestionItemSkeleton from './QuestionItemSkeleton.vue'
 import EditNoteDialog from './EditNoteDialog.vue'
 import SelectionPanel from './SelectionPanel.vue'
-import GlassButton from './GlassButton.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -294,7 +292,7 @@ watch(() => filters.subject, () => { reloadTags() })
 
 watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { immediate: true })
 
-defineExpose({ refresh: doQuery })
+defineExpose({ refresh: doQuery, toggleSelectMode: () => selectMode.value ? exitSelectMode() : enterSelectMode() })
 
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -304,24 +302,6 @@ onBeforeUnmount(() => {
 <template>
   <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 页面标题：强化科技质感 -->
-      <PageHeader
-        title="错题库"
-        :subtitle="`${totalText}，支持按学科、知识点筛选`"
-      >
-        <template #extra>
-          <div class="flex items-center gap-4">
-            <GlassButton :icon="selectMode ? 'fa-xmark' : 'fa-file-export'" class="w-[150px]" @click="selectMode ? exitSelectMode() : enterSelectMode()">
-              {{ selectMode ? '退出选择' : '导出题目' }}
-            </GlassButton>
-            <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
-              <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i>
-              录入新题目
-            </button>
-          </div>
-        </template>
-      </PageHeader>
-
       <!-- 搜索控制台 -->
       <div class="relative z-20 mb-8 space-y-6">
         <!-- 第一行：关键词 + 学科 + 题型 + 复习状态 -->
@@ -407,7 +387,7 @@ onBeforeUnmount(() => {
               >
                 <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle"
                   @mouseenter="onMenuContentEnter" @mouseleave="onMenuContentLeave"
-                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
                   <div class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</div>
                   <button @click.stop="quickMarkStatus(question, '待复习')"
                     class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
@@ -457,7 +437,7 @@ onBeforeUnmount(() => {
         <!-- 遮罩：筛选/翻页时覆盖旧列表，布局不跳动 -->
         <Transition enter-active-class="transition-opacity duration-150" leave-active-class="transition-opacity duration-150" enter-from-class="opacity-0" leave-to-class="opacity-0">
           <div v-if="loading && items.length"
-            class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm dark:bg-black/30">
+            class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-black/30">
             <div class="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-white/20 dark:border-t-white/60"></div>
           </div>
         </Transition>
@@ -468,7 +448,7 @@ onBeforeUnmount(() => {
         <button @click="goPage(page - 1)" :disabled="page <= 1" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
           <i class="fa-solid fa-chevron-left text-sm"></i>
         </button>
-        <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm backdrop-blur-md dark:bg-white/5">
+        <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm dark:bg-white/5">
           <template v-for="(p, i) in pageButtons" :key="i">
             <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
             <button v-else @click="goPage(p)" 

@@ -13,7 +13,7 @@ const emit = defineEmits(['close'])
     <Transition name="modal-fade">
       <div v-if="open" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
         <!-- 遮罩 -->
-        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-md" @click="emit('close')"></div>
+        <div class="absolute inset-0 bg-slate-950/60" @click="emit('close')"></div>
 
         <!-- 弹窗主体 -->
         <div class="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl dark:bg-[#0F111A]">

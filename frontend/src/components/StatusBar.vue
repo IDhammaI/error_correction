@@ -17,7 +17,7 @@ const tooltipPosition = ref({ x: 0, y: 0 })
 // 显示 tooltip
 const showTooltip = (event, text) => {
   if (!text || text.length <= 20) return // 短文本不需要 tooltip
-  
+
   tooltipText.value = text
   const rect = event.currentTarget.getBoundingClientRect()
   tooltipPosition.value = {
@@ -116,18 +116,18 @@ const modelStatusError = computed(() => {
     class="relative z-20 flex flex-wrap items-center gap-4 py-2 text-sm shrink-0"
   >
     <div class="flex items-center gap-2.5">
-      <span class="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-600 dark:text-slate-400">
+      <span class="text-xs font-medium uppercase tracking-[0.15em] text-[#62666d]">
         引擎状态
       </span>
     </div>
 
     <!-- 分隔符 -->
-    <div class="h-4 w-px bg-slate-200 dark:bg-white/10"></div>
+    <div class="h-4 w-px bg-white/[0.08]"></div>
 
     <!-- 全局系统错误 -->
     <span
       v-if="statusError"
-      class="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-1.5 text-[11px] font-bold text-rose-700 shadow-sm dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400"
+      class="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400"
     >
       <i class="fa-solid fa-circle-exclamation animate-pulse"></i>
       {{ statusError }}
@@ -138,15 +138,15 @@ const modelStatusError = computed(() => {
       <span
         v-for="p in statusPills"
         :key="p.key"
-        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] font-bold"
+        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium"
         :class="
           p.loading
-            ? 'border-amber-200 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400'
+            ? 'border-amber-500/20 bg-amber-500/10 text-amber-400'
             : p.isPlaceholder
-              ? 'border-slate-200 bg-slate-50/50 text-slate-400 dark:border-white/5 dark:bg-white/5 dark:text-slate-500'
+              ? 'border-white/[0.05] bg-white/[0.03] text-[#62666d]'
               : p.ok
-                ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 shadow-sm shadow-emerald-500/5'
-                : 'border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400'
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
+                : 'border-rose-500/20 bg-rose-500/10 text-rose-400'
         "
       >
         <div class="relative h-2.5 w-2.5 shrink-0">
@@ -167,11 +167,11 @@ const modelStatusError = computed(() => {
       <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled || noModels">
         <div class="relative w-56 min-w-0">
           <ListboxButton
-            class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white pl-3 pr-2 text-left shadow-sm backdrop-blur-sm hover:border-blue-400 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:hover:border-indigo-500/20 dark:hover:bg-white/10"
+            class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-lg brand-btn pl-3 pr-2 text-left hover:border-[rgb(129,115,223)]/40 hover:bg-white/[0.05]"
             :disabled="disabled"
           >
             <div class="flex items-center gap-2.5 min-w-0 flex-1">
-              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-600 dark:bg-white/5 dark:text-indigo-400">
+              <div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] text-[rgb(145,132,235)]">
                 <Transition name="fade" mode="out-in">
                   <img
                     v-if="currentProvider && modelLogos[currentProvider.value]"
@@ -185,12 +185,12 @@ const modelStatusError = computed(() => {
                 <!-- 状态指示点 -->
                 <div
                   v-if="currentProvider || statusLoading"
-                  class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white dark:border-[#0A0A0F]"
+                  class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-[#0f1011]"
                   :class="(statusLoading || isChecking) ? 'bg-amber-400 animate-pulse' : (!currentProvider.configured || currentProvider.key_valid === false) ? 'bg-rose-500' : 'bg-emerald-500'"
                 ></div>
               </div>
-              <span 
-                class="block min-w-0 flex-1 truncate text-[11px] font-black tracking-tight text-slate-700 dark:text-slate-200"
+              <span
+                class="block min-w-0 flex-1 truncate text-xs font-medium tracking-tight text-[#d0d6e0]"
                 @mouseenter="showTooltip($event, selectedLabel)"
                 @mouseleave="hideTooltip"
               >
@@ -205,7 +205,7 @@ const modelStatusError = computed(() => {
                   <i v-else-if="currentProvider" key="ok" class="fa-solid fa-check absolute inset-0 flex items-center justify-center text-[10px] text-emerald-500"></i>
                 </Transition>
               </div>
-              <i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-slate-400 transition-transform duration-300 group-aria-expanded:rotate-180"></i>
+              <i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-[#62666d] transition-transform duration-300 group-aria-expanded:rotate-180"></i>
             </div>
           </ListboxButton>
 
@@ -218,14 +218,14 @@ const modelStatusError = computed(() => {
             leave-to-class="transform scale-95 opacity-0 -translate-y-2"
           >
             <ListboxOptions
-              class="absolute right-0 z-50 mt-2 max-h-72 w-64 overflow-auto rounded-xl border border-slate-200/80 bg-white/95 py-2 text-base shadow-xl backdrop-blur-xl focus:outline-none sm:text-sm dark:border-white/10 dark:bg-[#0A0A0F]/95"
+              class="absolute right-0 z-50 mt-2 max-h-72 w-64 overflow-auto rounded-lg brand-btn py-2 text-base focus:outline-none sm:text-sm"
             >
               <template v-for="(item, idx) in modelOptions" :key="idx">
                 <!-- 分组标题 -->
                 <li
                   v-if="item.type === 'group'"
-                  class="select-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500"
-                  :class="idx > 0 ? 'mt-1 border-t border-slate-100 pt-2 dark:border-white/5' : ''"
+                  class="select-none px-4 py-2 text-[10px] font-medium uppercase tracking-widest text-[#62666d]"
+                  :class="idx > 0 ? 'mt-1 border-t border-white/[0.05] pt-2' : ''"
                 >
                   <div class="flex items-center gap-2">
                     <img v-if="modelLogos[item.provider]" :src="modelLogos[item.provider]" class="h-3 w-3 object-contain opacity-60" alt="" />
@@ -243,22 +243,22 @@ const modelStatusError = computed(() => {
                   <li
                     class="relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors"
                     :class="[
-                      active ? 'bg-blue-50 dark:bg-indigo-500/10' : '',
+                      active ? 'bg-[rgb(129,115,223)]/10' : '',
                       optDisabled ? 'opacity-40 cursor-not-allowed' : ''
                     ]"
                   >
                     <span
                   class="block truncate text-sm transition-colors min-w-0"
-                  :class="[selected ? 'font-bold text-blue-700 dark:text-indigo-300' : 'font-medium text-slate-700 dark:text-slate-300']"
+                  :class="[selected ? 'font-medium text-[rgb(145,132,235)]' : 'font-medium text-[#d0d6e0]']"
                   @mouseenter="showTooltip($event, item.model)"
                   @mouseleave="hideTooltip"
                 >
                   {{ item.model }}
-                  <span v-if="item.isDefault" class="ml-1 text-[10px] text-slate-400 dark:text-slate-500">默认</span>
+                  <span v-if="item.isDefault" class="ml-1 text-[10px] text-[#62666d]">默认</span>
                 </span>
                     <span
                       v-if="selected"
-                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-indigo-400"
+                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-[rgb(145,132,235)]"
                     >
                       <i class="fa-solid fa-check text-sm"></i>
                     </span>
@@ -294,11 +294,11 @@ const modelStatusError = computed(() => {
         <div class="relative">
           <!-- 箭头 -->
           <div class="absolute left-1/2 top-full -translate-x-1/2 w-2 h-2">
-            <div class="w-2 h-2 bg-slate-900 dark:bg-slate-700 rotate-45"></div>
+            <div class="w-2 h-2 bg-[#191a1b] rotate-45"></div>
           </div>
-          
+
           <!-- 内容 -->
-          <div class="bg-slate-900 text-slate-100 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg">
+          <div class="bg-[#191a1b] text-[#d0d6e0] px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap">
             {{ tooltipText }}
           </div>
         </div>

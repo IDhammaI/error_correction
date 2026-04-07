@@ -39,15 +39,14 @@ const onClickZone = () => {
 
 <template>
   <div :class="{ 'flex flex-col flex-1': expand }">
-    <!-- Drop zone (拖拽上传区域) -->
     <div
-      class="group relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border backdrop-blur-md"
+      class="group relative flex flex-col items-center justify-center rounded-md border transition-colors"
       :class="[
         uploadHover
-          ? 'border-blue-500/50 bg-slate-900/10 shadow-2xl shadow-blue-500/20 dark:border-indigo-500/50 dark:bg-white/10'
-          : 'border-slate-900/10 bg-slate-900/[0.05] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-blue-200 hover:bg-slate-900/10 dark:border-white/5 dark:bg-white/5 dark:shadow-none dark:hover:border-indigo-500/20 dark:hover:bg-white/10',
-        expand ? 'flex-1 py-12 min-h-[280px]' : 'py-10',
-        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          ? 'border-[rgb(129,115,223)]/40 bg-white/[0.04]'
+          : 'border-dashed border-white/[0.08] hover:border-white/[0.12] hover:bg-white/[0.02]',
+        expand ? 'py-14' : 'py-8',
+        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
       ]"
       @dragenter.prevent="uploadHover = true"
       @dragover.prevent="uploadHover = true"
@@ -59,30 +58,17 @@ const onClickZone = () => {
       role="button"
       tabindex="0"
     >
-      <!-- 动态装饰 -->
-      <div class="pointer-events-none absolute inset-0 -z-10">
-        <div class="absolute -left-10 -top-10 h-24 w-24 rounded-full bg-blue-500/5 blur-2xl transition-opacity group-hover:opacity-100"></div>
-        <div class="absolute -right-10 -bottom-10 h-24 w-24 rounded-full bg-indigo-500/5 blur-2xl transition-opacity group-hover:opacity-100"></div>
-      </div>
+      <div class="flex flex-col items-center gap-3">
+        <i class="fa-solid fa-cloud-arrow-up text-lg text-[#62666d] group-hover:text-[#8a8f98] transition-colors"></i>
 
-      <!-- Center content (主上传引导) -->
-      <div class="flex flex-1 flex-col items-center justify-center">
-        <div class="relative mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-900/10 bg-slate-900/5 shadow-xl shadow-slate-200/50 backdrop-blur-md transition-transform duration-500 group-hover:scale-110 dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-          <i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-600 dark:text-indigo-400"></i>
-        </div>
-
-        <div class="max-w-xs">
-          <h4 v-if="disabled" class="text-sm font-black tracking-tight text-slate-500 dark:text-slate-400">
-            请先在 <span class="text-blue-600 dark:text-indigo-400">系统设置</span> 中配置 API 模型
-          </h4>
-          <h4 v-else class="text-sm font-black tracking-tight text-slate-900 dark:text-white">
-            点击 <span class="text-blue-600 dark:text-indigo-400">选择文件</span> 或拖拽至此
-          </h4>
-          <div class="mt-4 flex flex-wrap justify-center gap-1.5">
-            <span v-for="fmt in ['PDF', 'PNG', 'JPG']" :key="fmt" class="rounded-lg border border-slate-900/10 bg-slate-900/5 px-3 py-1 text-[9px] font-black tracking-wider text-slate-500 shadow-sm backdrop-blur-sm dark:border-white/5 dark:bg-white/5 dark:text-slate-400">
-              {{ fmt }}
-            </span>
-          </div>
+        <div class="text-center">
+          <p v-if="disabled" class="text-sm text-[#62666d]">
+            请先在 <span class="text-[rgb(145,132,235)]">系统设置</span> 中配置模型
+          </p>
+          <p v-else class="text-sm text-[#8a8f98]">
+            拖拽文件到此处或 <span class="text-[rgb(145,132,235)] cursor-pointer">浏览文件</span>
+          </p>
+          <p class="mt-1 text-xs text-[#62666d]">PDF, PNG, JPG</p>
         </div>
       </div>
 

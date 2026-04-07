@@ -148,10 +148,10 @@ function autoResize() {
 
         <!-- 空状态：居中问候 -->
         <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center" style="min-height: calc(100vh - 200px)">
-          <p class="text-2xl font-bold text-slate-800 dark:text-white">
+          <p class="text-2xl font-bold text-[#f7f8f8]">
             Hi，{{ username || '同学' }}
           </p>
-          <p class="mt-2 text-sm text-slate-400 dark:text-slate-500">有问题，尽管问</p>
+          <p class="mt-2 text-sm text-[#62666d]">有问题，尽管问</p>
         </div>
 
         <!-- 消息列表 -->
@@ -160,16 +160,16 @@ function autoResize() {
             <div
               class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
               :class="msg.role === 'user'
-                ? 'bg-blue-600 text-white rounded-br-lg'
-                : 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-bl-lg'"
+                ? 'brand-btn text-white rounded-br-lg'
+                : 'brand-btn text-[#d0d6e0] rounded-bl-lg'"
             >
               <!-- 思考过程折叠面板 -->
               <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
                 <button
                   @click="msg.reasoningOpen = !msg.reasoningOpen"
-                  class="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  class="flex items-center gap-2 text-xs font-bold text-[#8a8f98] hover:text-[#d0d6e0] transition-colors"
                 >
-                  <i class="fa-solid fa-brain text-indigo-500 dark:text-indigo-400"></i>
+                  <i class="fa-solid fa-brain text-[rgb(129,115,223)]"></i>
                   <span>{{ streaming && i === messages.length - 1 && !msg.content ? '思考中...' : '已深度思考' }}</span>
                   <i class="fa-solid text-[10px] transition-transform" :class="msg.reasoningOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                 </button>
@@ -181,22 +181,22 @@ function autoResize() {
                   leave-from-class="opacity-100 max-h-[400px]"
                   leave-to-class="opacity-0 max-h-0"
                 >
-                  <div v-if="msg.reasoningOpen" class="mt-2 overflow-auto max-h-[400px] rounded-xl bg-slate-200/60 dark:bg-white/[0.04] p-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed custom-scrollbar whitespace-pre-wrap">{{ msg.reasoning }}</div>
+                  <div v-if="msg.reasoningOpen" class="mt-2 overflow-auto max-h-[400px] rounded-xl bg-white/[0.03] p-3 text-xs text-[#8a8f98] leading-relaxed custom-scrollbar whitespace-pre-wrap">{{ msg.reasoning }}</div>
                 </Transition>
               </div>
               <!-- 正文内容 -->
-              <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-slate dark:prose-invert max-w-none"></div>
+              <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-invert max-w-none"></div>
               <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
             </div>
           </div>
 
           <!-- 流式加载指示 -->
           <div v-if="streaming && messages.length && !messages[messages.length - 1].content" class="flex justify-start">
-            <div class="bg-slate-100 dark:bg-white/[0.06] rounded-2xl rounded-bl-lg px-4 py-3">
+            <div class="brand-btn rounded-2xl rounded-bl-lg px-4 py-3">
               <div class="flex gap-1">
-                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 0ms"></span>
-                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 150ms"></span>
-                <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 300ms"></span>
+                <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 0ms"></span>
+                <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 150ms"></span>
+                <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 300ms"></span>
               </div>
             </div>
           </div>
@@ -208,7 +208,7 @@ function autoResize() {
     <!-- 底部输入区域 -->
     <div class="shrink-0 px-4 pb-4 pt-2 sm:px-8">
       <div class="mx-auto max-w-5xl">
-        <div class="rounded-2xl border border-slate-200/60 bg-white dark:border-white/10 dark:bg-[#1a1a24] overflow-hidden">
+        <div class="rounded-xl brand-btn overflow-hidden">
           <!-- 文本输入 -->
           <textarea
             ref="textareaRef"
@@ -218,7 +218,7 @@ function autoResize() {
             :disabled="streaming || !sessionId"
             rows="1"
             :placeholder="sessionId ? '有问题，尽管问，shift+enter 换行' : '请先新建或选择一个对话'"
-            class="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+            class="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none text-[#f7f8f8] placeholder-[#62666d]"
             style="min-height: 24px; max-height: 200px;"
           ></textarea>
 
@@ -230,8 +230,8 @@ function autoResize() {
                 @click="deepThink = !deepThink"
                 class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
                 :class="deepThink
-                  ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'"
+                  ? 'bg-[rgb(129,115,223)]/15 text-[rgb(145,132,235)]'
+                  : 'text-[#62666d] hover:text-[#8a8f98]'"
                 title="深度思考"
               >
                 <i class="fa-solid fa-brain text-sm"></i>
@@ -239,7 +239,7 @@ function autoResize() {
               </button>
               <button
                 disabled
-                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-[#62666d] cursor-not-allowed"
                 title="联网搜索（敬请期待）"
               >
                 <i class="fa-solid fa-globe text-sm"></i>
@@ -251,7 +251,7 @@ function autoResize() {
             <div class="flex items-center gap-1.5">
               <button
                 disabled
-                class="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-not-allowed"
+                class="h-8 w-8 rounded-lg flex items-center justify-center text-[#62666d] hover:bg-white/[0.04] transition-colors cursor-not-allowed"
                 title="附件（敬请期待）"
               >
                 <i class="fa-solid fa-plus text-sm"></i>
@@ -261,15 +261,15 @@ function autoResize() {
                 :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                 class="h-8 w-8 rounded-full flex items-center justify-center transition-all"
                 :class="inputText.trim() && sessionId
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                  : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-slate-500 opacity-50'"
+                  ? 'brand-btn text-white'
+                  : 'bg-white/[0.06] text-[#62666d] opacity-50'"
               >
                 <i class="fa-solid fa-arrow-up text-xs"></i>
               </button>
             </div>
           </div>
         </div>
-        <p class="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">内容由 AI 生成，仅供参考</p>
+        <p class="mt-2 text-center text-xs text-[#62666d]">内容由 AI 生成，仅供参考</p>
       </div>
     </div>
   </div>

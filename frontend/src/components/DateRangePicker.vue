@@ -137,7 +137,7 @@ useClickOutside('.date-range-wrapper', () => { open.value = false })
 
     <!-- 触发器 -->
     <div @click.stop="toggle"
-      class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/60 px-4 text-sm font-bold backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
+      class="group flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/60 px-4 text-sm font-bold transition-all hover:border-slate-300 hover:bg-white/80 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:shadow-white/5"
       :class="open ? 'border-white/30 bg-white/80 shadow-sm ring-2 ring-white/10 dark:border-white/20 dark:bg-white/[0.06] dark:ring-white/5' : 'border-slate-200/60'"
     >
       <i class="fa-regular fa-calendar mr-2 text-sm text-slate-400 transition-colors group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-300"></i>
@@ -149,7 +149,7 @@ useClickOutside('.date-range-wrapper', () => { open.value = false })
     <!-- 下拉日历 -->
     <Transition name="cal-dropdown">
       <div v-if="open"
-        class="absolute left-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:backdrop-blur-3xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+        class="absolute left-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
       >
         <!-- 月份导航 -->
         <div class="mb-4 flex items-center justify-between">

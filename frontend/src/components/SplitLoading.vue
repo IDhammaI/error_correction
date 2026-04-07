@@ -53,7 +53,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px) saturate(180%);
+  
 }
 
 :root.dark .loading-overlay {

@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import LandingButton from './landing/LandingButton.vue'
 
 const router = useRouter()
 const { currentUser } = useAuth()
@@ -52,7 +53,7 @@ async function handleRegister() {
         autocomplete="username"
         placeholder="您的昵称"
         maxlength="50"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        class="w-full h-10 px-4 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
       />
     </div>
 
@@ -64,7 +65,7 @@ async function handleRegister() {
         required
         autocomplete="email"
         placeholder="your@email.com"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        class="w-full h-10 px-4 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
       />
     </div>
 
@@ -78,7 +79,7 @@ async function handleRegister() {
           autocomplete="new-password"
           placeholder="至少 6 位"
           minlength="6"
-          class="w-full h-10 px-4 pr-11 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+          class="w-full h-10 px-4 pr-11 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
         />
         <button
           type="button"
@@ -113,27 +114,9 @@ async function handleRegister() {
       <i class="fas fa-circle-check text-xs"></i>{{ success }}
     </p>
 
-    <button
-      type="submit"
-      :disabled="loading || passwordMismatch()"
-      class="auth-submit-btn w-full h-10 text-sm font-medium text-white rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
+    <LandingButton variant="cta" type="submit" class="w-full" :disabled="loading || passwordMismatch()">
       <i v-if="loading" class="fas fa-spinner fa-spin text-xs"></i>
       <span>{{ loading ? '注册中...' : '创建账户' }}</span>
-    </button>
+    </LandingButton>
   </form>
 </template>
-
-<style scoped>
-.auth-submit-btn {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
-  border: none;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-}
-.auth-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(to bottom, rgba(145, 132, 235, 0.95), rgba(113, 100, 212, 0.95));
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-    0 0 20px 0 rgba(129, 115, 223, 0.25);
-}
-</style>

@@ -40,7 +40,7 @@ function getStepIconClass(idx) {
 
 function getStepContainerClass(idx) {
   if (idx === activeStep.value) {
-    return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 backdrop-blur-md border border-white/[0.1] shadow-xl transition-all duration-500 transform scale-105'
+    return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 border border-white/[0.1] shadow-xl transition-all duration-500 transform scale-105'
   }
   return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-transparent to-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/[0.05] transition-all duration-500'
 }

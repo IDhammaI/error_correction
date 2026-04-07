@@ -2,7 +2,6 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import * as api from '../api.js'
 import { renderMarkdown, typesetMath } from '../utils.js'
-import PageHeader from './PageHeader.vue'
 import GlassCard from './GlassCard.vue'
 import GlassButton from './GlassButton.vue'
 import SearchInput from './SearchInput.vue'
@@ -86,6 +85,8 @@ const fileInput = ref(null)
 function triggerUpload() {
   fileInput.value?.click()
 }
+
+defineExpose({ triggerUpload })
 
 function handleFiles(e) {
   const files = e.target.files
@@ -192,27 +193,7 @@ async function doDelete(noteId) {
       
       <!-- List View -->
       <div v-if="!selectedNote">
-        <PageHeader
-          title="笔记库"
-          subtitle="AI 自动提取手写笔记/板书中的核心知识点"
-          badge="NOTES"
-          badgeIcon="fa-solid fa-book-open"
-          badgeColor="emerald"
-        >
-          <template #extra>
-            <div class="flex items-center gap-4">
-              <button
-                @click="triggerUpload"
-                :disabled="creating"
-                class="btn-success group h-10 px-6 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i class="fa-solid fa-plus transition-transform group-hover:rotate-90 mr-1"></i>
-                {{ creating ? '整理中...' : '上传笔记' }}
-              </button>
-              <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
-            </div>
-          </template>
-        </PageHeader>
+        <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
 
         <!-- 筛选栏（对齐错题库风格） -->
         <div class="relative z-20 mb-8">
@@ -287,21 +268,21 @@ async function doDelete(noteId) {
 
       <!-- Detail View -->
       <div v-else>
-        <PageHeader
-          :title="selectedNote.title"
-          :subtitle="`最后更新: ${selectedNote.updated_at?.slice(0, 10)}`"
-          badge="DETAIL"
-          badgeColor="slate"
-        >
-          <template #extra>
-            <div class="flex items-center gap-3">
-              <GlassButton icon="fa-arrow-left" @click="closeDetail">返回</GlassButton>
-              <div class="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1"></div>
-              <GlassButton v-if="!editing" icon="fa-pen" @click="startEdit">编辑</GlassButton>
-              <GlassButton icon="fa-trash" class="text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:border-rose-300 dark:hover:border-rose-500/30" @click="doDelete(selectedNote.id)">删除</GlassButton>
-            </div>
-          </template>
-        </PageHeader>
+        <!-- 详情工具栏 -->
+        <div class="mb-6 flex items-center justify-between">
+          <h3 class="text-base font-medium text-[#f7f8f8]">{{ selectedNote.title }}</h3>
+          <div class="flex items-center gap-2">
+            <button @click="closeDetail" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+              <i class="fa-solid fa-arrow-left text-[10px]"></i> 返回
+            </button>
+            <button v-if="!editing" @click="startEdit" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+              <i class="fa-solid fa-pen text-[10px]"></i> 编辑
+            </button>
+            <button @click="doDelete(selectedNote.id)" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors">
+              <i class="fa-solid fa-trash text-[10px]"></i> 删除
+            </button>
+          </div>
+        </div>
 
         <!-- Tags Row -->
         <div class="mb-6 flex flex-wrap items-center gap-2">
