@@ -37,3 +37,18 @@ def get_user_by_login(db, identifier):
     return db.query(User).filter(
         (func.lower(User.email) == identifier.lower()) | (User.username == identifier)
     ).first()
+
+
+def update_user_password(db, email: str, new_password_hash: str) -> bool:
+    """按邮箱更新用户密码，成功返回 True"""
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return False
+    user.password_hash = new_password_hash
+    user.session_version = (user.session_version or 0) + 1
+    try:
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        raise

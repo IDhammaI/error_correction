@@ -19,6 +19,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
+    session_version = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     questions = relationship("Question", back_populates="user")
@@ -197,3 +198,16 @@ class NoteTagMapping(Base):
 
     note = relationship("Note", back_populates="tags")
     tag = relationship("KnowledgeTag")
+
+
+class EmailVerification(Base):
+    """注册邮箱验证码（仅存哈希，不存明文）"""
+    __tablename__ = "email_verifications"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    code_hash = Column(String(64), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    last_sent_at = Column(DateTime, nullable=True)
+    attempts = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)

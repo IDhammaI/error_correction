@@ -180,6 +180,17 @@ class Settings(BaseSettings):
     max_file_size_mb: int = 50
     allowed_extensions: set[str] = {"pdf", "png", "jpg", "jpeg", "bmp", "tiff", "webp"}
 
+    # 注册验证码邮件（SMTP，环境变量前缀仍为 APP_，如 APP_SMTP_HOST）
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_tls: bool = True
+    registration_code_ttl_minutes: int = 10
+    registration_send_interval_seconds: int = 60
+    registration_max_attempts: int = 5
+
     # LLM 供应商注册表
     llm_providers: dict[str, LLMProviderConfig] | None = None
 
