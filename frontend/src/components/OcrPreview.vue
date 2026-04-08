@@ -3,7 +3,7 @@
  * OcrPreview.vue
  * OCR 结果预览 — 图片 + bbox 标注叠加
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
@@ -15,20 +15,30 @@ const props = defineProps({
 
 // 每张图片在 object-contain 下的实际渲染区域（含偏移）
 const imageSizes = ref({})
+const imgRef = ref(null)
 
-function onImageLoad(pageIndex, event) {
-  const img = event.target
+function calcImageSize(img, pageIndex) {
+  if (!img) return
   const cw = img.clientWidth, ch = img.clientHeight
   const nw = img.naturalWidth, nh = img.naturalHeight
-  // object-contain: 图片等比缩放后居中
+  if (!nw || !nh) return
   const scale = Math.min(cw / nw, ch / nh)
   const rw = nw * scale, rh = nh * scale
   const ox = (cw - rw) / 2, oy = (ch - rh) / 2
-  imageSizes.value = {
-    ...imageSizes.value,
-    [pageIndex]: { w: rw, h: rh, ox, oy },
-  }
+  imageSizes.value = { ...imageSizes.value, [pageIndex]: { w: rw, h: rh, ox, oy } }
 }
+
+function onImageLoad(pageIndex, event) {
+  calcImageSize(event.target, pageIndex)
+}
+
+// 浏览器缩放/窗口大小变化时重新计算
+const resizeObserver = new ResizeObserver(() => {
+  if (imgRef.value) {
+    calcImageSize(imgRef.value, currentPageData.value?.page_index)
+  }
+})
+onBeforeUnmount(() => resizeObserver.disconnect())
 
 // 颜色映射
 const labelColors = {
@@ -109,10 +119,11 @@ const hoveredBlock = ref(null)
       <div class="flex-1 min-h-0 relative overflow-hidden">
         <img
           v-if="currentPageData.image_url"
+          ref="imgRef"
           :src="currentPageData.image_url"
           class="block w-full h-full object-contain"
           alt=""
-          @load="onImageLoad(currentPageData.page_index, $event)"
+          @load="(e) => { onImageLoad(currentPageData.page_index, e); resizeObserver.disconnect(); resizeObserver.observe(e.target) }"
         />
         <!-- bbox 叠加层 -->
         <div
