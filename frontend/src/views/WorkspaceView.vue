@@ -561,7 +561,7 @@ const doCancelFile = async (key) => {
       uploadReady.value = false
       step.value = 1
     } else {
-      step.value = 3
+      step.value = 2
     }
     pushToast('success', data.message || '已撤销')
     if (!pendingFiles.length && activeXhr) {
@@ -600,7 +600,7 @@ const handleUpload = (files) => {
         if (pendingFiles.some(x => x.key === k)) setProgress(k, 100)
       }
       uploadReady.value = pendingFiles.length > 0
-      step.value = pendingFiles.length > 0 ? 3 : 1
+      step.value = pendingFiles.length > 0 ? 2 : 1
       pushToast('success', `上传成功！本次新增 ${keys.length} 个文件，点击"开始分割题目"开始处理`)
       pumpUploadQueue()
     },
@@ -654,6 +654,7 @@ const doSplit = async () => {
   // 试卷模式：走原有分割流程
   splitting.value = true
   step.value = 3
+  currentView.value = 'workspace_review'
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
     const data = await api.splitQuestions(selectedProvider.value, selectedModel.value, { erase: eraseEnabled.value })
@@ -1320,6 +1321,10 @@ onBeforeUnmount(() => {
                 </button>
               </template>
 
+                <!-- 分割进行中 -->
+                <!-- <SplitLoading v-if="splitting" /> -->
+
+                <!-- 题目列表 -->
                 <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
                   <QuestionList
                     ref="questionListRef"
@@ -1491,8 +1496,6 @@ onBeforeUnmount(() => {
         @clear="deselectAll"
       />
 
-      <!-- AI 分割任务全局遮罩 -->
-      <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
     </div>
 
     <!-- 全局弹窗与通知 -->

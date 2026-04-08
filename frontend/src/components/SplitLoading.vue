@@ -1,5 +1,5 @@
 <script setup>
-// AI 现代化扫描处理动画
+import BrandLogo from './BrandLogo.vue'
 </script>
 
 <template>
@@ -18,7 +18,7 @@
 
           <!-- 核心图标 -->
           <div class="core-icon">
-            <i class="fa-solid fa-brain"></i>
+            <BrandLogo size="lg" />
             <!-- 核心脉冲 -->
             <div class="core-pulse"></div>
           </div>
@@ -118,22 +118,9 @@
 .core-icon {
   position: relative;
   z-index: 10;
-  width: 56px;
-  height: 56px;
-  background: white;
-  border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
-  color: #2563eb;
-  font-size: 1.5rem;
-}
-
-:root.dark .core-icon {
-  background: #1e1e2e;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  color: #818cf8;
 }
 
 .core-pulse {
