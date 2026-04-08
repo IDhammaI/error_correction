@@ -372,16 +372,12 @@ onUnmounted(() => {
 }
 .animate-scan { animation: scan 3s ease-in-out infinite; }
 
-/* 动态玻璃态面板 */
+/* 动态玻璃态面板 — 统一为 brand-btn 风格 */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-html.dark .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.03);
 }
 
 /* 平滑滚动时补偿固定导航栏高度 */

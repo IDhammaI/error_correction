@@ -878,15 +878,23 @@ onBeforeUnmount(() => {
     <aside class="hidden w-64 flex-col justify-between md:flex z-20">
       <div>
         <!-- Logo 标题区 -->
-        <div class="flex h-20 items-center gap-2 px-4">
-          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-lg px-3 py-1.5 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
-            <BrandLogo size="md" />
-            <span class="text-base font-medium text-[#f7f8f8]">智卷错题本</span>
+        <div class="flex h-20 items-center justify-between px-4 py-6">
+          <button @click="navigateToHome" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
+            <BrandLogo size="sm" />
+            <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
           </button>
+          <div class="flex items-center gap-1">
+            <button @click="currentView = 'settings'" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="系统设置">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+            <button @click="handleLogout()" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="退出登录">
+              <i class="fa-solid fa-right-from-bracket text-xs"></i>
+            </button>
+          </div>
         </div>
 
         <!-- 视图切换菜单 — Linear 分组折叠 -->
-        <nav ref="navRef" class="mt-6 flex flex-col gap-1.5 px-4 relative">
+        <nav ref="navRef" class="flex flex-col gap-1.5 px-4 relative">
           <!-- 滑动指示器 -->
           <div
             class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
@@ -929,7 +937,7 @@ onBeforeUnmount(() => {
                   class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
                 >
                   <div class="flex items-center gap-3">
-                    <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                    <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
                     <span>{{ item.label }}</span>
                   </div>
                   <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
@@ -944,7 +952,7 @@ onBeforeUnmount(() => {
                     ? 'text-white'
                     : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
                 >
-                  <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                  <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
                   <span>{{ item.label }}</span>
                 </button>
               </template>

@@ -15,7 +15,7 @@ import { ArrowRight, Sparkles, CheckCircle2, FileDown } from 'lucide-vue-next'
 
       <div class="flex flex-col lg:flex-row gap-4 items-center justify-center">
         <!-- 左侧：原图模拟 -->
-        <div class="reveal flex-1 w-full max-w-md border border-white/[0.06] bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 p-6 rounded-2xl relative overflow-hidden shadow-2xl">
+        <div class="reveal flex-1 w-full max-w-md brand-btn p-6 rounded-lg relative overflow-hidden">
           <div class="text-xs font-medium tracking-wide text-white/25 uppercase mb-4">Input / 原生图像</div>
           <div class="bg-[#15151e]/80 p-6 rounded-xl -rotate-1 text-white/50 border border-white/[0.02]">
             <p class="font-[cursive] text-sm mb-2">3. 巳知函数f(x)=2sin(wx+φ)(w&gt;0,|φ|&lt;π/2)的图像...</p>
@@ -34,7 +34,7 @@ import { ArrowRight, Sparkles, CheckCircle2, FileDown } from 'lucide-vue-next'
         </div>
 
         <!-- 右侧：AI 结果 -->
-        <div class="reveal flex-1 w-full max-w-md border border-indigo-500/20 bg-gradient-to-br from-[#1A1A24]/80 to-[#111118]/80 p-6 rounded-2xl relative overflow-hidden text-left shadow-[0_0_30px_rgba(99,87,199,0.15)]" style="transition-delay: 200ms;">
+        <div class="reveal flex-1 w-full max-w-md brand-btn p-6 rounded-lg relative overflow-hidden text-left" style="transition-delay: 200ms;">
           <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
           
           <div class="text-xs font-medium tracking-wide text-indigo-400 uppercase flex items-center gap-1.5 mb-4 relative z-10">
