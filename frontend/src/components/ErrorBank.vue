@@ -321,20 +321,20 @@ onBeforeUnmount(() => {
         >
           <div v-if="tagNames.length">
             <div class="mb-2 flex items-center gap-2">
-              <label class="block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
+              <label class="block text-xs font-medium text-[#62666d]">知识点标签</label>
               <button v-if="selectedTags.size" @click="clearTagSelection"
-                class="rounded-full px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
+                class="rounded-full px-2 py-0.5 text-xs text-[#62666d] hover:text-rose-400 transition-colors">
                 <i class="fa-solid fa-xmark mr-1"></i>清除
               </button>
             </div>
             <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
               <button v-for="(tag, i) in tagNames" :key="tag"
                 @click="toggleTagSelect(tag)"
-                class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
+                class="rounded-md px-3 py-1 text-xs font-medium transition-all"
                 :style="{ animationDelay: `${i * 20}ms` }"
                 :class="['tag-fade-in', selectedTags.has(tag)
-                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
-                  : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300']"
+                  ? 'bg-[rgb(129,115,223)] text-white'
+                  : 'border border-white/[0.08] bg-white/[0.02] text-[#8a8f98] hover:border-white/[0.15] hover:text-[#d0d6e0]']"
               >
                 <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
                 {{ tag }}
