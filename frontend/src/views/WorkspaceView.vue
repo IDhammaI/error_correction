@@ -1363,13 +1363,53 @@ onBeforeUnmount(() => {
         <!-- 视图 4：错题库 -->
         <ContentPanel v-else-if="currentView === 'error-bank'" key="error_bank_view" title="错题库">
           <template #toolbar>
-            <button class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors" @click="errorBankRef?.toggleSelectMode?.()">
-              <i class="fa-solid fa-file-export text-[10px]"></i> 导出题目
-            </button>
-            <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
-              <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+            <button @click="currentView = 'workspace'" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="录入新题目">
+              <i class="fa-solid fa-plus text-xs"></i>
             </button>
           </template>
+          <template v-if="errorBankRef?.filterPanelOpen" #sidebar>
+            <div class="p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-[#f7f8f8]">筛选设置</span>
+                <button @click="errorBankRef.filterPanelOpen = false" class="text-[#62666d] hover:text-[#8a8f98] transition-colors">
+                  <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+              </div>
+
+              <!-- 学科 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">学科</label>
+                <CustomSelect v-model="errorBankRef.filters.subject" :options="errorBankRef.subjects" placeholder="全部学科" />
+              </div>
+
+              <!-- 题型 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">题型</label>
+                <CustomSelect v-model="errorBankRef.filters.question_type" :options="errorBankRef.questionTypes" placeholder="全部题型" />
+              </div>
+
+              <!-- 复习状态 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">复习状态</label>
+                <CustomSelect v-model="errorBankRef.filters.review_status" :options="['待复习', '复习中', '已掌握']" placeholder="全部状态" />
+              </div>
+
+              <!-- 知识点标签 -->
+              <div v-if="errorBankRef.tagNames?.length">
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">知识点</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <button v-for="tag in errorBankRef.tagNames" :key="tag"
+                    @click="errorBankRef.toggleTagSelect(tag)"
+                    class="rounded-md px-2 py-0.5 text-xs font-medium transition-all"
+                    :class="errorBankRef.selectedTags?.has(tag)
+                      ? 'bg-[rgb(129,115,223)] text-white'
+                      : 'border border-white/[0.06] bg-white/[0.02] text-[#62666d] hover:text-[#8a8f98] hover:border-white/[0.1]'"
+                  >{{ tag }}</button>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <ErrorBank
             ref="errorBankRef"
             :theme="theme"

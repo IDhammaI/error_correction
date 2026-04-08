@@ -6,6 +6,7 @@ import GlassCard from './GlassCard.vue'
 import GlassButton from './GlassButton.vue'
 import SearchInput from './SearchInput.vue'
 import CustomSelect from './CustomSelect.vue'
+import EmptyState from './EmptyState.vue'
 
 const noteContentRef = ref(null)
 
@@ -220,14 +221,16 @@ async function doDelete(noteId) {
 
         <!-- Notes Grid -->
         <div class="relative">
-          <div v-if="!loading && notes.length === 0" class="flex flex-col items-center justify-center rounded-lg border border-dashed border-white/[0.08] py-20">
-            <i class="fa-solid fa-book-open text-2xl text-[#62666d] mb-4"></i>
-            <p class="text-base font-medium text-[#f7f8f8]">还没有笔记</p>
-            <p class="mt-1 text-sm text-[#62666d]">上传手写笔记或板书照片，AI 自动整理为结构化知识点</p>
-            <button @click="triggerUpload" class="mt-4 inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
-              <i class="fa-solid fa-plus"></i>上传笔记
+          <EmptyState
+            v-if="!loading && notes.length === 0"
+            icon="fa-solid fa-book-open"
+            title="还没有笔记"
+            description="上传手写笔记或板书照片，AI 自动整理为结构化知识点"
+          >
+            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+              <i class="fa-solid fa-plus"></i> 上传笔记
             </button>
-          </div>
+          </EmptyState>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div
