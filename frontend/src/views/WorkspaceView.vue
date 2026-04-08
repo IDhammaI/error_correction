@@ -235,18 +235,18 @@ const statusPills = computed(() => {
   if (statusLoading.value) return [
     { key: 'paddle', loading: true, label: 'PaddleOCR' },
     { key: 'ensexam', loading: true, label: 'EnsExam' },
-    { key: 'langsmith', loading: true, label: 'LangSmith (未接入)' },
+    { key: 'langsmith', loading: true, label: 'LangSmith' },
   ]
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
   if (s.ensexam_configured) {
-    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam已接入' })
+    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam' })
   }
   pills.push(s.langsmith_enabled
     ? { key: 'langsmith', ok: true, label: 'LangSmith追踪' }
-    : { key: 'langsmith', ok: false, label: 'LangSmith (未接入)', isPlaceholder: true }
+    : { key: 'langsmith', ok: false, label: 'LangSmith', isPlaceholder: true }
   )
   return pills
 })
