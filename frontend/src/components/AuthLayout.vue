@@ -65,6 +65,8 @@ onMounted(() => {
       top: 55 + Math.random() * 42,
       size: 1 + Math.random() * 2,
       opacity: 0.08 + Math.random() * 0.35,
+      duration: 2 + Math.random() * 3,  // 2~5s
+      delay: Math.random() * 4,          // 0~4s 延迟
     })
   }
   stars.value = list
@@ -96,13 +98,15 @@ onMounted(() => {
         <div
           v-for="(s, i) in stars"
           :key="i"
-          class="absolute rounded-full bg-white"
+          class="absolute rounded-full bg-white star-twinkle"
           :style="{
             left: s.left + '%',
             top: s.top + '%',
             width: s.size + 'px',
             height: s.size + 'px',
-            opacity: s.opacity,
+            '--star-opacity': s.opacity,
+            animationDuration: s.duration + 's',
+            animationDelay: s.delay + 's',
           }"
         ></div>
       </div>
@@ -240,6 +244,15 @@ input:-webkit-autofill:focus {
 </style>
 
 <style scoped>
+/* 星星闪烁 */
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--star-opacity); }
+  50% { opacity: 0.02; }
+}
+.star-twinkle {
+  animation: star-twinkle ease-in-out infinite;
+}
+
 /* 鼠标跟随发光层 */
 .auth-glow-layer {
   mask-image: radial-gradient(350px circle at var(--mx, -500px) var(--my, -500px), black 0%, transparent 100%);

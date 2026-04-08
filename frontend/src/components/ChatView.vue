@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
   <div class="flex h-full flex-col">
     <!-- 顶栏 -->
     <div
-      class="flex shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/70 px-5 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60"
+      class="flex shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/70 px-5 py-4 dark:border-white/10 dark:bg-[#0A0A0F]/60"
     >
       <button
         @click="emit('back')"
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
 
     <!-- 输入区域 -->
     <div
-      class="shrink-0 border-t border-slate-200/60 bg-white/70 px-4 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0F]/60 sm:px-6"
+      class="shrink-0 border-t border-slate-200/60 bg-white/70 px-4 py-4 dark:border-white/10 dark:bg-[#0A0A0F]/60 sm:px-6"
     >
       <div class="mx-auto flex max-w-3xl items-end gap-3">
         <textarea

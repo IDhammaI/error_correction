@@ -53,7 +53,7 @@ async function handleRegister() {
         autocomplete="username"
         placeholder="您的昵称"
         maxlength="50"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        class="w-full h-10 px-4 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
       />
     </div>
 
@@ -65,7 +65,7 @@ async function handleRegister() {
         required
         autocomplete="email"
         placeholder="your@email.com"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+        class="w-full h-10 px-4 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
       />
     </div>
 
@@ -79,7 +79,7 @@ async function handleRegister() {
           autocomplete="new-password"
           placeholder="至少 6 位"
           minlength="6"
-          class="w-full h-10 px-4 pr-11 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
+          class="w-full h-10 px-4 pr-11 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
         />
         <button
           type="button"

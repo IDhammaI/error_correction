@@ -69,7 +69,7 @@ const config = () => {
   <Teleport to="body">
     <Transition name="dialog-fade">
       <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64" @click.self="emit('close')">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 bg-black/40"></div>
 
         <div class="relative w-full rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]"
              :class="field === 'question' ? 'max-w-2xl' : 'max-w-xl'">

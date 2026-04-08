@@ -7,6 +7,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { usePageTransition } from '../composables/usePageTransition.js'
 // 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
 import BrandLogo from '../components/BrandLogo.vue'
+import ContentPanel from '../components/ContentPanel.vue'
 import StatusBar from '../components/StatusBar.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import FileList from '../components/FileList.vue'
@@ -25,7 +26,6 @@ import SettingsView from '../components/SettingsView.vue'
 import SplitHistory from '../components/SplitHistory.vue'
 import NoteView from '../components/NoteView.vue'
 import ChatPage from '../components/ChatPage.vue'
-import GlassButton from '../components/GlassButton.vue'
 
 // ---- 认证状态 ----
 const { currentUser } = useAuth()
@@ -65,12 +65,103 @@ const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history
 
 const lastWorkspaceView = ref('workspace')
 
-const NAV_ITEMS = [
-  { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
-  { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
-  { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
-  { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
+// ── 侧边栏分组折叠 ──
+const NAV_GROUPS = [
+  {
+    label: null, // 无标题的顶级导航
+    items: [
+      { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
+    ],
+  },
+  {
+    label: '数据',
+    collapsible: true,
+    items: [
+      { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
+      { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
+      { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
+    ],
+  },
+  {
+    label: '更多',
+    collapsible: true,
+    items: [
+      { id: 'review-disabled', label: '刷题', icon: 'fa-clock-rotate-left', disabled: true },
+    ],
+  },
 ]
+
+const collapsedGroups = ref({})
+
+// ── 导航指示器动画（基于 DOM 实际位置） ──
+const navRef = ref(null)
+const navBtnRefs = ref({})
+const indicatorStyle = ref({ opacity: 0, top: '0px', height: '0px' })
+const indicatorTransition = ref(true)
+
+// ── 对话区指示器 ──
+const chatListRef = ref(null)
+const chatBtnRefs = ref({})
+const chatIndicatorStyle = ref({ opacity: 0, top: '0px', height: '0px' })
+const chatIndicatorTransition = ref(true)
+
+function updateIndicator(animate = true) {
+  const cv = currentView.value
+  const isChat = cv === 'ai-chat'
+
+  // === 导航组指示器 ===
+  if (isChat) {
+    // 切到对话时，导航指示器隐藏
+    indicatorTransition.value = animate
+    indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
+  } else {
+    let matchId = null
+    let matchGroupIdx = -1
+    for (let gi = 0; gi < NAV_GROUPS.length; gi++) {
+      for (const item of NAV_GROUPS[gi].items) {
+        if (item.match && item.match(cv)) { matchId = item.id; matchGroupIdx = gi; break }
+      }
+      if (matchId) break
+    }
+    if (matchGroupIdx >= 0 && collapsedGroups.value[matchGroupIdx]) {
+      indicatorTransition.value = false
+      indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
+    } else if (!matchId || !navBtnRefs.value[matchId] || !navRef.value) {
+      indicatorTransition.value = animate
+      indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
+    } else {
+      indicatorTransition.value = animate
+      const navRect = navRef.value.getBoundingClientRect()
+      const btnRect = navBtnRefs.value[matchId].getBoundingClientRect()
+      indicatorStyle.value = {
+        opacity: 1,
+        top: (btnRect.top - navRect.top) + 'px',
+        height: btnRect.height + 'px',
+      }
+    }
+  }
+
+  // === 对话区指示器 ===
+  if (!isChat || !activeAiChatId.value) {
+    chatIndicatorTransition.value = animate
+    chatIndicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
+  } else {
+    const btnEl = chatBtnRefs.value[activeAiChatId.value]
+    if (!btnEl || !chatListRef.value) {
+      chatIndicatorTransition.value = animate
+      chatIndicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
+    } else {
+      chatIndicatorTransition.value = animate
+      const listRect = chatListRef.value.getBoundingClientRect()
+      const btnRect = btnEl.getBoundingClientRect()
+      chatIndicatorStyle.value = {
+        opacity: 1,
+        top: (btnRect.top - listRect.top) + 'px',
+        height: btnRect.height + 'px',
+      }
+    }
+  }
+}
 
 const currentView = computed({
   get() {
@@ -87,27 +178,18 @@ const currentView = computed({
 
 watch(currentView, (v) => {
   if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
+  nextTick(updateIndicator)
+})
+watch(collapsedGroups, () => {
+  updateIndicator(false)
+  nextTick(() => updateIndicator(false))
+}, { deep: true })
+
+// activeAiChatId 定义在后面，延迟注册 watch
+onMounted(() => {
+  watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
 })
 
-const navIndicatorStyle = computed(() => {
-  const idx = NAV_ITEMS.findIndex(item => item.match(currentView.value))
-  if (idx === -1) return { opacity: 0, transform: 'translateY(0)' }
-  
-  // 精确计算：
-  // 1. 核心功能标题：text-xs (16px) + mb-2 (8px) = 24px
-  // 2. Flex Gap: gap-1.5 (6px)
-  // 3. 按钮高度：py-3 (12px * 2) + text-lg 图标高度 (28px) = 52px
-  const headerHeight = 24
-  const gap = 6
-  const itemHeight = 52
-  
-  const offset = headerHeight + gap
-  return {
-    opacity: 1,
-    transform: `translateY(${idx * (itemHeight + gap) + offset}px)`,
-    height: `${itemHeight}px`
-  }
-})
 
 // ---- 状态定义 ----
 const { loading: globalLoading } = usePageTransition()
@@ -182,6 +264,18 @@ const doFetchStatus = async () => {
 
 // ---- 步骤 & Toast ----
 const step = ref(1)
+
+// 步骤 tab 数据（给 ContentPanel header 用）
+const examStepLabels = ['上传', 'OCR', '分割', '导出']
+const noteStepLabels = ['上传', 'OCR', '整理', '保存']
+const workspaceSteps = computed(() => {
+  const labels = uploadMode.value === 'note' ? noteStepLabels : examStepLabels
+  return labels.map((label, i) => ({
+    label,
+    done: i + 1 < step.value,
+    active: i + 1 === step.value,
+  }))
+})
 const toasts = ref([])
 let toastId = 0
 const pushToast = (type, message, timeout = 2600) => {
@@ -364,6 +458,23 @@ const uploadBusy = ref(false)
 const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
+const showSplitHistory = ref(false)
+
+// ── 背景星星 ──
+const bgStars = (() => {
+  const list = []
+  for (let i = 0; i < 50; i++) {
+    list.push({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      size: 0.5 + Math.random() * 2,
+      opacity: 0.1 + Math.random() * 0.4,
+      duration: 2 + Math.random() * 4,
+      delay: Math.random() * 5,
+    })
+  }
+  return list
+})()
 const eraseEnabled = ref(true)
 
 const pendingFiles = reactive([])
@@ -519,6 +630,7 @@ const questions = ref([])
 const selectedIds = reactive(new Set())
 const questionListRef = ref(null)
 const errorBankRef = ref(null)
+const noteViewRef = ref(null)
 
 const toggleQuestion = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
 const selectAll = () => { for (const q of questions.value) selectedIds.add(q.uid) }
@@ -697,6 +809,7 @@ onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   document.addEventListener('click', closeChatMenu)
   loadAiChatSessions()
+  nextTick(updateIndicator)
 
   // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
   if (currentView.value === 'workspace_review' && !splitCompleted.value) {
@@ -731,7 +844,30 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-[#05050A] dark:text-slate-300">
+  <div class="flex h-screen w-full overflow-hidden bg-[#0c0c0e] font-sans text-slate-300 relative">
+
+    <!-- 全局背景装饰（Linear 风格） -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+      <!-- 左上角光圈 -->
+      <div class="absolute -top-[20%] -left-[10%] w-[600px] h-[600px] rounded-full" style="background: radial-gradient(circle, rgba(129,115,223,0.06) 0%, transparent 70%);"></div>
+      <!-- 噪点纹理 -->
+      <div class="absolute inset-0 opacity-[0.04]" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;); background-size: 256px 256px;"></div>
+      <!-- 闪烁星星 -->
+      <div
+        v-for="(s, i) in bgStars"
+        :key="i"
+        class="absolute rounded-full bg-white ws-star"
+        :style="{
+          left: s.left + '%',
+          top: s.top + '%',
+          width: s.size + 'px',
+          height: s.size + 'px',
+          '--star-opacity': s.opacity,
+          animationDuration: s.duration + 's',
+          animationDelay: s.delay + 's',
+        }"
+      ></div>
+    </div>
 
     <Transition name="ws-loading-fade">
       <div v-if="pageLoading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
@@ -743,97 +879,119 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Transition>
-    <!-- ================== 全局固定背景光晕 (支持长页面滚动) ================== -->
-    <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div class="animate-blob absolute -top-[10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-400/[0.12] mix-blend-multiply blur-[120px] dark:bg-indigo-500/[0.15] dark:mix-blend-screen"></div>
-      <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] right-[-10%] h-[45vw] w-[45vw] rounded-full bg-indigo-300/[0.15] mix-blend-multiply blur-[100px] dark:bg-fuchsia-500/[0.12] dark:mix-blend-screen"></div>
-      <div class="animate-blob animation-delay-2000 absolute left-[15%] top-[25%] h-[35vw] w-[35vw] rounded-full bg-cyan-200/[0.12] mix-blend-multiply blur-[110px] dark:bg-blue-500/[0.10] dark:mix-blend-screen"></div>
-    </div>
 
     <!-- ================== PC端：左侧边栏导航 ================== -->
-    <aside class="hidden w-64 flex-col justify-between border-r border-slate-200 bg-white md:flex dark:border-white/5 dark:bg-[#0A0A0F]/80 z-20">
+    <aside class="hidden w-64 flex-col justify-between md:flex z-20">
       <div>
         <!-- Logo 标题区 -->
-        <div class="flex h-20 items-center gap-2 border-b border-slate-100 px-4 dark:border-white/5">
-          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-xl px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" title="返回介绍页">
-            <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 dark:shadow-indigo-500/20">
-              <img src="/logo.svg" class="w-6 h-6 brightness-0 invert relative z-10" alt="logo" />
-              <div class="absolute inset-0 animate-pulse rounded-xl bg-blue-400/20 blur-md"></div>
-            </div>
-            <span class="text-xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-white dark:to-indigo-200">
-              智卷系统
-            </span>
+        <div class="flex h-20 items-center gap-2 px-4">
+          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-lg px-3 py-1.5 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
+            <BrandLogo size="md" />
+            <span class="text-base font-medium text-[#f7f8f8]">智卷错题本</span>
           </button>
         </div>
 
-        <!-- 视图切换菜单 -->
-        <nav class="mt-6 flex flex-col gap-1.5 px-4 relative">
-          <div class="mb-2 px-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">核心功能</div>
-
-          <!-- 悬浮指示器背景 -->
+        <!-- 视图切换菜单 — Linear 分组折叠 -->
+        <nav ref="navRef" class="mt-6 flex flex-col gap-1.5 px-4 relative">
+          <!-- 滑动指示器 -->
           <div
-            class="absolute left-4 right-4 z-0 rounded-xl bg-blue-600 shadow-lg shadow-blue-600/20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] dark:bg-indigo-500 dark:shadow-indigo-500/20"
-            :style="navIndicatorStyle"
-          ></div>
-
-          <!-- 激活指示小圆点 -->
-          <div
-            class="absolute right-6 z-20 h-1.5 w-1.5 rounded-full bg-white/80 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
-            :style="{
-              opacity: navIndicatorStyle.opacity,
-              transform: `translateY(calc(${navIndicatorStyle.transform.match(/translateY\(([^)]+)\)/)[1]} + 25.25px))`,
-            }"
-          ></div>
-
-          <button
-            v-for="item in NAV_ITEMS"
-            :key="item.id"
-            @click="currentView = (item.id === 'workspace' ? lastWorkspaceView : item.id)"
-            class="group relative z-10 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-all duration-200"
-            :class="item.match(currentView)
-              ? 'text-white'
-              : 'text-slate-600 hover:bg-slate-100/50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-indigo-300'"
+            class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
+            :class="indicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :style="indicatorStyle"
           >
-            <i class="w-5 text-center text-lg transition-transform group-hover:scale-110" :class="[item.icon, 'fa-solid']"></i>
-            <span>{{ item.label }}</span>
-          </button>
+          </div>
 
-          <button
-            disabled
-            class="group relative flex items-center justify-between rounded-xl px-3 py-3 text-sm font-bold cursor-not-allowed text-slate-400 dark:text-slate-500"
-          >
-            <div class="flex items-center gap-3 opacity-60">
-              <i class="fa-solid fa-clock-rotate-left w-5 text-center text-lg"></i>
-              <span>刷题</span>
+          <template v-for="(group, gi) in NAV_GROUPS" :key="gi">
+            <!-- 分组标题（可折叠） -->
+            <button
+              v-if="group.label"
+              @click="group.collapsible && (collapsedGroups[gi] = !collapsedGroups[gi])"
+              class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors"
+              :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'"
+            >
+              <span>{{ group.label }}</span>
+              <i
+                v-if="group.collapsible"
+                class="fa-solid fa-play text-[6px] text-[#62666d] transition-transform duration-200"
+                :class="collapsedGroups[gi] ? '' : 'rotate-90'"
+              ></i>
+            </button>
+
+            <!-- 分组内容 -->
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+              enter-from-class="max-h-0 opacity-0"
+              enter-to-class="max-h-96 opacity-100"
+              leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+              leave-from-class="max-h-96 opacity-100"
+              leave-to-class="max-h-0 opacity-0"
+            >
+            <div v-if="!collapsedGroups[gi]" class="flex flex-col gap-1">
+              <template v-for="item in group.items" :key="item.id">
+                <!-- 禁用项 -->
+                <button
+                  v-if="item.disabled"
+                  disabled
+                  class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
+                >
+                  <div class="flex items-center gap-3">
+                    <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                    <span>{{ item.label }}</span>
+                  </div>
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
+                </button>
+                <!-- 普通项 -->
+                <button
+                  v-else
+                  :ref="el => navBtnRefs[item.id] = el"
+                  @click="currentView = (item.id === 'workspace' ? lastWorkspaceView : item.id)"
+                  class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  :class="item.match(currentView)
+                    ? 'text-white'
+                    : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
+                >
+                  <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                  <span>{{ item.label }}</span>
+                </button>
+              </template>
             </div>
-            <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400">敬请期待</span>
-          </button>
+            </Transition>
+          </template>
         </nav>
 
       </div>
 
       <!-- AI 对话历史列表（常显示） -->
-      <div class="flex-1 min-h-0 flex flex-col border-t border-slate-100 dark:border-white/5 mt-4 px-4">
-        <div class="flex items-center justify-between px-3 pt-5 pb-2">
-          <span class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">对话</span>
-          <button @click="createAiChat" class="text-xs font-bold text-blue-600 dark:text-indigo-400 hover:underline">
-            <i class="fa-solid fa-plus mr-1"></i>新建
+      <div class="flex-1 min-h-0 flex flex-col mt-4 px-4">
+        <div class="flex items-center justify-between px-3 pt-4 pb-2">
+          <span class="text-xs font-medium uppercase tracking-[0.15em] text-[#62666d]">对话</span>
+          <button @click="createAiChat" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
+            <i class="fa-solid fa-plus text-[10px]"></i>
           </button>
         </div>
-        <div class="flex-1 overflow-y-auto pb-2 custom-scrollbar" @click="chatMenuOpenId = null">
-          <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+        <div ref="chatListRef" class="flex-1 overflow-y-auto pb-2 custom-scrollbar relative" @click="chatMenuOpenId = null">
+          <!-- 对话区滑动指示器 -->
+          <div
+            class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
+            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :style="chatIndicatorStyle"
+          >
+          </div>
+
+          <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-[#62666d]">
             暂无对话
           </div>
           <div
             v-for="s in aiChatSessions"
             :key="s.id"
-            class="group relative flex items-center gap-2 px-3 py-2 rounded-xl mb-1 cursor-pointer transition-colors"
+            :ref="el => chatBtnRefs[s.id] = el"
+            class="group relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md mb-px cursor-pointer transition-colors"
             :class="activeAiChatId === s.id && currentView === 'ai-chat'
-              ? 'bg-blue-50 dark:bg-indigo-500/10 text-blue-700 dark:text-indigo-300'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04]'"
+              ? 'text-white'
+              : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
             @click="renamingChatId !== s.id && selectAiChat(s)"
           >
-            <i class="fa-solid fa-message text-[10px] shrink-0 opacity-50"></i>
+            <i class="fa-solid fa-message text-[10px] shrink-0" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
 
             <!-- 重命名输入框 -->
             <input
@@ -844,14 +1002,14 @@ onBeforeUnmount(() => {
               @keydown.enter="confirmRenameChat(s)"
               @keydown.escape="renamingChatId = null"
               @blur="confirmRenameChat(s)"
-              class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-blue-500 dark:border-indigo-400 py-0.5"
+              class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-white/[0.12] py-0.5 text-[#f7f8f8]"
             />
-            <span v-else class="flex-1 truncate text-xs">{{ s.title }}</span>
+            <span v-else class="relative z-10 flex-1 truncate text-xs">{{ s.title }}</span>
 
             <!-- 三个点按钮 -->
             <button
               @click.stop="toggleChatMenu(s.id)"
-              class="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all"
+              class="shrink-0 opacity-0 group-hover:opacity-100 text-[#62666d] hover:text-[#d0d6e0] transition-all"
             >
               <i class="fa-solid fa-ellipsis text-[10px]"></i>
             </button>
@@ -867,18 +1025,18 @@ onBeforeUnmount(() => {
             >
               <div
                 v-if="chatMenuOpenId === s.id"
-                class="absolute right-2 top-full mt-1 z-50 w-32 rounded-xl border border-slate-200/60 bg-white shadow-lg dark:border-white/10 dark:bg-[#0A0A0F] overflow-hidden"
+                class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden"
                 @click.stop
               >
                 <button
                   @click="startRenameChat(s)"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
                 >
-                  <i class="fa-solid fa-pen text-[10px] w-4 text-center"></i> 重命名
+                  <i class="fa-solid fa-pen text-[10px] w-3 text-center text-[#62666d]"></i> 重命名
                 </button>
                 <button
                   @click="chatMenuOpenId = null; deleteAiChat(s.id)"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
                 >
                   <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
                 </button>
@@ -889,7 +1047,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 底部用户区 -->
-      <div class="relative border-t border-slate-100 p-4 dark:border-white/5">
+      <div class="relative p-2">
         <!-- Dropdown 菜单（在用户信息上方弹出） -->
         <Transition
           enter-active-class="transition duration-150 ease-out"
@@ -899,27 +1057,27 @@ onBeforeUnmount(() => {
           leave-from-class="opacity-100 translate-y-0"
           leave-to-class="opacity-0 translate-y-2"
         >
-          <div v-if="userMenuOpen" class="absolute bottom-full left-4 right-4 mb-2 rounded-xl border border-slate-200/60 bg-white shadow-lg dark:border-white/10 dark:bg-[#0A0A0F] overflow-hidden z-50">
+          <div v-if="userMenuOpen" class="absolute bottom-full left-2 right-2 mb-1 rounded-md brand-btn overflow-hidden z-50">
             <button
               @click="currentView = 'settings'; userMenuOpen = false"
-              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
             >
-              <i class="fa-solid fa-gear w-5 text-center"></i>
+              <i class="fa-solid fa-gear w-4 text-center text-xs text-[#62666d]"></i>
               系统设置
             </button>
             <button
               @click="(e) => { userMenuOpen = false; toggleTheme(e.currentTarget) }"
-              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5 transition-colors"
+              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
             >
-              <i class="fa-solid w-5 text-center" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
+              <i class="fa-solid w-4 text-center text-xs text-[#62666d]" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
               {{ isDark ? '浅色模式' : '深色模式' }}
             </button>
-            <div class="border-t border-slate-100 dark:border-white/5"></div>
+            <div class="border-t border-white/[0.05]"></div>
             <button
               @click="handleLogout; userMenuOpen = false"
-              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
             >
-              <i class="fas fa-right-from-bracket w-5 text-center"></i>
+              <i class="fas fa-right-from-bracket w-4 text-center text-xs"></i>
               退出登录
             </button>
           </div>
@@ -928,158 +1086,212 @@ onBeforeUnmount(() => {
         <!-- 用户信息（点击弹出菜单） -->
         <button
           @click="userMenuOpen = !userMenuOpen"
-          class="flex w-full items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100/50 dark:hover:bg-white/[0.04] transition-colors"
+          class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors"
         >
-          <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 flex items-center justify-center text-white text-sm font-extrabold shadow-sm">
-            {{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}
+          <div class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium" style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
+            <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
+            <span class="relative z-10">{{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}</span>
           </div>
           <div class="flex-1 min-w-0 text-left">
-            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate leading-tight">{{ currentUser?.username }}</p>
-            <p class="text-xs text-slate-400 dark:text-slate-500 truncate leading-tight">{{ currentUser?.email }}</p>
+            <p class="text-sm text-[#f7f8f8] truncate leading-tight">{{ currentUser?.username }}</p>
           </div>
-          <i class="fa-solid fa-ellipsis text-slate-400 dark:text-slate-500 text-sm"></i>
+          <i class="fa-solid fa-chevron-up text-[10px] text-[#62666d]"></i>
         </button>
       </div>
     </aside>
 
     <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/90 pb-2 pt-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#0A0A0F]/90">
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-[#0A0A0F]/90 pb-2 pt-2 md:hidden">
       <div class="flex justify-around">
-        <button @click="currentView = lastWorkspaceView" class="flex flex-col items-center p-2" :class="WORKSPACE_VIEWS.has(currentView) ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = lastWorkspaceView" class="flex flex-col items-center p-2" :class="WORKSPACE_VIEWS.has(currentView) ? 'text-indigo-400' : 'text-white/40'">
           <i class="fa-solid fa-file-arrow-up text-lg"></i>
           <span class="mt-1 text-xs font-bold">录入</span>
         </button>
-        <button @click="currentView = 'notes'" class="flex flex-col items-center p-2" :class="currentView === 'notes' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = 'notes'" class="flex flex-col items-center p-2" :class="currentView === 'notes' ? 'text-indigo-400' : 'text-white/40'">
           <i class="fa-solid fa-book-open text-lg"></i>
           <span class="mt-1 text-xs font-bold">笔记库</span>
         </button>
-        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-indigo-400' : 'text-white/40'">
           <i class="fa-solid fa-chart-pie text-lg"></i>
           <span class="mt-1 text-xs font-bold">数据面板</span>
         </button>
-        <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-indigo-400' : 'text-white/40'">
           <i class="fa-solid fa-layer-group text-lg"></i>
           <span class="mt-1 text-xs font-bold">错题本</span>
         </button>
-        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2" :class="currentView === 'settings' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
+        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2" :class="currentView === 'settings' ? 'text-indigo-400' : 'text-white/40'">
           <i class="fa-solid fa-sliders text-lg"></i>
           <span class="mt-1 text-xs font-bold">设置</span>
         </button>
-        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-slate-500 dark:text-slate-400">
+        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-white/40">
           <i class="fa-solid text-lg" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
           <span class="mt-1 text-xs font-bold">主题</span>
         </button>
       </div>
     </nav>
 
-    <!-- ================== 右侧主内容区 ================== -->
-    <main class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-0">
+    <!-- ================== 右侧区域 ================== -->
+    <div class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-3 md:pt-3 md:pr-3">
 
       <Transition name="view-fade" mode="out-in">
         <!-- 视图 1：录入工作台（分两页：上传解析页 / 题目核对页） -->
-        <div v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace" class="relative h-full flex flex-col overflow-hidden">
-          <div class="container relative z-10 mx-auto flex h-full min-h-0 max-w-6xl flex-col px-4 py-4 sm:px-8 sm:py-6">
-            <Transition name="flip" mode="out-in">
-              <!-- 第一页：录入与分析 -->
-              <div v-if="currentView === 'workspace'" key="upload" class="flex flex-1 flex-col min-h-0">
-                <div class="mb-4 flex flex-col items-start gap-2 pl-2 sm:pl-0 md:flex-row md:items-center md:justify-between shrink-0">
-                  <div>
-                    <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-                      智能录入与分析
-                    </h2>
-                    <div class="mt-2 flex items-center">
-                      <div class="relative flex items-center gap-2 py-1 text-xs font-black tracking-widest text-blue-600/80 dark:text-indigo-300/80">
-                        <div class="relative flex h-4 w-4 items-center justify-center">
-                          <i class="fa-solid fa-bolt-lightning absolute animate-pulse text-xs text-indigo-500 dark:text-indigo-400"></i>
-                          <div class="absolute h-full w-full animate-ping rounded-full bg-indigo-400/10 dark:bg-indigo-400/10"></div>
-                        </div>
+        <div v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace" class="h-full">
+          <Transition name="flip" mode="out-in">
+            <!-- 第一页：录入与分析 -->
+            <ContentPanel v-if="currentView === 'workspace'" key="upload" title="智能录入与分析" :steps="workspaceSteps" :current-step="step - 1">
+              <template #toolbar>
+                <button
+                  @click="showSplitHistory = !showSplitHistory"
+                  class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                  :class="showSplitHistory
+                    ? 'bg-white/[0.06] text-[#f7f8f8] border border-white/[0.12]'
+                    : 'border border-white/[0.08] bg-white/[0.02] text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12]'"
+                >
+                  <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+                  分割历史
+                </button>
+              </template>
 
-                        <span class="relative z-10 uppercase pb-0.5">
-                          上传试卷或笔记，AI 自动识别、整理、归档
-                        </span>
-                      </div>
-                    </div>
+              <!-- 右侧栏：分割历史 -->
+              <template v-if="showSplitHistory" #sidebar>
+                <SplitHistory
+                  :theme="theme"
+                  :visible="showSplitHistory"
+                  @push-toast="pushToast"
+                  @open-image="openModal"
+                  @load-record="(r) => { handleLoadRecord(r); showSplitHistory = false }"
+                  @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
+                />
+              </template>
+
+                <!-- 工具栏：状态 + 模式切换 + 擦除开关 -->
+                <div class="flex flex-wrap items-center gap-3 py-2">
+                  <!-- 模式切换 -->
+                  <div class="flex items-center rounded-md brand-btn p-0.5">
+                    <button
+                      @click="uploadMode = 'exam'"
+                      class="h-7 px-3 rounded text-xs font-medium transition-all"
+                      :class="uploadMode === 'exam' ? 'bg-white/[0.06] text-[#f7f8f8]' : 'text-[#62666d] hover:text-[#8a8f98]'"
+                    >
+                      <i class="fa-solid fa-file-lines mr-1.5"></i>试卷分割
+                    </button>
+                    <button
+                      @click="uploadMode = 'note'"
+                      class="h-7 px-3 rounded text-xs font-medium transition-all"
+                      :class="uploadMode === 'note' ? 'bg-white/[0.06] text-[#f7f8f8]' : 'text-[#62666d] hover:text-[#8a8f98]'"
+                    >
+                      <i class="fa-solid fa-book-open mr-1.5"></i>笔记整理
+                    </button>
                   </div>
-                  <GlassButton icon="fa-clock-rotate-left" @click="currentView = 'split-history'">
-                    分割历史
-                  </GlassButton>
+
+                  <!-- 分隔 -->
+                  <div class="h-4 w-px bg-white/[0.08]"></div>
+
+                  <!-- 擦除开关 -->
+                  <label class="flex cursor-pointer items-center gap-2" @click="eraseEnabled = !eraseEnabled">
+                    <div class="relative h-4 w-7 rounded-full transition-colors" :class="eraseEnabled ? 'bg-[rgb(129,115,223)]' : 'bg-white/[0.08]'">
+                      <div class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform" :class="eraseEnabled ? 'translate-x-3' : 'translate-x-0.5'"></div>
+                    </div>
+                    <span class="text-xs text-[#8a8f98]">擦除笔迹</span>
+                    <span class="relative group/tip">
+                      <i class="fa-solid fa-circle-question text-[10px] text-[#62666d] cursor-help"></i>
+                      <span class="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-md bg-[#191a1b] border border-white/[0.08] text-xs text-[#d0d6e0] whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity">
+                        上传后自动擦除图片中的手写笔迹
+                      </span>
+                    </span>
+                  </label>
+
+                  <!-- 引擎状态（推到右侧） -->
+                  <div class="ml-auto">
+                    <StatusBar
+                      :status-loading="statusLoading"
+                      :status-error="statusError"
+                      :status-pills="statusPills"
+                      :provider-options="providerOptions"
+                      :selected-model="selectedModel"
+                      :disabled="splitting || splitCompleted"
+                      :no-models="!hasConfiguredModel"
+                      @update:selected-model="(v) => selectedModel = v"
+                    />
+                  </div>
                 </div>
 
-                <div class="main-content relative flex flex-1 flex-col min-h-0 bg-transparent">
-                  <StatusBar
-                    class="border-b border-slate-200/60 pb-6 dark:border-white/5"
-                    :status-loading="statusLoading"
-                    :status-error="statusError"
-                    :status-pills="statusPills"
-                    :provider-options="providerOptions"
-                    :selected-model="selectedModel"
-                    :disabled="splitting || splitCompleted"
-                    :no-models="!hasConfiguredModel"
-                    @update:selected-model="(v) => selectedModel = v"
+                <!-- 上传区（一体化） -->
+                <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center py-8 gap-6">
+
+                  <!-- 引导信息 -->
+                  <div class="text-center max-w-md">
+                    <h3 class="text-base font-medium text-[#f7f8f8] mb-2">
+                      {{ uploadMode === 'note' ? '上传手写笔记' : '上传试卷图片' }}
+                    </h3>
+                    <p class="text-sm text-[#62666d] leading-relaxed">
+                      {{ uploadMode === 'note'
+                        ? '支持拍照或扫描件，AI 将自动识别内容并整理为结构化笔记'
+                        : '支持 PDF 和图片格式，AI 将自动完成 OCR 识别、题目分割和知识点标注'
+                      }}
+                    </p>
+                  </div>
+
+                  <!-- 流程步骤卡片 -->
+                  <div class="grid grid-cols-4 gap-4 w-full max-w-2xl">
+                    <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
+                      <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.04]">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl text-[rgb(129,115,223)]"></i>
+                      </div>
+                      <span class="text-sm text-[#8a8f98]">{{ uploadMode === 'note' ? '上传笔记' : '上传文件' }}</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
+                      <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.04]">
+                        <i class="fa-solid fa-eye text-xl text-[rgb(129,115,223)]"></i>
+                      </div>
+                      <span class="text-sm text-[#8a8f98]">AI 识别</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
+                      <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.04]">
+                        <i class="fa-solid text-xl text-[rgb(129,115,223)]" :class="uploadMode === 'note' ? 'fa-wand-magic-sparkles' : 'fa-scissors'"></i>
+                      </div>
+                      <span class="text-sm text-[#8a8f98]">{{ uploadMode === 'note' ? '智能整理' : '分割纠错' }}</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
+                      <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.04]">
+                        <i class="fa-solid text-xl text-[rgb(129,115,223)]" :class="uploadMode === 'note' ? 'fa-bookmark' : 'fa-file-export'"></i>
+                      </div>
+                      <span class="text-sm text-[#8a8f98]">{{ uploadMode === 'note' ? '保存笔记' : '导出归档' }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 拖拽上传（与步骤卡片同宽） -->
+                  <FileUploader
+                    :pending-files="pendingFiles"
+                    :file-progress="fileProgress"
+                    :waiting-keys="waitingKeys"
+                    :upload-busy="uploadBusy"
+                    :upload-ready="uploadReady"
+                    :splitting="splitting"
+                    :split-completed="splitCompleted"
+                    :expand="false"
+                    :disabled="!hasConfiguredModel"
+                    @upload="enqueueUpload"
+                    @remove-file="removePendingFile"
+                    class="w-full max-w-2xl"
                   />
 
-                  <!-- 功能开关 -->
-                  <div class="flex items-center gap-4 border-b border-slate-200/60 py-4 dark:border-white/5">
-                    <label class="flex cursor-pointer items-center gap-2" @click="eraseEnabled = !eraseEnabled">
-                      <div class="relative h-6 w-10 rounded-full transition-colors" :class="eraseEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'">
-                        <div class="absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform" :class="eraseEnabled ? 'translate-x-5' : 'translate-x-1'"></div>
-                      </div>
-                      <span class="text-sm font-bold text-slate-700 dark:text-slate-300">擦除手写字迹</span>
-                      <span class="text-xs text-slate-400 dark:text-slate-500">上传后自动擦除图片中的手写笔迹</span>
-                    </label>
-                  </div>
+                  <!-- 已上传文件 -->
+                  <FileList
+                    class="w-full max-w-2xl"
+                    :pending-files="pendingFiles"
+                    :file-progress="fileProgress"
+                    :waiting-keys="waitingKeys"
+                    :upload-busy="uploadBusy"
+                    :upload-ready="uploadReady"
+                    :splitting="splitting"
+                    :split-completed="splitCompleted"
+                    @remove-file="removePendingFile"
+                  />
 
-                  <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
-                    <!-- 模式切换：试卷 / 笔记 -->
-                    <div class="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
-                      <button
-                        @click="uploadMode = 'exam'"
-                        class="flex-1 h-9 rounded-lg text-sm font-bold transition-all"
-                        :class="uploadMode === 'exam' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'"
-                      >
-                        <i class="fa-solid fa-file-lines mr-2"></i>试卷分割
-                      </button>
-                      <button
-                        @click="uploadMode = 'note'"
-                        class="flex-1 h-9 rounded-lg text-sm font-bold transition-all"
-                        :class="uploadMode === 'note' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'"
-                      >
-                        <i class="fa-solid fa-book-open mr-2"></i>笔记整理
-                      </button>
-                    </div>
-
-                    <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
-
-                    <FileList
-                      :pending-files="pendingFiles"
-                      :file-progress="fileProgress"
-                      :waiting-keys="waitingKeys"
-                      :upload-busy="uploadBusy"
-                      :upload-ready="uploadReady"
-                      :splitting="splitting"
-                      :split-completed="splitCompleted"
-                      @remove-file="removePendingFile"
-                    />
-
-                    <FileUploader
-                      class="transition-all duration-500"
-                      :class="questions.length === 0 ? 'flex-1' : 'border-b border-slate-200/60 pb-8 dark:border-white/5'"
-                      :pending-files="pendingFiles"
-                      :file-progress="fileProgress"
-                      :waiting-keys="waitingKeys"
-                      :upload-busy="uploadBusy"
-                      :upload-ready="uploadReady"
-                      :splitting="splitting"
-                      :split-completed="splitCompleted"
-                      :expand="questions.length === 0"
-                      :disabled="!hasConfiguredModel"
-                      @upload="enqueueUpload"
-                      @remove-file="removePendingFile"
-                    />
-                  </div>
-
+                  <!-- 操作按钮 -->
                   <ActionBar
-                    class="shrink-0 border-t border-slate-200/60 pt-6 dark:border-white/5"
+                    class="mt-4"
                     :split-enabled="splitEnabled"
                     :export-enabled="false"
                     :splitting="splitting"
@@ -1087,28 +1299,20 @@ onBeforeUnmount(() => {
                     :upload-mode="uploadMode"
                     @split="doSplit"
                   />
-
                 </div>
-              </div>
+            </ContentPanel>
 
-              <!-- 第二页：解析结果核对 -->
-              <div v-else-if="currentView === 'workspace_review'" key="review" class="flex flex-1 flex-col overflow-hidden">
-                <div class="mb-4 flex items-center justify-between pl-2 sm:pl-0 shrink-0">
-                  <div class="flex items-center gap-4">
-                    <button
-                      @click="() => { doReset(); currentView = 'workspace' }"
-                      class="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-md transition-all hover:border-blue-500/50 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
-                    >
-                      <i class="fa-solid fa-arrow-left-long transition-transform group-hover:-translate-x-1"></i>
-                    </button>
-                    <div>
-                      <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-                        题目数据核对
-                      </h2>
-                      <p class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">请确认解析结果的准确性并进行导出或存档</p>
-                    </div>
-                  </div>
-                </div>
+            <!-- 第二页：解析结果核对 -->
+            <ContentPanel v-else-if="currentView === 'workspace_review'" key="review" title="题目数据核对" :steps="workspaceSteps" :current-step="3">
+              <template #toolbar>
+                <button
+                  @click="() => { doReset(); currentView = 'workspace' }"
+                  class="group inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
+                >
+                  <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
+                  返回
+                </button>
+              </template>
 
                 <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
                   <QuestionList
@@ -1123,14 +1327,12 @@ onBeforeUnmount(() => {
                   />
                 </div>
 
-              </div>
-            </Transition>
-
-          </div>
+            </ContentPanel>
+          </Transition>
         </div>
 
         <!-- 视图 2：待复习 -->
-        <div v-else-if="currentView === 'review'" key="review_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'review'" key="review_view" title="待复习">
           <ReviewView
             :theme="theme"
             :visible="currentView === 'review'"
@@ -1139,20 +1341,33 @@ onBeforeUnmount(() => {
             @open-image="openModal"
             @start-chat="openChat"
           />
-        </div>
+        </ContentPanel>
 
         <!-- 视图 3：数据面板 -->
-        <div v-else-if="currentView === 'dashboard'" key="dashboard_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'dashboard'" key="dashboard_view" title="数据面板">
+          <template #toolbar>
+            <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
+              <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+            </button>
+          </template>
           <Dashboard
             :theme="theme"
             :visible="currentView === 'dashboard'"
             @go-workspace="currentView = 'workspace'"
             @push-toast="pushToast"
           />
-        </div>
+        </ContentPanel>
 
         <!-- 视图 4：错题库 -->
-        <div v-else-if="currentView === 'error-bank'" key="error_bank_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'error-bank'" key="error_bank_view" title="错题库">
+          <template #toolbar>
+            <button class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors" @click="errorBankRef?.toggleSelectMode?.()">
+              <i class="fa-solid fa-file-export text-[10px]"></i> 导出题目
+            </button>
+            <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
+              <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+            </button>
+          </template>
           <ErrorBank
             ref="errorBankRef"
             :theme="theme"
@@ -1162,30 +1377,20 @@ onBeforeUnmount(() => {
             @open-image="openModal"
             @start-chat="openChat"
           />
-        </div>
+        </ContentPanel>
 
-        <!-- 视图 5：分割历史 -->
-        <div v-else-if="currentView === 'split-history'" key="split_history_view" class="h-full">
-          <SplitHistory
-            :theme="theme"
-            :visible="currentView === 'split-history'"
-            @push-toast="pushToast"
-            @open-image="openModal"
-            @load-record="handleLoadRecord"
-            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-          />
-        </div>
+        <!-- 视图 5：分割历史（已移入录入工作台右侧栏） -->
 
         <!-- 视图 6：系统设置 -->
-        <div v-else-if="currentView === 'settings'" key="settings_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'settings'" key="settings_view" title="系统设置">
           <SettingsView
             :visible="currentView === 'settings'"
             @saved="doFetchStatus"
           />
-        </div>
+        </ContentPanel>
 
         <!-- 视图 7：AI 辅导对话 -->
-        <div v-else-if="currentView === 'chat'" key="chat_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'chat'" key="chat_view" title="AI 辅导">
           <ChatView
             v-if="chatActive"
             :session-id="chatSessionId"
@@ -1195,21 +1400,27 @@ onBeforeUnmount(() => {
             :username="currentUser?.username"
             @back="backToErrorBank"
           />
-        </div>
+        </ContentPanel>
 
         <!-- 视图 8：笔记 -->
-        <div v-else-if="currentView === 'notes'" key="notes_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'notes'" key="notes_view" title="笔记库">
+          <template #toolbar>
+            <button @click="noteViewRef?.triggerUpload?.()" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
+              <i class="fa-solid fa-plus text-[10px]"></i> 上传笔记
+            </button>
+          </template>
           <NoteView
+            ref="noteViewRef"
             :visible="currentView === 'notes'"
             :model-provider="selectedProvider"
             :model-name="selectedModel"
             :theme="theme"
             @push-toast="pushToast"
           />
-        </div>
+        </ContentPanel>
 
         <!-- 视图 9：AI 对话 -->
-        <div v-else-if="currentView === 'ai-chat'" key="ai_chat_view" class="h-full">
+        <ContentPanel v-else-if="currentView === 'ai-chat'" key="ai_chat_view" title="AI 对话">
           <ChatPage
             :visible="currentView === 'ai-chat'"
             :session-id="activeAiChatId"
@@ -1220,7 +1431,7 @@ onBeforeUnmount(() => {
             @create-chat="createAiChat"
             @session-title-updated="onAiChatTitleUpdated"
           />
-        </div>
+        </ContentPanel>
       </Transition>
 
       <!-- workspace_review 浮动选择面板 -->
@@ -1234,9 +1445,9 @@ onBeforeUnmount(() => {
         @clear="deselectAll"
       />
 
-      <!-- AI 分割任务全局遮罩：置于 main 顶层，仅在录入视图且正在分割时显示 -->
+      <!-- AI 分割任务全局遮罩 -->
       <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
-    </main>
+    </div>
 
     <!-- 全局弹窗与通知 -->
     <Teleport to="body">
@@ -1251,29 +1462,29 @@ onBeforeUnmount(() => {
 
       <!-- 答案录入弹窗（AI 辅导前置） -->
       <div v-if="answerModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dark:bg-black/60" @click="answerModalOpen = false"></div>
-        <div class="relative w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
-          <h3 class="mb-1 text-lg font-bold text-slate-900 dark:text-white">录入答案</h3>
-          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
+        <div class="absolute inset-0 bg-black/60" @click="answerModalOpen = false"></div>
+        <div class="relative w-full max-w-lg rounded-lg brand-btn p-6">
+          <h3 class="mb-1 text-base font-medium text-[#f7f8f8]">录入答案</h3>
+          <p class="mb-4 text-xs text-[#62666d]">
             AI 辅导需要正确答案作为参考。支持 Markdown 格式，数学公式使用 LaTeX（$..$ 行内，$$...$$ 独占行）
           </p>
           <textarea
             v-model="answerModalText"
             rows="10"
             placeholder="在此粘贴或输入答案/解析..."
-            class="w-full resize-none rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+            class="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-3 font-mono text-sm text-[#d0d6e0] placeholder-[#62666d] focus:border-white/[0.12] focus:outline-none transition-colors"
           ></textarea>
           <div class="mt-4 flex justify-end gap-3">
             <button
               @click="answerModalOpen = false"
-              class="rounded-xl border border-slate-200/60 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              class="rounded-md border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-sm font-medium text-[#d0d6e0] transition-colors hover:bg-white/[0.05]"
             >
               取消
             </button>
             <button
               @click="saveAnswerAndChat"
               :disabled="answerModalSaving"
-              class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+              class="rounded-md bg-[#5e6ad2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#7170ff] disabled:opacity-50"
             >
               {{ answerModalSaving ? '保存中...' : '保存并开始辅导' }}
             </button>
@@ -1285,27 +1496,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
-/* 自定义背景光晕动画 - 极致性能优化版 */
-@keyframes blob {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  33% { transform: translate3d(80px, -120px, 0) scale(1.15); }
-  66% { transform: translate3d(-60px, 60px, 0) scale(0.9); }
-  100% { transform: translate3d(0, 0, 0) scale(1); }
-}
-
-.animate-blob {
-  animation: blob 30s infinite alternate ease-in-out;
-  will-change: transform;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -1315,6 +1505,15 @@ onBeforeUnmount(() => {
 
 .ws-loading-fade-leave-active { transition: opacity 0.4s ease; }
 .ws-loading-fade-leave-to { opacity: 0; }
+
+/* 星星闪烁 */
+@keyframes ws-star-twinkle {
+  0%, 100% { opacity: var(--star-opacity); }
+  50% { opacity: 0.02; }
+}
+.ws-star {
+  animation: ws-star-twinkle ease-in-out infinite;
+}
 
 .ws-loading-bar {
   animation: wsLoadProgress 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;

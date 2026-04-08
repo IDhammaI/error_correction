@@ -42,7 +42,7 @@ const emit = defineEmits(['add', 'toggle-active', 'edit', 'remove'])
     <div class="space-y-2">
       <div
         v-for="(provider, idx) in providers" :key="provider.id"
-        class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm backdrop-blur-xl transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
+        class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm transition-all hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/30"
         @click="emit('toggle-active', provider.id)"
       >
         <!-- 激活单选 -->

@@ -309,7 +309,7 @@ onUnmounted(() => {
         <LandingCta />
 
         <!-- 全局 Footer -->
-        <div class="border-t border-white/[0.06] py-4 relative z-10 backdrop-blur-sm bg-[#0A0A0F]/50 w-full mt-auto">
+        <div class="border-t border-white/[0.06] py-4 relative z-10 bg-[#0A0A0F]/50 w-full mt-auto">
           <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/30 px-4">
             <div class="flex items-center gap-2">
               <div class="bg-white/[0.04] border border-white/[0.06] p-1.5 rounded-lg">
@@ -375,8 +375,6 @@ onUnmounted(() => {
 /* 动态玻璃态面板 */
 .glass-panel {
   background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }

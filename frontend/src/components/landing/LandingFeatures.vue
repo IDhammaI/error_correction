@@ -102,7 +102,7 @@ function handleGridMouseMove(e) {
           </div>
           
           <!-- 卡片主体背景层 (修改为半透明玻璃态) -->
-          <div class="relative h-full w-full rounded-[19px] bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 backdrop-blur-md p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden shadow-2xl shadow-black/50 border border-white/[0.02]">
+          <div class="relative h-full w-full rounded-[19px] bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden shadow-2xl shadow-black/50 border border-white/[0.02]">
             <!-- 静态微弱磨砂噪点层 (降低透明度和颗粒粗糙度) -->
             <div class="pointer-events-none absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%221%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
 
