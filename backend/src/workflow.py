@@ -388,29 +388,42 @@ def split_questions_node(state: WorkflowState) -> dict:
     if os.path.exists(meta_path):
         os.remove(meta_path)
 
-    # ── Step 1: OCR 解析 ──
-    console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
-    ocr_start = time.time()
-
-    ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
+    # ── Step 1: OCR 解析（优先使用缓存） ──
+    ocr_cache_path = os.path.join(results_dir, "ocr_cache.json")
+    ocr_data = None
+    if os.path.exists(ocr_cache_path):
+        try:
+            with open(ocr_cache_path, 'r', encoding='utf-8') as f:
+                ocr_data = json.load(f)
+            console.print(f"[green]✓ 使用 OCR 缓存: {len(ocr_data)} 页[/green]")
+            logger.info(f"使用 OCR 缓存: {len(ocr_data)} 页")
+            os.remove(ocr_cache_path)  # 用完即删，避免下次误用
+        except Exception as e:
+            logger.warning(f"读取 OCR 缓存失败: {e}，将重新执行 OCR")
+            ocr_data = None
 
     if not ocr_data:
-        logger.error("OCR 解析失败，无数据返回")
-        console.print("[red]⚠ OCR 解析失败[/red]")
-        return {
-            "questions": [],
-            "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
-        }
+        console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
+        ocr_start = time.time()
+        ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
+
+        if not ocr_data:
+            logger.error("OCR 解析失败，无数据返回")
+            console.print("[red]⚠ OCR 解析失败[/red]")
+            return {
+                "questions": [],
+                "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
+            }
+
+        total_blocks = sum(len(p.get("blocks", [])) for p in ocr_data)
+        ocr_elapsed = time.time() - ocr_start
+        logger.info(f"OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block, 耗时 {ocr_elapsed:.2f}s")
+        console.print(f"[green]✓ OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block ({ocr_elapsed:.1f}s)[/green]")
 
     # 保存 agent_input.json（供纠错节点使用）
     agent_input_path = os.path.join(results_dir, "agent_input.json")
     with open(agent_input_path, 'w', encoding='utf-8') as f:
         json.dump(ocr_data, f, ensure_ascii=False, indent=2)
-
-    total_blocks = sum(len(p.get("blocks", [])) for p in ocr_data)
-    ocr_elapsed = time.time() - ocr_start
-    logger.info(f"OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block, 耗时 {ocr_elapsed:.2f}s")
-    console.print(f"[green]✓ OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block ({ocr_elapsed:.1f}s)[/green]")
 
     # ── Step 2: 加载 DB 上下文 ──
     db_subjects, db_tags = _load_db_context()

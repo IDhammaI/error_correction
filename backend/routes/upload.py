@@ -226,6 +226,116 @@ def cancel_file():
         }), 500
 
 
+@bp.route('/ocr', methods=['POST'])
+def run_ocr():
+    """只执行 OCR，返回识别结果供用户预览。
+
+    流程：标准化输入 → OCR 解析 → 返回结构化文本
+    不触发 Agent 分割。
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        erase = data.get("erase", True)
+
+        # 加载 OCR 凭据
+        user_id = session.get('user_id')
+        ocr_credentials = {}
+        if user_id:
+            with SessionLocal() as db:
+                ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
+                if ocr_provider:
+                    ocr_credentials = {
+                        "api_url": ocr_provider.base_url,
+                        "token": ocr_provider.api_key,
+                        "model": ocr_provider.model_name,
+                        "use_doc_orientation": ocr_provider.use_doc_orientation,
+                        "use_doc_unwarping": ocr_provider.use_doc_unwarping,
+                        "use_chart_recognition": ocr_provider.use_chart_recognition,
+                    }
+
+        with session_lock:
+            keys = list(session_file_order)
+            file_paths = []
+            for k in keys:
+                v = session_files.get(k) or {}
+                fp = v.get('filepath')
+                if fp:
+                    file_paths.append(fp)
+
+        if not file_paths:
+            return jsonify({'success': False, 'error': '请先上传文件'}), 400
+
+        # 擦除手写字迹
+        ensexam_configured = settings.model_path.exists()
+        if ensexam_configured and erase:
+            try:
+                from models.inference import InferenceEngine
+                engine = InferenceEngine()
+                erased_paths = []
+                for fp in file_paths:
+                    with open(fp, 'rb') as f:
+                        img_bytes = f.read()
+                    result_img = engine.run(img_bytes)
+                    erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.basename(fp)}"
+                    if not erased_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        erased_name += '.png'
+                    erased_path = settings.erased_dir / erased_name
+                    result_img.save(str(erased_path), format='PNG')
+                    erased_paths.append(str(erased_path))
+                file_paths = erased_paths
+            except Exception:
+                logger.exception("自动擦除手写字迹失败，使用原图继续")
+
+        # 标准化输入（PDF → 图片）
+        from src.utils import prepare_input
+        all_image_paths = []
+        for fp in file_paths:
+            all_image_paths.extend(prepare_input(fp))
+
+        # 执行 OCR
+        from src.workflow import _run_ocr_and_simplify
+        ocr_data = _run_ocr_and_simplify(all_image_paths, ocr_credentials=ocr_credentials)
+
+        if not ocr_data:
+            return jsonify({'success': False, 'error': 'OCR 解析失败，请检查 PaddleOCR 配置'}), 500
+
+        # 保存 OCR 结果到会话，供后续 /api/split 复用
+        import json
+        results_dir = str(settings.results_dir)
+        os.makedirs(results_dir, exist_ok=True)
+        ocr_cache_path = os.path.join(results_dir, "ocr_cache.json")
+        with open(ocr_cache_path, 'w', encoding='utf-8') as f:
+            json.dump(ocr_data, f, ensure_ascii=False, indent=2)
+
+        # 构建前端预览数据：每页的 OCR 文本 + 对应的图片路径
+        preview_pages = []
+        for i, page in enumerate(ocr_data):
+            blocks = page.get("blocks", [])
+            text = "\n".join(b.get("text", "") for b in blocks if b.get("text"))
+            image_path = all_image_paths[i] if i < len(all_image_paths) else None
+            # 转为可访问的 URL
+            image_url = None
+            if image_path:
+                image_url = f"/api/upload/image/{os.path.basename(image_path)}"
+            preview_pages.append({
+                "page_index": i,
+                "text": text,
+                "block_count": len(blocks),
+                "image_url": image_url,
+            })
+
+        return jsonify({
+            'success': True,
+            'message': f'OCR 完成，共 {len(ocr_data)} 页',
+            'pages': preview_pages,
+            'total_blocks': sum(len(p.get("blocks", [])) for p in ocr_data),
+        })
+
+    except Exception:
+        logger.exception("OCR 执行失败")
+        return jsonify({'success': False, 'error': 'OCR 执行失败，请稍后重试'}), 500
+
+
 @bp.route('/split', methods=['POST'])
 def split_questions():
     """开始执行标准化 + OCR + 分割。
@@ -445,3 +555,15 @@ def export_wrongbook():
             'success': False,
             'error': '导出失败，请稍后重试'
         }), 500
+
+
+@bp.route('/image/<filename>')
+def serve_image(filename):
+    """提供上传/处理后的图片文件访问（OCR 预览用）"""
+    from flask import send_from_directory
+    # 在多个目录中查找
+    for d in [settings.upload_dir, settings.erased_dir, settings.results_dir]:
+        path = os.path.join(str(d), filename)
+        if os.path.exists(path):
+            return send_from_directory(str(d), filename)
+    return jsonify({'error': 'File not found'}), 404

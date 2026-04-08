@@ -16,6 +16,7 @@ import QuestionList from '../components/QuestionList.vue'
 import ActionBar from '../components/ActionBar.vue'
 import SelectionPanel from '../components/SelectionPanel.vue'
 import SplitLoading from '../components/SplitLoading.vue'
+import OcrPreview from '../components/OcrPreview.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
@@ -454,6 +455,9 @@ const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
 const showSplitHistory = ref(false)
+const ocrLoading = ref(false)
+const ocrPages = ref([])
+const ocrDone = ref(false)
 
 // ── 背景星星 ──
 const bgStars = (() => {
@@ -601,7 +605,8 @@ const handleUpload = (files) => {
       }
       uploadReady.value = pendingFiles.length > 0
       step.value = pendingFiles.length > 0 ? 2 : 1
-      pushToast('success', `上传成功！本次新增 ${keys.length} 个文件，点击"开始分割题目"开始处理`)
+      pushToast('success', `上传成功！正在执行 OCR 识别...`)
+      doOcr()
       pumpUploadQueue()
     },
     onError: (msg) => {
@@ -642,6 +647,29 @@ const typesetMath = async () => {
   const el = questionListRef.value?.questionsBoxEl
   await _typesetMathEl(el || undefined)
 }
+
+const doOcr = async () => {
+  if (ocrLoading.value) return
+  ocrLoading.value = true
+  ocrDone.value = false
+  ocrPages.value = []
+  currentView.value = "workspace_review"
+  step.value = 2
+  try {
+    const data = await api.runOcr({ erase: eraseEnabled.value })
+    ocrPages.value = data.pages || []
+    ocrDone.value = true
+    step.value = 2
+    pushToast("success", `OCR 完成，共 ${data.pages?.length || 0} 页`)
+  } catch (e) {
+    pushToast("error", "OCR 失败: " + (e.message || "未知错误"))
+    currentView.value = "workspace"
+    step.value = 1
+  } finally {
+    ocrLoading.value = false
+  }
+}
+
 const doSplit = async () => {
   if (!uploadReady.value || splitting.value || splitCompleted.value) return
 
@@ -653,8 +681,8 @@ const doSplit = async () => {
 
   // 试卷模式：走原有分割流程
   splitting.value = true
+  ocrDone.value = false
   step.value = 3
-  currentView.value = 'workspace_review'
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
     const data = await api.splitQuestions(selectedProvider.value, selectedModel.value, { erase: eraseEnabled.value })
@@ -1310,10 +1338,16 @@ onBeforeUnmount(() => {
             </ContentPanel>
 
             <!-- 第二页：解析结果核对 -->
-            <ContentPanel v-else-if="currentView === 'workspace_review'" key="review" title="题目数据核对" :steps="workspaceSteps" :current-step="3">
+            <ContentPanel
+              v-else-if="currentView === 'workspace_review'"
+              key="review"
+              :title="splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
+              :steps="workspaceSteps"
+              :current-step="splitting ? 2 : ocrDone && !splitCompleted ? 1 : 3"
+            >
               <template #toolbar>
                 <button
-                  @click="() => { doReset(); currentView = 'workspace' }"
+                  @click="() => { doReset(); ocrPages = []; ocrDone = false; currentView = 'workspace' }"
                   class="group inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
                 >
                   <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
@@ -1321,8 +1355,20 @@ onBeforeUnmount(() => {
                 </button>
               </template>
 
+                <!-- OCR 加载中 / OCR 预览 -->
+                <OcrPreview
+                  v-if="ocrLoading || (ocrDone && !splitCompleted && !splitting)"
+                  :pages="ocrPages"
+                  :loading="ocrLoading"
+                  @confirm="doSplit"
+                  @retry="doOcr"
+                />
+
                 <!-- 分割进行中 -->
-                <!-- <SplitLoading v-if="splitting" /> -->
+                <div v-else-if="splitting" class="flex-1 flex flex-col items-center justify-center gap-4">
+                  <div class="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
+                  <p class="text-sm text-[#8a8f98]">AI 正在分割题目...</p>
+                </div>
 
                 <!-- 题目列表 -->
                 <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
