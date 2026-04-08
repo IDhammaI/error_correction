@@ -898,7 +898,7 @@ onBeforeUnmount(() => {
           <!-- 滑动指示器 -->
           <div
             class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
-            :class="indicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
             :style="indicatorStyle"
           >
           </div>
@@ -975,7 +975,7 @@ onBeforeUnmount(() => {
           <!-- 对话区滑动指示器 -->
           <div
             class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
-            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
             :style="chatIndicatorStyle"
           >
           </div>
