@@ -226,17 +226,73 @@ def cancel_file():
         }), 500
 
 
+@bp.route('/erase', methods=['POST'])
+def run_erase():
+    """擦除手写笔迹，返回擦除后的图片 URL。
+
+    擦除后的文件路径保存在会话状态中，供后续 /api/ocr 使用。
+    """
+    try:
+        with session_lock:
+            keys = list(session_file_order)
+            file_paths = []
+            for k in keys:
+                v = session_files.get(k) or {}
+                fp = v.get('filepath')
+                if fp:
+                    file_paths.append(fp)
+
+        if not file_paths:
+            return jsonify({'success': False, 'error': '请先上传文件'}), 400
+
+        ensexam_configured = settings.model_path.exists()
+        if not ensexam_configured:
+            return jsonify({'success': False, 'error': 'EnsExam 模型未配置'}), 400
+
+        from models.inference import InferenceEngine
+        engine = InferenceEngine()
+        erased_paths = []
+        for fp in file_paths:
+            with open(fp, 'rb') as f:
+                img_bytes = f.read()
+            result_img = engine.run(img_bytes)
+            erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.splitext(os.path.basename(fp))[0]}.png"
+            erased_path = settings.erased_dir / erased_name
+            result_img.save(str(erased_path), format='PNG')
+            erased_paths.append(str(erased_path))
+
+        # 保存擦除后的路径到会话，供 /api/ocr 复用
+        with session_lock:
+            state.erased_file_paths = erased_paths
+
+        preview = []
+        for i, (orig, erased) in enumerate(zip(file_paths, erased_paths)):
+            preview.append({
+                "index": i,
+                "original_url": f"/api/image/{os.path.basename(orig)}",
+                "erased_url": f"/api/image/{os.path.basename(erased)}",
+            })
+
+        return jsonify({
+            'success': True,
+            'message': f'擦除完成，共 {len(erased_paths)} 张图片',
+            'images': preview,
+        })
+
+    except Exception:
+        logger.exception("擦除手写笔迹失败")
+        return jsonify({'success': False, 'error': '擦除失败，请稍后重试'}), 500
+
+
 @bp.route('/ocr', methods=['POST'])
 def run_ocr():
     """只执行 OCR，返回识别结果供用户预览。
 
     流程：标准化输入 → OCR 解析 → 返回结构化文本
     不触发 Agent 分割。
+    如果之前调用过 /api/erase，则使用擦除后的图片。
     """
     try:
-        data = request.get_json(silent=True) or {}
-        erase = data.get("erase", True)
-
         # 加载 OCR 凭据
         user_id = session.get('user_id')
         ocr_credentials = {}
@@ -253,38 +309,25 @@ def run_ocr():
                         "use_chart_recognition": ocr_provider.use_chart_recognition,
                     }
 
+        # 优先使用擦除后的路径
+        file_paths = None
         with session_lock:
-            keys = list(session_file_order)
-            file_paths = []
-            for k in keys:
-                v = session_files.get(k) or {}
-                fp = v.get('filepath')
-                if fp:
-                    file_paths.append(fp)
+            if hasattr(state, 'erased_file_paths') and state.erased_file_paths:
+                file_paths = list(state.erased_file_paths)
+                state.erased_file_paths = None  # 用完即清
+
+        if not file_paths:
+            with session_lock:
+                keys = list(session_file_order)
+                file_paths = []
+                for k in keys:
+                    v = session_files.get(k) or {}
+                    fp = v.get('filepath')
+                    if fp:
+                        file_paths.append(fp)
 
         if not file_paths:
             return jsonify({'success': False, 'error': '请先上传文件'}), 400
-
-        # 擦除手写字迹
-        ensexam_configured = settings.model_path.exists()
-        if ensexam_configured and erase:
-            try:
-                from models.inference import InferenceEngine
-                engine = InferenceEngine()
-                erased_paths = []
-                for fp in file_paths:
-                    with open(fp, 'rb') as f:
-                        img_bytes = f.read()
-                    result_img = engine.run(img_bytes)
-                    erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.basename(fp)}"
-                    if not erased_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        erased_name += '.png'
-                    erased_path = settings.erased_dir / erased_name
-                    result_img.save(str(erased_path), format='PNG')
-                    erased_paths.append(str(erased_path))
-                file_paths = erased_paths
-            except Exception:
-                logger.exception("自动擦除手写字迹失败，使用原图继续")
 
         # 标准化输入（PDF → 图片）
         from src.utils import prepare_input
@@ -292,12 +335,44 @@ def run_ocr():
         for fp in file_paths:
             all_image_paths.extend(prepare_input(fp))
 
-        # 执行 OCR
-        from src.workflow import _run_ocr_and_simplify
-        ocr_data = _run_ocr_and_simplify(all_image_paths, ocr_credentials=ocr_credentials)
+        # 执行 OCR（获取原始结果用于预览 bbox，简化结果用于后续分割）
+        from src.paddleocr_client import PaddleOCRClient
+        from src.utils import simplify_ocr_results
+        from src.workflow import run_async
 
-        if not ocr_data:
+        creds = ocr_credentials or {}
+        client = PaddleOCRClient(
+            api_url=creds.get("api_url"),
+            token=creds.get("token"),
+            model=creds.get("model"),
+            use_doc_orientation=creds.get("use_doc_orientation"),
+            use_doc_unwarping=creds.get("use_doc_unwarping"),
+            use_chart_recognition=creds.get("use_chart_recognition"),
+        )
+
+        # 按文件类型分组
+        pdf_paths = [p for p in all_image_paths if p.lower().endswith(".pdf")]
+        image_only = [p for p in all_image_paths if not p.lower().endswith(".pdf")]
+
+        raw_ocr_results = []
+        for pdf_path in pdf_paths:
+            try:
+                raw_ocr_results.append(client.parse_pdf(pdf_path, save_output=True))
+            except Exception:
+                logger.exception(f"OCR PDF 失败: {pdf_path}")
+        if image_only:
+            try:
+                img_results = run_async(client.parse_images_async(image_only, save_output=True))
+                if img_results:
+                    raw_ocr_results.extend(img_results)
+            except Exception:
+                logger.exception("OCR 图片失败")
+
+        if not raw_ocr_results:
             return jsonify({'success': False, 'error': 'OCR 解析失败，请检查 PaddleOCR 配置'}), 500
+
+        # 简化结果用于后续分割
+        ocr_data = simplify_ocr_results(raw_ocr_results)
 
         # 保存 OCR 结果到会话，供后续 /api/split 复用
         import json
@@ -307,28 +382,44 @@ def run_ocr():
         with open(ocr_cache_path, 'w', encoding='utf-8') as f:
             json.dump(ocr_data, f, ensure_ascii=False, indent=2)
 
-        # 构建前端预览数据：每页的 OCR 文本 + 对应的图片路径
+        # 构建前端预览数据：每页的图片 + bbox 标注
         preview_pages = []
-        for i, page in enumerate(ocr_data):
-            blocks = page.get("blocks", [])
-            text = "\n".join(b.get("text", "") for b in blocks if b.get("text"))
-            image_path = all_image_paths[i] if i < len(all_image_paths) else None
-            # 转为可访问的 URL
-            image_url = None
-            if image_path:
-                image_url = f"/api/upload/image/{os.path.basename(image_path)}"
-            preview_pages.append({
-                "page_index": i,
-                "text": text,
-                "block_count": len(blocks),
-                "image_url": image_url,
-            })
+        page_idx = 0
+        for result in raw_ocr_results:
+            for layout_page in result.get("layoutParsingResults", []):
+                pruned = layout_page.get("prunedResult", {})
+                page_w = pruned.get("width", 1)
+                page_h = pruned.get("height", 1)
+                parsing_list = pruned.get("parsing_res_list", [])
+
+                blocks = []
+                for b in parsing_list:
+                    bbox = b.get("block_bbox")
+                    if not bbox:
+                        continue
+                    blocks.append({
+                        "label": b.get("block_label", ""),
+                        "content": (b.get("block_content", "") or "")[:80],
+                        "bbox": bbox,
+                    })
+
+                image_path = all_image_paths[page_idx] if page_idx < len(all_image_paths) else None
+                image_url = f"/api/image/{os.path.basename(image_path)}" if image_path else None
+
+                preview_pages.append({
+                    "page_index": page_idx,
+                    "image_url": image_url,
+                    "page_width": page_w,
+                    "page_height": page_h,
+                    "blocks": blocks,
+                })
+                page_idx += 1
 
         return jsonify({
             'success': True,
-            'message': f'OCR 完成，共 {len(ocr_data)} 页',
+            'message': f'OCR 完成，共 {len(preview_pages)} 页',
             'pages': preview_pages,
-            'total_blocks': sum(len(p.get("blocks", [])) for p in ocr_data),
+            'total_blocks': sum(len(p["blocks"]) for p in preview_pages),
         })
 
     except Exception:
@@ -389,34 +480,6 @@ def split_questions():
                 'success': False,
                 'error': '请先上传文件'
             }), 400
-
-        # 擦除手写字迹（EnsExam 已接入且前端未关闭擦除开关时执行）
-        erase = data.get("erase", True)
-        ensexam_configured = settings.model_path.exists()
-        if ensexam_configured and erase:
-            try:
-                from models.inference import InferenceEngine
-                engine = InferenceEngine()
-                erased_paths = []
-                for fp in file_paths:
-                    # 如果是 PDF 转换为图片的临时路径，或者是直接上传的图片
-                    with open(fp, 'rb') as f:
-                        img_bytes = f.read()
-                    result_img = engine.run(img_bytes)
-
-                    # 生成擦除后的文件名，保存在 erased_dir
-                    erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.basename(fp)}"
-                    if not erased_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        erased_name += '.png'
-
-                    erased_path = settings.erased_dir / erased_name
-                    result_img.save(str(erased_path), format='PNG')
-                    erased_paths.append(str(erased_path))
-
-                file_paths = erased_paths
-                logger.info("EnsExam 已接入，自动擦除 %d 张图片的手写字迹", len(erased_paths))
-            except Exception:
-                logger.exception("自动擦除手写字迹失败，使用原图继续流程")
 
         state.current_thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": state.current_thread_id}}
@@ -562,7 +625,7 @@ def serve_image(filename):
     """提供上传/处理后的图片文件访问（OCR 预览用）"""
     from flask import send_from_directory
     # 在多个目录中查找
-    for d in [settings.upload_dir, settings.erased_dir, settings.results_dir]:
+    for d in [settings.upload_dir, settings.erased_dir, settings.results_dir, settings.pages_dir]:
         path = os.path.join(str(d), filename)
         if os.path.exists(path):
             return send_from_directory(str(d), filename)

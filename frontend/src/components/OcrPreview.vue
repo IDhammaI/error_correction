@@ -1,14 +1,94 @@
 <script setup>
 /**
  * OcrPreview.vue
- * OCR 结果预览 — 左侧原图 + 右侧识别文本
+ * OCR 结果预览 — 图片 + bbox 标注叠加
  */
-defineProps({
+import { ref, computed } from 'vue'
+
+const props = defineProps({
   pages: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  loadingText: { type: String, default: '正在执行 OCR 识别...' },
 })
 
-const emit = defineEmits(['confirm', 'retry'])
+// 按钮已移至 ContentPanel toolbar，emits 不再需要
+
+// 每张图片在 object-contain 下的实际渲染区域（含偏移）
+const imageSizes = ref({})
+
+function onImageLoad(pageIndex, event) {
+  const img = event.target
+  const cw = img.clientWidth, ch = img.clientHeight
+  const nw = img.naturalWidth, nh = img.naturalHeight
+  // object-contain: 图片等比缩放后居中
+  const scale = Math.min(cw / nw, ch / nh)
+  const rw = nw * scale, rh = nh * scale
+  const ox = (cw - rw) / 2, oy = (ch - rh) / 2
+  imageSizes.value = {
+    ...imageSizes.value,
+    [pageIndex]: { w: rw, h: rh, ox, oy },
+  }
+}
+
+// 颜色映射
+const labelColors = {
+  text: { border: 'rgba(59,130,246,0.6)', bg: 'rgba(59,130,246,0.15)', tag: 'rgba(59,130,246,0.85)' },
+  title: { border: 'rgba(168,85,247,0.6)', bg: 'rgba(168,85,247,0.15)', tag: 'rgba(168,85,247,0.85)' },
+  formula: { border: 'rgba(245,158,11,0.6)', bg: 'rgba(245,158,11,0.15)', tag: 'rgba(245,158,11,0.85)' },
+  image: { border: 'rgba(16,185,129,0.6)', bg: 'rgba(16,185,129,0.15)', tag: 'rgba(16,185,129,0.85)' },
+  chart: { border: 'rgba(16,185,129,0.6)', bg: 'rgba(16,185,129,0.15)', tag: 'rgba(16,185,129,0.85)' },
+  table: { border: 'rgba(236,72,153,0.6)', bg: 'rgba(236,72,153,0.15)', tag: 'rgba(236,72,153,0.85)' },
+  aside_text: { border: 'rgba(148,163,184,0.4)', bg: 'rgba(148,163,184,0.08)', tag: 'rgba(148,163,184,0.7)' },
+  header: { border: 'rgba(148,163,184,0.4)', bg: 'rgba(148,163,184,0.08)', tag: 'rgba(148,163,184,0.7)' },
+  footer: { border: 'rgba(148,163,184,0.4)', bg: 'rgba(148,163,184,0.08)', tag: 'rgba(148,163,184,0.7)' },
+}
+const defaultColor = { border: 'rgba(148,163,184,0.5)', bg: 'rgba(148,163,184,0.1)', tag: 'rgba(148,163,184,0.75)' }
+
+function getColor(label) {
+  return labelColors[label] || defaultColor
+}
+
+function boxStyle(block, page, pageIndex) {
+  const size = imageSizes.value[pageIndex]
+  if (!size) return { display: 'none' }
+  const scaleX = size.w / page.page_width
+  const scaleY = size.h / page.page_height
+  const [x1, y1, x2, y2] = block.bbox
+  const color = getColor(block.label)
+  return {
+    position: 'absolute',
+    left: `${size.ox + x1 * scaleX}px`,
+    top: `${size.oy + y1 * scaleY}px`,
+    width: `${(x2 - x1) * scaleX}px`,
+    height: `${(y2 - y1) * scaleY}px`,
+    border: `1.5px solid ${color.border}`,
+    backgroundColor: color.bg,
+    pointerEvents: 'none',
+  }
+}
+
+function tagStyle(block) {
+  const color = getColor(block.label)
+  return {
+    position: 'absolute',
+    top: '-1px',
+    left: '-1px',
+    backgroundColor: color.tag,
+    color: '#fff',
+    fontSize: '9px',
+    lineHeight: '1',
+    padding: '2px 4px',
+    borderRadius: '0 0 3px 0',
+    whiteSpace: 'nowrap',
+  }
+}
+
+// 分页
+const currentPage = ref(0)
+const currentPageData = computed(() => props.pages[currentPage.value])
+
+// 悬停的 block
+const hoveredBlock = ref(null)
 </script>
 
 <template>
@@ -16,7 +96,7 @@ const emit = defineEmits(['confirm', 'retry'])
     <!-- 加载中 -->
     <div v-if="loading" class="flex-1 flex flex-col items-center justify-center gap-4">
       <div class="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
-      <p class="text-sm text-[#8a8f98]">正在执行 OCR 识别...</p>
+      <p class="text-sm text-[#8a8f98]">{{ loadingText }}</p>
     </div>
 
     <!-- 无数据 -->
@@ -24,50 +104,45 @@ const emit = defineEmits(['confirm', 'retry'])
       <p class="text-sm text-[#62666d]">暂无 OCR 数据</p>
     </div>
 
-    <!-- 预览 -->
+    <!-- 预览（单张 + 分页） -->
     <template v-else>
-      <!-- 统计 -->
-      <div class="flex items-center justify-between mb-4">
-        <span class="text-xs text-[#8a8f98]">共 {{ pages.length }} 页</span>
-        <div class="flex items-center gap-2">
-          <button @click="emit('retry')" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
-            <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
-          </button>
-          <button @click="emit('confirm')" class="inline-flex items-center gap-1.5 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-white">
-            <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
-          </button>
+      <div class="flex-1 min-h-0 relative overflow-hidden">
+        <img
+          v-if="currentPageData.image_url"
+          :src="currentPageData.image_url"
+          class="block w-full h-full object-contain"
+          alt=""
+          @load="onImageLoad(currentPageData.page_index, $event)"
+        />
+        <!-- bbox 叠加层 -->
+        <div
+          v-for="(block, bi) in currentPageData.blocks"
+          :key="bi"
+          :style="boxStyle(block, currentPageData, currentPageData.page_index)"
+          @mouseenter="hoveredBlock = `${currentPageData.page_index}-${bi}`"
+          @mouseleave="hoveredBlock = null"
+          style="pointer-events: auto; cursor: default;"
+        >
+          <span :style="tagStyle(block)">{{ block.label }}</span>
+          <div
+            v-if="hoveredBlock === `${currentPageData.page_index}-${bi}` && block.content"
+            class="absolute left-0 top-full z-50 mt-1 max-w-xs rounded-md bg-slate-900/95 border border-white/10 px-2 py-1 text-xs text-slate-200 shadow-lg"
+            style="pointer-events: none;"
+          >
+            {{ block.content }}
+          </div>
         </div>
       </div>
 
-      <!-- 页面列表 -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-        <div
-          v-for="page in pages"
-          :key="page.page_index"
-          class="flex gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
-        >
-          <!-- 左侧：原图 -->
-          <div class="w-1/2 shrink-0">
-            <div class="mb-2 flex items-center gap-2">
-              <span class="text-xs font-medium text-[#8a8f98]">第 {{ page.page_index + 1 }} 页</span>
-              <span class="text-xs text-[#62666d]">{{ page.block_count }} 个文本块</span>
-            </div>
-            <div v-if="page.image_url" class="rounded-md border border-white/[0.06] overflow-hidden bg-white/[0.02]">
-              <img :src="page.image_url" class="w-full object-contain max-h-[500px]" alt="原图" />
-            </div>
-            <div v-else class="flex h-48 items-center justify-center rounded-md border border-dashed border-white/[0.08] text-xs text-[#62666d]">
-              图片不可用
-            </div>
-          </div>
-
-          <!-- 右侧：OCR 文本 -->
-          <div class="w-1/2">
-            <div class="mb-2 text-xs font-medium text-[#8a8f98]">OCR 识别结果</div>
-            <div class="rounded-md border border-white/[0.06] bg-white/[0.01] p-3 text-sm text-[#d0d6e0] leading-relaxed whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar">
-              {{ page.text || '（无文本内容）' }}
-            </div>
-          </div>
-        </div>
+      <!-- 分页（多页时显示） -->
+      <div v-if="pages.length > 1" class="flex items-center justify-center gap-2 py-2 shrink-0">
+        <button
+          v-for="(_, i) in pages"
+          :key="i"
+          @click="currentPage = i"
+          class="h-2 rounded-full transition-all"
+          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-white/20 hover:bg-white/40'"
+        />
       </div>
     </template>
   </div>

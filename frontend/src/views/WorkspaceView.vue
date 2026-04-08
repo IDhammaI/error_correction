@@ -16,6 +16,7 @@ import QuestionList from '../components/QuestionList.vue'
 import ActionBar from '../components/ActionBar.vue'
 import SelectionPanel from '../components/SelectionPanel.vue'
 import SplitLoading from '../components/SplitLoading.vue'
+import ErasePreview from '../components/ErasePreview.vue'
 import OcrPreview from '../components/OcrPreview.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
@@ -265,13 +266,24 @@ const doFetchStatus = async () => {
 }
 
 // ---- 步骤 & Toast ----
+const eraseEnabled = ref(true)
 const step = ref(1)
 
 // 步骤 tab 数据（给 ContentPanel header 用）
-const examStepLabels = ['上传', 'OCR', '分割', '导出']
-const noteStepLabels = ['上传', 'OCR', '整理', '保存']
+// 擦除开关影响步骤数：开启时多一个"擦除"步骤
+const examStepLabels = computed(() =>
+  eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出']
+)
+const noteStepLabels = computed(() =>
+  eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存']
+)
+// 语义步骤号（根据擦除开关偏移）
+const S = computed(() => {
+  const off = eraseEnabled.value ? 1 : 0
+  return { UPLOAD: 1, ERASE: 2, OCR: 2 + off, SPLIT: 3 + off, EXPORT: 4 + off }
+})
 const workspaceSteps = computed(() => {
-  const labels = uploadMode.value === 'note' ? noteStepLabels : examStepLabels
+  const labels = uploadMode.value === 'note' ? noteStepLabels.value : examStepLabels.value
   return labels.map((label, i) => ({
     label,
     done: i + 1 < step.value,
@@ -455,6 +467,9 @@ const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
 const showSplitHistory = ref(false)
+const eraseLoading = ref(false)
+const eraseImages = ref([])
+const eraseDone = ref(false)
 const ocrLoading = ref(false)
 const ocrPages = ref([])
 const ocrDone = ref(false)
@@ -474,8 +489,6 @@ const bgStars = (() => {
   }
   return list
 })()
-const eraseEnabled = ref(true)
-
 const pendingFiles = reactive([])
 const fileProgress = reactive({})
 const waitingKeys = reactive(new Set())
@@ -563,9 +576,9 @@ const doCancelFile = async (key) => {
     splitCompleted.value = false
     if (!pendingFiles.length) {
       uploadReady.value = false
-      step.value = 1
+      step.value = S.value.UPLOAD
     } else {
-      step.value = 2
+      step.value = S.value.UPLOAD
     }
     pushToast('success', data.message || '已撤销')
     if (!pendingFiles.length && activeXhr) {
@@ -578,7 +591,7 @@ const handleUpload = (files) => {
   const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
   if (!uploadFiles.length) return
   uploadBusy.value = true
-  step.value = 2
+  step.value = S.value.UPLOAD
   const keys = uploadFiles.map(f => fileKey(f))
   for (const k of keys) waitingKeys.delete(k)
   startFakeProgress(keys)
@@ -604,9 +617,8 @@ const handleUpload = (files) => {
         if (pendingFiles.some(x => x.key === k)) setProgress(k, 100)
       }
       uploadReady.value = pendingFiles.length > 0
-      step.value = pendingFiles.length > 0 ? 2 : 1
-      pushToast('success', `上传成功！正在执行 OCR 识别...`)
-      doOcr()
+      step.value = S.value.UPLOAD
+      pushToast('success', '上传成功')
       pumpUploadQueue()
     },
     onError: (msg) => {
@@ -648,23 +660,53 @@ const typesetMath = async () => {
   await _typesetMathEl(el || undefined)
 }
 
+// 启动流程入口：擦除开启时走擦除，否则直接 OCR
+const startProcess = () => {
+  if (eraseEnabled.value) {
+    doErase()
+  } else {
+    doOcr()
+  }
+}
+
+const doErase = async () => {
+  if (eraseLoading.value) return
+  eraseLoading.value = true
+  eraseDone.value = false
+  eraseImages.value = []
+  currentView.value = "workspace_review"
+  step.value = S.value.ERASE
+  try {
+    const data = await api.runErase()
+    eraseImages.value = data.images || []
+    eraseDone.value = true
+    pushToast("success", data.message || "擦除完成")
+  } catch (e) {
+    pushToast("error", e.message || "擦除失败")
+    currentView.value = "workspace"
+    step.value = S.value.UPLOAD
+  } finally {
+    eraseLoading.value = false
+  }
+}
+
 const doOcr = async () => {
   if (ocrLoading.value) return
   ocrLoading.value = true
   ocrDone.value = false
   ocrPages.value = []
+  eraseDone.value = false
   currentView.value = "workspace_review"
-  step.value = 2
+  step.value = S.value.OCR
   try {
-    const data = await api.runOcr({ erase: eraseEnabled.value })
+    const data = await api.runOcr()
     ocrPages.value = data.pages || []
     ocrDone.value = true
-    step.value = 2
     pushToast("success", `OCR 完成，共 ${data.pages?.length || 0} 页`)
   } catch (e) {
-    pushToast("error", "OCR 失败: " + (e.message || "未知错误"))
+    pushToast("error", e.message || "OCR 失败")
     currentView.value = "workspace"
-    step.value = 1
+    step.value = S.value.UPLOAD
   } finally {
     ocrLoading.value = false
   }
@@ -682,10 +724,10 @@ const doSplit = async () => {
   // 试卷模式：走原有分割流程
   splitting.value = true
   ocrDone.value = false
-  step.value = 3
+  step.value = S.value.SPLIT
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
-    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value, { erase: eraseEnabled.value })
+    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
     questions.value = data.questions || []
     selectedIds.clear()
     if (data.warnings && data.warnings.length) {
@@ -693,7 +735,7 @@ const doSplit = async () => {
     }
     if (questions.value.length > 0) {
       splitCompleted.value = true
-      step.value = 4
+      step.value = S.value.EXPORT
       if (!data.warnings || !data.warnings.length) {
         pushToast('success', `成功分割 ${questions.value.length} 道题目`)
       }
@@ -713,7 +755,7 @@ const doSplit = async () => {
 
 const doNoteOrganize = async () => {
   splitting.value = true
-  step.value = 3
+  step.value = S.value.SPLIT
   pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
   try {
     // 收集已上传文件，构建 FormData 发给笔记 API
@@ -732,7 +774,7 @@ const doNoteOrganize = async () => {
     })
 
     splitCompleted.value = true
-    step.value = 4
+    step.value = S.value.EXPORT
     pushToast('success', '笔记整理完成！')
 
     // 跳转到笔记页面查看
@@ -750,7 +792,7 @@ const doExport = async () => {
   if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
   try {
     const data = await api.exportQuestions(Array.from(selectedIds))
-    step.value = 5
+    step.value = S.value.EXPORT + 1
     pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
     let filename = 'wrongbook.md'
     if (data.output_path) {
@@ -789,7 +831,7 @@ const handleLoadRecord = (qs, record) => {
   questions.value = qs || []
   selectedIds.clear()
   splitCompleted.value = true
-  step.value = 4
+  step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
@@ -808,7 +850,7 @@ const doReset = () => {
   selectedIds.clear()
   const configured = providerOptions.value.find(m => m.configured)
   selectedModel.value = configured ? configured.default_model : ''
-  step.value = 1
+  step.value = S.value.UPLOAD
   pushToast('success', '已重置')
 }
 
@@ -1332,7 +1374,8 @@ onBeforeUnmount(() => {
                     :splitting="splitting"
                     :split-completed="splitCompleted"
                     :upload-mode="uploadMode"
-                    @split="doSplit"
+                    :erase-enabled="eraseEnabled"
+                    @split="startProcess"
                   />
                 </div>
             </ContentPanel>
@@ -1341,27 +1384,53 @@ onBeforeUnmount(() => {
             <ContentPanel
               v-else-if="currentView === 'workspace_review'"
               key="review"
-              :title="splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
+              :title="eraseLoading ? '正在擦除...' : eraseDone && !ocrLoading && !ocrDone ? '擦除预览' : splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
               :steps="workspaceSteps"
-              :current-step="splitting ? 2 : ocrDone && !splitCompleted ? 1 : 3"
+              :current-step="step - 1"
             >
               <template #toolbar>
+                <!-- 返回按钮（始终显示） -->
                 <button
-                  @click="() => { doReset(); ocrPages = []; ocrDone = false; currentView = 'workspace' }"
+                  @click="() => { doReset(); eraseImages = []; eraseDone = false; ocrPages = []; ocrDone = false; currentView = 'workspace' }"
                   class="group inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
                 >
                   <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
                   返回
                 </button>
+
+                <!-- 擦除阶段按钮 -->
+                <template v-if="eraseDone && !ocrLoading && !ocrDone">
+                  <button @click="doErase" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
+                  </button>
+                  <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+                    <i class="fa-solid fa-check text-[10px]"></i> 确认，开始 OCR
+                  </button>
+                </template>
+
+                <!-- OCR 阶段按钮 -->
+                <template v-else-if="ocrDone && !splitCompleted && !splitting">
+                  <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
+                  </button>
+                  <button @click="doSplit" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+                    <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
+                  </button>
+                </template>
               </template>
+
+                <!-- 擦除加载中 / 擦除对比预览 -->
+                <ErasePreview
+                  v-if="eraseLoading || (eraseDone && !ocrLoading && !ocrDone)"
+                  :images="eraseImages"
+                  :loading="eraseLoading"
+                />
 
                 <!-- OCR 加载中 / OCR 预览 -->
                 <OcrPreview
-                  v-if="ocrLoading || (ocrDone && !splitCompleted && !splitting)"
+                  v-else-if="ocrLoading || (ocrDone && !splitCompleted && !splitting)"
                   :pages="ocrPages"
                   :loading="ocrLoading"
-                  @confirm="doSplit"
-                  @retry="doOcr"
                 />
 
                 <!-- 分割进行中 -->
