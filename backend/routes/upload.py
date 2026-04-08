@@ -402,15 +402,15 @@ def export_wrongbook():
     """
     try:
         data = request.get_json(silent=True) or {}
-        selected_ids = data.get('selected_ids', [])
+        selected_uids = data.get('selected_ids', [])
 
-        if not isinstance(selected_ids, list):
+        if not isinstance(selected_uids, list):
             return jsonify({
                 'success': False,
                 'error': 'selected_ids 必须为列表'
             }), 400
 
-        if not selected_ids:
+        if not selected_uids:
             return jsonify({
                 'success': False,
                 'error': '未选择任何题目'
@@ -430,7 +430,7 @@ def export_wrongbook():
 
         output_path = export_wrongbook_md(
             questions,
-            selected_ids,
+            selected_uids,
         )
 
         return jsonify({

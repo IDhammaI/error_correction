@@ -42,7 +42,10 @@ const openDetail = async (record) => {
   selectedIds.value = new Set()
   try {
     const detail = await api.fetchSplitRecordDetail(record.id)
-    activeQuestions.value = detail.questions || []
+    // 兼容旧历史记录（无 uid）：按索引补齐
+    const qs = detail.questions || []
+    qs.forEach((q, i) => { if (q.uid == null) q.uid = `hist_${i}` })
+    activeQuestions.value = qs
   } catch (e) {
     emit('push-toast', 'error', '加载记录详情失败')
     activeRecord.value = null
@@ -68,7 +71,7 @@ const toggleSelect = (qid) => {
 }
 
 const selectAllQuestions = () => {
-  selectedIds.value = new Set(activeQuestions.value.map(q => q.question_id))
+  selectedIds.value = new Set(activeQuestions.value.map(q => q.uid))
 }
 
 const deselectAllQuestions = () => {
@@ -78,7 +81,7 @@ const deselectAllQuestions = () => {
 const loadToWorkspace = () => {
   if (!activeQuestions.value.length) return
   const qs = selectedIds.value.size > 0
-    ? activeQuestions.value.filter(q => selectedIds.value.has(q.question_id))
+    ? activeQuestions.value.filter(q => selectedIds.value.has(q.uid))
     : activeQuestions.value
   emit('load-record', qs, activeRecord.value)
 }
@@ -240,10 +243,10 @@ defineExpose({ refresh: loadRecords })
                   <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
                     <div
                       v-for="q in activeQuestions"
-                      :key="q.question_id"
-                      @click.stop="toggleSelect(q.question_id)"
+                      :key="q.uid"
+                      @click.stop="toggleSelect(q.uid)"
                       class="cursor-pointer rounded-xl border p-3.5 transition-all duration-200"
-                      :class="selectedIds.has(q.question_id)
+                      :class="selectedIds.has(q.uid)
                         ? 'border-violet-400/60 bg-violet-50/60 ring-1 ring-violet-400/30 dark:border-violet-500/40 dark:bg-violet-500/[0.08] dark:ring-violet-500/20'
                         : 'border-slate-200/50 bg-white/50 hover:border-violet-300/40 hover:bg-white/80 dark:border-white/[0.05] dark:bg-white/[0.02] dark:hover:border-violet-500/20'"
                     >
@@ -251,11 +254,11 @@ defineExpose({ refresh: loadRecords })
                         <!-- 选中指示 -->
                         <div
                           class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] transition-colors"
-                          :class="selectedIds.has(q.question_id)
+                          :class="selectedIds.has(q.uid)
                             ? 'border-violet-500 bg-violet-500 text-white dark:border-violet-400 dark:bg-violet-500'
                             : 'border-slate-300 dark:border-white/15'"
                         >
-                          <i v-if="selectedIds.has(q.question_id)" class="fa-solid fa-check"></i>
+                          <i v-if="selectedIds.has(q.uid)" class="fa-solid fa-check"></i>
                         </div>
                         <span class="text-xs font-black text-slate-700 dark:text-slate-200">
                           {{ q.question_id || '?' }}
