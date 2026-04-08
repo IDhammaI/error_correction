@@ -64,9 +64,9 @@ defineExpose({ initSortable, questionsBoxEl, triggerTypeset })
       <div ref="questionListEl" class="relative z-10 mt-6 grid gap-5" id="questionList">
         <QuestionCard
           v-for="q in questions"
-          :key="q.question_id"
+          :key="q.uid"
           :question="q"
-          :selected="selectedIds.has(q.question_id)"
+          :selected="selectedIds.has(q.uid)"
           @toggle="(id) => emit('toggle-select', id)"
           @open-image="(src) => emit('open-image', src)"
         />
