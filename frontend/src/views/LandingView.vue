@@ -375,8 +375,6 @@ onUnmounted(() => {
 /* 动态玻璃态面板 */
 .glass-panel {
   background: rgba(255, 255, 255, 0.8);
-  
-  -webkit-
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
