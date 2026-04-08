@@ -123,7 +123,9 @@ def send_code():
 
         user = crud.get_user_by_email(db, email)
         # 防邮箱枚举：注册时邮箱已存在、重置时邮箱不存在，均返回相同成功响应但不实际发送
+        # 同时写入记录以保证频率限制行为一致，防止通过 429 差异探测邮箱
         if (code_type == "register" and user) or (code_type == "reset" and not user):
+            crud.upsert_registration_code(db, email, "anti-enum-dummy", now + timedelta(minutes=1), now)
             return jsonify({"success": True, "message": "验证码已发送"})
 
     code = _generate_six_digit_code()
@@ -150,9 +152,9 @@ def send_code():
                 body=f"您的{subject_text}验证码为：{code}，{settings.registration_code_ttl_minutes} 分钟内有效。请勿泄露给他人。",
                 async_send=False,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("发送验证码邮件失败")
-            return jsonify({"success": False, "error": f"邮件发送失败：{e!s}"}), 502
+            return jsonify({"success": False, "error": "邮件发送失败，请稍后重试"}), 502
     else:
         if current_app.debug:
             logger.warning(
