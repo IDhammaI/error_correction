@@ -1074,8 +1074,8 @@ onBeforeUnmount(() => {
             </button>
             <div class="border-t border-white/[0.05]"></div>
             <button
-              @click="handleLogout; userMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+              @click="handleLogout(); userMenuOpen = false"
+              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
             >
               <i class="fas fa-right-from-bracket w-4 text-center text-xs"></i>
               退出登录

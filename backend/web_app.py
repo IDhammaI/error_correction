@@ -12,7 +12,14 @@
 """
 
 import os
+import sys
 import logging
+
+# 无论从项目根目录执行 `python backend/web_app.py` 还是在 `backend` 下执行 `python web_app.py`，
+# 都把 backend 目录加入 sys.path，保证 `core`、`routes`、`db` 等包解析一致。
+_BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, _BACKEND_ROOT)
 
 from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
@@ -20,6 +27,7 @@ from dotenv import load_dotenv
 
 from core.config import settings
 from db import init_db, SessionLocal
+from db import crud
 from routes import register_routes
 
 # 加载项目根目录的 .env 文件（SECRET_KEY、FLASK_DEBUG 等）
@@ -95,6 +103,18 @@ def require_login():
             return None
         if 'user_id' not in session:
             return jsonify({'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401
+        # 密码重置后失效旧 session：比对 session_version
+        user_id = session['user_id']
+        sess_ver = session.get('session_version')
+        with SessionLocal() as db:
+            user = crud.get_user_by_id(db, user_id)
+            if not user:
+                session.clear()
+                return jsonify({'error': '用户不存在', 'code': 'UNAUTHORIZED'}), 401
+            db_ver = user.session_version or 0
+            if sess_ver != db_ver:
+                session.clear()
+                return jsonify({'error': '登录已失效，请重新登录', 'code': 'SESSION_EXPIRED'}), 401
     return None
 
 
@@ -208,14 +228,10 @@ if __name__ == '__main__':
     init_db()
     from db.migrate import migrate
     migrate()
-    print("[数据库] 初始化完成")
 
-    print("=" * 60)
-    print("错题本生成系统 - API 服务")
-    print("=" * 60)
-    print("API 地址: http://localhost:5001")
-    print("前端开发: cd frontend && npm run dev")
-    print("=" * 60)
+    logger.info("错题本生成系统 - API 服务")
+    logger.info("API 地址: http://localhost:5001")
+    logger.info("=" * 50)
 
     # 从环境变量读取调试模式开关（默认关闭）
     # 开启后 Flask 会自动重载代码变更，并在浏览器显示详细错误信息

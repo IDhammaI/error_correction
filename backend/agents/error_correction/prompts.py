@@ -37,6 +37,7 @@ SPLIT_PROMPT_LITE = """# 试卷题目分割
 - question_type：选择题/填空题/解答题/判断题
 - content_blocks：题干内容，每项 {"block_type": "text"/"image", "content": "..."}
 - options：选择题的选项列表，其他题型填 null
+- option_images：选项对应的图片路径列表，与 options 按索引一一对应。若某个选项的内容是一张图片（如实验装置图），将图片路径填入对应位置，无图片的选项填空字符串 ""。非选择题或选项无图片时填 null
 - has_formula：含公式填 true
 - has_image：含图片填 true
 - knowledge_tags：1-3 个知识点标签，如 ["三角函数", "诱导公式"]
@@ -49,7 +50,8 @@ SPLIT_PROMPT_LITE = """# 试卷题目分割
 
 ## 表格处理
 
-内容含表格数据时，转为 HTML 放入 text 块：`<table><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>`，单元格内公式仍用 LaTeX。
+- 输入 block 的 `block_label` 为 `table` 时：将其 `block_content`（已是完整 HTML）原样作为一个 `block_type: text` 的 content_block 输出，禁止拆散单元格；若 HTML 含 `<img>` 标签，路径加入 `image_refs`，设 `has_image: true`
+- 纯文本表格数据需转换时：使用 `<table><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>` 结构放入 text 块，单元格内公式仍用 LaTeX
 
 ## OCR 变量下标还原
 
@@ -166,14 +168,19 @@ SPLIT_PROMPT = """# 错题本题目分割专家
    - 对于选择题，如果你已经把选项提取到 `options` 数组中，则必须从 `content_blocks` 的文本中移除选项部分
    - `content_blocks` 只保留题干（题目正文），不包含选项文本
    - 例如原始文本为 "下列说法正确的是（）\\nA. xxx B. yyy"，则 content_blocks 中的 text 只保留 "下列说法正确的是（）"，选项 "A. xxx"、"B. yyy" 放入 options 数组
+   - **所有选项必须完整提取**：选择题通常有 4 个选项（A/B/C/D），务必逐一检查，不要遗漏任何选项。如果某个选项的 OCR 文本与图片分散在不同 block 中，仍需完整识别并提取
 
 9. **表格处理（重要）**
-   - 如果题目内容中包含表格数据（如实验数据、统计数据、对比数据），必须将其转换为 HTML 表格
-   - 使用如下结构，放入 `text` 类型的 content_block：
-     `<table><thead><tr><th>列1</th><th>列2</th></tr></thead><tbody><tr><td>值1</td><td>值2</td></tr></tbody></table>`
-   - 表格单元格内的公式仍然用 LaTeX 标记（如 `<td>$x_i$</td>`）
-   - 每行数据对应一个 `<tr>`，表头行放在 `<thead>` 中，数据行放在 `<tbody>` 中
-   - 例如：试验序号/伸缩率数据应输出为包含 `<table>` 的 HTML 字符串，而不是纯文本
+
+   **情况一：输入 block 已是 table 类型（`block_label: "table"`）**
+   - 其 `block_content` 已是完整 HTML，**必须将整段 HTML 原样作为一个 `block_type: text` 的 content_block 输出**
+   - 禁止拆散单元格，禁止把表格中的图片单独提取为独立的 image block
+   - 若 HTML 中含有 `<img>` 标签，将所有 src 路径加入 `image_refs`，并设 `has_image: true`
+
+   **情况二：纯文本表格数据需要转换**
+   - 如果题目含有表格数据但输入为纯文本（如实验数据、统计数据、对比数据），将其转换为 HTML 表格，放入 `text` 类型的 content_block
+   - 使用结构：`<table><thead><tr><th>列1</th><th>列2</th></tr></thead><tbody><tr><td>值1</td><td>值2</td></tr></tbody></table>`
+   - 表格单元格内的公式仍用 LaTeX 标记（如 `<td>$x_i$</td>`）
 
 ## 示例
 

@@ -1,11 +1,27 @@
 <script setup>
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '../utils.js'
 import * as api from '../api.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
   question: { type: Object, default: null },
+})
+
+const extraImages = computed(() => {
+  const refs = props.question?.image_refs || []
+  if (!refs.length) return []
+  const blocks = props.question?.content_json || []
+  const embedded = new Set(
+    blocks.filter(b => b.block_type === 'image' && b.content).map(b => b.content)
+  )
+  const htmlContent = blocks.filter(b => b.block_type === 'text').map(b => b.content || '').join(' ')
+  return refs.filter(r => {
+    if (embedded.has(r)) return false
+    const filename = r.split('/').pop()
+    if (filename && htmlContent.includes(filename)) return false
+    return true
+  })
 })
 
 const emit = defineEmits(['close', 'open-image', 'deleted', 'answer-saved', 'review-status-changed', 'push-toast', 'start-chat'])
@@ -196,6 +212,16 @@ const reviewStatusOptions = [
                   <p v-else-if="b.block_type === 'text'" class="mb-6 text-lg font-bold leading-relaxed text-slate-800 dark:text-slate-200">{{ b.content }}</p>
                   <img v-else-if="b.block_type === 'image'" :src="b.content" class="mb-6 max-w-full cursor-zoom-in rounded-2xl border border-slate-200 shadow-sm dark:border-white/10" @click="emit('open-image', b.content)" />
                 </template>
+
+                <!-- 兜底渲染 image_refs 中未嵌入 content_json 的图片 -->
+                <div v-if="extraImages.length" class="mb-6 flex flex-wrap gap-3">
+                  <img
+                    v-for="(src, i) in extraImages" :key="'extra-' + i"
+                    :src="src"
+                    class="max-h-[240px] cursor-zoom-in rounded-2xl border border-slate-200 object-contain shadow-sm dark:border-white/10"
+                    @click="emit('open-image', src)"
+                  />
+                </div>
 
                 <!-- 选项 -->
                 <div v-if="question?.options_json" class="mt-8 grid gap-3">

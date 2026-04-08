@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '../utils.js'
 
 const props = defineProps({
@@ -8,6 +8,38 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle', 'open-image'])
+
+// 兜底：image_refs 中有但 content_blocks 中未嵌入的图片
+const extraImages = computed(() => {
+  const refs = props.question.image_refs || []
+  if (!refs.length) return []
+  const blocks = props.question.content_blocks || []
+  // 排除 image block 中已嵌入的
+  const embedded = new Set(
+    blocks.filter(b => b.block_type === 'image' && b.content).map(b => b.content)
+  )
+  // 排除 HTML 文本中已通过 <img> 引用的（如表格内嵌图片）
+  const htmlContent = blocks.filter(b => b.block_type === 'text').map(b => b.content || '').join(' ')
+  return refs.filter(r => {
+    if (embedded.has(r)) return false
+    // 提取文件名部分匹配，因为 HTML 中可能用 imgs/ 而 refs 用 /images/
+    const filename = r.split('/').pop()
+    if (filename && htmlContent.includes(filename)) return false
+    return true
+  })
+})
+
+// 图片与选项配对：优先使用 Agent 输出的 option_images，降级到按数量匹配
+const optionImages = computed(() => {
+  const opts = props.question.options || []
+  if (!opts.length) return null
+  // 优先使用 Agent 直接输出的 option_images
+  const agentImages = props.question.option_images
+  if (agentImages?.length === opts.length) return agentImages
+  // 降级：extraImages 数量匹配时按索引配对
+  if (extraImages.value.length >= opts.length) return extraImages.value
+  return null
+})
 
 // 本地答案编辑状态（工作台内存保存，入库时随 question 对象一同传递）
 const editingAnswer = ref(false)
@@ -106,15 +138,31 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
         </div>
       </template>
 
+      <!-- 兜底渲染：无选项配对时独立展示 -->
+      <div v-if="extraImages.length && !optionImages" class="my-4 flex flex-wrap gap-2">
+        <img
+          v-for="(src, i) in extraImages" :key="'extra-' + i"
+          :src="src"
+          class="max-h-[200px] cursor-zoom-in rounded-2xl border border-slate-100 object-contain shadow-sm transition-transform hover:scale-[1.01] dark:border-white/5"
+          @click.stop="() => emit('open-image', src)"
+        />
+      </div>
+
       <!-- 选项 -->
       <div v-if="question.options?.length" class="mt-8 grid gap-3 sm:grid-cols-2">
         <div
           v-for="(opt, idx) in question.options"
           :key="idx"
-          class="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/30 p-4 text-[13px] font-bold text-slate-700 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/30 p-4 text-[13px] font-bold text-slate-700 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
         >
           <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white text-[10px] shadow-sm dark:bg-slate-800">{{ formatOption(opt)[0] }}</span>
           <span class="flex-1">{{ formatOption(opt).slice(2) }}</span>
+          <img
+            v-if="optionImages?.[idx]"
+            :src="optionImages[idx]"
+            class="max-h-[100px] max-w-[160px] shrink-0 cursor-zoom-in rounded-lg border border-slate-100 object-contain dark:border-white/5"
+            @click.stop="() => emit('open-image', optionImages[idx])"
+          />
         </div>
       </div>
     </div>
@@ -132,5 +180,8 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 }
 .question-content th {
   @apply bg-slate-50 font-bold dark:bg-white/[0.04];
+}
+.question-content img {
+  @apply inline-block max-h-[200px] object-contain;
 }
 </style>
