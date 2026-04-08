@@ -55,7 +55,7 @@ const emit = defineEmits(['scrollToSection'])
   </nav>
 
   <!-- 右侧 Section 导航 — Linear 风格 -->
-  <nav id="section-nav" class="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 py-4 px-1.5 rounded-lg border border-white/[0.06] bg-[#0A0A0F]/60 scale-90 md:scale-100">
+  <nav id="section-nav" class="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 py-4 px-1.5 rounded-lg brand-btn scale-90 md:scale-100">
     <button
       v-for="(s, i) in sections"
       :key="s.id"

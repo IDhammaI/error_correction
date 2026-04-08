@@ -75,11 +75,27 @@ export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort 
   return xhr
 }
 
-export async function splitQuestions(modelProvider, modelName, { erase = false } = {}) {
+export async function runErase() {
+  const resp = await fetch('/api/erase', { method: 'POST' })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data
+  throw new Error((data && data.error) || '擦除失败')
+}
+
+export async function runOcr() {
+  const resp = await fetch('/api/ocr', { method: 'POST' })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data
+  throw new Error((data && data.error) || 'OCR 执行失败')
+}
+
+export async function splitQuestions(modelProvider, modelName) {
   const resp = await fetch('/api/split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { erase })),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName)),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   const data = await resp.json()

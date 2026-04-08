@@ -40,9 +40,9 @@ function getStepIconClass(idx) {
 
 function getStepContainerClass(idx) {
   if (idx === activeStep.value) {
-    return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-[#1A1A24]/60 to-[#0A0A0F]/60 border border-white/[0.1] shadow-xl transition-all duration-500 transform scale-105'
+    return 'relative p-4 rounded-lg cursor-pointer brand-btn transition-all duration-500 transform scale-105'
   }
-  return 'relative p-4 rounded-xl cursor-pointer bg-gradient-to-br from-transparent to-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/[0.05] transition-all duration-500'
+  return 'relative p-4 rounded-lg cursor-pointer border border-transparent hover:bg-white/[0.03] hover:border-white/[0.05] transition-all duration-500'
 }
 
 function getStepTitleClass(idx) {
@@ -100,7 +100,7 @@ onUnmounted(() => {
                 <component :is="iconMap[s.icon]" class="w-5 h-5" />
               </div>
               <h4 :class="getStepTitleClass(i)">
-                <span class="text-indigo-400/60 mr-1.5 font-mono text-xs">{{ s.num }}</span> {{ s.title }}
+                {{ s.title }}
               </h4>
               <p :class="getStepDescClass(i)">{{ s.desc }}</p>
             </div>

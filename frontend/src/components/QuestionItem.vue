@@ -50,14 +50,14 @@ const statusIcon = (status) => {
 <template>
   <div
     @click="selectable ? emit('toggle-select', question.id) : emit('click', question)"
-    class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-white/[0.03]"
-    :class="{ 'ring-2 ring-indigo-500/50 border-indigo-300 dark:border-indigo-500/40': selected }"
+    class="group cursor-pointer rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] hover:border-white/[0.1]"
+    :class="{ 'border-[rgb(129,115,223)]/40 bg-[rgb(129,115,223)]/[0.06]': selected }"
   >
     <div class="flex items-start gap-4">
       <!-- 选择复选框 -->
       <div v-if="selectable" class="flex shrink-0 items-center pt-1" @click.stop="emit('toggle-select', question.id)">
         <div class="flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-all"
-          :class="selected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 dark:border-slate-600'">
+          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white' : 'border-white/[0.15]'">
           <i v-if="selected" class="fa-solid fa-check text-xs"></i>
         </div>
       </div>
@@ -67,13 +67,13 @@ const statusIcon = (status) => {
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <!-- 复习状态图标 -->
           <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
-          <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">{{ question.question_type }}</span>
-          <span v-if="question.subject" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">{{ question.subject }}</span>
-          <span v-for="tag in tags()" :key="tag" class="rounded-full border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">{{ tag }}</span>
+          <span class="rounded-full bg-white/[0.04] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ question.question_type }}</span>
+          <span v-if="question.subject" class="rounded-full bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ question.subject }}</span>
+          <span v-for="tag in tags()" :key="tag" class="rounded-full border border-white/[0.06] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ tag }}</span>
         </div>
 
         <!-- 摘要 -->
-        <p class="line-clamp-2 text-sm font-bold leading-relaxed text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white">{{ summary() }}</p>
+        <p class="line-clamp-2 text-sm font-medium leading-relaxed text-[#d0d6e0] group-hover:text-[#f7f8f8]">{{ summary() }}</p>
 
         <!-- 题目图片 -->
         <div v-if="question.content_json?.some(b => b.block_type === 'image' && b.content)" class="mt-3 flex flex-wrap gap-2">
@@ -81,7 +81,7 @@ const statusIcon = (status) => {
             v-for="(b, i) in question.content_json.filter(b => b.block_type === 'image' && b.content)"
             :key="i"
             :src="b.content"
-            class="max-h-32 rounded-xl border border-slate-100 object-contain dark:border-white/5"
+            class="max-h-32 rounded-lg border border-white/[0.06] object-contain"
             @click.stop
           />
         </div>
@@ -91,9 +91,9 @@ const statusIcon = (status) => {
           <div
             v-for="(opt, idx) in question.options_json"
             :key="idx"
-            class="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400"
+            class="flex items-start gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#8a8f98]"
           >
-            <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ String.fromCharCode(65 + idx) }}.</span>
+            <span class="shrink-0 text-[#62666d]">{{ String.fromCharCode(65 + idx) }}.</span>
             <span class="line-clamp-1">{{ String(opt).replace(/^[A-Da-d][.、．]\s*/, '') }}</span>
           </div>
         </div>

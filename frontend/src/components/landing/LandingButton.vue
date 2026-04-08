@@ -58,16 +58,17 @@ const bindProps = computed(() => {
     0 0 20px 0 rgba(129, 115, 223, 0.25);
 }
 
-/* ── Secondary: 幽灵按钮，极淡背景 ── */
+/* ── Secondary: 白玻璃按钮（与 brand-btn 一致） ── */
 .landing-btn--secondary {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.03);
 }
 .landing-btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 
 /* ── CTA: 更强的品牌色，用于转化区 ── */

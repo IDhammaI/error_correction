@@ -1,5 +1,10 @@
 <script setup>
-// AI 现代化扫描处理动画
+import BrandLogo from './BrandLogo.vue'
+
+defineProps({
+  title: { type: String, default: 'AI 正在深度解析' },
+  subtitle: { type: String, default: '正在识别题目结构、提取知识点并构建图谱' },
+})
 </script>
 
 <template>
@@ -18,7 +23,7 @@
 
           <!-- 核心图标 -->
           <div class="core-icon">
-            <i class="fa-solid fa-brain"></i>
+            <BrandLogo size="lg" />
             <!-- 核心脉冲 -->
             <div class="core-pulse"></div>
           </div>
@@ -29,8 +34,8 @@
 
         <!-- 文本引导 -->
         <div class="text-container">
-          <h3 class="status-title">AI 正在深度解析</h3>
-          <p class="status-subtitle">正在识别题目结构、提取知识点并构建图谱</p>
+          <h3 class="status-title">{{ title }}</h3>
+          <p class="status-subtitle">{{ subtitle }}</p>
 
           <!-- 模拟进度条 -->
           <div class="progress-container">
@@ -52,12 +57,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.6);
-  
-}
-
-:root.dark .loading-overlay {
-  background: rgba(10, 10, 15, 0.8);
+  background: transparent;
 }
 
 .loading-content {
@@ -81,7 +81,7 @@
   position: absolute;
   width: 120%;
   height: 120%;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(129, 115, 223, 0.15) 0%, transparent 70%);
   filter: blur(20px);
   animation: breathe 4s ease-in-out infinite;
 }
@@ -90,8 +90,8 @@
 .orbit {
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid rgba(59, 130, 246, 0.1);
-  border-top-color: rgba(59, 130, 246, 0.5);
+  border: 1.5px solid rgba(129, 115, 223, 0.1);
+  border-top-color: rgba(129, 115, 223, 0.5);
 }
 
 .orbit-1 {
@@ -104,43 +104,30 @@
   width: 75%;
   height: 75%;
   animation: rotate 5s linear infinite reverse;
-  border-top-color: rgba(99, 102, 241, 0.5);
+  border-top-color: rgba(145, 132, 235, 0.5);
 }
 
 .orbit-3 {
   width: 50%;
   height: 50%;
   animation: rotate 3s linear infinite;
-  border-top-color: rgba(139, 92, 246, 0.5);
+  border-top-color: rgba(129, 115, 223, 0.5);
 }
 
 /* 核心图标 */
 .core-icon {
   position: relative;
   z-index: 10;
-  width: 56px;
-  height: 56px;
-  background: white;
-  border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
-  color: #2563eb;
-  font-size: 1.5rem;
-}
-
-:root.dark .core-icon {
-  background: #1e1e2e;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  color: #818cf8;
 }
 
 .core-pulse {
   position: absolute;
   inset: -4px;
   border-radius: 1.25rem;
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(129, 115, 223, 0.2);
   animation: pulse 2s ease-out infinite;
 }
 
@@ -150,8 +137,8 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(90deg, transparent, rgba(129, 115, 223, 0.8), transparent);
+  box-shadow: 0 0 15px rgba(129, 115, 223, 0.5);
   z-index: 5;
   animation: scan 3s ease-in-out infinite;
 }
@@ -186,7 +173,7 @@
   margin-top: 1.5rem;
   width: 100%;
   height: 4px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(129, 115, 223, 0.05);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -194,7 +181,7 @@
 .progress-bar {
   width: 40%;
   height: 100%;
-  background: linear-gradient(90deg, #2563eb, #818cf8);
+  background: linear-gradient(90deg, rgb(129,115,223), rgb(145,132,235));
   border-radius: 10px;
   position: relative;
   animation: progress-move 2.5s ease-in-out infinite;

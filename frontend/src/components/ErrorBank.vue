@@ -1,11 +1,12 @@
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
 import CustomSelect from './CustomSelect.vue'
 import GlassCard from './GlassCard.vue'
 import SearchInput from './SearchInput.vue'
 import QuestionItem from './QuestionItem.vue'
+import EmptyState from './EmptyState.vue'
 import QuestionItemSkeleton from './QuestionItemSkeleton.vue'
 import EditNoteDialog from './EditNoteDialog.vue'
 import SelectionPanel from './SelectionPanel.vue'
@@ -18,6 +19,20 @@ const props = defineProps({
 const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
 
 // ---- 筛选条件 ----
+const openFilter = ref('')
+const filterPanelOpen = ref(false)
+
+function toggleFilterPanel() { filterPanelOpen.value = !filterPanelOpen.value }
+
+// 点击外部关闭筛选下拉
+function closeFilters(e) {
+  if (!e.target.closest('.filter-pill') && !e.target.closest('.dropdown-item')) {
+    openFilter.value = ''
+  }
+}
+onMounted(() => document.addEventListener('click', closeFilters))
+onBeforeUnmount(() => document.removeEventListener('click', closeFilters))
+
 const filters = reactive({
   subject: '',
   knowledge_tag: '',
@@ -292,7 +307,18 @@ watch(() => filters.subject, () => { reloadTags() })
 
 watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { immediate: true })
 
-defineExpose({ refresh: doQuery, toggleSelectMode: () => selectMode.value ? exitSelectMode() : enterSelectMode() })
+defineExpose({
+  refresh: doQuery,
+  toggleSelectMode: () => selectMode.value ? exitSelectMode() : enterSelectMode(),
+  toggleFilterPanel,
+  filterPanelOpen,
+  filters,
+  subjects,
+  questionTypes,
+  tagNames,
+  selectedTags,
+  toggleTagSelect,
+})
 
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -300,64 +326,70 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar">
-    <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 搜索控制台 -->
-      <div class="relative z-20 mb-8 space-y-6">
-        <!-- 第一行：关键词 + 学科 + 题型 + 复习状态 -->
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <SearchInput v-model="filters.keyword" label="内容检索" placeholder="搜索题目关键词..." />
-          <CustomSelect v-model="filters.subject" :options="subjects" label="学科" placeholder="全部学科" />
-          <CustomSelect v-model="filters.question_type" :options="questionTypes" label="题型" placeholder="全部题型" />
-          <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" />
+  <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
+    <div class="relative z-10 flex-1 flex flex-col">
+      <!-- 搜索 + 操作按钮 + 已激活筛选 pills -->
+      <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
+        <!-- 搜索框 -->
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#62666d]"></i>
+          <input
+            v-model="filters.keyword"
+            type="text"
+            placeholder="搜索题目..."
+            class="h-8 w-52 rounded-md border border-white/[0.08] bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-[#f7f8f8] placeholder-[#62666d] outline-none transition-colors hover:border-white/[0.12] focus:border-white/[0.15]"
+          />
         </div>
 
-        <!-- 知识点多选标签 -->
-        <Transition
-          enter-active-class="transition-all duration-300 ease-out"
-          leave-active-class="transition-all duration-200 ease-in"
-          enter-from-class="opacity-0 -translate-y-1"
-          leave-to-class="opacity-0 -translate-y-1"
-        >
-          <div v-if="tagNames.length">
-            <div class="mb-2 flex items-center gap-2">
-              <label class="block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">知识点标签</label>
-              <button v-if="selectedTags.size" @click="clearTagSelection"
-                class="rounded-full px-2 py-0.5 text-[11px] font-bold text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 transition-colors">
-                <i class="fa-solid fa-xmark mr-1"></i>清除
-              </button>
-            </div>
-            <div class="no-scrollbar max-h-[128px] overflow-y-auto pr-2 flex flex-wrap gap-2 py-1">
-              <button v-for="(tag, i) in tagNames" :key="tag"
-                @click="toggleTagSelect(tag)"
-                class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all"
-                :style="{ animationDelay: `${i * 20}ms` }"
-                :class="['tag-fade-in', selectedTags.has(tag)
-                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:shadow-indigo-500/20'
-                  : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/30 dark:hover:text-indigo-300']"
-              >
-                <i v-if="selectedTags.has(tag)" class="fa-solid fa-check mr-1 text-xs"></i>
-                {{ tag }}
-              </button>
-            </div>
-          </div>
-        </Transition>
+        <!-- 操作按钮（推到右侧） -->
+        <div class="ml-auto flex items-center gap-1">
+          <button @click="toggleFilterPanel" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="filterPanelOpen ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="筛选设置">
+            <i class="fa-solid fa-sliders text-xs"></i>
+          </button>
+          <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="selectMode ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="导出题目">
+            <i class="fa-solid fa-file-export text-xs"></i>
+          </button>
+        </div>
+
+        <!-- 已激活的筛选 pills（换行显示） -->
+        <button v-if="filters.subject" @click="filters.subject = ''" class="filter-pill filter-pill--active">
+          {{ filters.subject }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
+        </button>
+        <button v-if="filters.question_type" @click="filters.question_type = ''" class="filter-pill filter-pill--active">
+          {{ filters.question_type }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
+        </button>
+        <button v-if="filters.review_status" @click="filters.review_status = ''" class="filter-pill filter-pill--active">
+          {{ filters.review_status }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
+        </button>
+        <template v-for="tag in selectedTags" :key="tag">
+          <button @click="toggleTagSelect(tag)" class="filter-pill filter-pill--active">
+            {{ tag }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
+          </button>
+        </template>
+        <button
+          v-if="filters.subject || filters.question_type || filters.review_status || selectedTags.size"
+          @click="filters.subject = ''; filters.question_type = ''; filters.review_status = ''; clearTagSelection()"
+          class="text-xs text-[#62666d] hover:text-rose-400 transition-colors"
+        >清除筛选</button>
       </div>
 
 
       <!-- 列表区 -->
-      <div class="relative">
+      <div class="relative flex-1 flex flex-col">
         <!-- 首次加载：无旧数据时显示骨架 -->
         <QuestionItemSkeleton v-if="loading && !items.length" />
 
         <!-- 空状态 -->
-        <div v-else-if="!loading && !items.length" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
-          <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
-            <i class="fa-solid fa-box-open text-4xl text-slate-300 dark:text-slate-700"></i>
-          </div>
-          <p class="text-xl font-black text-slate-900 dark:text-white">暂无匹配记录</p>
-          <p class="mt-2 text-sm font-medium text-slate-500">调整筛选条件，或者开始新的录入</p>
-        </div>
+        <EmptyState
+          v-else-if="!loading && !items.length"
+          icon="fa-solid fa-layer-group"
+          title="暂无匹配记录"
+          description="调整筛选条件，或者开始新的录入"
+        >
+          <button @click="emit('go-workspace')" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+            <i class="fa-solid fa-plus"></i> 录入新题目
+          </button>
+        </EmptyState>
 
         <!-- 列表（有旧数据时保留，遮罩覆盖） -->
         <div v-else class="space-y-4">

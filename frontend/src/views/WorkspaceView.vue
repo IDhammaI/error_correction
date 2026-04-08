@@ -16,6 +16,8 @@ import QuestionList from '../components/QuestionList.vue'
 import ActionBar from '../components/ActionBar.vue'
 import SelectionPanel from '../components/SelectionPanel.vue'
 import SplitLoading from '../components/SplitLoading.vue'
+import ErasePreview from '../components/ErasePreview.vue'
+import OcrPreview from '../components/OcrPreview.vue'
 import ImageModal from '../components/ImageModal.vue'
 import ToastContainer from '../components/ToastContainer.vue'
 import Dashboard from '../components/Dashboard.vue'
@@ -92,6 +94,7 @@ const NAV_GROUPS = [
 ]
 
 const collapsedGroups = ref({})
+const chatCollapsed = ref(false)
 
 // ── 导航指示器动画（基于 DOM 实际位置） ──
 const navRef = ref(null)
@@ -234,18 +237,18 @@ const statusPills = computed(() => {
   if (statusLoading.value) return [
     { key: 'paddle', loading: true, label: 'PaddleOCR' },
     { key: 'ensexam', loading: true, label: 'EnsExam' },
-    { key: 'langsmith', loading: true, label: 'LangSmith (未接入)' },
+    { key: 'langsmith', loading: true, label: 'LangSmith' },
   ]
   const s = systemStatus.value
   if (!s) return []
   const pills = []
   pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
   if (s.ensexam_configured) {
-    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam已接入' })
+    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam' })
   }
   pills.push(s.langsmith_enabled
     ? { key: 'langsmith', ok: true, label: 'LangSmith追踪' }
-    : { key: 'langsmith', ok: false, label: 'LangSmith (未接入)', isPlaceholder: true }
+    : { key: 'langsmith', ok: false, label: 'LangSmith', isPlaceholder: true }
   )
   return pills
 })
@@ -263,13 +266,24 @@ const doFetchStatus = async () => {
 }
 
 // ---- 步骤 & Toast ----
+const eraseEnabled = ref(true)
 const step = ref(1)
 
 // 步骤 tab 数据（给 ContentPanel header 用）
-const examStepLabels = ['上传', 'OCR', '分割', '导出']
-const noteStepLabels = ['上传', 'OCR', '整理', '保存']
+// 擦除开关影响步骤数：开启时多一个"擦除"步骤
+const examStepLabels = computed(() =>
+  eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出']
+)
+const noteStepLabels = computed(() =>
+  eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存']
+)
+// 语义步骤号（根据擦除开关偏移）
+const S = computed(() => {
+  const off = eraseEnabled.value ? 1 : 0
+  return { UPLOAD: 1, ERASE: 2, OCR: 2 + off, SPLIT: 3 + off, EXPORT: 4 + off }
+})
 const workspaceSteps = computed(() => {
-  const labels = uploadMode.value === 'note' ? noteStepLabels : examStepLabels
+  const labels = uploadMode.value === 'note' ? noteStepLabels.value : examStepLabels.value
   return labels.map((label, i) => ({
     label,
     done: i + 1 < step.value,
@@ -459,6 +473,12 @@ const uploadReady = ref(false)
 const splitting = ref(false)
 const splitCompleted = ref(false)
 const showSplitHistory = ref(false)
+const eraseLoading = ref(false)
+const eraseImages = ref([])
+const eraseDone = ref(false)
+const ocrLoading = ref(false)
+const ocrPages = ref([])
+const ocrDone = ref(false)
 
 // ── 背景星星 ──
 const bgStars = (() => {
@@ -475,9 +495,10 @@ const bgStars = (() => {
   }
   return list
 })()
-const eraseEnabled = ref(true)
-
 const pendingFiles = reactive([])
+const pendingPreviewUrls = computed(() =>
+  pendingFiles.filter(pf => pf.file).map(pf => URL.createObjectURL(pf.file))
+)
 const fileProgress = reactive({})
 const waitingKeys = reactive(new Set())
 const uploadQueue = reactive([])
@@ -564,9 +585,9 @@ const doCancelFile = async (key) => {
     splitCompleted.value = false
     if (!pendingFiles.length) {
       uploadReady.value = false
-      step.value = 1
+      step.value = S.value.UPLOAD
     } else {
-      step.value = 3
+      step.value = S.value.UPLOAD
     }
     pushToast('success', data.message || '已撤销')
     if (!pendingFiles.length && activeXhr) {
@@ -579,7 +600,7 @@ const handleUpload = (files) => {
   const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
   if (!uploadFiles.length) return
   uploadBusy.value = true
-  step.value = 2
+  step.value = S.value.UPLOAD
   const keys = uploadFiles.map(f => fileKey(f))
   for (const k of keys) waitingKeys.delete(k)
   startFakeProgress(keys)
@@ -605,8 +626,8 @@ const handleUpload = (files) => {
         if (pendingFiles.some(x => x.key === k)) setProgress(k, 100)
       }
       uploadReady.value = pendingFiles.length > 0
-      step.value = pendingFiles.length > 0 ? 3 : 1
-      pushToast('success', `上传成功！本次新增 ${keys.length} 个文件，点击"开始分割题目"开始处理`)
+      step.value = S.value.UPLOAD
+      pushToast('success', '上传成功')
       pumpUploadQueue()
     },
     onError: (msg) => {
@@ -647,6 +668,59 @@ const typesetMath = async () => {
   const el = questionListRef.value?.questionsBoxEl
   await _typesetMathEl(el || undefined)
 }
+
+// 启动流程入口：擦除开启时走擦除，否则直接 OCR
+const startProcess = () => {
+  if (eraseEnabled.value) {
+    doErase()
+  } else {
+    doOcr()
+  }
+}
+
+const doErase = async () => {
+  if (eraseLoading.value) return
+  eraseLoading.value = true
+  eraseDone.value = false
+  eraseImages.value = []
+  currentView.value = "workspace_review"
+  step.value = S.value.ERASE
+  try {
+    const data = await api.runErase()
+    eraseImages.value = data.images || []
+    eraseDone.value = true
+    pushToast("success", data.message || "擦除完成")
+  } catch (e) {
+    pushToast("error", e.message || "擦除失败")
+    currentView.value = "workspace"
+    step.value = S.value.UPLOAD
+  } finally {
+    eraseLoading.value = false
+  }
+}
+
+const doOcr = async () => {
+  if (ocrLoading.value) return
+  ocrLoading.value = true
+  ocrDone.value = false
+  ocrPages.value = []
+  eraseDone.value = false
+  currentView.value = "workspace_review"
+  step.value = S.value.OCR
+  try {
+    const data = await api.runOcr()
+    ocrPages.value = data.pages || []
+    ocrDone.value = true
+    pushToast("success", `OCR 完成，共 ${data.pages?.length || 0} 页`)
+  } catch (e) {
+    pushToast("error", e.message || "OCR 失败")
+    currentView.value = "workspace"
+    step.value = S.value.UPLOAD
+  } finally {
+    ocrLoading.value = false
+  }
+}
+
 const doSplit = async () => {
   if (!uploadReady.value || splitting.value || splitCompleted.value) return
 
@@ -658,10 +732,11 @@ const doSplit = async () => {
 
   // 试卷模式：走原有分割流程
   splitting.value = true
-  step.value = 3
+  ocrDone.value = false
+  step.value = S.value.SPLIT
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
-    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value, { erase: eraseEnabled.value })
+    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
     questions.value = data.questions || []
     selectedIds.clear()
     if (data.warnings && data.warnings.length) {
@@ -669,7 +744,7 @@ const doSplit = async () => {
     }
     if (questions.value.length > 0) {
       splitCompleted.value = true
-      step.value = 4
+      step.value = S.value.EXPORT
       if (!data.warnings || !data.warnings.length) {
         pushToast('success', `成功分割 ${questions.value.length} 道题目`)
       }
@@ -689,7 +764,7 @@ const doSplit = async () => {
 
 const doNoteOrganize = async () => {
   splitting.value = true
-  step.value = 3
+  step.value = S.value.SPLIT
   pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
   try {
     // 收集已上传文件，构建 FormData 发给笔记 API
@@ -708,7 +783,7 @@ const doNoteOrganize = async () => {
     })
 
     splitCompleted.value = true
-    step.value = 4
+    step.value = S.value.EXPORT
     pushToast('success', '笔记整理完成！')
 
     // 跳转到笔记页面查看
@@ -726,7 +801,7 @@ const doExport = async () => {
   if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
   try {
     const data = await api.exportQuestions(Array.from(selectedIds))
-    step.value = 5
+    step.value = S.value.EXPORT + 1
     pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
     let filename = 'wrongbook.md'
     if (data.output_path) {
@@ -765,7 +840,7 @@ const handleLoadRecord = (qs, record) => {
   questions.value = qs || []
   selectedIds.clear()
   splitCompleted.value = true
-  step.value = 4
+  step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
@@ -784,7 +859,7 @@ const doReset = () => {
   selectedIds.clear()
   const configured = providerOptions.value.find(m => m.configured)
   selectedModel.value = configured ? configured.default_model : ''
-  step.value = 1
+  step.value = S.value.UPLOAD
   pushToast('success', '已重置')
 }
 
@@ -884,19 +959,27 @@ onBeforeUnmount(() => {
     <aside class="hidden w-64 flex-col justify-between md:flex z-20">
       <div>
         <!-- Logo 标题区 -->
-        <div class="flex h-20 items-center gap-2 px-4">
-          <button @click="navigateToHome" class="flex flex-1 min-w-0 items-center gap-3 rounded-lg px-3 py-1.5 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
-            <BrandLogo size="md" />
-            <span class="text-base font-medium text-[#f7f8f8]">智卷错题本</span>
+        <div class="flex h-20 items-center justify-between px-4 py-6">
+          <button @click="navigateToHome" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
+            <BrandLogo size="sm" />
+            <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
           </button>
+          <div class="flex items-center gap-1">
+            <button @click="currentView = 'settings'" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="系统设置">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+            <button @click="handleLogout()" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="退出登录">
+              <i class="fa-solid fa-right-from-bracket text-xs"></i>
+            </button>
+          </div>
         </div>
 
         <!-- 视图切换菜单 — Linear 分组折叠 -->
-        <nav ref="navRef" class="mt-6 flex flex-col gap-1.5 px-4 relative">
+        <nav ref="navRef" class="flex flex-col gap-1.5 px-4 relative">
           <!-- 滑动指示器 -->
           <div
             class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
-            :class="indicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
             :style="indicatorStyle"
           >
           </div>
@@ -912,21 +995,15 @@ onBeforeUnmount(() => {
               <span>{{ group.label }}</span>
               <i
                 v-if="group.collapsible"
-                class="fa-solid fa-play text-[6px] text-[#62666d] transition-transform duration-200"
+                class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200"
                 :class="collapsedGroups[gi] ? '' : 'rotate-90'"
               ></i>
             </button>
 
-            <!-- 分组内容 -->
-            <Transition
-              enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-              enter-from-class="max-h-0 opacity-0"
-              enter-to-class="max-h-96 opacity-100"
-              leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-              leave-from-class="max-h-96 opacity-100"
-              leave-to-class="max-h-0 opacity-0"
-            >
-            <div v-if="!collapsedGroups[gi]" class="flex flex-col gap-1">
+            <!-- 分组内容（grid 折叠动画） -->
+            <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+            <div class="overflow-hidden">
+            <div class="flex flex-col gap-1">
               <template v-for="item in group.items" :key="item.id">
                 <!-- 禁用项 -->
                 <button
@@ -935,7 +1012,7 @@ onBeforeUnmount(() => {
                   class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
                 >
                   <div class="flex items-center gap-3">
-                    <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                    <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
                     <span>{{ item.label }}</span>
                   </div>
                   <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
@@ -950,30 +1027,37 @@ onBeforeUnmount(() => {
                     ? 'text-white'
                     : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
                 >
-                  <i class="fa-solid w-5 text-center text-base" :class="item.icon"></i>
+                  <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
                   <span>{{ item.label }}</span>
                 </button>
               </template>
             </div>
-            </Transition>
+            </div>
+            </div>
           </template>
         </nav>
 
       </div>
 
-      <!-- AI 对话历史列表（常显示） -->
+      <!-- AI 对话历史列表 -->
       <div class="flex-1 min-h-0 flex flex-col mt-4 px-4">
         <div class="flex items-center justify-between px-3 pt-4 pb-2">
-          <span class="text-xs font-medium uppercase tracking-[0.15em] text-[#62666d]">对话</span>
+          <button @click="chatCollapsed = !chatCollapsed" class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors cursor-pointer">
+            <span>对话</span>
+            <i class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200" :class="chatCollapsed ? '' : 'rotate-90'"></i>
+          </button>
           <button @click="createAiChat" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
             <i class="fa-solid fa-plus text-[10px]"></i>
           </button>
         </div>
+        <!-- 折叠动画 -->
+        <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+        <div class="overflow-hidden">
         <div ref="chatListRef" class="flex-1 overflow-y-auto pb-2 custom-scrollbar relative" @click="chatMenuOpenId = null">
           <!-- 对话区滑动指示器 -->
           <div
             class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
-            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]' : ''"
+            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
             :style="chatIndicatorStyle"
           >
           </div>
@@ -1043,6 +1127,8 @@ onBeforeUnmount(() => {
               </div>
             </Transition>
           </div>
+        </div>
+        </div>
         </div>
       </div>
 
@@ -1297,24 +1383,75 @@ onBeforeUnmount(() => {
                     :splitting="splitting"
                     :split-completed="splitCompleted"
                     :upload-mode="uploadMode"
-                    @split="doSplit"
+                    :erase-enabled="eraseEnabled"
+                    @split="startProcess"
                   />
                 </div>
             </ContentPanel>
 
             <!-- 第二页：解析结果核对 -->
-            <ContentPanel v-else-if="currentView === 'workspace_review'" key="review" title="题目数据核对" :steps="workspaceSteps" :current-step="3">
+            <ContentPanel
+              v-else-if="currentView === 'workspace_review'"
+              key="review"
+              :title="eraseLoading ? '正在擦除...' : eraseDone && !ocrLoading && !ocrDone ? '擦除预览' : splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
+              :steps="workspaceSteps"
+              :current-step="step - 1"
+            >
               <template #toolbar>
+                <!-- 返回按钮（始终显示） -->
                 <button
-                  @click="() => { doReset(); currentView = 'workspace' }"
+                  @click="() => { doReset(); eraseImages = []; eraseDone = false; ocrPages = []; ocrDone = false; currentView = 'workspace' }"
                   class="group inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
                 >
                   <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
                   返回
                 </button>
+
+                <!-- 擦除阶段按钮 -->
+                <template v-if="eraseDone && !ocrLoading && !ocrDone">
+                  <button @click="doErase" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
+                  </button>
+                  <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+                    <i class="fa-solid fa-check text-[10px]"></i> 确认，开始 OCR
+                  </button>
+                </template>
+
+                <!-- OCR 阶段按钮 -->
+                <template v-else-if="ocrDone && !splitCompleted && !splitting">
+                  <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
+                  </button>
+                  <button @click="doSplit" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+                    <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
+                  </button>
+                </template>
               </template>
 
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
+                <!-- 擦除加载中 / 擦除对比预览 -->
+                <ErasePreview
+                  v-if="eraseLoading || (eraseDone && !ocrLoading && !ocrDone)"
+                  :images="eraseImages"
+                  :loading="eraseLoading"
+                  :preview-url="pendingPreviewUrls[0]"
+                />
+
+                <!-- OCR 加载中 / OCR 预览 -->
+                <OcrPreview
+                  v-else-if="ocrLoading || (ocrDone && !splitCompleted && !splitting)"
+                  :pages="ocrPages"
+                  :loading="ocrLoading"
+                  :preview-url="pendingPreviewUrls[0]"
+                />
+
+                <!-- 分割进行中 -->
+                <div v-else-if="splitting" class="flex-1 min-h-0 relative">
+                  <img v-if="pendingPreviewUrls[0]" :src="pendingPreviewUrls[0]" class="absolute inset-0 w-full h-full object-contain opacity-10 blur-sm" alt="" />
+                  <SplitLoading />
+                </div>
+
+                <!-- 题目列表 -->
+                <div v-if="splitCompleted && questions.length" class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
                   <QuestionList
                     ref="questionListRef"
                     :questions="questions"
@@ -1361,13 +1498,53 @@ onBeforeUnmount(() => {
         <!-- 视图 4：错题库 -->
         <ContentPanel v-else-if="currentView === 'error-bank'" key="error_bank_view" title="错题库">
           <template #toolbar>
-            <button class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors" @click="errorBankRef?.toggleSelectMode?.()">
-              <i class="fa-solid fa-file-export text-[10px]"></i> 导出题目
-            </button>
-            <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
-              <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+            <button @click="currentView = 'workspace'" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="录入新题目">
+              <i class="fa-solid fa-plus text-xs"></i>
             </button>
           </template>
+          <template v-if="errorBankRef?.filterPanelOpen" #sidebar>
+            <div class="p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-[#f7f8f8]">筛选设置</span>
+                <button @click="errorBankRef.filterPanelOpen = false" class="text-[#62666d] hover:text-[#8a8f98] transition-colors">
+                  <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+              </div>
+
+              <!-- 学科 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">学科</label>
+                <CustomSelect v-model="errorBankRef.filters.subject" :options="errorBankRef.subjects" placeholder="全部学科" />
+              </div>
+
+              <!-- 题型 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">题型</label>
+                <CustomSelect v-model="errorBankRef.filters.question_type" :options="errorBankRef.questionTypes" placeholder="全部题型" />
+              </div>
+
+              <!-- 复习状态 -->
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">复习状态</label>
+                <CustomSelect v-model="errorBankRef.filters.review_status" :options="['待复习', '复习中', '已掌握']" placeholder="全部状态" />
+              </div>
+
+              <!-- 知识点标签 -->
+              <div v-if="errorBankRef.tagNames?.length">
+                <label class="mb-1.5 block text-xs font-medium text-[#62666d]">知识点</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <button v-for="tag in errorBankRef.tagNames" :key="tag"
+                    @click="errorBankRef.toggleTagSelect(tag)"
+                    class="rounded-md px-2 py-0.5 text-xs font-medium transition-all"
+                    :class="errorBankRef.selectedTags?.has(tag)
+                      ? 'bg-[rgb(129,115,223)] text-white'
+                      : 'border border-white/[0.06] bg-white/[0.02] text-[#62666d] hover:text-[#8a8f98] hover:border-white/[0.1]'"
+                  >{{ tag }}</button>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <ErrorBank
             ref="errorBankRef"
             :theme="theme"
@@ -1445,8 +1622,6 @@ onBeforeUnmount(() => {
         @clear="deselectAll"
       />
 
-      <!-- AI 分割任务全局遮罩 -->
-      <SplitLoading v-if="splitting && (currentView === 'workspace' || currentView === 'workspace_review')" />
     </div>
 
     <!-- 全局弹窗与通知 -->

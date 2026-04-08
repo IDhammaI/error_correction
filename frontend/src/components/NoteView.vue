@@ -6,6 +6,7 @@ import GlassCard from './GlassCard.vue'
 import GlassButton from './GlassButton.vue'
 import SearchInput from './SearchInput.vue'
 import CustomSelect from './CustomSelect.vue'
+import EmptyState from './EmptyState.vue'
 
 const noteContentRef = ref(null)
 
@@ -202,8 +203,8 @@ async function doDelete(noteId) {
             <CustomSelect v-model="filterSubject" :options="subjects" label="学科" placeholder="全部学科" />
             <CustomSelect v-model="filterTag" :options="tagNames" label="知识点" placeholder="全部知识点" />
             <div>
-              <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">统计</label>
-              <div class="flex h-10 items-center rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
+              <label class="mb-1.5 block text-xs font-medium text-[#62666d]">统计</label>
+              <div class="flex h-9 items-center rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-sm text-[#8a8f98]">
                 共 {{ total }} 条笔记
               </div>
             </div>
@@ -211,44 +212,43 @@ async function doDelete(noteId) {
 
           <!-- 进度条 -->
           <div v-if="creating" class="mt-4">
-            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
-              <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
+            <div class="h-1 rounded-full bg-white/[0.06]">
+              <div class="h-full rounded-full bg-[rgb(129,115,223)] transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
             </div>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
+            <p class="mt-1 text-xs text-[#62666d]">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
           </div>
         </div>
 
         <!-- Notes Grid -->
         <div class="relative">
-          <div v-if="!loading && notes.length === 0" class="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-32 dark:border-white/5 dark:bg-white/5">
-            <div class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md dark:bg-slate-900">
-              <i class="fa-solid fa-book-open text-4xl text-slate-300 dark:text-slate-700"></i>
-            </div>
-            <p class="text-xl font-black text-slate-900 dark:text-white">还没有笔记</p>
-            <p class="mt-2 text-sm font-medium text-slate-500">上传手写笔记或板书照片，AI 自动整理为结构化知识点</p>
-            <button @click="triggerUpload" class="mt-6 btn-primary h-10 px-8">
-              <i class="fa-solid fa-plus mr-2"></i>上传笔记
+          <EmptyState
+            v-if="!loading && notes.length === 0"
+            icon="fa-solid fa-book-open"
+            title="还没有笔记"
+            description="上传手写笔记或板书照片，AI 自动整理为结构化知识点"
+          >
+            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+              <i class="fa-solid fa-plus"></i> 上传笔记
             </button>
-          </div>
+          </EmptyState>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <GlassCard
+            <div
               v-for="note in notes"
               :key="note.id"
               @click="openNote(note)"
-              padding="p-6"
-              class="group cursor-pointer hover:border-emerald-300/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] dark:hover:border-emerald-500/30"
+              class="group cursor-pointer rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] hover:border-white/[0.1]"
             >
-              <h3 class="mb-2 text-base font-bold text-slate-900 line-clamp-2 dark:text-white">{{ note.title }}</h3>
-              <p class="mb-3 text-sm text-slate-500 line-clamp-3 dark:text-slate-400">
+              <h3 class="mb-2 text-sm font-medium text-[#f7f8f8] line-clamp-2">{{ note.title }}</h3>
+              <p class="mb-3 text-xs text-[#8a8f98] line-clamp-3">
                 {{ note.content_markdown?.replace(/[#*`>\-]/g, '').slice(0, 120) }}...
               </p>
               <div class="flex flex-wrap items-center gap-2">
-                <span v-if="note.subject" class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">{{ note.subject }}</span>
-                <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag" class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{{ tag }}</span>
-                <span class="ml-auto text-xs text-slate-400">{{ note.updated_at?.slice(0, 10) }}</span>
+                <span v-if="note.subject" class="rounded-md bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ note.subject }}</span>
+                <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag" class="rounded-md border border-white/[0.06] px-2 py-0.5 text-xs text-[#8a8f98]">{{ tag }}</span>
+                <span class="ml-auto text-xs text-[#62666d]">{{ note.updated_at?.slice(0, 10) }}</span>
               </div>
-            </GlassCard>
+            </div>
           </div>
 
           <!-- 分页 -->
@@ -257,8 +257,8 @@ async function doDelete(noteId) {
               v-for="p in totalPages"
               :key="p"
               @click="page = p"
-              class="size-10 rounded-xl text-sm font-bold transition-all"
-              :class="p === page ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'border border-slate-200/60 bg-white/60 text-slate-600 hover:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300'"
+              class="size-8 rounded-md text-xs font-medium transition-all"
+              :class="p === page ? 'brand-btn text-[#f7f8f8]' : 'border border-white/[0.06] text-[#8a8f98] hover:bg-white/[0.04]'"
             >
               {{ p }}
             </button>
