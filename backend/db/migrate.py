@@ -18,9 +18,25 @@ from db.models import Base
 from db import crud
 
 
+def _add_column_if_missing(conn, table: str, column: str, col_type: str, default=None):
+    """安全地给已有表添加列，若已存在则跳过"""
+    from sqlalchemy import text, inspect
+    inspector = inspect(conn)
+    existing = [c["name"] for c in inspector.get_columns(table)]
+    if column not in existing:
+        default_clause = f" DEFAULT {default}" if default is not None else ""
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}{default_clause}"))
+        print(f"[migrate] 已添加列: {table}.{column}")
+
+
 def migrate():
     """增量迁移：仅创建缺失的表，并确保 Admin 用户存在。每次启动自动调用，安全幂等。"""
     Base.metadata.create_all(bind=engine)  # checkfirst=True by default，已存在的表不动
+
+    # 增量列迁移（新增字段时在此追加）
+    with engine.connect() as conn:
+        _add_column_if_missing(conn, "users", "session_version", "INTEGER", 0)
+        conn.commit()
 
     default_users = [
         {"email": "admin@admin.com",  "username": "Admin",  "password": "123456", "is_admin": True},
