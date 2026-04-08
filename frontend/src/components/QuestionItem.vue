@@ -50,7 +50,7 @@ const statusIcon = (status) => {
 <template>
   <div
     @click="selectable ? emit('toggle-select', question.id) : emit('click', question)"
-    class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-all hover:shadow-md dark:border-white/10 dark:bg-white/[0.03]"
+    class="group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-white/[0.03]"
     :class="{ 'ring-2 ring-indigo-500/50 border-indigo-300 dark:border-indigo-500/40': selected }"
   >
     <div class="flex items-start gap-4">

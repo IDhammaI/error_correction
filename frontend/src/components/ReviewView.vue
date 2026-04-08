@@ -190,9 +190,8 @@ watch(() => props.visible, (v) => {
       <!-- 页面标题 -->
       <PageHeader
         title="待复习"
-        subtitle="需要巩固的题目，标记掌握后自动归档"
       >
-        <template #extra>
+        <template #default>
           <div class="flex items-center gap-4">
             <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
             <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
@@ -283,7 +282,7 @@ watch(() => props.visible, (v) => {
               <button @click="quickMarkStatus(q, '复习中')" class="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-600 transition-all hover:bg-indigo-100 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
                 <i class="fa-solid fa-spinner mr-1"></i>复习中
               </button>
-              <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
+              <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 shadow-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
                 标记为复习中
                 <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-[3px] border-transparent border-t-slate-600/90 dark:border-t-slate-700/90"></span>
               </span>
@@ -292,7 +291,7 @@ watch(() => props.visible, (v) => {
               <button @click="quickMarkStatus(q, '已掌握')" class="rounded-xl border border-emerald-500/30 bg-emerald-50/80 px-4 py-2 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
                 <i class="fa-solid fa-circle-check mr-1"></i>已掌握
               </button>
-              <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
+              <span class="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 shadow-sm transition-opacity group-hover/tip:opacity-100 dark:bg-slate-700/90">
                 标记为已掌握
                 <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-[3px] border-transparent border-t-slate-600/90 dark:border-t-slate-700/90"></span>
               </span>

@@ -149,130 +149,52 @@ defineExpose({ refresh: loadRecords })
 
 <template>
   <div v-show="visible" class="flex h-full flex-col overflow-hidden">
-    <!-- 背景光晕 -->
-    <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div class="animate-blob absolute -top-[15%] right-[-5%] h-[45vw] w-[45vw] rounded-full bg-violet-300/[0.10] mix-blend-multiply blur-[120px] dark:bg-violet-600/15 dark:mix-blend-screen"></div>
-      <div class="animate-blob animation-delay-4000 absolute -bottom-[10%] left-[-8%] h-[40vw] w-[40vw] rounded-full bg-blue-200/[0.12] mix-blend-multiply blur-[100px] dark:bg-blue-500/10 dark:mix-blend-screen"></div>
-    </div>
-
-    <div class="container relative z-10 mx-auto flex h-full max-w-6xl flex-col px-4 py-4 sm:px-8 sm:py-6">
+    <div class="relative flex h-full flex-col">
       <!-- 页头 -->
-      <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between shrink-0">
-        <div class="flex items-center gap-4">
-          <button
-            @click="emit('go-workspace')"
-            class="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-md transition-all hover:border-blue-500/50 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
-          >
-            <i class="fa-solid fa-arrow-left-long transition-transform group-hover:-translate-x-1"></i>
-          </button>
-          <div>
-            <div class="mb-1 flex items-center gap-2">
-              <span class="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
-                History
-              </span>
-              <span class="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-              <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">最近 20 条</span>
-            </div>
-            <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">分割历史</h2>
-          </div>
-        </div>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] shrink-0">
+        <span class="text-xs font-medium text-[#f7f8f8]">分割历史</span>
         <button
           @click="loadRecords"
           :disabled="loading"
-          class="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm font-bold text-slate-600 backdrop-blur-md transition-all hover:border-violet-500/40 hover:bg-white hover:text-violet-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-violet-500/40 dark:hover:text-violet-300"
+          class="text-xs text-[#8a8f98] hover:text-[#d0d6e0] transition-colors disabled:opacity-50"
         >
-          <i class="fa-solid fa-arrows-rotate text-sm" :class="{ 'animate-spin': loading }"></i>
-          刷新
+          <i class="fa-solid fa-arrows-rotate text-[10px]" :class="{ 'animate-spin': loading }"></i>
         </button>
       </div>
 
       <!-- 主体 -->
-      <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+      <div class="flex-1 overflow-y-auto custom-scrollbar">
 
         <!-- 加载状态 -->
-        <div v-if="loading && !records.length" class="flex flex-col items-center justify-center py-20">
-          <div class="mb-4 h-10 w-10 animate-spin rounded-full border-[3px] border-slate-200 border-t-violet-500 dark:border-slate-700 dark:border-t-violet-400"></div>
-          <span class="text-sm font-semibold text-slate-400 dark:text-slate-500">加载中...</span>
+        <div v-if="loading && !records.length" class="flex items-center justify-center py-10">
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="!loading && !records.length" class="flex flex-col items-center justify-center py-20">
-          <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 dark:bg-white/5">
-            <i class="fa-solid fa-clock-rotate-left text-3xl text-slate-300 dark:text-slate-600"></i>
-          </div>
-          <p class="text-base font-bold text-slate-400 dark:text-slate-500">暂无分割记录</p>
-          <p class="mt-1 text-xs text-slate-400 dark:text-slate-600">完成题目分割后，记录将自动保存在这里</p>
+        <div v-else-if="!loading && !records.length" class="px-4 py-10 text-center">
+          <i class="fa-solid fa-clock-rotate-left text-lg text-[#62666d] mb-2"></i>
+          <p class="text-xs text-[#62666d]">暂无记录</p>
         </div>
 
         <!-- 记录列表 -->
-        <div v-else class="space-y-3">
+        <div v-else>
           <div
             v-for="(r, idx) in records"
             :key="r.id"
-            class="group cursor-pointer rounded-2xl border transition-all duration-300"
-            :class="activeRecord?.id === r.id
-              ? 'border-violet-400/60 bg-violet-50/50 shadow-lg shadow-violet-500/10 dark:border-violet-500/40 dark:bg-violet-500/[0.06] dark:shadow-violet-500/5'
-              : 'border-slate-200/60 bg-white/70 hover:border-violet-300/50 hover:bg-white/90 hover:shadow-md dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:border-violet-500/20 dark:hover:bg-white/[0.05]'"
+            class="group cursor-pointer border-b border-white/[0.05] px-4 py-3 transition-colors hover:bg-white/[0.03]"
+            :class="activeRecord?.id === r.id ? 'bg-white/[0.04]' : ''"
             @click="openDetail(r)"
           >
-            <!-- 记录卡片头 -->
-            <div class="flex items-center gap-4 px-5 py-4">
-              <!-- 序号圆 -->
-              <div
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors"
-                :class="activeRecord?.id === r.id
-                  ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30'
-                  : 'bg-slate-100 text-slate-500 group-hover:bg-violet-100 group-hover:text-violet-600 dark:bg-white/[0.06] dark:text-slate-400 dark:group-hover:bg-violet-500/20 dark:group-hover:text-violet-300'"
-              >
-                {{ records.length - idx }}
-              </div>
-
-              <!-- 主信息 -->
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="truncate text-sm font-bold text-slate-800 dark:text-white">
-                    {{ r.subject || '未识别科目' }}
-                  </span>
-                  <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="providerColor(r.model_provider)">
-                    {{ providerLabel(r.model_provider) }}
-                  </span>
-                </div>
-                <div class="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-                  <span class="inline-flex items-center gap-1">
-                    <i class="fa-regular fa-file text-[10px]"></i>
-                    {{ (r.file_names || []).length }} 个文件
-                  </span>
-                  <span class="h-3 w-px bg-slate-200 dark:bg-white/10"></span>
-                  <span class="inline-flex items-center gap-1" :title="formatFullDate(r.created_at)">
-                    <i class="fa-regular fa-clock text-[10px]"></i>
-                    {{ formatDate(r.created_at) }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 题目数 + 展开箭头 -->
-              <div class="flex items-center gap-3 shrink-0">
-                <div class="text-right">
-                  <div class="text-xl font-black tabular-nums text-slate-800 dark:text-white">{{ r.question_count }}</div>
-                  <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500">道题目</div>
-                </div>
-                <i
-                  class="fa-solid fa-chevron-down text-xs text-slate-300 transition-transform duration-300 dark:text-slate-600"
-                  :class="{ '-rotate-180': activeRecord?.id === r.id }"
-                ></i>
-              </div>
+            <!-- 一行：科目 + 时间 + 题数 -->
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-sm font-medium text-[#f7f8f8] truncate">{{ r.subject || '未识别' }}</span>
+              <span class="text-xs tabular-nums text-[rgb(129,115,223)]">{{ r.question_count }} 题</span>
             </div>
-
-            <!-- 文件名列表 -->
-            <div v-if="r.file_names?.length" class="flex flex-wrap gap-1.5 px-5 pb-3">
-              <span
-                v-for="fname in r.file_names"
-                :key="fname"
-                class="inline-flex items-center gap-1 rounded-lg bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-white/[0.04] dark:text-slate-400"
-              >
-                <i class="fa-solid text-[9px]" :class="fname.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf text-rose-400' : 'fa-file-image text-blue-400'"></i>
-                {{ fname }}
-              </span>
+            <!-- 二行：文件数 + 时间 -->
+            <div class="flex items-center gap-2 text-xs text-[#62666d]">
+              <span>{{ (r.file_names || []).length }} 个文件</span>
+              <span>·</span>
+              <span :title="formatFullDate(r.created_at)">{{ formatDate(r.created_at) }}</span>
             </div>
 
             <!-- 展开详情面板 -->

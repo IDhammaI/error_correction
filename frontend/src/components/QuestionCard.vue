@@ -70,7 +70,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 
 <template>
   <div
-    class="question-card group relative overflow-hidden rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md dark:bg-white/[0.03]"
+    class="question-card group relative overflow-hidden rounded-2xl border bg-white/70 p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-white/[0.03]"
     :class="
       selected
         ? 'border-blue-500/50 shadow-blue-500/10 dark:border-indigo-500/50 dark:shadow-indigo-500/20'

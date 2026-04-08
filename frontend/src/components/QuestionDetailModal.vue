@@ -161,7 +161,7 @@ const reviewStatusOptions = [
     <Transition name="modal-fade">
       <div v-if="open" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
         <!-- 遮罩层 -->
-        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-md" @click="emit('close')"></div>
+        <div class="absolute inset-0 bg-slate-950/60" @click="emit('close')"></div>
         
         <!-- 弹窗主体 -->
         <div class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-white/10 bg-white shadow-2xl transition-all dark:bg-[#0F111A]">

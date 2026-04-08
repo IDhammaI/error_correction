@@ -20,7 +20,7 @@ const emit = defineEmits(['scrollToSection'])
   <nav
     id="top-nav"
     class="fixed top-0 left-0 w-full z-50 border-b transition-[border-color] duration-200"
-    :class="navScrolled ? 'border-white/[0.06] bg-[#0A0A0F]/80 backdrop-blur-md' : 'border-transparent'"
+    :class="navScrolled ? 'border-white/[0.06] bg-[#0A0A0F]/80' : 'border-transparent'"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-14">
@@ -55,7 +55,7 @@ const emit = defineEmits(['scrollToSection'])
   </nav>
 
   <!-- 右侧 Section 导航 — Linear 风格 -->
-  <nav id="section-nav" class="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 py-4 px-1.5 rounded-lg border border-white/[0.06] bg-[#0A0A0F]/60 backdrop-blur-sm scale-90 md:scale-100">
+  <nav id="section-nav" class="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 py-4 px-1.5 rounded-lg border border-white/[0.06] bg-[#0A0A0F]/60 scale-90 md:scale-100">
     <button
       v-for="(s, i) in sections"
       :key="s.id"
