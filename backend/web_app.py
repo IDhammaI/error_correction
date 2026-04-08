@@ -30,9 +30,8 @@ from db import init_db, SessionLocal
 from db import crud
 from routes import register_routes
 
-# 加载项目根目录的 .env 文件（SECRET_KEY、FLASK_DEBUG 等）
-# load_dotenv() 会自动从当前目录向上查找 .env 文件
-load_dotenv()
+# 加载 backend/.env（无论从哪个目录启动都指向同一文件）
+load_dotenv(os.path.join(_BACKEND_ROOT, ".env"))
 
 # 模块级日志记录器，日志名称为 'web_app'
 logger = logging.getLogger(__name__)
