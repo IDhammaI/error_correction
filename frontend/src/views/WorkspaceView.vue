@@ -92,6 +92,7 @@ const NAV_GROUPS = [
 ]
 
 const collapsedGroups = ref({})
+const chatCollapsed = ref(false)
 
 // ── 导航指示器动画（基于 DOM 实际位置） ──
 const navRef = ref(null)
@@ -914,21 +915,15 @@ onBeforeUnmount(() => {
               <span>{{ group.label }}</span>
               <i
                 v-if="group.collapsible"
-                class="fa-solid fa-play text-[6px] text-[#62666d] transition-transform duration-200"
+                class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200"
                 :class="collapsedGroups[gi] ? '' : 'rotate-90'"
               ></i>
             </button>
 
-            <!-- 分组内容 -->
-            <Transition
-              enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-              enter-from-class="max-h-0 opacity-0"
-              enter-to-class="max-h-96 opacity-100"
-              leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-              leave-from-class="max-h-96 opacity-100"
-              leave-to-class="max-h-0 opacity-0"
-            >
-            <div v-if="!collapsedGroups[gi]" class="flex flex-col gap-1">
+            <!-- 分组内容（grid 折叠动画） -->
+            <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+            <div class="overflow-hidden">
+            <div class="flex flex-col gap-1">
               <template v-for="item in group.items" :key="item.id">
                 <!-- 禁用项 -->
                 <button
@@ -957,20 +952,27 @@ onBeforeUnmount(() => {
                 </button>
               </template>
             </div>
-            </Transition>
+            </div>
+            </div>
           </template>
         </nav>
 
       </div>
 
-      <!-- AI 对话历史列表（常显示） -->
+      <!-- AI 对话历史列表 -->
       <div class="flex-1 min-h-0 flex flex-col mt-4 px-4">
         <div class="flex items-center justify-between px-3 pt-4 pb-2">
-          <span class="text-xs font-medium uppercase tracking-[0.15em] text-[#62666d]">对话</span>
+          <button @click="chatCollapsed = !chatCollapsed" class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors cursor-pointer">
+            <span>对话</span>
+            <i class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200" :class="chatCollapsed ? '' : 'rotate-90'"></i>
+          </button>
           <button @click="createAiChat" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
             <i class="fa-solid fa-plus text-[10px]"></i>
           </button>
         </div>
+        <!-- 折叠动画 -->
+        <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+        <div class="overflow-hidden">
         <div ref="chatListRef" class="flex-1 overflow-y-auto pb-2 custom-scrollbar relative" @click="chatMenuOpenId = null">
           <!-- 对话区滑动指示器 -->
           <div
@@ -1045,6 +1047,8 @@ onBeforeUnmount(() => {
               </div>
             </Transition>
           </div>
+        </div>
+        </div>
         </div>
       </div>
 
