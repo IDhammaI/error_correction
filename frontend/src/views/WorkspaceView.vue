@@ -490,6 +490,9 @@ const bgStars = (() => {
   return list
 })()
 const pendingFiles = reactive([])
+const pendingPreviewUrls = computed(() =>
+  pendingFiles.filter(pf => pf.file).map(pf => URL.createObjectURL(pf.file))
+)
 const fileProgress = reactive({})
 const waitingKeys = reactive(new Set())
 const uploadQueue = reactive([])
@@ -1424,6 +1427,7 @@ onBeforeUnmount(() => {
                   v-if="eraseLoading || (eraseDone && !ocrLoading && !ocrDone)"
                   :images="eraseImages"
                   :loading="eraseLoading"
+                  :preview-url="pendingPreviewUrls[0]"
                 />
 
                 <!-- OCR 加载中 / OCR 预览 -->
@@ -1431,16 +1435,17 @@ onBeforeUnmount(() => {
                   v-else-if="ocrLoading || (ocrDone && !splitCompleted && !splitting)"
                   :pages="ocrPages"
                   :loading="ocrLoading"
+                  :preview-url="pendingPreviewUrls[0]"
                 />
 
                 <!-- 分割进行中 -->
-                <div v-else-if="splitting" class="flex-1 flex flex-col items-center justify-center gap-4">
-                  <div class="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
-                  <p class="text-sm text-[#8a8f98]">AI 正在分割题目...</p>
+                <div v-else-if="splitting" class="flex-1 min-h-0 relative">
+                  <img v-if="pendingPreviewUrls[0]" :src="pendingPreviewUrls[0]" class="absolute inset-0 w-full h-full object-contain opacity-10 blur-sm" alt="" />
+                  <SplitLoading />
                 </div>
 
                 <!-- 题目列表 -->
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
+                <div v-if="splitCompleted && questions.length" class="flex-1 overflow-y-auto pr-2 custom-scrollbar py-2 pb-24">
                   <QuestionList
                     ref="questionListRef"
                     :questions="questions"

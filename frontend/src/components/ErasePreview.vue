@@ -4,10 +4,12 @@
  * 擦除前后对比预览 — 拖拽滑块对比，单张显示 + 分页
  */
 import { ref, computed } from 'vue'
+import SplitLoading from './SplitLoading.vue'
 
 const props = defineProps({
   images: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  previewUrl: { type: String, default: '' },
 })
 
 // 当前页码（0-based）
@@ -38,9 +40,9 @@ function onPointerDown(event) {
 <template>
   <div class="flex flex-col h-full">
     <!-- 加载中 -->
-    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center gap-4">
-      <div class="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
-      <p class="text-sm text-[#8a8f98]">正在擦除手写笔迹...</p>
+    <div v-if="loading" class="flex-1 min-h-0 relative">
+      <img v-if="previewUrl" :src="previewUrl" class="absolute inset-0 w-full h-full object-contain opacity-10 blur-sm" alt="" />
+      <SplitLoading title="正在擦除手写笔迹" subtitle="EnsExam 模型正在识别并移除手写内容" />
     </div>
 
     <!-- 无数据 -->

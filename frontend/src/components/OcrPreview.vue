@@ -4,11 +4,13 @@
  * OCR 结果预览 — 图片 + bbox 标注叠加
  */
 import { ref, computed, onBeforeUnmount } from 'vue'
+import SplitLoading from './SplitLoading.vue'
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   loadingText: { type: String, default: '正在执行 OCR 识别...' },
+  previewUrl: { type: String, default: '' },
 })
 
 // 按钮已移至 ContentPanel toolbar，emits 不再需要
@@ -104,9 +106,9 @@ const hoveredBlock = ref(null)
 <template>
   <div class="flex flex-col h-full">
     <!-- 加载中 -->
-    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center gap-4">
-      <div class="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
-      <p class="text-sm text-[#8a8f98]">{{ loadingText }}</p>
+    <div v-if="loading" class="flex-1 min-h-0 relative">
+      <img v-if="previewUrl" :src="previewUrl" class="absolute inset-0 w-full h-full object-contain opacity-10 blur-sm" alt="" />
+      <SplitLoading title="正在执行 OCR 识别" subtitle="PaddleOCR 正在解析文档结构与文字内容" />
     </div>
 
     <!-- 无数据 -->
