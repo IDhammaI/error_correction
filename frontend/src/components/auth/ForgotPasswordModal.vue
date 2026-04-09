@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, onUnmounted, watch } from 'vue'
-import LandingButton from '../landing/LandingButton.vue'
+import LandingButton from '@/components/landing/LandingButton.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },

@@ -6,8 +6,8 @@ import {
   ListboxOptions,
   ListboxOption,
 } from '@headlessui/vue'
-import deepseekLogo from '../../assets/deepseek.svg'
-import ernieLogo from '../../assets/ernie.svg'
+import deepseekLogo from '@/assets/deepseek.svg'
+import ernieLogo from '@/assets/ernie.svg'
 
 // Tooltip 相关状态
 const tooltipVisible = ref(false)

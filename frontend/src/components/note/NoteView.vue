@@ -1,12 +1,12 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
-import * as api from '../../api.js'
-import { renderMarkdown, typesetMath } from '../../utils.js'
-import GlassCard from '../ui/GlassCard.vue'
-import GlassButton from '../ui/GlassButton.vue'
-import SearchInput from '../ui/SearchInput.vue'
-import CustomSelect from '../ui/CustomSelect.vue'
-import EmptyState from '../ui/EmptyState.vue'
+import * as api from '@/api.js'
+import { renderMarkdown, typesetMath } from '@/utils.js'
+import GlassCard from '@/components/ui/GlassCard.vue'
+import GlassButton from '@/components/ui/GlassButton.vue'
+import SearchInput from '@/components/ui/SearchInput.vue'
+import CustomSelect from '@/components/ui/CustomSelect.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const noteContentRef = ref(null)
 

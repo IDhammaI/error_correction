@@ -1,33 +1,33 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { fileKey, typesetMath as _typesetMathEl } from '../utils.js'
-import * as api from '../api.js'
-import { useAuth } from '../composables/useAuth.js'
-import { usePageTransition } from '../composables/usePageTransition.js'
+import { fileKey, typesetMath as _typesetMathEl } from '@/utils.js'
+import * as api from '@/api.js'
+import { useAuth } from '@/composables/useAuth.js'
+import { usePageTransition } from '@/composables/usePageTransition.js'
 // 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
-import BrandLogo from '../components/ui/BrandLogo.vue'
-import ContentPanel from '../components/workspace/ContentPanel.vue'
-import StatusBar from '../components/workspace/StatusBar.vue'
-import StepIndicator from '../components/workspace/StepIndicator.vue'
-import FileList from '../components/workspace/FileList.vue'
-import FileUploader from '../components/workspace/FileUploader.vue'
-import QuestionList from '../components/question/QuestionList.vue'
-import ActionBar from '../components/workspace/ActionBar.vue'
-import SelectionPanel from '../components/workspace/SelectionPanel.vue'
-import SplitLoading from '../components/workspace/SplitLoading.vue'
-import ErasePreview from '../components/workspace/ErasePreview.vue'
-import OcrPreview from '../components/workspace/OcrPreview.vue'
-import ImageModal from '../components/ui/ImageModal.vue'
-import ToastContainer from '../components/ui/ToastContainer.vue'
-import Dashboard from '../components/dashboard/Dashboard.vue'
-import ReviewView from '../components/review/ReviewView.vue'
-import ErrorBank from '../components/errorbank/ErrorBank.vue'
-import ChatView from '../components/chat/ChatView.vue'
-import SettingsView from '../components/settings/SettingsView.vue'
-import SplitHistory from '../components/workspace/SplitHistory.vue'
-import NoteView from '../components/note/NoteView.vue'
-import ChatPage from '../components/chat/ChatPage.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import StatusBar from '@/components/workspace/StatusBar.vue'
+import StepIndicator from '@/components/workspace/StepIndicator.vue'
+import FileList from '@/components/workspace/FileList.vue'
+import FileUploader from '@/components/workspace/FileUploader.vue'
+import QuestionList from '@/components/question/QuestionList.vue'
+import ActionBar from '@/components/workspace/ActionBar.vue'
+import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
+import SplitLoading from '@/components/workspace/SplitLoading.vue'
+import ErasePreview from '@/components/workspace/ErasePreview.vue'
+import OcrPreview from '@/components/workspace/OcrPreview.vue'
+import ImageModal from '@/components/ui/ImageModal.vue'
+import ToastContainer from '@/components/ui/ToastContainer.vue'
+import Dashboard from '@/components/dashboard/Dashboard.vue'
+import ReviewView from '@/components/review/ReviewView.vue'
+import ErrorBank from '@/components/errorbank/ErrorBank.vue'
+import ChatView from '@/components/chat/ChatView.vue'
+import SettingsView from '@/components/settings/SettingsView.vue'
+import SplitHistory from '@/components/workspace/SplitHistory.vue'
+import NoteView from '@/components/note/NoteView.vue'
+import ChatPage from '@/components/chat/ChatPage.vue'
 
 // ---- 认证状态 ----
 const { currentUser } = useAuth()
@@ -197,7 +197,7 @@ onMounted(() => {
 // ---- 状态定义 ----
 const { loading: globalLoading } = usePageTransition()
 
-import { useTheme } from '../composables/useTheme.js'
+import { useTheme } from '@/composables/useTheme.js'
 const { isDark, toggleTheme, initTheme } = useTheme()
 // 兼容旧代码中 theme 的引用
 const theme = computed(() => isDark.value ? 'dark' : 'light')

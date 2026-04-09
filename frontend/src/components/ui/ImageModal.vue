@@ -1,5 +1,5 @@
 <script setup>
-import { clampScale } from '../../utils.js'
+import { clampScale } from '@/utils.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
-import { isHtml, sanitizeHtml, formatOption } from '../../utils.js'
-import * as api from '../../api.js'
+import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
+import * as api from '@/api.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },

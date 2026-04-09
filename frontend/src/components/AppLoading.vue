@@ -1,5 +1,5 @@
 <script setup>
-import BrandLogo from './ui/BrandLogo.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 defineProps({
   visible: { type: Boolean, default: true },

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { getQuestionSnippet, typesetMath } from '../../utils.js'
+import { getQuestionSnippet, typesetMath } from '@/utils.js'
 
 const props = defineProps({
   question: { type: Object, required: true },

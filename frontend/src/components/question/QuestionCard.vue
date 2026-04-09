@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { isHtml, sanitizeHtml, formatOption } from '../../utils.js'
+import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
 
 const props = defineProps({
   question: { type: Object, required: true },
