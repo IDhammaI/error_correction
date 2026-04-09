@@ -6,8 +6,8 @@ import {
   ListboxOptions,
   ListboxOption,
 } from '@headlessui/vue'
-import deepseekLogo from '../assets/deepseek.svg'
-import ernieLogo from '../assets/ernie.svg'
+import deepseekLogo from '@/assets/deepseek.svg'
+import ernieLogo from '@/assets/ernie.svg'
 
 // Tooltip 相关状态
 const tooltipVisible = ref(false)
@@ -167,7 +167,7 @@ const modelStatusError = computed(() => {
       <Listbox :model-value="selectedModel" @update:model-value="(v) => emit('update:selectedModel', v)" :disabled="disabled || noModels">
         <div class="relative w-56 min-w-0">
           <ListboxButton
-            class="group relative flex h-9 w-full cursor-pointer items-center justify-between gap-4 rounded-lg brand-btn pl-3 pr-2 text-left hover:border-[rgb(129,115,223)]/40 hover:bg-white/[0.05]"
+            class="group relative flex w-full cursor-pointer items-center justify-between gap-4 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-left text-xs font-medium text-[#d0d6e0] transition-colors hover:bg-white/[0.05] hover:border-white/[0.12]"
             :disabled="disabled"
           >
             <div class="flex items-center gap-2.5 min-w-0 flex-1">
@@ -218,13 +218,13 @@ const modelStatusError = computed(() => {
             leave-to-class="transform scale-95 opacity-0 -translate-y-2"
           >
             <ListboxOptions
-              class="absolute right-0 z-50 mt-2 max-h-72 w-64 overflow-auto rounded-lg brand-btn py-2 text-base focus:outline-none sm:text-sm"
+              class="absolute right-0 z-50 mt-2 max-h-72 w-full overflow-auto rounded-md border border-white/[0.08] bg-white/[0.02] text-base focus:outline-none sm:text-sm"
             >
               <template v-for="(item, idx) in modelOptions" :key="idx">
                 <!-- 分组标题 -->
                 <li
                   v-if="item.type === 'group'"
-                  class="select-none px-4 py-2 text-[10px] font-medium uppercase tracking-widest text-[#62666d]"
+                  class="select-none px-4 text-[10px] font-medium uppercase tracking-widest text-[#62666d]"
                   :class="idx > 0 ? 'mt-1 border-t border-white/[0.05] pt-2' : ''"
                 >
                   <div class="flex items-center gap-2">
@@ -243,13 +243,13 @@ const modelStatusError = computed(() => {
                   <li
                     class="relative cursor-pointer select-none py-2.5 pl-10 pr-4 transition-colors"
                     :class="[
-                      active ? 'bg-[rgb(129,115,223)]/10' : '',
+                      active ? 'bg-white/[0.05]' : '',
                       optDisabled ? 'opacity-40 cursor-not-allowed' : ''
                     ]"
                   >
                     <span
                   class="block truncate text-sm transition-colors min-w-0"
-                  :class="[selected ? 'font-medium text-[rgb(145,132,235)]' : 'font-medium text-[#d0d6e0]']"
+                  :class="[selected ? 'font-medium text-white' : 'font-medium text-[#d0d6e0]']"
                   @mouseenter="showTooltip($event, item.model)"
                   @mouseleave="hideTooltip"
                 >
@@ -258,7 +258,7 @@ const modelStatusError = computed(() => {
                 </span>
                     <span
                       v-if="selected"
-                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-[rgb(145,132,235)]"
+                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-white"
                     >
                       <i class="fa-solid fa-check text-sm"></i>
                     </span>

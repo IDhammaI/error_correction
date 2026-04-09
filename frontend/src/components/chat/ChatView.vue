@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch, inject } from 'vue'
-import { fetchMessages, streamChat } from '../api.js'
-import { getQuestionSnippet, renderMarkdown, typesetMath } from '../utils.js'
+import { fetchMessages, streamChat } from '@/api.js'
+import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils.js'
 
 const PAGE_SIZE = 30
 

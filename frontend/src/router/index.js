@@ -1,27 +1,27 @@
 import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuth } from '../composables/useAuth.js'
-import { usePageTransition } from '../composables/usePageTransition.js'
+import { useAuth } from '@/composables/useAuth.js'
+import { usePageTransition } from '@/composables/usePageTransition.js'
 
 const routes = [
   {
     path: '/',
-    component: () => import('../views/LandingView.vue'),
+    component: () => import('@/views/LandingView.vue'),
     meta: { layout: 'landing' },
   },
   {
     path: '/auth',
-    component: () => import('../components/auth/AuthLayout.vue'),
+    component: () => import('@/components/auth/AuthLayout.vue'),
     redirect: '/auth/login',
     meta: { layout: 'auth' },
     children: [
-      { path: 'login',    component: () => import('../components/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
-      { path: 'register', component: () => import('../components/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
+      { path: 'login',    component: () => import('@/components/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
+      { path: 'register', component: () => import('@/components/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
     ],
   },
   {
     path: '/app/:view?/:subview?',
-    component: () => import('../views/WorkspaceView.vue'),
+    component: () => import('@/views/WorkspaceView.vue'),
     meta: { requiresAuth: true, layout: 'app' },
   },
   {
