@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ProviderDialog.vue
+ * API Provider 配置弹窗
+ */
 import { ref, computed, watch, inject } from 'vue'
 
 const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] ${msg}`) })

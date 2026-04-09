@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * StatusBar.vue
+ * 状态栏（引擎状态 + 模型选择）
+ */
 import { computed, ref, watch, inject } from 'vue'
 import {
   Listbox,

@@ -49,7 +49,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境配置
 
-复制 `backend/.env.example` → `backend/.env`，必须配置 `SECRET_KEY`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理 API Key 和供应商配置。
+复制 `backend/.env.example` → 项目根目录 `.env`，必须配置 `SECRET_KEY`。`core/config.py` 从项目根目录读取 `.env`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理。SMTP 邮件配置（注册验证码、找回密码）通过 `.env` 的 `APP_SMTP_*` 变量管理。
 
 ---
 
@@ -62,11 +62,13 @@ cd frontend && npm install               # 前端（Node 18+）
 ```
 用户上传文件
   → prepare_input（PDF 转图片）
-  → PaddleOCR API（异步任务，asyncio.gather 并行）
+  → [可选] EnsExam 擦除手写字迹（/api/erase，独立预处理步骤）
+  → PaddleOCR API（/api/ocr，异步并行，返回 bbox 预览）
   → simplify_ocr_results()（block_label 归一化，唯一转换点）
   → split_batch（2 页/批滑动窗口，ThreadPoolExecutor 并行，上限 3）
   → LLM Agent 分割题目（invoke_split）
   → _dedup_questions()（跨批次去重）
+  → _normalize_image_paths()（修复 LLM 篡改的图片路径）
   → LLM Agent 纠错（invoke_correction）
   → 导出 / 保存数据库
 ```
@@ -77,26 +79,30 @@ cd frontend && npm install               # 前端（Node 18+）
 - **`backend/agents/error_correction/`** — 题目分割 + OCR 纠错 Agent（`create_inner_split_agent` / `create_inner_correct_agent`）
 - **`backend/agents/solve/`** — 独立的解题 Agent（`invoke_solve`）
 - **`backend/agents/teach/`** — 教学讲解 Agent，流式多轮对话（`stream_teach`）
-- **`backend/web_app.py`** — Flask 应用工厂，注册 6 个 Blueprint，全局 session 状态在 `state.py`
-- **`backend/routes/`** — 6 个 Blueprint 模块（upload、questions、chat、stats、auth、settings）
-- **`backend/state.py`** — 全局会话状态（`session_files`、`session_lock`）
+- **`backend/agents/note/`** — 笔记整理 Agent，OCR → LLM 结构化（`invoke_note_organize`）
+- **`backend/web_app.py`** — Flask 应用工厂，注册 7 个 Blueprint，全局 session 状态在 `state.py`
+- **`backend/routes/`** — 7 个 Blueprint 模块（upload、questions、chat、stats、auth、settings、notes）
+- **`backend/core/state.py`** — 全局会话状态（`session_files`、`session_lock`）
+- **`backend/core/mail.py`** — SMTP 邮件发送（注册验证码、找回密码）
 - **`backend/core/config.py`** — 所有运行时路径 + LLM provider 注册集中管理，`ensure_dirs()` 显式初始化
 - **`backend/core/llm.py`** — `init_model()` 统一 LLM 初始化，支持多 provider
 - **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化；`db/crud/providers.py` 管理用户存储的 API key
 
 ### Flask 路由
 
-路由实现在 `backend/routes/` 的 6 个 Blueprint 模块中，`web_app.py` 仅做注册：
+路由实现在 `backend/routes/` 的 7 个 Blueprint 模块中，`web_app.py` 仅做注册：
 
-- `GET /` → 介绍页 | `GET /app` → Vue 工作台
-- `POST /api/upload` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API（upload.py）
+- `POST /api/upload` / `/api/erase` / `/api/ocr` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API（upload.py）
+- `GET /api/image/<filename>` — 图片资源访问（upload.py）
 - `GET /api/status` — 系统状态（OCR 配置、可用模型列表）（upload.py）
+- `GET /api/split-records` — 分割历史记录（upload.py）
 - `/api/error-bank` / `/api/subjects` / `/api/question-types` — 错题库 CRUD（questions.py）
 - `/api/stats` — 统计数据（stats.py）
 - `/api/chat` / `/api/chat/<id>/messages` / `/api/chat/<id>/stream` — AI 对话（SSE 流式）（chat.py）
 - `/api/ai-analysis` — AI 分析（teach_agent）（chat.py）
-- `/api/auth` — 认证（auth.py）
+- `/api/auth` / `/api/auth/send-code` / `/api/auth/reset-password` — 认证 + 邮箱验证码（auth.py）
 - `/api/settings` — LLM provider 配置（settings.py）
+- `/api/notes` — 笔记 CRUD（notes.py）
 
 ---
 
@@ -115,63 +121,95 @@ cd frontend && npm install               # 前端（Node 18+）
 ### 技术栈
 
 - Vue 3 + `<script setup>`（Composition API，不使用 Options API）
-- Vite 多页面入口：`index.html`（介绍页）+ `app.html`（工作台）
-- Tailwind CSS 3（utility-first，class-based dark mode）
-- HeadlessUI Vue 用于可访问交互组件
+- Vite 单页应用，入口 `app.html`，Vue Router 4 客户端路由
+- Tailwind CSS 3（utility-first，class-based dark mode）+ `@tailwindcss/typography`
+- HeadlessUI Vue 用于可访问交互组件（Listbox、Dialog 等）
 - DOMPurify 用于 HTML 净化（白名单在 `utils.js` 的 `ALLOWED_HTML_TAGS`）
 - 纯 JavaScript（不使用 TypeScript），原生 fetch（不使用 axios），文件上传用 XHR
-- CDN 外部依赖（非 npm）：Font Awesome 6.5、MathJax 3、SortableJS 1.15、Chart.js 4
+- CDN 外部依赖（非 npm）：Font Awesome 6.5、MathJax 3、SortableJS 1.15、Chart.js 4、marked 15
+
+### 目录结构
+
+```
+frontend/src/
+├── components/           # 可复用组件（55+）
+│   ├── auth/            # 认证：AuthLayout、LoginView、RegisterView、ForgotPasswordModal
+│   └── home/            # 首页：HomeNav、HomeHero、HomeFeatures 等
+├── composables/          # Vue 3 组合式函数（12 个）
+│   ├── useAuth.js       # 认证状态（currentUser、authChecked）
+│   ├── useTheme.js      # 主题切换（isDark、toggleTheme + View Transition 动画）
+│   ├── usePageTransition.js  # 全局页面过渡遮罩
+│   ├── useClickOutside.js    # 点击外部关闭
+│   ├── useImageModal.js      # 图片预览弹窗
+│   ├── useWorkspaceToast.js  # Toast 通知
+│   ├── useSystemStatus.js    # 系统状态（OCR/模型配置）
+│   ├── useSidebarIndicator.js # 侧边栏 active 指示器动画
+│   ├── useAiChatSessions.js  # AI 对话会话管理
+│   ├── useFileUpload.js      # 文件上传状态
+│   ├── useSplitPipeline.js   # 分割流水线（擦除→OCR→分割）
+│   └── useQuestionList.js    # 题目列表状态
+├── router/index.js       # 路由配置
+├── views/                # 页面级组件
+│   ├── HomeView.vue     # 首页（强制暗色主题）
+│   └── WorkspaceView.vue # 工作台主容器（侧边栏 + 内容区）
+├── api.js                # 集中式 API 层（50+ 函数）
+├── utils.js              # 工具函数（sanitizeHtml、renderMarkdown、typesetMath）
+├── style.css             # 全局样式 + Tailwind 自定义类
+├── App.vue               # 根组件
+└── main.js               # Vue 应用入口
+```
+
+### 路由
+
+| 路径 | 组件 | 说明 |
+|------|------|------|
+| `/` | HomeView | 首页 |
+| `/auth/login` | LoginView | 登录 |
+| `/auth/register` | RegisterView | 注册 |
+| `/app/workspace` | WorkspaceView | 录入工作台 |
+| `/app/dashboard` | Dashboard | 数据统计 |
+| `/app/error-bank` | ErrorBank | 错题库 |
+| `/app/notes` | NoteView | 笔记整理 |
+| `/app/ai-chat` | ChatPage | AI 对话 |
+| `/app/review` | ReviewView | 复习计划 |
+| `/app/settings` | SettingsView | 系统设置 |
+| `/app/split-history` | SplitHistory | 分割历史 |
+| `/app/chat` | ChatView | 独立对话 |
+
+路由 meta 字段：`layout`（`'home'` / `'auth'` / `'app'`）、`requiresAuth`（boolean）
 
 ### 布局
 
-- **PC 端**：左侧固定侧边栏（`aside w-64`）+ 右侧主内容区
+- **PC 端**：左侧固定侧边栏（`aside w-64`）+ 右侧主内容区，导航分组可折叠
 - **移动端**：底部 Tab 导航栏（`fixed bottom-0`）+ 全宽内容区
-- `currentView` ref 控制 `'workspace'` / `'dashboard'` 视图（`v-show` 切换）
-
-### 间距节奏（8pt Grid）
-
-**所有 padding / margin / gap 只允许使用 4 的倍数**，对应 Tailwind 档位：
-
-| 用途 | 允许值 |
-|------|--------|
-| 微间距（图标、标签内边距） | `p-1` `p-2` `gap-1` `gap-2` |
-| 小间距（按钮、行内元素） | `p-3` `p-4` `gap-3` `gap-4` |
-| 中间距（卡片内边距、区块间距） | `p-6` `p-8` `gap-6` `gap-8` |
-| 大间距（页面边距、区域分割） | `p-10` `p-12` `gap-10` `gap-12` |
-
-禁止使用 `p-5` `p-7` `p-9` `gap-5` `gap-7` 等非 4 倍数值，禁止任意 `px-[17px]` 之类魔法数字。
-
-### 排版层级（Typography）
-
-字号只允许以下 7 档，**禁止使用其他值**（包括 `text-[13px]`、`text-[11px]` 等任意值）：
-
-| 层级 | Tailwind | 像素 | 行高 | 用途 |
-|------|----------|------|------|------|
-| 超大标题 | `text-4xl` | 36px | `leading-tight`（1.25） | 落地页 Hero、各区块主标题 |
-| 大标题 | `text-3xl` | 30px | `leading-tight`（1.25） | 页面主标题、工作台区块标题 |
-| 标题 | `text-2xl` | 24px | `leading-snug`（1.375） | 区块标题、Modal 标题 |
-| 副标题 | `text-xl` | 20px | `leading-snug` | 卡片标题、侧边栏项 |
-| 正文 | `text-base` | 16px | `leading-relaxed`（1.625） | 题目内容、说明文字 |
-| 辅助 | `text-sm` | 14px | `leading-relaxed` | 标签、次要信息 |
-| 标注 | `text-xs` | 12px | `leading-normal`（1.5） | 元数据、时间戳、徽标 |
-
-**信息密度原则**：每张 Card 只允许 1 个主信息 + 2 个辅信息，禁止堆砌超过 3 层文字层级。
+- `currentView` ref 控制视图切换，路由参数 `/app/:view?/:subview?`
 
 ### 设计风格
 
-**配色 Token（只允许以下色系，禁止随意引入彩虹色）：**
+**Glass Morphism + Linear 风格**，以暗色为主、亮色兼容。
 
-| 语义 | 亮色 | 暗色 |
+**配色 Token：**
+
+| 语义 | 暗色 | 亮色 |
 |------|------|------|
-| 背景 | `white` / `slate-50` | `slate-900` / `slate-950` / `[#0A0A0F]` |
-| 卡片面 | `white/70` + `backdrop-blur-xl` | `white/[0.03]` + `backdrop-blur-xl` |
-| 边框 | `border-slate-200/60` | `border-white/10` |
-| 主操作 | `blue-600` / `indigo-600` | `indigo-500` |
-| 成功 | `emerald-600` | `emerald-400` |
-| 错误 | `rose-600` | `rose-400` |
-| 中性文字 | `slate-900` / `slate-700` / `slate-500` / `slate-400` | `white` / `slate-200` / `slate-400` / `slate-500` |
+| 页面背景 | `[#0A0A0F]` / `slate-950` | `white` / `slate-50` |
+| 卡片 / 面板 | `white/[0.02]` ~ `white/[0.05]` + `backdrop-blur-xl` | `white/70` + `backdrop-blur-xl` |
+| 边框 | `white/[0.06]` ~ `white/[0.10]` | `slate-200/60` |
+| 品牌色 | `rgb(129,115,223)` ~ `rgb(145,132,235)` | `indigo-600` / `blue-600` |
+| 成功 | `emerald-400` | `emerald-600` |
+| 错误 | `rose-400` | `rose-600` |
+| 主要文字 | `white` / `[#d0d6e0]` | `slate-900` |
+| 次要文字 | `[#8a8f98]` / `slate-400` | `slate-500` / `slate-700` |
+| 占位文字 | `[#62666d]` | `slate-400` |
 
-**圆角 Token：**
+**Glass 卡片标准写法：**
+```
+bg-white/[0.02] border border-white/[0.06] rounded-xl
+border-t-white/[0.15] border-b-white/[0.03]
+hover:bg-white/[0.04] transition-all
+```
+
+**圆角：**
 
 | 元素 | 值 |
 |------|-----|
@@ -180,35 +218,120 @@ cd frontend && npm install               # 前端（Node 18+）
 | 标签、Badge、Pill | `rounded-full` |
 | 图标容器、小元素 | `rounded-lg` |
 
-**阴影层级（只允许 2 层，禁止滥用大投影）：**
+**阴影（只允许 2 层）：**
 
 | 状态 | 值 |
 |------|-----|
 | 默认 | `shadow-sm` |
 | Hover / 激活 | `shadow-md` 或品牌色光晕 `shadow-blue-500/20` |
 
-- **所有元素必须包含 `dark:` 变体**
-- 主题切换支持 View Transitions API 圆形扩散动画
-
-### 按钮样式
+### 按钮
 
 | 类型 | 样式 |
 |------|------|
-| 主按钮 | `h-10 rounded-xl bg-blue-600 text-white text-sm font-bold` + hover 光晕 |
-| 成功按钮 | `h-10 rounded-xl border border-emerald-500/30 bg-emerald-50/80 text-emerald-700 text-sm font-bold` |
-| 次按钮 | `h-10 rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 text-sm font-bold` |
-| 通用属性 | `inline-flex items-center justify-center gap-2 transition-all` |
+| 品牌按钮 | `brand-btn`（style.css 中定义，frosted glass 风格） |
+| 主按钮 | `btn-primary`（蓝→靛渐变，shadow-blue-500/20） |
+| 成功按钮 | `btn-success`（翠绿渐变） |
+| 次按钮 | `btn-secondary`（边框 + 透明底） |
+| 通用属性 | `inline-flex items-center justify-center gap-2 transition-all h-10 rounded-xl text-sm font-bold` |
 | 禁用 | `disabled:cursor-not-allowed disabled:opacity-50` |
 
-按钮高度统一 `h-10`（40px），图标尺寸统一 `size-4`（16px）或 `size-5`（20px）。
+按钮高度统一 `h-10`（40px），图标尺寸 `size-4`（16px）或 `size-5`（20px）。
 
-### 状态管理与代码规范
+### 筛选器
 
-- 无状态管理库，全局状态集中在 `App.vue`（ref/reactive/computed/watch）
+使用 `filter-pill` / `filter-pill--active` 类（style.css），激活态为品牌紫色 `rgb(145,132,235)`。
+
+### 排版
+
+字号只允许以下 7 档：
+
+| 层级 | Tailwind | 用途 |
+|------|----------|------|
+| 超大标题 | `text-4xl` | 落地页 Hero |
+| 大标题 | `text-3xl` | 页面主标题 |
+| 标题 | `text-2xl` | 区块标题、Modal 标题 |
+| 副标题 | `text-xl` | 卡片标题 |
+| 正文 | `text-base` | 题目内容 |
+| 辅助 | `text-sm` | 标签、次要信息 |
+| 标注 | `text-xs` | 元数据、时间戳 |
+
+禁止 `text-[13px]`、`text-[11px]` 等任意值。
+
+### 间距（8pt Grid）
+
+只允许 4 的倍数：`p-1` `p-2` `p-3` `p-4` `p-6` `p-8` `p-10` `p-12`。禁止 `p-5` `p-7` `p-9` 和 `px-[17px]` 等魔法数字。
+
+### 主题系统
+
+- `useTheme` composable 管理暗色/亮色切换
+- `document.documentElement.classList.toggle('dark')` + `localStorage.theme`
+- 切换动画：View Transition API 圆形扩散（`clip-path` 圆形展开）
+- `app.html` 内有防白闪脚本（DOM 渲染前读取 localStorage 设置 `dark` 类）
+- **所有新增元素必须包含 `dark:` 变体**
+- 首页强制暗色主题，离开时恢复用户原主题
+
+### 状态管理
+
+- 无 Vuex/Pinia，轻量 ref 方案
+- 全局认证状态：`useAuth` composable（`currentUser`、`authChecked`）
+- 页面级状态：集中在 `WorkspaceView.vue`（ref/reactive/computed/watch）
 - 父子通信：props 向下，emits 向上
+- 跨组件共享通过 composable 单例 ref
+
+### API 调用
+
+- 集中在 `api.js`，所有函数导出供组件调用
+- 统一错误处理：检查 `resp.ok` + `data.success`，throw 描述性错误
+- 模型请求用 `_buildModelBody(modelProvider, modelName, extra)` 构建
+- SSE 流式：`streamChat()` 支持 abort signal
+- 文件上传用 XHR（支持 progress 回调）
+
+### 内容渲染
+
+- `renderMarkdown(text)` — marked.js 解析 + DOMPurify 净化
+- `sanitizeHtml(html)` — 白名单标签净化（table、img 等）
+- `typesetMath(el)` — MathJax 公式渲染（行内 `$...$`、独占行 `$$...$$`）
+- 渲染后必须调用 `typesetMath` 触发公式排版
+
+### 图标
+
+- 主要：Font Awesome `<i class="fas fa-icon-name"></i>`
+- 备用：lucide-vue-next（按需导入）
+- 加载中：`fa-spinner fa-spin`
+
+### 组件开发规范
+
+```vue
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+
+const props = defineProps({ ... })
+const emit = defineEmits(['event-name'])
+
+// 状态、计算属性、生命周期...
+</script>
+
+<template>
+  <!-- 模板 -->
+</template>
+
+<style scoped>
+/* 仅组件私有样式，全局样式放 style.css */
+</style>
+```
+
 - UI 文案使用中文，API 路径前缀 `/api/`
 - 新功能提取为独立 `.vue` 组件放 `src/components/`
+- 认证组件放 `components/auth/`，首页组件放 `components/home/`
 - 关键 DOM 元素添加语义类名或 `data-testid`
+- Modal/Dropdown 使用 `useClickOutside` 处理外部点击关闭
+
+### Vite 配置
+
+- API 代理：`/api`、`/images`、`/download`、`/erased`、`/uploads` → `http://localhost:5001`
+- SPA 路由：`/auth*`、`/app*` → `app.html`
+- 构建产物：`dist/`
 
 ---
 
@@ -254,9 +377,11 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境变量
 
-- `backend/.env` 不入版本控制，`backend/.env.example` 作为模板
+- `.env` 放项目根目录，不入版本控制；`backend/.env.example` 作为模板
+- `core/config.py` 的 `Settings` 使用 `env_prefix="APP_"`，从项目根目录 `.env` 读取
 - LLM API Provider 配置已迁移到数据库，不再通过 `.env` 管理
-- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`、`SMTP_*`）仍通过 `backend/.env` 管理
+- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`）仍通过 `.env` 管理
+- SMTP 邮件配置通过 `APP_SMTP_*` 变量管理（`core/mail.py`）
 - 新增 `.env` 配置项必须同步更新 `backend/.env.example`
 - 可选项用 `os.getenv("KEY")` + 代码中提供默认值
 

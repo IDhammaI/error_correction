@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * SelectionPanel.vue
+ * 题目选择面板
+ */
 defineProps({
   count: { type: Number, default: 0 },
   visible: { type: Boolean, default: false },

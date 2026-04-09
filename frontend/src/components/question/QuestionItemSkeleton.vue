@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * QuestionItemSkeleton.vue
+ * 题目条目骨架屏
+ */
 defineProps({
   count: { type: Number, default: 5 },
 })

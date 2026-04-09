@@ -1,5 +1,9 @@
 <script setup>
-import BrandLogo from '@/components/ui/BrandLogo.vue'
+/**
+ * SplitLoading.vue
+ * 分割加载动画
+ */
+import BrandLogo from '@/components/base/BrandLogo.vue'
 
 defineProps({
   title: { type: String, default: 'AI 正在深度解析' },

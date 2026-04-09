@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * QuestionList.vue
+ * 题目列表容器（选择 + 批量操作）
+ */
 import { ref, nextTick, watch, onMounted } from 'vue'
 import QuestionCard from './QuestionCard.vue'
 import { typesetMath } from '@/utils.js'

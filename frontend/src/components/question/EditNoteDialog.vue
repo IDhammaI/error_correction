@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * EditNoteDialog.vue
+ * 题目/笔记编辑弹窗（Markdown 编辑）
+ */
 import { ref, watch, nextTick } from 'vue'
 import { typesetMath } from '@/utils.js'
 
