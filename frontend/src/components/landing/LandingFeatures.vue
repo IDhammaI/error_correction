@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingFeatures.vue
+ * 落地页功能特性展示
+ */
 import { onMounted, ref } from 'vue'
 import { Camera, Cpu, Database, BrainCircuit, Sparkles, Layers } from 'lucide-vue-next'
 

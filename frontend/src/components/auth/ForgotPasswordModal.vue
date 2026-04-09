@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ForgotPasswordModal.vue
+ * 找回密码弹窗（邮箱验证码 + 重置密码）
+ */
 import { ref, reactive, onUnmounted, watch } from 'vue'
 import LandingButton from '@/components/landing/LandingButton.vue'
 

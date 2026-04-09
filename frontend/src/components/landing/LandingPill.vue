@@ -1,3 +1,10 @@
+<script setup>
+/**
+ * LandingPill.vue
+ * 落地页标签徽章
+ */
+</script>
+
 <template>
   <div class="relative overflow-hidden inline-flex items-center rounded-full px-4 py-1 text-xs font-medium text-white/90 pill-fill">
     <span class="pill-grid absolute inset-0 pointer-events-none"></span>

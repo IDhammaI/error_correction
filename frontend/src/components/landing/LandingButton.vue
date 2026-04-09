@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingButton.vue
+ * 落地页按钮（primary/secondary/cta 变体）
+ */
 import { computed } from 'vue'
 
 const props = defineProps({

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * QuestionCard.vue
+ * 题目卡片（错题库列表项）
+ */
 import { ref, computed } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
 

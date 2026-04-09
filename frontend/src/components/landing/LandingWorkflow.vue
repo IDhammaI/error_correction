@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingWorkflow.vue
+ * 落地页工作流程展示
+ */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { UploadCloud, BrainCircuit, Sparkles, FileDown } from 'lucide-vue-next'
 

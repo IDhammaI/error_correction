@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingCta.vue
+ * 落地页行动号召区
+ */
 import LandingButton from './LandingButton.vue'
 </script>
 

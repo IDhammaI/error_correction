@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingHero.vue
+ * 落地页首屏 Hero 区
+ */
 import { ref, onMounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
 import LandingButton from './LandingButton.vue'

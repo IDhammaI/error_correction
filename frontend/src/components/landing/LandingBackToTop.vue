@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LandingBackToTop.vue
+ * 回到顶部按钮
+ */
 import { ArrowUp } from 'lucide-vue-next'
 
 const props = defineProps({

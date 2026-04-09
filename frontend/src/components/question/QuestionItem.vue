@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * QuestionItem.vue
+ * 题目条目（分割结果列表项）
+ */
 import { ref, watch, nextTick } from 'vue'
 import { getQuestionSnippet, typesetMath } from '@/utils.js'
 
