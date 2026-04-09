@@ -1,7 +1,10 @@
 <script setup>
+/**
+ * WorkspaceView.vue
+ * 工作台主容器 — 侧边栏导航 + 内容区视图切换
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import * as api from '@/api.js'
+import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 import { usePageTransition } from '@/composables/usePageTransition.js'
 import { useTheme } from '@/composables/useTheme.js'
@@ -11,6 +14,10 @@ import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useSidebarIndicator } from '@/composables/useSidebarIndicator.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useQuestionList } from '@/composables/useQuestionList.js'
+import { useFileUpload } from '@/composables/useFileUpload.js'
+import { useSplitPipeline } from '@/composables/useSplitPipeline.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useChatSession } from '@/composables/useChatSession.js'
 import BrandLogo from '@/components/base/BrandLogo.vue'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import StatusBar from '@/components/workspace/StatusBar.vue'
@@ -23,6 +30,7 @@ import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
 import SplitLoading from '@/components/workspace/SplitLoading.vue'
 import ErasePreview from '@/components/workspace/ErasePreview.vue'
 import OcrPreview from '@/components/workspace/OcrPreview.vue'
+import SidebarNav from '@/components/workspace/SidebarNav.vue'
 import ImageModal from '@/components/base/ImageModal.vue'
 import ToastContainer from '@/components/base/ToastContainer.vue'
 import Dashboard from '@/views/workspace/DashboardView.vue'
@@ -34,10 +42,9 @@ import SplitHistory from '@/views/workspace/SplitHistoryView.vue'
 import NoteView from '@/views/workspace/NoteView.vue'
 import ChatPage from '@/views/workspace/ChatPageView.vue'
 
-// ---- Composables ----
-const { currentUser } = useAuth()
+// ── Composables ─────────────────────────────────────────
 const router = useRouter()
-const route = useRoute()
+const { currentUser } = useAuth()
 const { loading: globalLoading } = usePageTransition()
 const { isDark, toggleTheme, initTheme } = useTheme()
 const { toasts, pushToast } = useWorkspaceToast()
@@ -63,10 +70,14 @@ const {
   questions, selectedIds, questionListRef,
   toggleQuestion, selectAll, deselectAll, reorderQuestions, typesetMath,
 } = useQuestionList()
+const {
+  currentView, lastWorkspaceView, collapsedGroups, chatCollapsed,
+  NAV_GROUPS, WORKSPACE_VIEWS, navigateToHome,
+} = useWorkspaceNav()
 
 provide('pushToast', pushToast)
 
-// ---- 认证 & 导航 ----
+// ── 认证 ────────────────────────────────────────────────
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 const userMenuOpen = ref(false)
 
@@ -76,70 +87,7 @@ const handleLogout = async () => {
   router.push('/auth')
 }
 
-const navigateToHome = () => {
-  document.body.style.transition = 'opacity 0.25s ease, transform 0.25s ease'
-  document.body.style.opacity = '0'
-  document.body.style.transform = 'translateY(-6px)'
-  setTimeout(() => { window.location.href = '/' }, 260)
-}
-
-// ---- 视图路由控制 ----
-const VIEW_TO_PATH = {
-  workspace: '/app/workspace',
-  workspace_review: '/app/workspace/review',
-  dashboard: '/app/dashboard',
-  review: '/app/review',
-  'error-bank': '/app/error-bank',
-  notes: '/app/notes',
-  'ai-chat': '/app/ai-chat',
-  settings: '/app/settings',
-  'split-history': '/app/split-history',
-  chat: '/app/chat',
-}
-const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history'])
-const lastWorkspaceView = ref('workspace')
-
-const NAV_GROUPS = [
-  {
-    label: null,
-    items: [
-      { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
-    ],
-  },
-  {
-    label: '数据',
-    collapsible: true,
-    items: [
-      { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
-      { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
-      { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
-    ],
-  },
-  {
-    label: '更多',
-    collapsible: true,
-    items: [
-      { id: 'review-disabled', label: '刷题', icon: 'fa-clock-rotate-left', disabled: true },
-    ],
-  },
-]
-const collapsedGroups = ref({})
-const chatCollapsed = ref(false)
-
-const currentView = computed({
-  get() {
-    const view = route.params.view || 'workspace'
-    const subview = route.params.subview
-    if (view === 'workspace' && subview === 'review') return 'workspace_review'
-    return view
-  },
-  set(view) {
-    const path = VIEW_TO_PATH[view]
-    if (path && route.path !== path) router.push(path)
-  },
-})
-
-// ---- 指示器更新包装 ----
+// ── 指示器更新 ──────────────────────────────────────────
 const updateIndicator = (animate = true) => {
   _updateIndicator(currentView.value, activeAiChatId.value, NAV_GROUPS, collapsedGroups.value, animate)
 }
@@ -152,40 +100,26 @@ watch(collapsedGroups, () => {
   updateIndicator(false)
   nextTick(() => updateIndicator(false))
 }, { deep: true })
-onMounted(() => {
-  watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
-})
 
-// ---- AI 对话包装 ----
+// ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
 
-// ---- 步骤控制 ----
+// ── 步骤控制 ────────────────────────────────────────────
 const step = ref(1)
 const uploadMode = ref('exam')
 const splitting = ref(false)
 const splitCompleted = ref(false)
 const showSplitHistory = ref(false)
-const eraseEnabled = ref(true)
-const eraseLoading = ref(false)
-const eraseImages = ref([])
-const eraseDone = ref(false)
-const ocrLoading = ref(false)
-const ocrPages = ref([])
-const ocrDone = ref(false)
 
-const examStepLabels = computed(() =>
-  eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出']
-)
-const noteStepLabels = computed(() =>
-  eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存']
-)
 const S = computed(() => {
   const off = eraseEnabled.value ? 1 : 0
   return { UPLOAD: 1, ERASE: 2, OCR: 2 + off, SPLIT: 3 + off, EXPORT: 4 + off }
 })
 const workspaceSteps = computed(() => {
-  const labels = uploadMode.value === 'note' ? noteStepLabels.value : examStepLabels.value
+  const labels = uploadMode.value === 'note'
+    ? (eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存'])
+    : (eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出'])
   return labels.map((label, i) => ({
     label,
     done: i + 1 < step.value,
@@ -193,136 +127,47 @@ const workspaceSteps = computed(() => {
   }))
 })
 
-// ---- 上传状态 ----
-import { reactive } from 'vue'
-import { fileKey } from '@/utils.js'
-
-const uploadBusy = ref(false)
-const uploadReady = ref(false)
-const pendingFiles = reactive([])
-const pendingPreviewUrls = computed(() =>
-  pendingFiles.filter(pf => pf.file).map(pf => URL.createObjectURL(pf.file))
-)
-const fileProgress = reactive({})
-const waitingKeys = reactive(new Set())
-const uploadQueue = reactive([])
-let activeXhr = null
-let fakeProgressTimer = null
-let fakeProgressKeys = []
+// ── 文件上传 ────────────────────────────────────────────
+const {
+  uploadBusy, uploadReady, pendingFiles, pendingPreviewUrls,
+  fileProgress, waitingKeys,
+  enqueueUpload, removePendingFile, stopFakeProgress, doReset: _doReset,
+} = useFileUpload(pushToast, S, questions, selectedIds, splitCompleted, splitting, uploadMode)
 
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
-const setProgress = (key, p) => { fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0)) }
-const stopFakeProgress = () => {
-  if (fakeProgressTimer) { window.clearInterval(fakeProgressTimer); fakeProgressTimer = null }
-  fakeProgressKeys = []
-}
-const startFakeProgress = (keys) => {
-  stopFakeProgress()
-  fakeProgressKeys = Array.from(keys || [])
-  const tick = () => {
-    if (!uploadBusy.value) { stopFakeProgress(); return }
-    for (const key of fakeProgressKeys) {
-      const current = Number(fileProgress[key] || 0)
-      const cap = 82
-      if (current >= cap) continue
-      let inc = current < 55 ? 1 + Math.random() * 3 : current < 75 ? 0.4 + Math.random() * 1.1 : 0.08 + Math.random() * 0.25
-      setProgress(key, Math.min(cap, current + inc))
-    }
-  }
-  tick()
-  fakeProgressTimer = window.setInterval(tick, 360)
-}
-
-const handleUpload = (files) => {
-  const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
-  if (!uploadFiles.length) return
-  uploadBusy.value = true
+const doReset = () => {
+  _doReset(providerOptions, selectedModel, step)
   step.value = S.value.UPLOAD
-  const keys = uploadFiles.map(f => fileKey(f))
-  for (const k of keys) waitingKeys.delete(k)
-  startFakeProgress(keys)
-
-  const formData = new FormData()
-  for (const f of uploadFiles) {
-    formData.append('files', f)
-    formData.append('file_key', fileKey(f))
-  }
-
-  activeXhr = api.uploadFiles(formData, {
-    onProgress: (ratio) => {
-      const pct = Math.max(0, Math.min(95, ratio * 95))
-      for (const k of keys) {
-        if (pendingFiles.some(x => x.key === k)) setProgress(k, Math.max(fileProgress[k] || 0, pct))
-      }
-    },
-    onSuccess: () => {
-      stopFakeProgress(); uploadBusy.value = false; activeXhr = null
-      for (const k of keys) { if (pendingFiles.some(x => x.key === k)) setProgress(k, 100) }
-      uploadReady.value = pendingFiles.length > 0
-      step.value = S.value.UPLOAD
-      pushToast('success', '上传成功')
-      pumpUploadQueue()
-    },
-    onError: (msg) => { stopFakeProgress(); uploadBusy.value = false; activeXhr = null; pushToast('error', msg); pumpUploadQueue() },
-    onAbort: () => { stopFakeProgress(); uploadBusy.value = false; activeXhr = null; pumpUploadQueue() },
-  })
 }
 
-const pumpUploadQueue = () => {
-  if (uploadBusy.value || !uploadQueue.length) return
-  const next = uploadQueue.shift()
-  if (next && next.length) handleUpload(next)
+// ── 分割流水线（擦除 → OCR → 分割 → 导出） ─────────────
+const {
+  eraseEnabled, eraseLoading, eraseImages, eraseDone,
+  ocrLoading, ocrPages, ocrDone,
+  startProcess, doSplit, doExport, doSaveToDb,
+} = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath)
+
+const errorBankRef = ref(null)
+const noteViewRef = ref(null)
+
+const handleLoadRecord = (qs, record) => {
+  questions.value = qs || []; selectedIds.clear()
+  splitCompleted.value = true; step.value = S.value.EXPORT
+  currentView.value = 'workspace_review'
+  pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
+  nextTick(() => typesetMath())
 }
 
-const enqueueUpload = (files) => {
-  const list = Array.from(files || [])
-  if (!list.length) return
-  if (splitCompleted.value || splitting.value) { pushToast('error', '已分割完成，请先重新开始'); return }
-  for (const f of list) {
-    const k = fileKey(f)
-    if (pendingFiles.some(x => x.key === k)) continue
-    pendingFiles.push({ key: k, file: f })
-    setProgress(k, 0)
-  }
-  if (uploadBusy.value) {
-    for (const f of list) waitingKeys.add(fileKey(f))
-    uploadQueue.push(list)
-    return
-  }
-  handleUpload(list)
-}
+// ── AI 辅导对话（题目绑定） ────────────────────────────
+const {
+  chatSessionId, chatQuestion, chatActive,
+  answerModalOpen, answerModalTarget, answerModalText, answerModalSaving,
+  openChat, saveAnswerAndChat, backToErrorBank,
+} = useChatSession(pushToast, currentView)
 
-const doCancelFile = async (key) => {
-  try {
-    if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter(k => k !== key)
-    if (!fakeProgressKeys.length) stopFakeProgress()
-    const data = await api.cancelFile(key)
-    const idx = pendingFiles.findIndex(x => x.key === key)
-    if (idx >= 0) pendingFiles.splice(idx, 1)
-    delete fileProgress[key]; waitingKeys.delete(key)
-    questions.value = []; selectedIds.clear(); splitCompleted.value = false
-    if (!pendingFiles.length) uploadReady.value = false
-    step.value = S.value.UPLOAD
-    pushToast('success', data.message || '已撤销')
-    if (!pendingFiles.length && activeXhr) { try { activeXhr.abort() } catch (_) {} }
-  } catch (_) { pushToast('error', '撤销失败: 网络错误') }
-}
-
-const removePendingFile = async (key) => {
-  if (!key || splitting.value || splitCompleted.value) return
-  if (uploadBusy.value || uploadReady.value) { await doCancelFile(key); return }
-  const idx = pendingFiles.findIndex(x => x.key === key)
-  if (idx >= 0) pendingFiles.splice(idx, 1)
-  delete fileProgress[key]; waitingKeys.delete(key)
-  for (let i = uploadQueue.length - 1; i >= 0; i--) {
-    uploadQueue[i] = (uploadQueue[i] || []).filter(f => fileKey(f) !== key)
-    if (!uploadQueue[i].length) uploadQueue.splice(i, 1)
-  }
-}
-
-// ---- 背景星星 ----
+// ── 背景星星 ────────────────────────────────────────────
 const bgStars = (() => {
   const list = []
   for (let i = 0; i < 50; i++) {
@@ -335,184 +180,7 @@ const bgStars = (() => {
   return list
 })()
 
-// ---- OCR / 擦除 / 分割流程 ----
-const startProcess = () => { eraseEnabled.value ? doErase() : doOcr() }
-
-const doErase = async () => {
-  if (eraseLoading.value) return
-  eraseLoading.value = true; eraseDone.value = false; eraseImages.value = []
-  currentView.value = 'workspace_review'; step.value = S.value.ERASE
-  try {
-    const data = await api.runErase()
-    eraseImages.value = data.images || []; eraseDone.value = true
-    pushToast('success', data.message || '擦除完成')
-  } catch (e) {
-    pushToast('error', e.message || '擦除失败')
-    currentView.value = 'workspace'; step.value = S.value.UPLOAD
-  } finally { eraseLoading.value = false }
-}
-
-const doOcr = async () => {
-  if (ocrLoading.value) return
-  ocrLoading.value = true; ocrDone.value = false; ocrPages.value = []; eraseDone.value = false
-  currentView.value = 'workspace_review'; step.value = S.value.OCR
-  try {
-    const data = await api.runOcr()
-    ocrPages.value = data.pages || []; ocrDone.value = true
-    pushToast('success', `OCR 完成，共 ${data.pages?.length || 0} 页`)
-  } catch (e) {
-    pushToast('error', e.message || 'OCR 失败')
-    currentView.value = 'workspace'; step.value = S.value.UPLOAD
-  } finally { ocrLoading.value = false }
-}
-
-const doSplit = async () => {
-  if (!uploadReady.value || splitting.value || splitCompleted.value) return
-  if (uploadMode.value === 'note') { await doNoteOrganize(); return }
-  splitting.value = true; ocrDone.value = false; step.value = S.value.SPLIT
-  pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
-  try {
-    const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
-    questions.value = data.questions || []; selectedIds.clear()
-    if (data.warnings?.length) { for (const w of data.warnings) pushToast('warning', w, 6000) }
-    if (questions.value.length > 0) {
-      splitCompleted.value = true; step.value = S.value.EXPORT
-      if (!data.warnings?.length) pushToast('success', `成功分割 ${questions.value.length} 道题目`)
-      await typesetMath()
-      setTimeout(() => { if (currentView.value === 'workspace') currentView.value = 'workspace_review' }, 800)
-    }
-  } catch (e) {
-    pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally { splitting.value = false }
-}
-
-const doNoteOrganize = async () => {
-  splitting.value = true; step.value = S.value.SPLIT
-  pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
-  try {
-    const formData = new FormData()
-    for (const pf of pendingFiles) { if (pf.file) formData.append('files', pf.file) }
-    formData.append('model_provider', selectedProvider.value)
-    if (selectedModel.value) formData.append('model_name', selectedModel.value)
-    await new Promise((resolve, reject) => {
-      api.createNote(formData, { onSuccess: resolve, onError: (msg) => reject(new Error(msg)) })
-    })
-    splitCompleted.value = true; step.value = S.value.EXPORT
-    pushToast('success', '笔记整理完成！')
-    setTimeout(() => { currentView.value = 'notes' }, 800)
-  } catch (e) {
-    pushToast('error', '笔记整理失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally { splitting.value = false }
-}
-
-// ---- 导出 & 保存 ----
-const errorBankRef = ref(null)
-const noteViewRef = ref(null)
-
-const doExport = async () => {
-  if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
-  try {
-    const data = await api.exportQuestions(Array.from(selectedIds))
-    step.value = S.value.EXPORT + 1
-    pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
-    let filename = 'wrongbook.md'
-    if (data.output_path) {
-      const parts = String(data.output_path).split(/[/\\]/)
-      if (parts[parts.length - 1]) filename = parts[parts.length - 1]
-    }
-    const a = document.createElement('a')
-    a.href = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
-    a.download = filename; a.style.display = 'none'
-    document.body.appendChild(a); a.click(); a.remove()
-  } catch (e) {
-    pushToast('error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
-  }
-}
-
-const doSaveToDb = async () => {
-  if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
-  try {
-    const answers = questions.value
-      .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
-      .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
-    const data = await api.saveToDb(Array.from(selectedIds), answers)
-    pushToast('success', data.message || '已导入错题库')
-    errorBankRef.value?.refresh()
-  } catch (e) {
-    pushToast('error', '导入失败: ' + (e instanceof Error ? e.message : String(e)))
-  }
-}
-
-const handleLoadRecord = (qs, record) => {
-  questions.value = qs || []; selectedIds.clear()
-  splitCompleted.value = true; step.value = S.value.EXPORT
-  currentView.value = 'workspace_review'
-  pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
-  nextTick(() => typesetMath())
-}
-
-const doReset = () => {
-  uploadBusy.value = false; uploadReady.value = false
-  splitting.value = false; splitCompleted.value = false
-  pendingFiles.splice(0, pendingFiles.length)
-  for (const k of Object.keys(fileProgress)) delete fileProgress[k]
-  waitingKeys.clear(); uploadQueue.splice(0, uploadQueue.length)
-  questions.value = []; selectedIds.clear()
-  const configured = providerOptions.value.find(m => m.configured)
-  selectedModel.value = configured ? configured.default_model : ''
-  step.value = S.value.UPLOAD
-  pushToast('success', '已重置')
-}
-
-// ---- AI 辅导对话 ----
-const chatSessionId = ref(null)
-const chatQuestion = ref(null)
-const chatActive = ref(false)
-const answerModalOpen = ref(false)
-const answerModalTarget = ref(null)
-const answerModalText = ref('')
-const answerModalSaving = ref(false)
-
-const doOpenChatSession = async (question) => {
-  try {
-    const sessions = await api.fetchChatSessions(question.id)
-    chatSessionId.value = sessions.length ? sessions[0].id : (await api.createChat(question.id)).id
-    chatActive.value = true; currentView.value = 'chat'
-  } catch (e) {
-    pushToast('error', '打开对话失败: ' + (e instanceof Error ? e.message : String(e)))
-  }
-}
-
-const openChat = async (question) => {
-  chatQuestion.value = question
-  if (!question.answer) {
-    answerModalTarget.value = question; answerModalText.value = ''; answerModalOpen.value = true
-    return
-  }
-  await doOpenChatSession(question)
-}
-
-const saveAnswerAndChat = async () => {
-  if (!answerModalTarget.value || answerModalSaving.value) return
-  const text = answerModalText.value.trim()
-  if (!text) { pushToast('error', '请输入答案/解析内容'); return }
-  answerModalSaving.value = true
-  try {
-    await api.saveQuestionAnswer(answerModalTarget.value.id, text)
-    answerModalTarget.value.answer = text; answerModalOpen.value = false
-    pushToast('success', '答案已保存')
-    await doOpenChatSession(answerModalTarget.value)
-  } catch (e) {
-    pushToast('error', '保存答案失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally { answerModalSaving.value = false }
-}
-
-const backToErrorBank = () => {
-  chatActive.value = false; chatSessionId.value = null; chatQuestion.value = null
-  currentView.value = 'error-bank'
-}
-
-// ---- 键盘事件 ----
+// ── 键盘事件 ────────────────────────────────────────────
 const onKeydown = (e) => {
   if (e.key === 'Escape' && modalOpen.value) closeModal()
   if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
@@ -520,7 +188,7 @@ const onKeydown = (e) => {
   }
 }
 
-// ---- View watchers ----
+// ── 视图切换 watcher ────────────────────────────────────
 watch(currentView, async (newView) => {
   if (newView === 'workspace_review') {
     await nextTick()
@@ -529,7 +197,7 @@ watch(currentView, async (newView) => {
   if (newView === 'ai-chat') loadAiChatSessions()
 })
 
-// ---- 生命周期 ----
+// ── 生命周期 ────────────────────────────────────────────
 const pageLoading = ref(true)
 
 onMounted(() => {
@@ -538,6 +206,7 @@ onMounted(() => {
   document.addEventListener('click', closeChatMenu)
   loadAiChatSessions()
   nextTick(updateIndicator)
+  watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
 
   if (currentView.value === 'workspace_review' && !splitCompleted.value) {
     router.replace('/app/workspace')
@@ -568,9 +237,9 @@ onBeforeUnmount(() => {
     <!-- 全局背景装饰（Linear 风格） -->
     <div class="fixed inset-0 z-0 pointer-events-none">
       <!-- 左上角光圈 -->
-      <div class="absolute -top-[20%] -left-[10%] w-[600px] h-[600px] rounded-full" style="background: radial-gradient(circle, rgba(129,115,223,0.06) 0%, transparent 70%);"></div>
+      <div class="ws-bg-glow"></div>
       <!-- 噪点纹理 -->
-      <div class="absolute inset-0 opacity-[0.04]" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;); background-size: 256px 256px;"></div>
+      <div class="ws-bg-noise"></div>
       <!-- 闪烁星星 -->
       <div
         v-for="(s, i) in bgStars"
@@ -599,266 +268,46 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <!-- ================== PC端：左侧边栏导航 ================== -->
-    <aside class="hidden w-64 flex-col justify-between md:flex z-20">
-      <div>
-        <!-- Logo 标题区 -->
-        <div class="flex h-20 items-center justify-between px-4 py-6">
-          <button @click="navigateToHome" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回介绍页">
-            <BrandLogo size="sm" />
-            <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
-          </button>
-          <div class="flex items-center gap-1">
-            <button @click="currentView = 'settings'" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="系统设置">
-              <i class="fa-solid fa-gear text-xs"></i>
-            </button>
-            <button @click="handleLogout()" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="退出登录">
-              <i class="fa-solid fa-right-from-bracket text-xs"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- 视图切换菜单 — Linear 分组折叠 -->
-        <nav ref="navRef" class="flex flex-col gap-1.5 px-4 relative">
-          <!-- 滑动指示器 -->
-          <div
-            class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
-            :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
-            :style="indicatorStyle"
-          >
-          </div>
-
-          <template v-for="(group, gi) in NAV_GROUPS" :key="gi">
-            <!-- 分组标题（可折叠） -->
-            <button
-              v-if="group.label"
-              @click="group.collapsible && (collapsedGroups[gi] = !collapsedGroups[gi])"
-              class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors"
-              :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'"
-            >
-              <span>{{ group.label }}</span>
-              <i
-                v-if="group.collapsible"
-                class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200"
-                :class="collapsedGroups[gi] ? '' : 'rotate-90'"
-              ></i>
-            </button>
-
-            <!-- 分组内容（grid 折叠动画） -->
-            <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
-            <div class="overflow-hidden">
-            <div class="flex flex-col gap-1">
-              <template v-for="item in group.items" :key="item.id">
-                <!-- 禁用项 -->
-                <button
-                  v-if="item.disabled"
-                  disabled
-                  class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
-                >
-                  <div class="flex items-center gap-3">
-                    <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                    <span>{{ item.label }}</span>
-                  </div>
-                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
-                </button>
-                <!-- 普通项 -->
-                <button
-                  v-else
-                  :ref="el => navBtnRefs[item.id] = el"
-                  @click="currentView = (item.id === 'workspace' ? lastWorkspaceView : item.id)"
-                  class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
-                  :class="item.match(currentView)
-                    ? 'text-white'
-                    : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
-                >
-                  <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                  <span>{{ item.label }}</span>
-                </button>
-              </template>
-            </div>
-            </div>
-            </div>
-          </template>
-        </nav>
-
-      </div>
-
-      <!-- AI 对话历史列表 -->
-      <div class="flex-1 min-h-0 flex flex-col mt-4 px-4">
-        <div class="flex items-center justify-between px-3 pt-4 pb-2">
-          <button @click="chatCollapsed = !chatCollapsed" class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors cursor-pointer">
-            <span>对话</span>
-            <i class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200" :class="chatCollapsed ? '' : 'rotate-90'"></i>
-          </button>
-          <button @click="createAiChat" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
-            <i class="fa-solid fa-plus text-[10px]"></i>
-          </button>
-        </div>
-        <!-- 折叠动画 -->
-        <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
-        <div class="overflow-hidden">
-        <div ref="chatListRef" class="flex-1 overflow-y-auto pb-2 custom-scrollbar relative" @click="chatMenuOpenId = null">
-          <!-- 对话区滑动指示器 -->
-          <div
-            class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
-            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
-            :style="chatIndicatorStyle"
-          >
-          </div>
-
-          <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-[#62666d]">
-            暂无对话
-          </div>
-          <div
-            v-for="s in aiChatSessions"
-            :key="s.id"
-            :ref="el => chatBtnRefs[s.id] = el"
-            class="group relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md mb-px cursor-pointer transition-colors"
-            :class="activeAiChatId === s.id && currentView === 'ai-chat'
-              ? 'text-white'
-              : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
-            @click="renamingChatId !== s.id && selectAiChat(s)"
-          >
-            <i class="fa-solid fa-message text-[10px] shrink-0" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
-
-            <!-- 重命名输入框 -->
-            <input
-              v-if="renamingChatId === s.id"
-              v-model="renameText"
-              data-rename-input
-              @click.stop
-              @keydown.enter="confirmRenameChat(s)"
-              @keydown.escape="renamingChatId = null"
-              @blur="confirmRenameChat(s)"
-              class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-white/[0.12] py-0.5 text-[#f7f8f8]"
-            />
-            <span v-else class="relative z-10 flex-1 truncate text-xs">{{ s.title }}</span>
-
-            <!-- 三个点按钮 -->
-            <button
-              @click.stop="toggleChatMenu(s.id)"
-              class="shrink-0 opacity-0 group-hover:opacity-100 text-[#62666d] hover:text-[#d0d6e0] transition-all"
-            >
-              <i class="fa-solid fa-ellipsis text-[10px]"></i>
-            </button>
-
-            <!-- Dropdown 菜单 -->
-            <Transition
-              enter-active-class="transition duration-100 ease-out"
-              enter-from-class="opacity-0 scale-95"
-              enter-to-class="opacity-100 scale-100"
-              leave-active-class="transition duration-75 ease-in"
-              leave-from-class="opacity-100 scale-100"
-              leave-to-class="opacity-0 scale-95"
-            >
-              <div
-                v-if="chatMenuOpenId === s.id"
-                class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden"
-                @click.stop
-              >
-                <button
-                  @click="startRenameChat(s)"
-                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
-                >
-                  <i class="fa-solid fa-pen text-[10px] w-3 text-center text-[#62666d]"></i> 重命名
-                </button>
-                <button
-                  @click="chatMenuOpenId = null; deleteAiChat(s.id)"
-                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
-                >
-                  <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
-                </button>
-              </div>
-            </Transition>
-          </div>
-        </div>
-        </div>
-        </div>
-      </div>
-
-      <!-- 底部用户区 -->
-      <div class="relative p-2">
-        <!-- Dropdown 菜单（在用户信息上方弹出） -->
-        <Transition
-          enter-active-class="transition duration-150 ease-out"
-          enter-from-class="opacity-0 translate-y-2"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition duration-100 ease-in"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 translate-y-2"
-        >
-          <div v-if="userMenuOpen" class="absolute bottom-full left-2 right-2 mb-1 rounded-md brand-btn overflow-hidden z-50">
-            <button
-              @click="currentView = 'settings'; userMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
-            >
-              <i class="fa-solid fa-gear w-4 text-center text-xs text-[#62666d]"></i>
-              系统设置
-            </button>
-            <button
-              @click="(e) => { userMenuOpen = false; toggleTheme(e.currentTarget) }"
-              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
-            >
-              <i class="fa-solid w-4 text-center text-xs text-[#62666d]" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
-              {{ isDark ? '浅色模式' : '深色模式' }}
-            </button>
-            <div class="border-t border-white/[0.05]"></div>
-            <button
-              @click="handleLogout(); userMenuOpen = false"
-              class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-            >
-              <i class="fas fa-right-from-bracket w-4 text-center text-xs"></i>
-              退出登录
-            </button>
-          </div>
-        </Transition>
-
-        <!-- 用户信息（点击弹出菜单） -->
-        <button
-          @click="userMenuOpen = !userMenuOpen"
-          class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors"
-        >
-          <div class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium" style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
-            <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
-            <span class="relative z-10">{{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}</span>
-          </div>
-          <div class="flex-1 min-w-0 text-left">
-            <p class="text-sm text-[#f7f8f8] truncate leading-tight">{{ currentUser?.username }}</p>
-          </div>
-          <i class="fa-solid fa-chevron-up text-[10px] text-[#62666d]"></i>
-        </button>
-      </div>
-    </aside>
-
-    <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-[#0A0A0F]/90 pb-2 pt-2 md:hidden">
-      <div class="flex justify-around">
-        <button @click="currentView = lastWorkspaceView" class="flex flex-col items-center p-2" :class="WORKSPACE_VIEWS.has(currentView) ? 'text-indigo-400' : 'text-white/40'">
-          <i class="fa-solid fa-file-arrow-up text-lg"></i>
-          <span class="mt-1 text-xs font-bold">录入</span>
-        </button>
-        <button @click="currentView = 'notes'" class="flex flex-col items-center p-2" :class="currentView === 'notes' ? 'text-indigo-400' : 'text-white/40'">
-          <i class="fa-solid fa-book-open text-lg"></i>
-          <span class="mt-1 text-xs font-bold">笔记库</span>
-        </button>
-        <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-indigo-400' : 'text-white/40'">
-          <i class="fa-solid fa-chart-pie text-lg"></i>
-          <span class="mt-1 text-xs font-bold">数据面板</span>
-        </button>
-        <button @click="currentView = 'error-bank'" class="flex flex-col items-center p-2" :class="currentView === 'error-bank' ? 'text-indigo-400' : 'text-white/40'">
-          <i class="fa-solid fa-layer-group text-lg"></i>
-          <span class="mt-1 text-xs font-bold">错题本</span>
-        </button>
-        <button @click="currentView = 'settings'" class="flex flex-col items-center p-2" :class="currentView === 'settings' ? 'text-indigo-400' : 'text-white/40'">
-          <i class="fa-solid fa-sliders text-lg"></i>
-          <span class="mt-1 text-xs font-bold">设置</span>
-        </button>
-        <button @click="(e) => toggleTheme(e.currentTarget)" class="flex flex-col items-center p-2 text-white/40">
-          <i class="fa-solid text-lg" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
-          <span class="mt-1 text-xs font-bold">主题</span>
-        </button>
-      </div>
-    </nav>
+    <!-- 侧边栏导航（PC + 移动端） -->
+    <SidebarNav
+      :current-view="currentView"
+      :last-workspace-view="lastWorkspaceView"
+      :current-user="currentUser"
+      :is-dark="isDark"
+      :theme="theme"
+      :nav-groups="NAV_GROUPS"
+      :workspace-views="WORKSPACE_VIEWS"
+      :collapsed-groups="collapsedGroups"
+      :nav-btn-refs="navBtnRefs"
+      :indicator-style="indicatorStyle"
+      :indicator-transition="indicatorTransition"
+      :chat-collapsed="chatCollapsed"
+      :ai-chat-sessions="aiChatSessions"
+      :active-ai-chat-id="activeAiChatId"
+      :chat-btn-refs="chatBtnRefs"
+      :chat-indicator-style="chatIndicatorStyle"
+      :chat-indicator-transition="chatIndicatorTransition"
+      :chat-menu-open-id="chatMenuOpenId"
+      :renaming-chat-id="renamingChatId"
+      :rename-text="renameText"
+      :user-menu-open="userMenuOpen"
+      @update:current-view="(v) => currentView = v"
+      @update:collapsed-groups="(v) => Object.assign(collapsedGroups, v)"
+      @update:chat-collapsed="(v) => chatCollapsed = v"
+      @update:user-menu-open="(v) => userMenuOpen = v"
+      @update:chat-menu-open-id="(v) => chatMenuOpenId = v"
+      @update:rename-text="(v) => renameText = v"
+      @update:nav-ref="(el) => navRef = el"
+      @navigate-home="navigateToHome"
+      @logout="handleLogout"
+      @toggle-theme="toggleTheme"
+      @create-ai-chat="createAiChat"
+      @select-ai-chat="selectAiChat"
+      @start-rename-chat="startRenameChat"
+      @confirm-rename-chat="confirmRenameChat"
+      @delete-ai-chat="deleteAiChat"
+      @toggle-chat-menu="toggleChatMenu"
+    />
 
     <!-- ================== 右侧区域 ================== -->
     <div class="relative z-10 flex-1 overflow-hidden pb-20 md:pb-3 md:pt-3 md:pr-3">
@@ -1200,8 +649,6 @@ onBeforeUnmount(() => {
           />
         </ContentPanel>
 
-        <!-- 视图 5：分割历史（已移入录入工作台右侧栏） -->
-
         <!-- 视图 6：系统设置 -->
         <ContentPanel v-else-if="currentView === 'settings'" key="settings_view" title="系统设置">
           <SettingsView
@@ -1367,6 +814,24 @@ onBeforeUnmount(() => {
 .flip-leave-to {
   opacity: 0;
   transform: translateX(-20px);
+}
+
+/* 背景装饰 */
+.ws-bg-glow {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 600px;
+  height: 600px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(129,115,223,0.06) 0%, transparent 70%);
+}
+.ws-bg-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
 }
 
 </style>
