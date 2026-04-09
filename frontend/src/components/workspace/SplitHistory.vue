@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import * as api from '../api.js'
-import { isHtml, sanitizeHtml, typesetMath as _typesetMath } from '../utils.js'
+import * as api from '@/api.js'
+import { isHtml, sanitizeHtml, typesetMath as _typesetMath } from '@/utils.js'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import * as api from '../api.js'
-import { renderMarkdown, typesetMath } from '../utils.js'
+import * as api from '@/api.js'
+import { renderMarkdown, typesetMath } from '@/utils.js'
 
 const props = defineProps({
   visible: Boolean,

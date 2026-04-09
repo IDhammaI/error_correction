@@ -1,19 +1,19 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { useTheme } from '../composables/useTheme.js'
+import { useTheme } from '@/composables/useTheme.js'
 
 const { initTheme, setTheme, isDark } = useTheme()
 
 // Landing 页固定深色：记住用户原始主题，离开时恢复
 let savedTheme = null
 
-import LandingNav from '../components/landing/LandingNav.vue'
-import LandingHero from '../components/landing/LandingHero.vue'
-import LandingFeatures from '../components/landing/LandingFeatures.vue'
-import LandingWorkflow from '../components/landing/LandingWorkflow.vue'
-import LandingDemo from '../components/landing/LandingDemo.vue'
-import LandingCta from '../components/landing/LandingCta.vue'
-import LandingBackToTop from '../components/landing/LandingBackToTop.vue'
+import LandingNav from '@/components/landing/LandingNav.vue'
+import LandingHero from '@/components/landing/LandingHero.vue'
+import LandingFeatures from '@/components/landing/LandingFeatures.vue'
+import LandingWorkflow from '@/components/landing/LandingWorkflow.vue'
+import LandingDemo from '@/components/landing/LandingDemo.vue'
+import LandingCta from '@/components/landing/LandingCta.vue'
+import LandingBackToTop from '@/components/landing/LandingBackToTop.vue'
 
 const SECTIONS = [
   { id: 'hero',     label: '首页' },
