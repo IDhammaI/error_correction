@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * GlassCard.vue
+ * 毛玻璃风格卡片容器
+ */
 defineProps({
   padding: { type: String, default: 'p-4' },
   rounded: { type: String, default: 'rounded-lg' },

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ToastContainer.vue
+ * Toast 通知容器（成功/错误/信息）
+ */
 defineProps({
   toasts: { type: Array, default: () => [] },
 })

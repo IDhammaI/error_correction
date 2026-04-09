@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted } from 'vue'
-import AppLoading from '@/components/AppLoading.vue'
+import AppLoading from '@/components/base/AppLoading.vue'
 import { usePageTransition } from '@/composables/usePageTransition.js'
 import { useTheme } from '@/composables/useTheme.js'
 

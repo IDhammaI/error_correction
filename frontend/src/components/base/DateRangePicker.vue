@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * DateRangePicker.vue
+ * 日期范围选择器
+ */
 import { ref, computed } from 'vue'
 import { useClickOutside } from '@/composables/useClickOutside.js'
 

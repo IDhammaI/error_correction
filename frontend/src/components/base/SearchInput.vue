@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * SearchInput.vue
+ * 搜索输入框（带图标 + 清除按钮）
+ */
 defineProps({
   modelValue: { type: String, default: '' },
   label: { type: String, default: '' },

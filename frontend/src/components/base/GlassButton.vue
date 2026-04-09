@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * GlassButton.vue
+ * 毛玻璃风格按钮
+ */
 defineProps({
   icon: { type: String, default: '' },
 })

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ImageModal.vue
+ * 图片预览弹窗（缩放 + 拖拽）
+ */
 import { clampScale } from '@/utils.js'
 
 const props = defineProps({

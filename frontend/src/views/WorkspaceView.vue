@@ -1,12 +1,17 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { fileKey, typesetMath as _typesetMathEl } from '@/utils.js'
 import * as api from '@/api.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { usePageTransition } from '@/composables/usePageTransition.js'
-// 注意：移除了 AppHeader，因为现在由左侧边栏接管了全局导航功能
-import BrandLogo from '@/components/ui/BrandLogo.vue'
+import { useTheme } from '@/composables/useTheme.js'
+import { useImageModal } from '@/composables/useImageModal.js'
+import { useWorkspaceToast } from '@/composables/useWorkspaceToast.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useSidebarIndicator } from '@/composables/useSidebarIndicator.js'
+import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
+import { useQuestionList } from '@/composables/useQuestionList.js'
+import BrandLogo from '@/components/base/BrandLogo.vue'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import StatusBar from '@/components/workspace/StatusBar.vue'
 import StepIndicator from '@/components/workspace/StepIndicator.vue'
@@ -18,8 +23,8 @@ import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
 import SplitLoading from '@/components/workspace/SplitLoading.vue'
 import ErasePreview from '@/components/workspace/ErasePreview.vue'
 import OcrPreview from '@/components/workspace/OcrPreview.vue'
-import ImageModal from '@/components/ui/ImageModal.vue'
-import ToastContainer from '@/components/ui/ToastContainer.vue'
+import ImageModal from '@/components/base/ImageModal.vue'
+import ToastContainer from '@/components/base/ToastContainer.vue'
 import Dashboard from '@/views/DashboardView.vue'
 import ReviewView from '@/views/ReviewView.vue'
 import ErrorBank from '@/views/ErrorBankView.vue'
@@ -29,15 +34,44 @@ import SplitHistory from '@/views/SplitHistoryView.vue'
 import NoteView from '@/views/NoteView.vue'
 import ChatPage from '@/views/ChatPageView.vue'
 
-// ---- 认证状态 ----
+// ---- Composables ----
 const { currentUser } = useAuth()
 const router = useRouter()
 const route = useRoute()
+const { loading: globalLoading } = usePageTransition()
+const { isDark, toggleTheme, initTheme } = useTheme()
+const { toasts, pushToast } = useWorkspaceToast()
+const { modalOpen, modalSrc, modalScale, openModal, closeModal } = useImageModal()
+const {
+  statusLoading, systemStatus, statusError, selectedModel,
+  providerOptions, hasConfiguredModel, selectedProvider, statusPills,
+  doFetchStatus,
+} = useSystemStatus()
+const {
+  navRef, navBtnRefs, indicatorStyle, indicatorTransition,
+  chatListRef, chatBtnRefs, chatIndicatorStyle, chatIndicatorTransition,
+  updateIndicator: _updateIndicator,
+} = useSidebarIndicator()
+const {
+  aiChatSessions, activeAiChatId,
+  chatMenuOpenId, renamingChatId, renameText,
+  loadAiChatSessions, createAiChat: _createAiChat, selectAiChat: _selectAiChat,
+  onAiChatTitleUpdated, toggleChatMenu, closeChatMenu,
+  startRenameChat, confirmRenameChat, deleteAiChat,
+} = useAiChatSessions(pushToast)
+const {
+  questions, selectedIds, questionListRef,
+  toggleQuestion, selectAll, deselectAll, reorderQuestions, typesetMath,
+} = useQuestionList()
+
+provide('pushToast', pushToast)
+
+// ---- 认证 & 导航 ----
+const theme = computed(() => isDark.value ? 'dark' : 'light')
+const userMenuOpen = ref(false)
 
 const handleLogout = async () => {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' })
-  } catch (_) {}
+  try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) {}
   currentUser.value = null
   router.push('/auth')
 }
@@ -62,15 +96,12 @@ const VIEW_TO_PATH = {
   'split-history': '/app/split-history',
   chat: '/app/chat',
 }
-
 const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history'])
-
 const lastWorkspaceView = ref('workspace')
 
-// ── 侧边栏分组折叠 ──
 const NAV_GROUPS = [
   {
-    label: null, // 无标题的顶级导航
+    label: null,
     items: [
       { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
     ],
@@ -92,79 +123,8 @@ const NAV_GROUPS = [
     ],
   },
 ]
-
 const collapsedGroups = ref({})
 const chatCollapsed = ref(false)
-
-// ── 导航指示器动画（基于 DOM 实际位置） ──
-const navRef = ref(null)
-const navBtnRefs = ref({})
-const indicatorStyle = ref({ opacity: 0, top: '0px', height: '0px' })
-const indicatorTransition = ref(true)
-
-// ── 对话区指示器 ──
-const chatListRef = ref(null)
-const chatBtnRefs = ref({})
-const chatIndicatorStyle = ref({ opacity: 0, top: '0px', height: '0px' })
-const chatIndicatorTransition = ref(true)
-
-function updateIndicator(animate = true) {
-  const cv = currentView.value
-  const isChat = cv === 'ai-chat'
-
-  // === 导航组指示器 ===
-  if (isChat) {
-    // 切到对话时，导航指示器隐藏
-    indicatorTransition.value = animate
-    indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
-  } else {
-    let matchId = null
-    let matchGroupIdx = -1
-    for (let gi = 0; gi < NAV_GROUPS.length; gi++) {
-      for (const item of NAV_GROUPS[gi].items) {
-        if (item.match && item.match(cv)) { matchId = item.id; matchGroupIdx = gi; break }
-      }
-      if (matchId) break
-    }
-    if (matchGroupIdx >= 0 && collapsedGroups.value[matchGroupIdx]) {
-      indicatorTransition.value = false
-      indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
-    } else if (!matchId || !navBtnRefs.value[matchId] || !navRef.value) {
-      indicatorTransition.value = animate
-      indicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
-    } else {
-      indicatorTransition.value = animate
-      const navRect = navRef.value.getBoundingClientRect()
-      const btnRect = navBtnRefs.value[matchId].getBoundingClientRect()
-      indicatorStyle.value = {
-        opacity: 1,
-        top: (btnRect.top - navRect.top) + 'px',
-        height: btnRect.height + 'px',
-      }
-    }
-  }
-
-  // === 对话区指示器 ===
-  if (!isChat || !activeAiChatId.value) {
-    chatIndicatorTransition.value = animate
-    chatIndicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
-  } else {
-    const btnEl = chatBtnRefs.value[activeAiChatId.value]
-    if (!btnEl || !chatListRef.value) {
-      chatIndicatorTransition.value = animate
-      chatIndicatorStyle.value = { opacity: 0, top: '0px', height: '0px' }
-    } else {
-      chatIndicatorTransition.value = animate
-      const listRect = chatListRef.value.getBoundingClientRect()
-      const btnRect = btnEl.getBoundingClientRect()
-      chatIndicatorStyle.value = {
-        opacity: 1,
-        top: (btnRect.top - listRect.top) + 'px',
-        height: btnRect.height + 'px',
-      }
-    }
-  }
-}
 
 const currentView = computed({
   get() {
@@ -179,6 +139,11 @@ const currentView = computed({
   },
 })
 
+// ---- 指示器更新包装 ----
+const updateIndicator = (animate = true) => {
+  _updateIndicator(currentView.value, activeAiChatId.value, NAV_GROUPS, collapsedGroups.value, animate)
+}
+
 watch(currentView, (v) => {
   if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
   nextTick(updateIndicator)
@@ -187,97 +152,34 @@ watch(collapsedGroups, () => {
   updateIndicator(false)
   nextTick(() => updateIndicator(false))
 }, { deep: true })
-
-// activeAiChatId 定义在后面，延迟注册 watch
 onMounted(() => {
   watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
 })
 
+// ---- AI 对话包装 ----
+const createAiChat = () => _createAiChat(currentView)
+const selectAiChat = (s) => _selectAiChat(s, currentView)
 
-// ---- 状态定义 ----
-const { loading: globalLoading } = usePageTransition()
-
-import { useTheme } from '@/composables/useTheme.js'
-const { isDark, toggleTheme, initTheme } = useTheme()
-// 兼容旧代码中 theme 的引用
-const theme = computed(() => isDark.value ? 'dark' : 'light')
-const userMenuOpen = ref(false)
-// ---- 系统状态 ----
-const statusLoading = ref(true)
-const systemStatus = ref(null)
-const statusError = ref('')
-const selectedModel = ref('')  // 选中的具体模型名称（如 "gpt-4o-mini"）
-
-const providerOptions = computed(() => {
-  const s = systemStatus.value
-  return s && s.available_models ? s.available_models : []
-})
-
-// 是否有可用模型
-const hasConfiguredModel = computed(() => providerOptions.value.some(p => p.configured))
-
-// 从 selectedModel 反查 provider
-const selectedProvider = computed(() => {
-  for (const p of providerOptions.value) {
-    if (p.models && p.models.includes(selectedModel.value)) return p.value
-  }
-  // 找不到时回退到首个已配置的 provider，而非硬编码 'openai'
-  const configured = providerOptions.value.find(p => p.configured)
-  return configured ? configured.value : (providerOptions.value[0]?.value ?? 'openai')
-})
-
-watch(systemStatus, (newVal) => {
-  if (newVal && newVal.available_models) {
-    const configured = newVal.available_models.find(m => m.configured)
-    if (configured) selectedModel.value = configured.default_model
-  }
-})
-
-const statusPills = computed(() => {
-  if (statusLoading.value) return [
-    { key: 'paddle', loading: true, label: 'PaddleOCR' },
-    { key: 'ensexam', loading: true, label: 'EnsExam' },
-    { key: 'langsmith', loading: true, label: 'LangSmith' },
-  ]
-  const s = systemStatus.value
-  if (!s) return []
-  const pills = []
-  pills.push({ key: 'paddle', ok: !!s.paddleocr_configured, label: s.paddleocr_configured ? 'PaddleOCR' : 'PaddleOCR未配置' })
-  if (s.ensexam_configured) {
-    pills.push({ key: 'ensexam', ok: true, label: 'EnsExam' })
-  }
-  pills.push(s.langsmith_enabled
-    ? { key: 'langsmith', ok: true, label: 'LangSmith追踪' }
-    : { key: 'langsmith', ok: false, label: 'LangSmith', isPlaceholder: true }
-  )
-  return pills
-})
-
-const doFetchStatus = async () => {
-  statusLoading.value = true
-  statusError.value = ''
-  try {
-    systemStatus.value = await api.fetchStatus()
-  } catch (e) {
-    statusError.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    statusLoading.value = false
-  }
-}
-
-// ---- 步骤 & Toast ----
-const eraseEnabled = ref(true)
+// ---- 步骤控制 ----
 const step = ref(1)
+const uploadMode = ref('exam')
+const splitting = ref(false)
+const splitCompleted = ref(false)
+const showSplitHistory = ref(false)
+const eraseEnabled = ref(true)
+const eraseLoading = ref(false)
+const eraseImages = ref([])
+const eraseDone = ref(false)
+const ocrLoading = ref(false)
+const ocrPages = ref([])
+const ocrDone = ref(false)
 
-// 步骤 tab 数据（给 ContentPanel header 用）
-// 擦除开关影响步骤数：开启时多一个"擦除"步骤
 const examStepLabels = computed(() =>
   eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出']
 )
 const noteStepLabels = computed(() =>
   eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存']
 )
-// 语义步骤号（根据擦除开关偏移）
 const S = computed(() => {
   const off = eraseEnabled.value ? 1 : 0
   return { UPLOAD: 1, ERASE: 2, OCR: 2 + off, SPLIT: 3 + off, EXPORT: 4 + off }
@@ -290,211 +192,13 @@ const workspaceSteps = computed(() => {
     active: i + 1 === step.value,
   }))
 })
-const toasts = ref([])
-let toastId = 0
-const pushToast = (type, message, timeout = 2600) => {
-  const id = ++toastId
-  toasts.value = [{ id, type, message }, ...toasts.value].slice(0, 5)
-  if (timeout > 0) window.setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, timeout)
-}
-provide('pushToast', pushToast)
-
-// ---- AI 辅导对话 ----
-const chatSessionId = ref(null)
-const chatQuestion = ref(null)
-const chatActive = ref(false)
-
-// ---- 独立 AI 对话 ----
-const aiChatSessions = ref([])
-const activeAiChatId = ref(null)
-
-async function loadAiChatSessions() {
-  try {
-    const data = await api.fetchMyChatSessions({ limit: 50 })
-    aiChatSessions.value = data.sessions || []
-  } catch (_) {}
-}
-
-async function createAiChat() {
-  try {
-    const session = await api.createIndependentChat('新对话')
-    aiChatSessions.value.unshift(session)
-    activeAiChatId.value = session.id
-    if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
-  } catch (e) {
-    pushToast('error', e.message)
-  }
-}
-
-function selectAiChat(s) {
-  activeAiChatId.value = s.id
-  if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
-}
-
-async function onAiChatTitleUpdated(sessionId, title) {
-  const s = aiChatSessions.value.find(s => s.id === sessionId)
-  if (s && s.title === '新对话') {
-    s.title = title
-    try { await api.updateChatTitle(sessionId, title) } catch (_) {}
-  }
-}
-
-const chatMenuOpenId = ref(null)
-const renamingChatId = ref(null)
-const renameText = ref('')
-
-function toggleChatMenu(id) {
-  chatMenuOpenId.value = chatMenuOpenId.value === id ? null : id
-}
-function closeChatMenu() {
-  chatMenuOpenId.value = null
-}
-
-async function startRenameChat(s) {
-  chatMenuOpenId.value = null
-  renamingChatId.value = s.id
-  renameText.value = s.title
-  await nextTick()
-  const input = document.querySelector('input[data-rename-input]')
-  if (input) { input.focus(); input.selectionStart = input.selectionEnd = input.value.length }
-}
-
-async function confirmRenameChat(s) {
-  const title = renameText.value.trim()
-  if (title && title !== s.title) {
-    try {
-      await api.updateChatTitle(s.id, title)
-      s.title = title
-    } catch (e) {
-      pushToast('error', e.message)
-    }
-  }
-  renamingChatId.value = null
-}
-
-async function deleteAiChat(id) {
-  try {
-    await api.deleteChat(id)
-    aiChatSessions.value = aiChatSessions.value.filter(s => s.id !== id)
-    if (activeAiChatId.value === id) activeAiChatId.value = null
-  } catch (e) {
-    pushToast('error', e.message)
-  }
-}
-
-// 答案录入弹窗（AI 辅导前置）
-const answerModalOpen = ref(false)
-const answerModalTarget = ref(null)
-const answerModalText = ref('')
-const answerModalSaving = ref(false)
-
-const openChat = async (question) => {
-  chatQuestion.value = question
-  // 如果没有答案，先弹出答案录入弹窗
-  if (!question.answer) {
-    answerModalTarget.value = question
-    answerModalText.value = ''
-    answerModalOpen.value = true
-    return
-  }
-  await doOpenChatSession(question)
-}
-
-const doOpenChatSession = async (question) => {
-  try {
-    const sessions = await api.fetchChatSessions(question.id)
-    if (sessions.length) {
-      chatSessionId.value = sessions[0].id
-    } else {
-      const session = await api.createChat(question.id)
-      chatSessionId.value = session.id
-    }
-    chatActive.value = true
-    currentView.value = 'chat'
-  } catch (e) {
-    pushToast('error', '打开对话失败: ' + (e instanceof Error ? e.message : String(e)))
-  }
-}
-
-const saveAnswerAndChat = async () => {
-  if (!answerModalTarget.value || answerModalSaving.value) return
-  const text = answerModalText.value.trim()
-  if (!text) { pushToast('error', '请输入答案/解析内容'); return }
-  answerModalSaving.value = true
-  try {
-    await api.saveQuestionAnswer(answerModalTarget.value.id, text)
-    answerModalTarget.value.answer = text
-    answerModalOpen.value = false
-    pushToast('success', '答案已保存')
-    // 继续打开对话
-    await doOpenChatSession(answerModalTarget.value)
-  } catch (e) {
-    pushToast('error', '保存答案失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally {
-    answerModalSaving.value = false
-  }
-}
-
-const backToErrorBank = () => {
-  chatActive.value = false
-  chatSessionId.value = null
-  chatQuestion.value = null
-  currentView.value = 'error-bank'
-}
-
-// ---- 图片弹窗 ----
-const modalOpen = ref(false)
-const modalSrc = ref('')
-const modalScale = ref(1)
-const openModal = (src) => {
-  modalSrc.value = src || ''
-  modalScale.value = 1
-  modalOpen.value = !!src
-  if (src) document.body.style.overflow = 'hidden'
-}
-const closeModal = () => {
-  modalOpen.value = false
-  modalSrc.value = ''
-  modalScale.value = 1
-  document.body.style.overflow = ''
-}
-const onKeydown = (e) => {
-  if (e.key === 'Escape' && modalOpen.value) closeModal()
-  if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
-    e.preventDefault()
-    selectAll()
-  }
-}
 
 // ---- 上传状态 ----
-const uploadMode = ref('exam')  // 'exam'（试卷分割）或 'note'（笔记整理）
+import { reactive } from 'vue'
+import { fileKey } from '@/utils.js'
+
 const uploadBusy = ref(false)
 const uploadReady = ref(false)
-const splitting = ref(false)
-const splitCompleted = ref(false)
-const showSplitHistory = ref(false)
-const eraseLoading = ref(false)
-const eraseImages = ref([])
-const eraseDone = ref(false)
-const ocrLoading = ref(false)
-const ocrPages = ref([])
-const ocrDone = ref(false)
-
-// ── 背景星星 ──
-const bgStars = (() => {
-  const list = []
-  for (let i = 0; i < 50; i++) {
-    list.push({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: 0.5 + Math.random() * 2,
-      opacity: 0.1 + Math.random() * 0.4,
-      duration: 2 + Math.random() * 4,
-      delay: Math.random() * 5,
-    })
-  }
-  return list
-})()
 const pendingFiles = reactive([])
 const pendingPreviewUrls = computed(() =>
   pendingFiles.filter(pf => pf.file).map(pf => URL.createObjectURL(pf.file))
@@ -509,15 +213,11 @@ let fakeProgressKeys = []
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
+const setProgress = (key, p) => { fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0)) }
 const stopFakeProgress = () => {
-  if (fakeProgressTimer) {
-    window.clearInterval(fakeProgressTimer)
-    fakeProgressTimer = null
-  }
+  if (fakeProgressTimer) { window.clearInterval(fakeProgressTimer); fakeProgressTimer = null }
   fakeProgressKeys = []
 }
-const setProgress = (key, p) => { fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0)) }
-
 const startFakeProgress = (keys) => {
   stopFakeProgress()
   fakeProgressKeys = Array.from(keys || [])
@@ -533,67 +233,6 @@ const startFakeProgress = (keys) => {
   }
   tick()
   fakeProgressTimer = window.setInterval(tick, 360)
-}
-
-const enqueueUpload = (files) => {
-  const list = Array.from(files || [])
-  if (!list.length) return
-  if (splitCompleted.value || splitting.value) { pushToast('error', '已分割完成，请先重新开始'); return }
-  for (const f of list) {
-    const k = fileKey(f)
-    if (pendingFiles.some(x => x.key === k)) continue
-    pendingFiles.push({ key: k, file: f })
-    setProgress(k, 0)
-  }
-  if (uploadBusy.value) {
-    for (const f of list) waitingKeys.add(fileKey(f))
-    uploadQueue.push(list)
-    return
-  }
-  handleUpload(list)
-}
-
-const pumpUploadQueue = () => {
-  if (uploadBusy.value || !uploadQueue.length) return
-  const next = uploadQueue.shift()
-  if (next && next.length) handleUpload(next)
-}
-const removePendingFile = async (key) => {
-  if (!key || splitting.value || splitCompleted.value) return
-  if (uploadBusy.value || uploadReady.value) { await doCancelFile(key); return }
-  const idx = pendingFiles.findIndex(x => x.key === key)
-  if (idx >= 0) pendingFiles.splice(idx, 1)
-  delete fileProgress[key]
-  waitingKeys.delete(key)
-  for (let i = uploadQueue.length - 1; i >= 0; i--) {
-    uploadQueue[i] = (uploadQueue[i] || []).filter(f => fileKey(f) !== key)
-    if (!uploadQueue[i].length) uploadQueue.splice(i, 1)
-  }
-}
-
-const doCancelFile = async (key) => {
-  try {
-    if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter(k => k !== key)
-    if (!fakeProgressKeys.length) stopFakeProgress()
-    const data = await api.cancelFile(key)
-    const idx = pendingFiles.findIndex(x => x.key === key)
-    if (idx >= 0) pendingFiles.splice(idx, 1)
-    delete fileProgress[key]
-    waitingKeys.delete(key)
-    questions.value = []
-    selectedIds.clear()
-    splitCompleted.value = false
-    if (!pendingFiles.length) {
-      uploadReady.value = false
-      step.value = S.value.UPLOAD
-    } else {
-      step.value = S.value.UPLOAD
-    }
-    pushToast('success', data.message || '已撤销')
-    if (!pendingFiles.length && activeXhr) {
-      try { activeXhr.abort() } catch (_) {}
-    }
-  } catch (_) { pushToast('error', '撤销失败: 网络错误') }
 }
 
 const handleUpload = (files) => {
@@ -619,183 +258,156 @@ const handleUpload = (files) => {
       }
     },
     onSuccess: () => {
-      stopFakeProgress()
-      uploadBusy.value = false
-      activeXhr = null
-      for (const k of keys) {
-        if (pendingFiles.some(x => x.key === k)) setProgress(k, 100)
-      }
+      stopFakeProgress(); uploadBusy.value = false; activeXhr = null
+      for (const k of keys) { if (pendingFiles.some(x => x.key === k)) setProgress(k, 100) }
       uploadReady.value = pendingFiles.length > 0
       step.value = S.value.UPLOAD
       pushToast('success', '上传成功')
       pumpUploadQueue()
     },
-    onError: (msg) => {
-      stopFakeProgress()
-      uploadBusy.value = false
-      activeXhr = null
-      pushToast('error', msg)
-      pumpUploadQueue()
-    },
-    onAbort: () => {
-      stopFakeProgress()
-      uploadBusy.value = false
-      activeXhr = null
-      pumpUploadQueue()
-    },
+    onError: (msg) => { stopFakeProgress(); uploadBusy.value = false; activeXhr = null; pushToast('error', msg); pumpUploadQueue() },
+    onAbort: () => { stopFakeProgress(); uploadBusy.value = false; activeXhr = null; pumpUploadQueue() },
   })
 }
 
-// ---- 题目 ----
-const questions = ref([])
-const selectedIds = reactive(new Set())
-const questionListRef = ref(null)
-const errorBankRef = ref(null)
-const noteViewRef = ref(null)
-
-const toggleQuestion = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
-const selectAll = () => { for (const q of questions.value) selectedIds.add(q.uid) }
-const deselectAll = () => { selectedIds.clear() }
-const reorderQuestions = (oldIndex, newIndex) => {
-  const arr = questions.value.slice()
-  const [moved] = arr.splice(oldIndex, 1)
-  arr.splice(newIndex, 0, moved)
-  questions.value = arr
+const pumpUploadQueue = () => {
+  if (uploadBusy.value || !uploadQueue.length) return
+  const next = uploadQueue.shift()
+  if (next && next.length) handleUpload(next)
 }
 
-const typesetMath = async () => {
-  await nextTick()
-  const el = questionListRef.value?.questionsBoxEl
-  await _typesetMathEl(el || undefined)
+const enqueueUpload = (files) => {
+  const list = Array.from(files || [])
+  if (!list.length) return
+  if (splitCompleted.value || splitting.value) { pushToast('error', '已分割完成，请先重新开始'); return }
+  for (const f of list) {
+    const k = fileKey(f)
+    if (pendingFiles.some(x => x.key === k)) continue
+    pendingFiles.push({ key: k, file: f })
+    setProgress(k, 0)
+  }
+  if (uploadBusy.value) {
+    for (const f of list) waitingKeys.add(fileKey(f))
+    uploadQueue.push(list)
+    return
+  }
+  handleUpload(list)
 }
 
-// 启动流程入口：擦除开启时走擦除，否则直接 OCR
-const startProcess = () => {
-  if (eraseEnabled.value) {
-    doErase()
-  } else {
-    doOcr()
+const doCancelFile = async (key) => {
+  try {
+    if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter(k => k !== key)
+    if (!fakeProgressKeys.length) stopFakeProgress()
+    const data = await api.cancelFile(key)
+    const idx = pendingFiles.findIndex(x => x.key === key)
+    if (idx >= 0) pendingFiles.splice(idx, 1)
+    delete fileProgress[key]; waitingKeys.delete(key)
+    questions.value = []; selectedIds.clear(); splitCompleted.value = false
+    if (!pendingFiles.length) uploadReady.value = false
+    step.value = S.value.UPLOAD
+    pushToast('success', data.message || '已撤销')
+    if (!pendingFiles.length && activeXhr) { try { activeXhr.abort() } catch (_) {} }
+  } catch (_) { pushToast('error', '撤销失败: 网络错误') }
+}
+
+const removePendingFile = async (key) => {
+  if (!key || splitting.value || splitCompleted.value) return
+  if (uploadBusy.value || uploadReady.value) { await doCancelFile(key); return }
+  const idx = pendingFiles.findIndex(x => x.key === key)
+  if (idx >= 0) pendingFiles.splice(idx, 1)
+  delete fileProgress[key]; waitingKeys.delete(key)
+  for (let i = uploadQueue.length - 1; i >= 0; i--) {
+    uploadQueue[i] = (uploadQueue[i] || []).filter(f => fileKey(f) !== key)
+    if (!uploadQueue[i].length) uploadQueue.splice(i, 1)
   }
 }
+
+// ---- 背景星星 ----
+const bgStars = (() => {
+  const list = []
+  for (let i = 0; i < 50; i++) {
+    list.push({
+      left: Math.random() * 100, top: Math.random() * 100,
+      size: 0.5 + Math.random() * 2, opacity: 0.1 + Math.random() * 0.4,
+      duration: 2 + Math.random() * 4, delay: Math.random() * 5,
+    })
+  }
+  return list
+})()
+
+// ---- OCR / 擦除 / 分割流程 ----
+const startProcess = () => { eraseEnabled.value ? doErase() : doOcr() }
 
 const doErase = async () => {
   if (eraseLoading.value) return
-  eraseLoading.value = true
-  eraseDone.value = false
-  eraseImages.value = []
-  currentView.value = "workspace_review"
-  step.value = S.value.ERASE
+  eraseLoading.value = true; eraseDone.value = false; eraseImages.value = []
+  currentView.value = 'workspace_review'; step.value = S.value.ERASE
   try {
     const data = await api.runErase()
-    eraseImages.value = data.images || []
-    eraseDone.value = true
-    pushToast("success", data.message || "擦除完成")
+    eraseImages.value = data.images || []; eraseDone.value = true
+    pushToast('success', data.message || '擦除完成')
   } catch (e) {
-    pushToast("error", e.message || "擦除失败")
-    currentView.value = "workspace"
-    step.value = S.value.UPLOAD
-  } finally {
-    eraseLoading.value = false
-  }
+    pushToast('error', e.message || '擦除失败')
+    currentView.value = 'workspace'; step.value = S.value.UPLOAD
+  } finally { eraseLoading.value = false }
 }
 
 const doOcr = async () => {
   if (ocrLoading.value) return
-  ocrLoading.value = true
-  ocrDone.value = false
-  ocrPages.value = []
-  eraseDone.value = false
-  currentView.value = "workspace_review"
-  step.value = S.value.OCR
+  ocrLoading.value = true; ocrDone.value = false; ocrPages.value = []; eraseDone.value = false
+  currentView.value = 'workspace_review'; step.value = S.value.OCR
   try {
     const data = await api.runOcr()
-    ocrPages.value = data.pages || []
-    ocrDone.value = true
-    pushToast("success", `OCR 完成，共 ${data.pages?.length || 0} 页`)
+    ocrPages.value = data.pages || []; ocrDone.value = true
+    pushToast('success', `OCR 完成，共 ${data.pages?.length || 0} 页`)
   } catch (e) {
-    pushToast("error", e.message || "OCR 失败")
-    currentView.value = "workspace"
-    step.value = S.value.UPLOAD
-  } finally {
-    ocrLoading.value = false
-  }
+    pushToast('error', e.message || 'OCR 失败')
+    currentView.value = 'workspace'; step.value = S.value.UPLOAD
+  } finally { ocrLoading.value = false }
 }
 
 const doSplit = async () => {
   if (!uploadReady.value || splitting.value || splitCompleted.value) return
-
-  // 笔记模式：走笔记整理流程
-  if (uploadMode.value === 'note') {
-    await doNoteOrganize()
-    return
-  }
-
-  // 试卷模式：走原有分割流程
-  splitting.value = true
-  ocrDone.value = false
-  step.value = S.value.SPLIT
+  if (uploadMode.value === 'note') { await doNoteOrganize(); return }
+  splitting.value = true; ocrDone.value = false; step.value = S.value.SPLIT
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
   try {
     const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
-    questions.value = data.questions || []
-    selectedIds.clear()
-    if (data.warnings && data.warnings.length) {
-      for (const w of data.warnings) pushToast('warning', w, 6000)
-    }
+    questions.value = data.questions || []; selectedIds.clear()
+    if (data.warnings?.length) { for (const w of data.warnings) pushToast('warning', w, 6000) }
     if (questions.value.length > 0) {
-      splitCompleted.value = true
-      step.value = S.value.EXPORT
-      if (!data.warnings || !data.warnings.length) {
-        pushToast('success', `成功分割 ${questions.value.length} 道题目`)
-      }
+      splitCompleted.value = true; step.value = S.value.EXPORT
+      if (!data.warnings?.length) pushToast('success', `成功分割 ${questions.value.length} 道题目`)
       await typesetMath()
-      setTimeout(() => {
-        if (currentView.value === 'workspace') {
-          currentView.value = 'workspace_review'
-        }
-      }, 800)
+      setTimeout(() => { if (currentView.value === 'workspace') currentView.value = 'workspace_review' }, 800)
     }
   } catch (e) {
     pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally {
-    splitting.value = false
-  }
+  } finally { splitting.value = false }
 }
 
 const doNoteOrganize = async () => {
-  splitting.value = true
-  step.value = S.value.SPLIT
+  splitting.value = true; step.value = S.value.SPLIT
   pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
   try {
-    // 收集已上传文件，构建 FormData 发给笔记 API
     const formData = new FormData()
-    for (const pf of pendingFiles) {
-      if (pf.file) formData.append('files', pf.file)
-    }
+    for (const pf of pendingFiles) { if (pf.file) formData.append('files', pf.file) }
     formData.append('model_provider', selectedProvider.value)
     if (selectedModel.value) formData.append('model_name', selectedModel.value)
-
-    const result = await new Promise((resolve, reject) => {
-      api.createNote(formData, {
-        onSuccess: (data) => resolve(data),
-        onError: (msg) => reject(new Error(msg)),
-      })
+    await new Promise((resolve, reject) => {
+      api.createNote(formData, { onSuccess: resolve, onError: (msg) => reject(new Error(msg)) })
     })
-
-    splitCompleted.value = true
-    step.value = S.value.EXPORT
+    splitCompleted.value = true; step.value = S.value.EXPORT
     pushToast('success', '笔记整理完成！')
-
-    // 跳转到笔记页面查看
-    setTimeout(() => {
-      currentView.value = 'notes'
-    }, 800)
+    setTimeout(() => { currentView.value = 'notes' }, 800)
   } catch (e) {
     pushToast('error', '笔记整理失败: ' + (e instanceof Error ? e.message : String(e)))
-  } finally {
-    splitting.value = false
-  }
+  } finally { splitting.value = false }
 }
+
+// ---- 导出 & 保存 ----
+const errorBankRef = ref(null)
+const noteViewRef = ref(null)
 
 const doExport = async () => {
   if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
@@ -806,16 +418,12 @@ const doExport = async () => {
     let filename = 'wrongbook.md'
     if (data.output_path) {
       const parts = String(data.output_path).split(/[/\\]/)
-      const last = parts[parts.length - 1]
-      if (last) filename = last
+      if (parts[parts.length - 1]) filename = parts[parts.length - 1]
     }
     const a = document.createElement('a')
     a.href = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
-    a.download = filename
-    a.style.display = 'none'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
+    a.download = filename; a.style.display = 'none'
+    document.body.appendChild(a); a.click(); a.remove()
   } catch (e) {
     pushToast('error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
   }
@@ -824,7 +432,6 @@ const doExport = async () => {
 const doSaveToDb = async () => {
   if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
   try {
-    // 收集已录入的答案数据一并传给后端
     const answers = questions.value
       .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
       .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
@@ -837,48 +444,94 @@ const doSaveToDb = async () => {
 }
 
 const handleLoadRecord = (qs, record) => {
-  questions.value = qs || []
-  selectedIds.clear()
-  splitCompleted.value = true
-  step.value = S.value.EXPORT
+  questions.value = qs || []; selectedIds.clear()
+  splitCompleted.value = true; step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
 }
 
 const doReset = () => {
-  uploadBusy.value = false
-  uploadReady.value = false
-  splitting.value = false
-  splitCompleted.value = false
+  uploadBusy.value = false; uploadReady.value = false
+  splitting.value = false; splitCompleted.value = false
   pendingFiles.splice(0, pendingFiles.length)
   for (const k of Object.keys(fileProgress)) delete fileProgress[k]
-  waitingKeys.clear()
-  uploadQueue.splice(0, uploadQueue.length)
-  questions.value = []
-  selectedIds.clear()
+  waitingKeys.clear(); uploadQueue.splice(0, uploadQueue.length)
+  questions.value = []; selectedIds.clear()
   const configured = providerOptions.value.find(m => m.configured)
   selectedModel.value = configured ? configured.default_model : ''
   step.value = S.value.UPLOAD
   pushToast('success', '已重置')
 }
 
+// ---- AI 辅导对话 ----
+const chatSessionId = ref(null)
+const chatQuestion = ref(null)
+const chatActive = ref(false)
+const answerModalOpen = ref(false)
+const answerModalTarget = ref(null)
+const answerModalText = ref('')
+const answerModalSaving = ref(false)
+
+const doOpenChatSession = async (question) => {
+  try {
+    const sessions = await api.fetchChatSessions(question.id)
+    chatSessionId.value = sessions.length ? sessions[0].id : (await api.createChat(question.id)).id
+    chatActive.value = true; currentView.value = 'chat'
+  } catch (e) {
+    pushToast('error', '打开对话失败: ' + (e instanceof Error ? e.message : String(e)))
+  }
+}
+
+const openChat = async (question) => {
+  chatQuestion.value = question
+  if (!question.answer) {
+    answerModalTarget.value = question; answerModalText.value = ''; answerModalOpen.value = true
+    return
+  }
+  await doOpenChatSession(question)
+}
+
+const saveAnswerAndChat = async () => {
+  if (!answerModalTarget.value || answerModalSaving.value) return
+  const text = answerModalText.value.trim()
+  if (!text) { pushToast('error', '请输入答案/解析内容'); return }
+  answerModalSaving.value = true
+  try {
+    await api.saveQuestionAnswer(answerModalTarget.value.id, text)
+    answerModalTarget.value.answer = text; answerModalOpen.value = false
+    pushToast('success', '答案已保存')
+    await doOpenChatSession(answerModalTarget.value)
+  } catch (e) {
+    pushToast('error', '保存答案失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally { answerModalSaving.value = false }
+}
+
+const backToErrorBank = () => {
+  chatActive.value = false; chatSessionId.value = null; chatQuestion.value = null
+  currentView.value = 'error-bank'
+}
+
+// ---- 键盘事件 ----
+const onKeydown = (e) => {
+  if (e.key === 'Escape' && modalOpen.value) closeModal()
+  if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
+    e.preventDefault(); selectAll()
+  }
+}
+
+// ---- View watchers ----
 watch(currentView, async (newView) => {
   if (newView === 'workspace_review') {
     await nextTick()
-    setTimeout(() => {
-      questionListRef.value?.triggerTypeset?.()
-    }, 650)
+    setTimeout(() => { questionListRef.value?.triggerTypeset?.() }, 650)
   }
-  if (newView === 'ai-chat') {
-    loadAiChatSessions()
-  }
+  if (newView === 'ai-chat') loadAiChatSessions()
 })
 
-// ---- 页面加载动画 ----
+// ---- 生命周期 ----
 const pageLoading = ref(true)
 
-// ---- 生命周期 ----
 onMounted(() => {
   initTheme()
   document.addEventListener('keydown', onKeydown)
@@ -886,26 +539,17 @@ onMounted(() => {
   loadAiChatSessions()
   nextTick(updateIndicator)
 
-  // 刷新时如果落在 /workspace/review 但没有数据，重定向回上传页
   if (currentView.value === 'workspace_review' && !splitCompleted.value) {
     router.replace('/app/workspace')
   }
-  
-  // 延迟系统状态检查，直到入场加载动画完全结束
-  // 这能确保在动画过程中不会因为网络请求导致掉帧，且视觉上更连贯
+
   setTimeout(() => {
     pageLoading.value = false
-    
-    // 如果全局 loading 已经结束（说明动画已经淡出或不需要淡出），开始检查
     if (!globalLoading.value) {
       doFetchStatus()
     } else {
-      // 否则，监听全局 loading 状态，待其变为 false（即 AppLoading 彻底消失）后触发
       const unwatch = watch(globalLoading, (val) => {
-        if (!val) {
-          doFetchStatus()
-          unwatch()
-        }
+        if (!val) { doFetchStatus(); unwatch() }
       })
     }
   }, 2000)

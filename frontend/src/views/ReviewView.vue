@@ -4,8 +4,8 @@ import * as api from '@/api.js'
 import { typesetMath as _typesetMath } from '@/utils.js'
 import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
 import AiAnalysisModal from '@/components/review/AiAnalysisModal.vue'
-import CustomSelect from '@/components/ui/CustomSelect.vue'
-import PageHeader from '@/components/ui/PageHeader.vue'
+import CustomSelect from '@/components/base/CustomSelect.vue'
+import PageHeader from '@/components/base/PageHeader.vue'
 import QuestionItem from '@/components/question/QuestionItem.vue'
 
 const answerEditId = ref(null)

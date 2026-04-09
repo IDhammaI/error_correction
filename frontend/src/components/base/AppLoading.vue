@@ -1,5 +1,9 @@
 <script setup>
-import BrandLogo from '@/components/ui/BrandLogo.vue'
+/**
+ * AppLoading.vue
+ * 全局加载遮罩（BrandLogo + 进度条动画）
+ */
+import BrandLogo from '@/components/base/BrandLogo.vue'
 
 defineProps({
   visible: { type: Boolean, default: true },

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * CustomSelect.vue
+ * 自定义下拉选择器
+ */
 import { ref } from 'vue'
 import { useClickOutside } from '@/composables/useClickOutside.js'
 

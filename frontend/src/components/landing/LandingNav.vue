@@ -1,7 +1,11 @@
 <script setup>
+/**
+ * LandingNav.vue
+ * 落地页导航栏
+ */
 import { useTheme } from '@/composables/useTheme.js'
 import LandingButton from './LandingButton.vue'
-import BrandLogo from '@/components/ui/BrandLogo.vue'
+import BrandLogo from '@/components/base/BrandLogo.vue'
 
 const { isDark, toggleTheme } = useTheme()
 

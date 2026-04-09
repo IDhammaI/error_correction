@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import LandingPill from '@/components/landing/LandingPill.vue'
-import BrandLogo from '@/components/ui/BrandLogo.vue'
+import BrandLogo from '@/components/base/BrandLogo.vue'
 
 const { initTheme } = useTheme()
 const route = useRoute()

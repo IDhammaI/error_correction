@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * CalendarPicker.vue
+ * 日历选择器
+ */
 import { ref, computed } from 'vue'
 import { useClickOutside } from '@/composables/useClickOutside.js'
 

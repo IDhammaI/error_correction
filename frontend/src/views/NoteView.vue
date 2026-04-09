@@ -2,11 +2,11 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import * as api from '@/api.js'
 import { renderMarkdown, typesetMath } from '@/utils.js'
-import GlassCard from '@/components/ui/GlassCard.vue'
-import GlassButton from '@/components/ui/GlassButton.vue'
-import SearchInput from '@/components/ui/SearchInput.vue'
-import CustomSelect from '@/components/ui/CustomSelect.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
+import GlassCard from '@/components/base/GlassCard.vue'
+import GlassButton from '@/components/base/GlassButton.vue'
+import SearchInput from '@/components/base/SearchInput.vue'
+import CustomSelect from '@/components/base/CustomSelect.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 
 const noteContentRef = ref(null)
 
