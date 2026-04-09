@@ -30,9 +30,8 @@ from db import init_db, SessionLocal
 from db import crud
 from routes import register_routes
 
-# 加载项目根目录的 .env 文件（SECRET_KEY、FLASK_DEBUG 等）
-# load_dotenv() 会自动从当前目录向上查找 .env 文件
-load_dotenv()
+# 加载 backend/.env（无论从哪个目录启动都指向同一文件）
+load_dotenv(os.path.join(_BACKEND_ROOT, ".env"))
 
 # 模块级日志记录器，日志名称为 'web_app'
 logger = logging.getLogger(__name__)
@@ -103,18 +102,20 @@ def require_login():
             return None
         if 'user_id' not in session:
             return jsonify({'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401
-        # 密码重置后失效旧 session：比对 session_version
-        user_id = session['user_id']
-        sess_ver = session.get('session_version')
-        with SessionLocal() as db:
-            user = crud.get_user_by_id(db, user_id)
-            if not user:
-                session.clear()
-                return jsonify({'error': '用户不存在', 'code': 'UNAUTHORIZED'}), 401
-            db_ver = user.session_version or 0
-            if sess_ver != db_ver:
-                session.clear()
-                return jsonify({'error': '登录已失效，请重新登录', 'code': 'SESSION_EXPIRED'}), 401
+        # 密码重置后失效旧 session：仅在写操作时查 DB 比对 session_version，
+        # GET 请求无需每次查库，降低高频只读接口的数据库压力
+        if request.method != 'GET':
+            user_id = session['user_id']
+            sess_ver = session.get('session_version')
+            with SessionLocal() as db:
+                user = crud.get_user_by_id(db, user_id)
+                if not user:
+                    session.clear()
+                    return jsonify({'error': '用户不存在', 'code': 'UNAUTHORIZED'}), 401
+                db_ver = user.session_version or 0
+                if sess_ver != db_ver:
+                    session.clear()
+                    return jsonify({'error': '登录已失效，请重新登录', 'code': 'SESSION_EXPIRED'}), 401
     return None
 
 

@@ -49,7 +49,7 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境配置
 
-复制 `.env.example` → `.env`，必须配置 `SECRET_KEY`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理 API Key 和供应商配置。
+复制 `backend/.env.example` → `backend/.env`，必须配置 `SECRET_KEY`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理 API Key 和供应商配置。
 
 ---
 
@@ -254,10 +254,10 @@ cd frontend && npm install               # 前端（Node 18+）
 
 ### 环境变量
 
-- `.env` 不入版本控制，`.env.example` 作为模板
+- `backend/.env` 不入版本控制，`backend/.env.example` 作为模板
 - LLM API Provider 配置已迁移到数据库，不再通过 `.env` 管理
-- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`）仍通过 `.env` 管理
-- 新增 `.env` 配置项必须同步更新 `.env.example`
+- Flask 级配置（`SECRET_KEY`、`FLASK_DEBUG`、`LANGSMITH_*`、`SMTP_*`）仍通过 `backend/.env` 管理
+- 新增 `.env` 配置项必须同步更新 `backend/.env.example`
 - 可选项用 `os.getenv("KEY")` + 代码中提供默认值
 
 ---
