@@ -28,15 +28,6 @@ const activeSection = ref('hero')
 const backToTopVisible = ref(false)
 const navScrolled = ref(false)
 const indicatorTop = ref(44)
-const isMouseInHero = ref(true) // 用于控制紫色波纹高亮层的显示/隐藏
-
-// ── 全局鼠标追踪 ──
-function handleGlobalMouseMove(e) {
-  // 更新全局的 fixed 遮罩鼠标坐标
-  document.documentElement.style.setProperty('--fixed-mouse-x', `${e.clientX}px`)
-  document.documentElement.style.setProperty('--fixed-mouse-y', `${e.clientY}px`)
-}
-
 // Cleanup holders
 let wheelUnlisten = null
 let scrollUnlisten = null
@@ -105,9 +96,6 @@ let ticking = false
 
 function onScroll() {
   const y = window.scrollY
-
-  // 判断是否在首屏
-  isMouseInHero.value = y < window.innerHeight * 0.5
 
   // Hero fade + 3D tilt
   const stickyHero = document.getElementById('sticky-hero')
@@ -231,8 +219,6 @@ onMounted(async () => {
   scrollUnlisten = () => window.removeEventListener('scroll', onScrollThrottled)
 
   // Mousemove listener
-  window.addEventListener('mousemove', handleGlobalMouseMove)
-
   // Hero anim
   setTimeout(() => {
     document.querySelectorAll('.hero-anim').forEach(el => el.classList.add('is-visible'))
@@ -256,7 +242,6 @@ onUnmounted(() => {
   if (wheelUnlisten) wheelUnlisten()
   if (scrollUnlisten) scrollUnlisten()
   if (revealObserver) revealObserver.disconnect()
-  window.removeEventListener('mousemove', handleGlobalMouseMove)
 })
 </script>
 
@@ -265,25 +250,6 @@ onUnmounted(() => {
 
     <!-- 🌟 真正的全局绝对底层固定背景 🌟 -->
     <!-- 将背景移出任何可能带有 transform / overflow-hidden 的包裹层，确保 fixed 完美生效 -->
-    <div class="fixed inset-0 pointer-events-none z-0 opacity-20" style="
-      background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.005%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix type=%22matrix%22 values=%221 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4%22 /%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22 opacity=%220.3%22/%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%23ffffff%22 stroke-width=%221%22 fill=%22none%22 opacity=%220.15%22 /%3E%3C/svg%3E');
-      background-size: cover;
-      background-position: center;
-      mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
-      -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
-    "></div>
-
-    <!-- 全局鼠标高亮流体拓扑波纹层 (除了第一屏外，其余页面都有) -->
-    <div class="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700" 
-         :class="isMouseInHero ? 'opacity-0' : 'opacity-100'"
-         style="
-      background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%239789de%22 stroke-width=%223%22 fill=%22none%22 style=%22filter: drop-shadow(0 0 8px rgba(151,137,222,0.8));%22 /%3E%3C/svg%3E');
-      background-size: cover;
-      background-position: center;
-      mask-image: radial-gradient(400px circle at var(--fixed-mouse-x, -1000px) var(--fixed-mouse-y, -1000px), black 0%, transparent 100%);
-      -webkit-mask-image: radial-gradient(400px circle at var(--fixed-mouse-x, -1000px) var(--fixed-mouse-y, -1000px), black 0%, transparent 100%);
-    "></div>
-
     <HomeNav
       :navScrolled="navScrolled"
       :activeSection="activeSection"
@@ -297,9 +263,14 @@ onUnmounted(() => {
 
       <HomeHero @scrollToSection="scrollToSectionSnap" />
 
-      <!-- ② 滚动叠盖层 (由于父级背景已固定，这里使用透明或半透明背景让其透出来) -->
-      <div class="relative z-10 overflow-x-hidden bg-transparent">
-        
+      <!-- ② 滚动叠盖层（实色背景完全遮住 Hero sticky） -->
+      <div class="relative z-10 overflow-hidden" style="background: #0A0A0F;">
+
+        <!-- 背景装饰：波纹纹理 -->
+        <div class="absolute inset-0 pointer-events-none z-0">
+          <div class="home-bg-topo"></div>
+        </div>
+
         <HomeFeatures />
 
         <HomeWorkflow />
@@ -312,8 +283,9 @@ onUnmounted(() => {
         <div class="border-t border-white/[0.06] py-4 relative z-10 bg-[#0A0A0F]/50 w-full mt-auto">
           <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/30 px-4">
             <div class="flex items-center gap-2">
-              <div class="bg-white/[0.04] border border-white/[0.06] p-1.5 rounded-lg">
-                <img src="/logo.svg" class="w-4 h-4 brightness-0 invert opacity-50" alt="logo" />
+              <div class="footer-logo relative overflow-hidden p-1.5 rounded-lg flex items-center justify-center">
+                <span class="footer-logo__grid absolute inset-0 pointer-events-none"></span>
+                <img src="/logo.svg" class="relative w-4 h-4 brightness-0 invert" alt="logo" />
               </div>
               <span class="font-semibold text-white/50 tracking-wide">智卷错题本</span>
             </div>
@@ -411,4 +383,31 @@ html { scroll-padding-top: 80px; }
   opacity: 1;
   transform: translateY(0);
 }
+
+/* 滚动区背景装饰（与 Hero 一致） */
+.home-bg-topo {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1000 1000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' fill='none' stroke='%23ffffff' stroke-width='1' opacity='0.3'/%3E%3Cpath d='M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.15' /%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black, transparent);
+}
+
+.footer-logo {
+  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.footer-logo__grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+
 </style>

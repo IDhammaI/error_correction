@@ -37,9 +37,9 @@ function onStepClick(idx) {
 
 function getStepIconClass(idx) {
   if (idx <= activeStep.value) {
-    return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,87,199,0.3)] transition-all duration-500'
+    return 'wf-icon wf-icon--active w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white transition-all duration-500'
   }
-  return 'w-12 h-12 rounded-lg flex items-center justify-center mb-4 bg-white/[0.02] text-white/25 border border-white/[0.06] transition-all duration-500'
+  return 'w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-white/[0.04] text-white/25 border border-white/[0.06] transition-all duration-500'
 }
 
 function getStepContainerClass(idx) {
@@ -84,13 +84,6 @@ onUnmounted(() => {
       </div>
 
       <div class="relative max-w-4xl mx-auto">
-        <div class="hidden lg:block absolute top-1/2 left-[10%] right-[10%] h-px bg-white/[0.06] -translate-y-1/2 z-0">
-          <div
-            class="absolute top-0 left-0 h-full bg-indigo-500/40 transition-all duration-700 ease-in-out"
-            :style="{ width: getProgressWidth() }"
-          ></div>
-        </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 relative z-10">
           <div
             v-for="(s, i) in STEPS"
@@ -100,8 +93,9 @@ onUnmounted(() => {
             @click="onStepClick(i)"
           >
             <div class="flex flex-col items-center text-center">
-              <div :class="getStepIconClass(i)">
-                <component :is="iconMap[s.icon]" class="w-5 h-5" />
+              <div :class="getStepIconClass(i)" class="relative overflow-hidden">
+                <span v-if="i <= activeStep" class="wf-icon__grid absolute inset-0 pointer-events-none"></span>
+                <component :is="iconMap[s.icon]" class="relative w-5 h-5" />
               </div>
               <h4 :class="getStepTitleClass(i)">
                 {{ s.title }}
@@ -114,3 +108,19 @@ onUnmounted(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.wf-icon--active {
+  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.wf-icon__grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+</style>

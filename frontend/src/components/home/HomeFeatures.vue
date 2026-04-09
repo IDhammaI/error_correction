@@ -46,24 +46,11 @@ const FEATURES = [
 ]
 
 // ── 鼠标跟随光晕逻辑 (仅限卡片局部光晕) ──
-const cardsRef = ref([])
 
-function handleGridMouseMove(e) {
-  // 更新卡片的鼠标位置 (卡片是 relative 相对定位，需要计算相对坐标)
-  cardsRef.value.forEach((card) => {
-    if (!card) return
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-
-    card.style.setProperty('--mouse-x', `${x}px`)
-    card.style.setProperty('--mouse-y', `${y}px`)
-  })
-}
 </script>
 
 <template>
-  <section id="features" class="relative py-24 overflow-hidden" @mousemove="handleGridMouseMove">
+  <section id="features" class="relative py-24 overflow-hidden">
 
     <!-- 背景装饰：模糊环境光 (Ambient Glow) -->
     <div class="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/5 blur-[150px] pointer-events-none z-0"></div>
@@ -92,7 +79,6 @@ function handleGridMouseMove(e) {
         <div
           v-for="(f, i) in FEATURES"
           :key="f.title"
-          ref="cardsRef"
           class="reveal feature-card group relative flex flex-col rounded-[20px] p-[1px] overflow-hidden"
           :class="f.span"
           :style="{ transitionDelay: `${i * 80}ms` }"
@@ -100,41 +86,13 @@ function handleGridMouseMove(e) {
           <!-- 默认状态：灰色 Linear 渐变边框层 -->
           <div class="absolute inset-0 bg-gradient-to-br from-white/[0.12] via-white/[0.04] to-transparent"></div>
 
-          <!-- 鼠标跟随：边框高光层 -->
-          <div class="pointer-events-none absolute inset-0 transition-opacity duration-300"
-               style="background: radial-gradient(300px circle at var(--mouse-x, -1000px) var(--mouse-y, -1000px), rgba(129, 115, 223, 0.5), transparent 40%);">
-          </div>
-          
           <!-- 卡片主体背景层 — brand-btn 风格白玻璃 -->
           <div class="relative h-full w-full rounded-[19px] p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-top-color: rgba(255,255,255,0.15); border-bottom-color: rgba(255,255,255,0.03);">
 
-            <!-- 鼠标跟随：内部环境光晕 -->
-            <div class="pointer-events-none absolute inset-0 transition-opacity duration-300"
-                 style="background: radial-gradient(250px circle at var(--mouse-x, -1000px) var(--mouse-y, -1000px), rgba(129, 115, 223, 0.12), transparent 40%);">
-            </div>
-
-            <!-- 图标容器 (带边框鼠标跟随高光) -->
-            <div class="relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-xl p-[1px] overflow-hidden">
-              <!-- 默认暗色边框 -->
-              <div class="absolute inset-0 bg-white/[0.08] rounded-xl"></div>
-              
-              <!-- 鼠标跟随：图标边框高光层 -->
-              <div class="pointer-events-none absolute inset-0 transition-opacity duration-300"
-                   style="background: radial-gradient(100px circle at calc(var(--mouse-x, -1000px) - 24px) calc(var(--mouse-y, -1000px) - 24px), rgba(151, 137, 222, 0.8), transparent 40%);">
-              </div>
-              
-              <!-- 图标内部主体 -->
-              <div class="relative h-full w-full bg-[#15151e] rounded-[11px] flex items-center justify-center shadow-inner">
-                <!-- 静态白色图标 (底层) -->
-                <component :is="f.icon" class="absolute h-5 w-5 text-white/60" />
-                
-                <!-- 鼠标跟随：染色图标 (顶层，通过遮罩只显示光圈经过的部分) -->
-                <div class="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
-                     style="mask-image: radial-gradient(40px circle at calc(var(--mouse-x, -1000px) - 24px) calc(var(--mouse-y, -1000px) - 24px), black 0%, transparent 100%);
-                            -webkit-mask-image: radial-gradient(40px circle at calc(var(--mouse-x, -1000px) - 24px) calc(var(--mouse-y, -1000px) - 24px), black 0%, transparent 100%);">
-                  <component :is="f.icon" class="h-5 w-5 text-[#9789de] drop-shadow-[0_0_8px_rgba(151,137,222,0.8)]" />
-                </div>
-              </div>
+            <!-- 图标容器（BrandLogo 风格） -->
+            <div class="feature-icon relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+              <span class="feature-icon__grid absolute inset-0 pointer-events-none"></span>
+              <component :is="f.icon" class="relative h-5 w-5 text-white" />
             </div>
             
             <!-- 文字内容 -->
@@ -157,5 +115,19 @@ function handleGridMouseMove(e) {
 
 .animate-gradient-sweep {
   animation: gradient-sweep 3s ease-in-out infinite alternate;
+}
+
+.feature-icon {
+  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.feature-icon__grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
 }
 </style>
