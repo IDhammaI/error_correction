@@ -3,7 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 import LandingButton from '@/components/landing/LandingButton.vue'
-import ForgotPasswordModal from './ForgotPasswordModal.vue'
+import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
 
 const router = useRouter()
 const { currentUser } = useAuth()

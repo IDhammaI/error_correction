@@ -11,12 +11,12 @@ const routes = [
   },
   {
     path: '/auth',
-    component: () => import('@/components/auth/AuthLayout.vue'),
+    component: () => import('@/views/auth/AuthLayout.vue'),
     redirect: '/auth/login',
     meta: { layout: 'auth' },
     children: [
-      { path: 'login',    component: () => import('@/components/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
-      { path: 'register', component: () => import('@/components/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
+      { path: 'login',    component: () => import('@/views/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
+      { path: 'register', component: () => import('@/views/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
     ],
   },
   {
