@@ -1,6 +1,6 @@
 <script setup>
 /**
- * LandingPill.vue
+ * HomePill.vue
  * 落地页标签徽章
  */
 </script>

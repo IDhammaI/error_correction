@@ -1,6 +1,6 @@
 <script setup>
 /**
- * LandingWorkflow.vue
+ * HomeWorkflow.vue
  * 落地页工作流程展示
  */
 import { ref, onMounted, onUnmounted } from 'vue'

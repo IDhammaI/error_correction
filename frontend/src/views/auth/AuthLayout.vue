@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
-import LandingPill from '@/components/landing/LandingPill.vue'
+import HomePill from '@/components/home/HomePill.vue'
 import BrandLogo from '@/components/base/BrandLogo.vue'
 
 const { initTheme } = useTheme()
@@ -122,7 +122,7 @@ onMounted(() => {
 
       <!-- 中部主文案 -->
       <div class="relative">
-        <LandingPill class="mb-6" />
+        <HomePill class="mb-6" />
         <h2 class="text-4xl font-semibold text-white leading-tight mb-4 tracking-tight">
           重塑错题整理<br />
           <span class="text-transparent bg-clip-text animate-gradient-sweep" style="

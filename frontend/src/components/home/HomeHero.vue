@@ -1,12 +1,12 @@
 <script setup>
 /**
- * LandingHero.vue
+ * HomeHero.vue
  * 落地页首屏 Hero 区
  */
 import { ref, onMounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
-import LandingButton from './LandingButton.vue'
-import LandingPill from './LandingPill.vue'
+import HomeButton from './HomeButton.vue'
+import HomePill from './HomePill.vue'
 
 const emit = defineEmits(['scrollToSection'])
 
@@ -125,7 +125,7 @@ onMounted(() => {
     <section id="hero" class="relative w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto z-10">
       <div class="text-center">
         <!-- 标签 -->
-        <LandingPill class="mb-6" />
+        <HomePill class="mb-6" />
 
         <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-white">
           重塑错题整理<br />
@@ -140,14 +140,14 @@ onMounted(() => {
         </p>
 
         <div class="flex gap-3 justify-center">
-          <LandingButton to="/auth">
+          <HomeButton to="/auth">
             <UploadCloud class="w-4 h-4" />
             开始使用
-          </LandingButton>
-          <LandingButton variant="secondary" href="#demo">
+          </HomeButton>
+          <HomeButton variant="secondary" href="#demo">
             查看演示
             <ArrowRight class="w-4 h-4" />
-          </LandingButton>
+          </HomeButton>
         </div>
       </div>
     </section>

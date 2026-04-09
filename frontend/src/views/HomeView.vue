@@ -4,16 +4,16 @@ import { useTheme } from '@/composables/useTheme.js'
 
 const { initTheme, setTheme, isDark } = useTheme()
 
-// Landing 页固定深色：记住用户原始主题，离开时恢复
+// 首页固定深色：记住用户原始主题，离开时恢复
 let savedTheme = null
 
-import LandingNav from '@/components/landing/LandingNav.vue'
-import LandingHero from '@/components/landing/LandingHero.vue'
-import LandingFeatures from '@/components/landing/LandingFeatures.vue'
-import LandingWorkflow from '@/components/landing/LandingWorkflow.vue'
-import LandingDemo from '@/components/landing/LandingDemo.vue'
-import LandingCta from '@/components/landing/LandingCta.vue'
-import LandingBackToTop from '@/components/landing/LandingBackToTop.vue'
+import HomeNav from '@/components/home/HomeNav.vue'
+import HomeHero from '@/components/home/HomeHero.vue'
+import HomeFeatures from '@/components/home/HomeFeatures.vue'
+import HomeWorkflow from '@/components/home/HomeWorkflow.vue'
+import HomeDemo from '@/components/home/HomeDemo.vue'
+import HomeCta from '@/components/home/HomeCta.vue'
+import HomeBackToTop from '@/components/home/HomeBackToTop.vue'
 
 const SECTIONS = [
   { id: 'hero',     label: '首页' },
@@ -213,7 +213,7 @@ function setupRevealObserver() {
 onMounted(async () => {
   initTheme()
 
-  // Landing 页强制深色模式
+  // 首页强制深色模式
   savedTheme = isDark.value ? 'dark' : 'light'
   if (!isDark.value) setTheme(true)
 
@@ -250,7 +250,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // 离开 Landing 页时恢复用户原有主题
+  // 离开首页时恢复用户原有主题
   if (savedTheme === 'light') setTheme(false)
 
   if (wheelUnlisten) wheelUnlisten()
@@ -284,7 +284,7 @@ onUnmounted(() => {
       -webkit-mask-image: radial-gradient(400px circle at var(--fixed-mouse-x, -1000px) var(--fixed-mouse-y, -1000px), black 0%, transparent 100%);
     "></div>
 
-    <LandingNav
+    <HomeNav
       :navScrolled="navScrolled"
       :activeSection="activeSection"
       :indicatorTop="indicatorTop"
@@ -295,18 +295,18 @@ onUnmounted(() => {
     <!-- 主内容包裹层 -->
     <div class="relative">
 
-      <LandingHero @scrollToSection="scrollToSectionSnap" />
+      <HomeHero @scrollToSection="scrollToSectionSnap" />
 
       <!-- ② 滚动叠盖层 (由于父级背景已固定，这里使用透明或半透明背景让其透出来) -->
       <div class="relative z-10 overflow-x-hidden bg-transparent">
         
-        <LandingFeatures />
+        <HomeFeatures />
 
-        <LandingWorkflow />
+        <HomeWorkflow />
 
-        <LandingDemo />
+        <HomeDemo />
 
-        <LandingCta />
+        <HomeCta />
 
         <!-- 全局 Footer -->
         <div class="border-t border-white/[0.06] py-4 relative z-10 bg-[#0A0A0F]/50 w-full mt-auto">
@@ -330,7 +330,7 @@ onUnmounted(() => {
 
     </div><!-- /主内容包裹层 -->
 
-    <LandingBackToTop
+    <HomeBackToTop
       :visible="backToTopVisible"
       @click="scrollToY(0, 1000)"
     />
@@ -339,7 +339,7 @@ onUnmounted(() => {
 </template>
 
 <style>
-/* Landing page always uses dark mode class - set in onMounted */
+/* Home page always uses dark mode class - set in onMounted */
 
 @keyframes pageEnter {
   from { opacity: 0; }

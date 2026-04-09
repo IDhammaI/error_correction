@@ -134,7 +134,7 @@ cd frontend && npm install               # 前端（Node 18+）
 frontend/src/
 ├── components/           # 可复用组件（55+）
 │   ├── auth/            # 认证：AuthLayout、LoginView、RegisterView、ForgotPasswordModal
-│   └── landing/         # 落地页：LandingNav、LandingHero、LandingFeatures 等
+│   └── home/            # 首页：HomeNav、HomeHero、HomeFeatures 等
 ├── composables/          # Vue 3 组合式函数（12 个）
 │   ├── useAuth.js       # 认证状态（currentUser、authChecked）
 │   ├── useTheme.js      # 主题切换（isDark、toggleTheme + View Transition 动画）
@@ -150,7 +150,7 @@ frontend/src/
 │   └── useQuestionList.js    # 题目列表状态
 ├── router/index.js       # 路由配置
 ├── views/                # 页面级组件
-│   ├── LandingView.vue  # 落地页（强制暗色主题）
+│   ├── HomeView.vue     # 首页（强制暗色主题）
 │   └── WorkspaceView.vue # 工作台主容器（侧边栏 + 内容区）
 ├── api.js                # 集中式 API 层（50+ 函数）
 ├── utils.js              # 工具函数（sanitizeHtml、renderMarkdown、typesetMath）
@@ -163,7 +163,7 @@ frontend/src/
 
 | 路径 | 组件 | 说明 |
 |------|------|------|
-| `/` | LandingView | 落地页 |
+| `/` | HomeView | 首页 |
 | `/auth/login` | LoginView | 登录 |
 | `/auth/register` | RegisterView | 注册 |
 | `/app/workspace` | WorkspaceView | 录入工作台 |
@@ -176,7 +176,7 @@ frontend/src/
 | `/app/split-history` | SplitHistory | 分割历史 |
 | `/app/chat` | ChatView | 独立对话 |
 
-路由 meta 字段：`layout`（`'landing'` / `'auth'` / `'app'`）、`requiresAuth`（boolean）
+路由 meta 字段：`layout`（`'home'` / `'auth'` / `'app'`）、`requiresAuth`（boolean）
 
 ### 布局
 
@@ -269,7 +269,7 @@ hover:bg-white/[0.04] transition-all
 - 切换动画：View Transition API 圆形扩散（`clip-path` 圆形展开）
 - `app.html` 内有防白闪脚本（DOM 渲染前读取 localStorage 设置 `dark` 类）
 - **所有新增元素必须包含 `dark:` 变体**
-- Landing 页强制暗色主题，离开时恢复用户原主题
+- 首页强制暗色主题，离开时恢复用户原主题
 
 ### 状态管理
 
@@ -323,7 +323,7 @@ const emit = defineEmits(['event-name'])
 
 - UI 文案使用中文，API 路径前缀 `/api/`
 - 新功能提取为独立 `.vue` 组件放 `src/components/`
-- 认证组件放 `components/auth/`，落地页组件放 `components/landing/`
+- 认证组件放 `components/auth/`，首页组件放 `components/home/`
 - 关键 DOM 元素添加语义类名或 `data-testid`
 - Modal/Dropdown 使用 `useClickOutside` 处理外部点击关闭
 

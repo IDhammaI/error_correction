@@ -1,10 +1,10 @@
 <script setup>
 /**
- * LandingNav.vue
+ * HomeNav.vue
  * 落地页导航栏
  */
 import { useTheme } from '@/composables/useTheme.js'
-import LandingButton from './LandingButton.vue'
+import HomeButton from './HomeButton.vue'
 import BrandLogo from '@/components/base/BrandLogo.vue'
 
 const { isDark, toggleTheme } = useTheme()
@@ -50,9 +50,9 @@ const emit = defineEmits(['scrollToSection'])
           <a href="https://github.com/xiaozhejiya/error_correction" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 transition-colors">
             <i class="fa-brands fa-github text-base"></i>
           </a>
-          <LandingButton to="/auth" size="sm">
+          <HomeButton to="/auth" size="sm">
             进入工作台
-          </LandingButton>
+          </HomeButton>
         </div>
       </div>
     </div>

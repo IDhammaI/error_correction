@@ -1,6 +1,6 @@
 <script setup>
 /**
- * LandingButton.vue
+ * HomeButton.vue
  * 落地页按钮（primary/secondary/cta 变体）
  */
 import { computed } from 'vue'
@@ -32,12 +32,12 @@ const bindProps = computed(() => {
     :is="tag"
     v-bind="bindProps"
     :class="[
-      'landing-btn relative overflow-hidden inline-flex items-center justify-center font-medium gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed',
+      'home-btn relative overflow-hidden inline-flex items-center justify-center font-medium gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed',
       size === 'sm' ? 'h-8 px-4 text-xs rounded-lg' : 'h-10 px-6 text-sm rounded-xl',
       {
-        'landing-btn--primary': variant === 'primary',
-        'landing-btn--secondary': variant === 'secondary',
-        'landing-btn--cta': variant === 'cta',
+        'home-btn--primary': variant === 'primary',
+        'home-btn--secondary': variant === 'secondary',
+        'home-btn--cta': variant === 'cta',
       },
     ]"
   >
@@ -49,13 +49,13 @@ const bindProps = computed(() => {
 
 <style scoped>
 /* ── Primary: 品牌色渐变，微光 hover ── */
-.landing-btn--primary {
+.home-btn--primary {
   background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
   color: #fff;
   border: none;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
-.landing-btn--primary:hover {
+.home-btn--primary:hover {
   background: linear-gradient(to bottom, rgba(145, 132, 235, 0.95), rgba(113, 100, 212, 0.95));
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
@@ -63,26 +63,26 @@ const bindProps = computed(() => {
 }
 
 /* ── Secondary: 白玻璃按钮（与 brand-btn 一致） ── */
-.landing-btn--secondary {
+.home-btn--secondary {
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-top-color: rgba(255, 255, 255, 0.15);
   border-bottom-color: rgba(255, 255, 255, 0.03);
 }
-.landing-btn--secondary:hover {
+.home-btn--secondary:hover {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);
 }
 
 /* ── CTA: 更强的品牌色，用于转化区 ── */
-.landing-btn--cta {
+.home-btn--cta {
   background: linear-gradient(to bottom, rgba(109, 92, 214, 1), rgba(88, 72, 194, 1));
   color: #fff;
   border: none;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
-.landing-btn--cta:hover {
+.home-btn--cta:hover {
   background: linear-gradient(to bottom, rgba(125, 108, 228, 1), rgba(102, 86, 208, 1));
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),

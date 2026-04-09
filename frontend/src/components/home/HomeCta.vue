@@ -1,9 +1,9 @@
 <script setup>
 /**
- * LandingCta.vue
+ * HomeCta.vue
  * 落地页行动号召区
  */
-import LandingButton from './LandingButton.vue'
+import HomeButton from './HomeButton.vue'
 </script>
 
 <template>
@@ -22,9 +22,9 @@ import LandingButton from './LandingButton.vue'
           ">即刻开启高效学习模式</h2>
       <p class="reveal text-white/40 text-base mb-10 max-w-md mx-auto leading-relaxed">告别低效抄录，让 AI 成为你的超级助教。注册即享完整试卷解析体验。</p>
       <div class="reveal">
-        <LandingButton variant="cta" to="/auth" class="shadow-[0_0_30px_rgba(129,115,223,0.3)] hover:shadow-[0_0_50px_rgba(129,115,223,0.5)] transform hover:-translate-y-1 transition-all duration-300">
+        <HomeButton variant="cta" to="/auth" class="shadow-[0_0_30px_rgba(129,115,223,0.3)] hover:shadow-[0_0_50px_rgba(129,115,223,0.5)] transform hover:-translate-y-1 transition-all duration-300">
           免费创建错题库
-        </LandingButton>
+        </HomeButton>
       </div>
     </div>
   </section>

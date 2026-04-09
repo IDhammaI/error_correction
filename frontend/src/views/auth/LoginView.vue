@@ -2,7 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
-import LandingButton from '@/components/landing/LandingButton.vue'
+import HomeButton from '@/components/home/HomeButton.vue'
 import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
 
 const router = useRouter()
@@ -70,10 +70,10 @@ async function handleLogin() {
     </p>
 
 
-    <LandingButton variant="cta" type="submit" class="w-full" :disabled="loading">
+    <HomeButton variant="cta" type="submit" class="w-full" :disabled="loading">
       <i v-if="loading" class="fas fa-spinner fa-spin text-xs"></i>
       <span>{{ loading ? '登录中...' : '登录' }}</span>
-    </LandingButton>
+    </HomeButton>
   </form>
 
   <ForgotPasswordModal :open="fpOpen" @close="fpOpen = false" />

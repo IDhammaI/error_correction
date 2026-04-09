@@ -1,6 +1,6 @@
 <script setup>
 /**
- * LandingDemo.vue
+ * HomeDemo.vue
  * 落地页产品演示区
  */
 import { ArrowRight, Sparkles, CheckCircle2, FileDown } from 'lucide-vue-next'

@@ -43,10 +43,10 @@
 ├── frontend/                        # Vue 3 + Vite + Tailwind CSS
 │   ├── app.html                     # SPA 入口
 │   └── src/
-│       ├── views/                   # 页面级组件（LandingView、WorkspaceView）
+│       ├── views/                   # 页面级组件（HomeView、WorkspaceView）
 │       ├── components/              # 55+ 功能组件
 │       │   ├── auth/               # 认证（登录、注册、找回密码）
-│       │   └── landing/            # 落地页组件
+│       │   └── home/               # 首页组件
 │       ├── composables/             # 组合式函数（useAuth、useTheme 等）
 │       ├── router/                  # Vue Router 路由配置
 │       ├── api.js                   # 集中式 API 层

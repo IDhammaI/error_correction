@@ -4,7 +4,7 @@
  * 找回密码弹窗（邮箱验证码 + 重置密码）
  */
 import { ref, reactive, onUnmounted, watch } from 'vue'
-import LandingButton from '@/components/landing/LandingButton.vue'
+import HomeButton from '@/components/home/HomeButton.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -179,10 +179,10 @@ async function resetPassword() {
                 <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}
               </p>
 
-              <LandingButton variant="cta" class="w-full" :disabled="loading" @click="resetPassword">
+              <HomeButton variant="cta" class="w-full" :disabled="loading" @click="resetPassword">
                 <i v-if="loading" class="fas fa-spinner fa-spin text-xs"></i>
                 <span>{{ loading ? '重置中...' : '重置密码' }}</span>
-              </LandingButton>
+              </HomeButton>
             </div>
           </template>
 
@@ -194,9 +194,9 @@ async function resetPassword() {
               </div>
               <h3 class="text-xl font-bold text-white mb-2">密码已重置</h3>
               <p class="text-sm text-white/40 mb-6">请使用新密码登录</p>
-              <LandingButton variant="cta" class="w-full" @click="emit('close')">
+              <HomeButton variant="cta" class="w-full" @click="emit('close')">
                 返回登录
-              </LandingButton>
+              </HomeButton>
             </div>
           </template>
         </div>

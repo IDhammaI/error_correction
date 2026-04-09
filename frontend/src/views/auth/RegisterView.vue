@@ -2,7 +2,7 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
-import LandingButton from '@/components/landing/LandingButton.vue'
+import HomeButton from '@/components/home/HomeButton.vue'
 
 const router = useRouter()
 const { currentUser } = useAuth()
@@ -213,9 +213,9 @@ onBeforeUnmount(() => {
       <i class="fas fa-circle-check text-xs"></i>{{ success }}
     </p>
 
-    <LandingButton variant="cta" type="submit" class="w-full" :disabled="loading || passwordMismatch()">
+    <HomeButton variant="cta" type="submit" class="w-full" :disabled="loading || passwordMismatch()">
       <i v-if="loading" class="fas fa-spinner fa-spin text-xs"></i>
       <span>{{ loading ? '注册中...' : '创建账户' }}</span>
-    </LandingButton>
+    </HomeButton>
   </form>
 </template>
