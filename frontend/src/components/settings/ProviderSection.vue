@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ProviderSection.vue
+ * API Provider 配置区块
+ */
 defineProps({
   icon: { type: String, required: true },
   title: { type: String, required: true },

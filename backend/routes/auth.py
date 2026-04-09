@@ -79,10 +79,11 @@ def auth_register():
         username_out = user.username
         email_out = user.email
         is_admin_out = user.is_admin
+        session_version_out = user.session_version or 0
 
     session["user_id"] = user_id
     session["username"] = username_out
-    session["session_version"] = 0
+    session["session_version"] = session_version_out
     return jsonify(
         {
             "success": True,
@@ -110,8 +111,14 @@ def send_code():
         return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
 
     now = datetime.utcnow()
+    # 提前生成验证码，保证频率检查与写入在同一个 DB 事务中（消除 TOCTOU 竞态）
+    code = _generate_six_digit_code()
+    pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
+    code_hash = _hash_registration_code(email, code, pepper)
+    expires_at = now + timedelta(minutes=settings.registration_code_ttl_minutes)
+
     with SessionLocal() as db:
-        # 频率限制（无论邮箱是否存在都检查，防止通过频率差异探测）
+        # 频率限制与写入在同一 session，防止并发请求绕过限制
         row = crud.get_verification_by_email(db, email)
         if row and row.last_sent_at:
             delta = (now - row.last_sent_at).total_seconds()
@@ -128,12 +135,6 @@ def send_code():
             crud.upsert_registration_code(db, email, "anti-enum-dummy", now + timedelta(minutes=1), now)
             return jsonify({"success": True, "message": "验证码已发送"})
 
-    code = _generate_six_digit_code()
-    pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
-    code_hash = _hash_registration_code(email, code, pepper)
-    expires_at = now + timedelta(minutes=settings.registration_code_ttl_minutes)
-
-    with SessionLocal() as db:
         crud.upsert_registration_code(db, email, code_hash, expires_at, now)
 
     subject_text = "找回密码" if code_type == "reset" else "注册"
@@ -150,7 +151,7 @@ def send_code():
                 to_addr=email,
                 subject=f"【智卷系统】{subject_text}验证码",
                 body=f"您的{subject_text}验证码为：{code}，{settings.registration_code_ttl_minutes} 分钟内有效。请勿泄露给他人。",
-                async_send=False,
+                async_send=True,
             )
         except Exception:
             logger.exception("发送验证码邮件失败")

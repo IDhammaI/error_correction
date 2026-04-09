@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * StepIndicator.vue
+ * 步骤指示器
+ */
 import { computed } from 'vue'
 
 const props = defineProps({

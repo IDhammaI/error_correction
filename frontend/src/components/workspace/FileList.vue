@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * FileList.vue
+ * 已上传文件列表
+ */
 defineProps({
   pendingFiles: { type: Array, default: () => [] },
   fileProgress: { type: Object, default: () => ({}) },

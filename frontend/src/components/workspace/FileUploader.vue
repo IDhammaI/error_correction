@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * FileUploader.vue
+ * 文件上传拖拽区
+ */
 import { ref } from 'vue'
 
 const props = defineProps({

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * AiAnalysisModal.vue
+ * AI 分析弹窗（知识点讲解）
+ */
 const props = defineProps({
   open: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },

@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * ActionBar.vue
+ * 操作栏（导出、保存、取消等按钮）
+ */
 
 const props = defineProps({
   splitEnabled: { type: Boolean, default: false },
