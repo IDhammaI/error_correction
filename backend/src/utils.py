@@ -15,7 +15,7 @@ from rich.console import Console
 
 from core.config import settings
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 console = Console()
 
 

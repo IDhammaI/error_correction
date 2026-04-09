@@ -69,13 +69,13 @@ def _cleanup_old_split_records(db: Session):
 def get_recent_split_records(db, limit: int = 10, user_id=None):
     """获取最近 N 条分割记录（不加载 questions_json 大字段）"""
     from sqlalchemy.orm import defer
-    return (
+    query = (
         db.query(SplitRecord)
         .options(defer(SplitRecord.questions_json))
-        .order_by(SplitRecord.created_at.desc())
-        .limit(limit)
-        .all()
     )
+    if user_id is not None:
+        query = query.filter(SplitRecord.user_id == user_id)
+    return query.order_by(SplitRecord.created_at.desc()).limit(limit).all()
 
 
 def get_split_record_by_id(db: Session, record_id: int) -> Optional[SplitRecord]:
