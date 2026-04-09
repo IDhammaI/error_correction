@@ -15,7 +15,9 @@ const form = reactive({ username: '', email: '', password: '', confirm: '', code
 
 const sendingCode = ref(false)
 const countdown = ref(0)
+const rateLimitCountdown = ref(0)
 let countdownTimer = null
+let rateLimitTimer = null
 let sendDebounceTimer = null
 
 const passwordMismatch = () => form.confirm && form.password !== form.confirm
@@ -39,8 +41,32 @@ function startCountdown(seconds = 60) {
   }, 1000)
 }
 
+function clearRateLimitCountdown() {
+  if (rateLimitTimer) {
+    clearInterval(rateLimitTimer)
+    rateLimitTimer = null
+  }
+}
+
+function startRateLimitCountdown(seconds) {
+  clearRateLimitCountdown()
+  rateLimitCountdown.value = seconds
+  error.value = `发送过于频繁，请 ${seconds} 秒后再试`
+  rateLimitTimer = setInterval(() => {
+    rateLimitCountdown.value -= 1
+    if (rateLimitCountdown.value <= 0) {
+      clearRateLimitCountdown()
+      rateLimitCountdown.value = 0
+      error.value = ''
+    } else {
+      error.value = `发送过于频繁，请 ${rateLimitCountdown.value} 秒后再试`
+    }
+  }, 1000)
+}
+
 async function handleSendCode() {
   error.value = ''
+  clearRateLimitCountdown()
   if (sendingCode.value || countdown.value > 0) return
   const email = (form.email || '').trim()
   if (!email || !email.includes('@')) {
@@ -60,7 +86,14 @@ async function handleSendCode() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        error.value = data.error || '发送失败'
+        // 429 频率限制：解析剩余秒数，启动错误提示倒计时
+        if (res.status === 429) {
+          const match = (data.error || '').match(/(\d+)\s*秒/)
+          const wait = match ? parseInt(match[1], 10) : 30
+          startRateLimitCountdown(wait)
+        } else {
+          error.value = data.error || '发送失败'
+        }
         return
       }
       success.value = '验证码已发送到邮箱，请查收'
@@ -108,6 +141,7 @@ async function handleRegister() {
 
 onBeforeUnmount(() => {
   clearCountdown()
+  clearRateLimitCountdown()
   if (sendDebounceTimer) clearTimeout(sendDebounceTimer)
 })
 </script>
