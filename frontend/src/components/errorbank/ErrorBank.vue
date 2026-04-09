@@ -1,15 +1,15 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import * as api from '../api.js'
-import { typesetMath as _typesetMath } from '../utils.js'
-import CustomSelect from './CustomSelect.vue'
-import GlassCard from './GlassCard.vue'
-import SearchInput from './SearchInput.vue'
-import QuestionItem from './QuestionItem.vue'
-import EmptyState from './EmptyState.vue'
-import QuestionItemSkeleton from './QuestionItemSkeleton.vue'
-import EditNoteDialog from './EditNoteDialog.vue'
-import SelectionPanel from './SelectionPanel.vue'
+import * as api from '../../api.js'
+import { typesetMath as _typesetMath } from '../../utils.js'
+import CustomSelect from '../ui/CustomSelect.vue'
+import GlassCard from '../ui/GlassCard.vue'
+import SearchInput from '../ui/SearchInput.vue'
+import QuestionItem from '../question/QuestionItem.vue'
+import EmptyState from '../ui/EmptyState.vue'
+import QuestionItemSkeleton from '../question/QuestionItemSkeleton.vue'
+import EditNoteDialog from '../question/EditNoteDialog.vue'
+import SelectionPanel from '../workspace/SelectionPanel.vue'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },

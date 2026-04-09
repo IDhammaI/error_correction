@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { typesetMath } from '../utils.js'
+import { typesetMath } from '../../utils.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },

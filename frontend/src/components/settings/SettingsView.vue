@@ -1,7 +1,7 @@
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
-import { fetchAppConfig, updateAppConfig } from '../api.js'
-import { genId } from '../utils.js'
+import { fetchAppConfig, updateAppConfig } from '../../api.js'
+import { genId } from '../../utils.js'
 import ProviderDialog from './ProviderDialog.vue'
 import ProviderSection from './ProviderSection.vue'
 

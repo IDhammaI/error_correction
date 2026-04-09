@@ -4,7 +4,7 @@
  * 统计数字卡片组件，带数字滚动动画。
  */
 import { ref, watch, onMounted } from 'vue'
-import GlassCard from './GlassCard.vue'
+import GlassCard from '../ui/GlassCard.vue'
 
 const props = defineProps({
   label: { type: String, required: true },

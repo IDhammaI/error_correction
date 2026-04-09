@@ -1,5 +1,5 @@
 <script setup>
-import BrandLogo from './BrandLogo.vue'
+import BrandLogo from '../ui/BrandLogo.vue'
 
 defineProps({
   title: { type: String, default: 'AI 正在深度解析' },

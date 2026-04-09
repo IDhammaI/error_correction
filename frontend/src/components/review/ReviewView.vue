@@ -1,12 +1,12 @@
 <script setup>
 import { ref, reactive, watch, nextTick, onBeforeUnmount, computed } from 'vue'
-import * as api from '../api.js'
-import { typesetMath as _typesetMath } from '../utils.js'
-import QuestionDetailModal from './QuestionDetailModal.vue'
+import * as api from '../../api.js'
+import { typesetMath as _typesetMath } from '../../utils.js'
+import QuestionDetailModal from '../question/QuestionDetailModal.vue'
 import AiAnalysisModal from './AiAnalysisModal.vue'
-import CustomSelect from './CustomSelect.vue'
-import PageHeader from './PageHeader.vue'
-import QuestionItem from './QuestionItem.vue'
+import CustomSelect from '../ui/CustomSelect.vue'
+import PageHeader from '../ui/PageHeader.vue'
+import QuestionItem from '../question/QuestionItem.vue'
 
 const answerEditId = ref(null)
 const answerEditField = ref('')

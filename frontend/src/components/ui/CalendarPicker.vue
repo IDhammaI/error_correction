@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useClickOutside } from '../composables/useClickOutside.js'
+import { useClickOutside } from '../../composables/useClickOutside.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
-import * as api from '../api.js'
-import CustomSelect from './CustomSelect.vue'
-import GlassCard from './GlassCard.vue'
+import * as api from '../../api.js'
+import CustomSelect from '../ui/CustomSelect.vue'
+import GlassCard from '../ui/GlassCard.vue'
 import StatCard from './StatCard.vue'
 
 const props = defineProps({

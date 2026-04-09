@@ -1,7 +1,7 @@
 <script setup>
 import { useTheme } from '../../composables/useTheme.js'
 import LandingButton from './LandingButton.vue'
-import BrandLogo from '../BrandLogo.vue'
+import BrandLogo from '../ui/BrandLogo.vue'
 
 const { isDark, toggleTheme } = useTheme()
 
