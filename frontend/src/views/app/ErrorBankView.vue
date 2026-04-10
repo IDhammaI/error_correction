@@ -2,6 +2,9 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as api from '@/api.js'
 import { typesetMath as _typesetMath } from '@/utils.js'
+import { useSelectableList } from '@/composables/useSelectableList.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import ErrorBankFilterPanel from '@/components/workspace/ErrorBankFilterPanel.vue'
 import CustomSelect from '@/components/base/CustomSelect.vue'
 import GlassCard from '@/components/base/GlassCard.vue'
 import SearchInput from '@/components/base/SearchInput.vue'
@@ -10,13 +13,18 @@ import EmptyState from '@/components/base/EmptyState.vue'
 import QuestionItemSkeleton from '@/components/question/QuestionItemSkeleton.vue'
 import EditNoteDialog from '@/components/question/EditNoteDialog.vue'
 import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
+import { useToast } from '@/composables/useToast.js'
+import { useImageModal } from '@/composables/useImageModal.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useChatSession } from '@/composables/useChatSession.js'
+import { useTheme } from '@/composables/useTheme.js'
 
-const props = defineProps({
-  theme: { type: String, default: 'light' },
-  visible: { type: Boolean, default: false },
-})
-
-const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
+const { pushToast } = useToast()
+const { openModal } = useImageModal()
+const { currentView } = useWorkspaceNav()
+const { openChat } = useChatSession()
+const { isDark } = useTheme()
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 // ---- 筛选条件 ----
 const openFilter = ref('')
@@ -63,11 +71,7 @@ const loading = ref(false)
 const subjects = ref([])
 const questionTypes = ref([])
 const tagNames = ref([])
-const selectedIds = reactive(new Set())
-const selectMode = ref(false)
-
-const enterSelectMode = () => { selectMode.value = true }
-const exitSelectMode = () => { selectMode.value = false; selectedIds.clear() }
+const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
 
 // ---- 知识点多选标签 ----
@@ -109,7 +113,7 @@ const doQuery = async () => {
     total.value = data.total || 0
     totalPages.value = data.total_pages || 0
   } catch (e) {
-    emit('push-toast', 'error', e instanceof Error ? e.message : String(e))
+    pushToast('error', e instanceof Error ? e.message : String(e))
   } finally {
     loading.value = false
     typesetMath()
@@ -140,14 +144,12 @@ const goPage = (p) => {
   doQuery()
 }
 
-const toggleSelect = (id) => { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id) }
-const clearSelection = () => { selectedIds.clear() }
 
 const doExport = async () => {
   if (!selectedIds.size) return
   try {
     const data = await api.exportFromDb(Array.from(selectedIds))
-    emit('push-toast', 'success', '错题本导出成功')
+    pushToast('success', '错题本导出成功')
     let filename = 'wrongbook.md'
     if (data.output_path) {
       const parts = String(data.output_path).split(/[/\\]/)
@@ -158,7 +160,7 @@ const doExport = async () => {
     a.download = filename
     document.body.appendChild(a); a.click(); a.remove()
   } catch (e) {
-    emit('push-toast', 'error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
+    pushToast('error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
   }
 }
 
@@ -222,9 +224,9 @@ const onDialogSave = async (draft) => {
       dialogQuestion.value.user_answer = draft
     }
     dialogOpen.value = false
-    emit('push-toast', 'success', '已保存')
+    pushToast('success', '已保存')
   } catch (e) {
-    emit('push-toast', 'error', '保存失败')
+    pushToast('error', '保存失败')
   } finally {
     dialogSaving.value = false
   }
@@ -234,9 +236,9 @@ const quickMarkStatus = async (q, status) => {
   try {
     const data = await api.updateReviewStatus(q.id, status)
     q.review_status = data.review_status
-    emit('push-toast', 'success', `已标记为「${status}」`)
+    pushToast('success', `已标记为「${status}」`)
   } catch (e) {
-    emit('push-toast', 'error', '更新状态失败')
+    pushToast('error', '更新状态失败')
   }
 }
 
@@ -247,9 +249,9 @@ const doDelete = async (q) => {
     items.value = items.value.filter(x => x.id !== q.id)
     total.value = Math.max(0, total.value - 1)
     selectedIds.delete(q.id)
-    emit('push-toast', 'success', '题目已删除')
+    pushToast('success', '题目已删除')
   } catch (e) {
-    emit('push-toast', 'error', '删除失败')
+    pushToast('error', '删除失败')
   }
 }
 
@@ -287,7 +289,7 @@ const loadFilters = async () => {
     questionTypes.value = qt
     await refreshTags()
   } catch (e) {
-    emit('push-toast', 'error', '加载筛选项失败')
+    pushToast('error', '加载筛选项失败')
   }
 }
 
@@ -305,19 +307,11 @@ const reloadTags = async () => {
 
 watch(() => filters.subject, () => { reloadTags() })
 
-watch(() => props.visible, (v) => { if (v) { loadFilters(); doQuery() } }, { immediate: true })
+onMounted(() => { loadFilters(); doQuery() })
 
 defineExpose({
   refresh: doQuery,
-  toggleSelectMode: () => selectMode.value ? exitSelectMode() : enterSelectMode(),
-  toggleFilterPanel,
-  filterPanelOpen,
-  filters,
-  subjects,
-  questionTypes,
-  tagNames,
-  selectedTags,
-  toggleTagSelect,
+  toggleSelectMode,
 })
 
 onBeforeUnmount(() => {
@@ -326,6 +320,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ContentPanel title="错题库">
+    <template #toolbar>
+      <button @click="currentView = 'workspace'" class="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 text-xs font-medium text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0] transition-colors" title="录入新题目">
+        <i class="fa-solid fa-plus text-[10px]"></i> 录入
+      </button>
+    </template>
+    <template v-if="filterPanelOpen" #sidebar>
+      <ErrorBankFilterPanel
+        :filters="filters"
+        :subjects="subjects"
+        :question-types="questionTypes"
+        :tag-names="tagNames"
+        :selected-tags="selectedTags"
+        @close="filterPanelOpen = false"
+        @toggle-tag="toggleTagSelect"
+      />
+    </template>
   <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
     <div class="relative z-10 flex-1 flex flex-col">
       <!-- 搜索 + 操作按钮 + 已激活筛选 pills -->
@@ -346,7 +357,7 @@ onBeforeUnmount(() => {
           <button @click="toggleFilterPanel" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="filterPanelOpen ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="筛选设置">
             <i class="fa-solid fa-sliders text-xs"></i>
           </button>
-          <button @click="selectMode ? exitSelectMode() : enterSelectMode()" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="selectMode ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="导出题目">
+          <button @click="toggleSelectMode" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="selectMode ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="导出题目">
             <i class="fa-solid fa-file-export text-xs"></i>
           </button>
         </div>
@@ -386,7 +397,7 @@ onBeforeUnmount(() => {
           title="暂无匹配记录"
           description="调整筛选条件，或者开始新的录入"
         >
-          <button @click="emit('go-workspace')" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+          <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
             <i class="fa-solid fa-plus"></i> 录入新题目
           </button>
         </EmptyState>
@@ -449,7 +460,7 @@ onBeforeUnmount(() => {
                     class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
                     <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
                   </button>
-                  <button @click.stop="emit('start-chat', question); hoverMenuId = null"
+                  <button @click.stop="openChat(question); hoverMenuId = null"
                     class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
                     <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
                   </button>
@@ -517,6 +528,7 @@ onBeforeUnmount(() => {
       @save="onDialogSave"
     />
   </div>
+  </ContentPanel>
 </template>
 
 <style scoped>

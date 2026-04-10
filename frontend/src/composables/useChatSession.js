@@ -1,18 +1,24 @@
 /**
  * useChatSession.js
- * AI 辅导对话会话管理（题目绑定对话）
+ * AI 辅导对话会话管理（题目绑定对话）— 单例 composable
  */
 import { ref } from 'vue'
 import * as api from '@/api.js'
+import { useToast } from '@/composables/useToast.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 
-export function useChatSession(pushToast, currentView) {
-  const chatSessionId = ref(null)
-  const chatQuestion = ref(null)
-  const chatActive = ref(false)
-  const answerModalOpen = ref(false)
-  const answerModalTarget = ref(null)
-  const answerModalText = ref('')
-  const answerModalSaving = ref(false)
+// ── 模块级单例状态 ──────────────────────────────────────
+const chatSessionId = ref(null)
+const chatQuestion = ref(null)
+const chatActive = ref(false)
+const answerModalOpen = ref(false)
+const answerModalTarget = ref(null)
+const answerModalText = ref('')
+const answerModalSaving = ref(false)
+
+export function useChatSession() {
+  const { pushToast } = useToast()
+  const { currentView } = useWorkspaceNav()
 
   const doOpenChatSession = async (question) => {
     try {

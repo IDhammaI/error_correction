@@ -1,17 +1,15 @@
 <script setup>
-import { ref, inject, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { fetchAppConfig, updateAppConfig } from '@/api.js'
 import { genId } from '@/utils.js'
+import { useToast } from '@/composables/useToast.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import ProviderDialog from '@/components/settings/ProviderDialog.vue'
 import ProviderSection from '@/components/settings/ProviderSection.vue'
 
-const props = defineProps({
-  visible: { type: Boolean, default: false },
-})
-
-const emit = defineEmits(['saved'])
-
-const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] ${msg}`) })
+const { pushToast } = useToast()
+const { doFetchStatus } = useSystemStatus()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -140,7 +138,7 @@ const saveConfig = async () => {
     payload.active_paddleocr_id = activePaddleocrId.value
 
     await updateAppConfig(payload)
-    emit('saved')
+    doFetchStatus()
   } catch (e) {
     pushToast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -235,19 +233,16 @@ const onDialogConfirm = async (formData) => {
   } catch { /* saveConfig 内部已 toast error */ }
 }
 
-onMounted(() => { if (props.visible) loadConfig() })
-watch(() => props.visible, (v) => { if (v) loadConfig() })
+onMounted(() => { loadConfig() })
 </script>
 
 <template>
+  <ContentPanel title="系统设置">
   <div class="relative h-full overflow-y-auto">
     <div class="container relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
-      <!-- 页面标题 -->
+      <!-- 页面说明 -->
       <div class="mb-8 pl-2 sm:pl-0">
-        <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-          系统设置
-        </h2>
-        <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">配置 AI 模型供应商和 OCR 服务连接参数，修改即时生效。</p>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">配置 AI 模型供应商和 OCR 服务连接参数，修改即时生效。</p>
       </div>
 
       <!-- 加载中 -->
@@ -309,4 +304,5 @@ watch(() => props.visible, (v) => { if (v) loadConfig() })
       @confirm="onDialogConfirm"
     />
   </div>
+  </ContentPanel>
 </template>

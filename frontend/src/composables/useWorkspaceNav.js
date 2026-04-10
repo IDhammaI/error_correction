@@ -1,8 +1,8 @@
 /**
  * useWorkspaceNav.js
- * 工作台视图路由 + 侧边栏导航配置
+ * 工作台视图路由 + 侧边栏导航配置 — 单例 composable
  */
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const VIEW_TO_PATH = {
@@ -45,13 +45,15 @@ const NAV_GROUPS = [
   },
 ]
 
+// ── 模块级单例状态 ──────────────────────────────────────
+const collapsedGroups = ref({})
+const chatCollapsed = ref(false)
+const lastWorkspaceView = ref('workspace')
+let initialized = false
+
 export function useWorkspaceNav() {
   const router = useRouter()
   const route = useRoute()
-
-  const collapsedGroups = ref({})
-  const chatCollapsed = ref(false)
-  const lastWorkspaceView = ref('workspace')
 
   const currentView = computed({
     get() {
@@ -66,9 +68,12 @@ export function useWorkspaceNav() {
     },
   })
 
-  watch(currentView, (v) => {
-    if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
-  })
+  if (!initialized) {
+    initialized = true
+    watch(currentView, (v) => {
+      if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
+    })
+  }
 
   const navigateToHome = () => {
     document.body.style.transition = 'opacity 0.25s ease, transform 0.25s ease'

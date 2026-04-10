@@ -1,24 +1,31 @@
 <script setup>
-import { ref, reactive, watch, nextTick, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as api from '@/api.js'
 import { typesetMath as _typesetMath } from '@/utils.js'
+import { useSelectableList } from '@/composables/useSelectableList.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
 import AiAnalysisModal from '@/components/review/AiAnalysisModal.vue'
 import CustomSelect from '@/components/base/CustomSelect.vue'
 import PageHeader from '@/components/base/PageHeader.vue'
 import QuestionItem from '@/components/question/QuestionItem.vue'
+import { useToast } from '@/composables/useToast.js'
+import { useImageModal } from '@/composables/useImageModal.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useChatSession } from '@/composables/useChatSession.js'
+import { useTheme } from '@/composables/useTheme.js'
+
+const { pushToast } = useToast()
+const { openModal } = useImageModal()
+const { currentView } = useWorkspaceNav()
+const { openChat } = useChatSession()
+const { isDark } = useTheme()
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 const answerEditId = ref(null)
 const answerEditField = ref('')
 const answerEditDraft = ref('')
 const answerEditSaving = ref(false)
-
-const props = defineProps({
-  theme: { type: String, default: 'light' },
-  visible: { type: Boolean, default: false },
-})
-
-const emit = defineEmits(['go-workspace', 'push-toast', 'open-image', 'start-chat'])
 
 // ---- 学科筛选 ----
 const selectedSubject = ref('')
@@ -34,8 +41,7 @@ const detailOpen = ref(false)
 const detailQuestion = ref(null)
 
 // ---- AI 分析 ----
-const selectMode = ref(false)
-const selectedIds = reactive(new Set())
+const { selectMode, selectedIds, toggleSelectMode, toggleSelect, selectAllItems } = useSelectableList()
 const aiModalOpen = ref(false)
 const aiAnalysisResult = ref(null)
 const aiAnalyzing = ref(false)
@@ -57,7 +63,7 @@ const loadReviewItems = async () => {
     reviewItems.value = data.items || []
     reviewTotal.value = data.total || 0
   } catch (e) {
-    emit('push-toast', 'error', '加载待复习题目失败')
+    pushToast('error', '加载待复习题目失败')
   } finally {
     reviewLoading.value = false
     typesetMath()
@@ -81,13 +87,13 @@ const quickMarkStatus = async (q, status) => {
   try {
     const data = await api.updateReviewStatus(q.id, status)
     q.review_status = data.review_status
-    emit('push-toast', 'success', `已标记为「${status}」`)
+    pushToast('success', `已标记为「${status}」`)
     if (status !== '待复习') {
       reviewItems.value = reviewItems.value.filter(x => x.id !== q.id)
       reviewTotal.value = Math.max(0, reviewTotal.value - 1)
     }
   } catch (e) {
-    emit('push-toast', 'error', '更新状态失败')
+    pushToast('error', '更新状态失败')
   }
 }
 
@@ -122,9 +128,9 @@ const saveInlineEdit = async () => {
       q.user_answer = answerEditDraft.value
     }
     answerEditId.value = null
-    emit('push-toast', 'success', '已保存')
+    pushToast('success', '已保存')
   } catch (e) {
-    emit('push-toast', 'error', '保存失败')
+    pushToast('error', '保存失败')
   } finally {
     answerEditSaving.value = false
   }
@@ -139,24 +145,11 @@ const onReviewStatusChanged = (id, status, updatedAt) => {
   }
 }
 
-// ---- AI 分析 ----
-const toggleSelectMode = () => {
-  selectMode.value = !selectMode.value
-  if (!selectMode.value) selectedIds.clear()
-}
-
-const toggleSelect = (id) => {
-  if (selectedIds.has(id)) selectedIds.delete(id)
-  else selectedIds.add(id)
-}
-
-const selectAllReview = () => {
-  for (const q of reviewItems.value) selectedIds.add(q.id)
-}
+const selectAllReview = () => selectAllItems(reviewItems.value)
 
 const startAiAnalysis = async () => {
   if (!selectedIds.size) {
-    emit('push-toast', 'error', '请先选择要分析的题目')
+    pushToast('error', '请先选择要分析的题目')
     return
   }
   aiAnalyzing.value = true
@@ -166,7 +159,7 @@ const startAiAnalysis = async () => {
     const data = await api.requestAiAnalysis(Array.from(selectedIds))
     aiAnalysisResult.value = data.analysis
   } catch (e) {
-    emit('push-toast', 'error', 'AI 分析失败: ' + (e instanceof Error ? e.message : String(e)))
+    pushToast('error', 'AI 分析失败: ' + (e instanceof Error ? e.message : String(e)))
     aiModalOpen.value = false
   } finally {
     aiAnalyzing.value = false
@@ -179,12 +172,11 @@ const closeAiModal = () => {
 }
 
 // ---- 生命周期 ----
-watch(() => props.visible, (v) => {
-  if (v) loadAll()
-}, { immediate: true })
+onMounted(() => { loadAll() })
 </script>
 
 <template>
+  <ContentPanel title="待复习">
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <!-- 页面标题 -->
@@ -194,7 +186,7 @@ watch(() => props.visible, (v) => {
         <template #default>
           <div class="flex items-center gap-4">
             <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-            <button @click="emit('go-workspace')" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
+            <button @click="currentView = 'workspace'" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
               <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
             </button>
           </div>
@@ -306,12 +298,12 @@ watch(() => props.visible, (v) => {
       :open="detailOpen"
       :question="detailQuestion"
       @close="closeDetail"
-      @open-image="(src) => emit('open-image', src)"
+      @open-image="(src) => openModal(src)"
       @deleted="onDeleted"
       @answer-saved="onAnswerSaved"
       @review-status-changed="onReviewStatusChanged"
-      @push-toast="(type, msg) => emit('push-toast', type, msg)"
-      @start-chat="(q) => emit('start-chat', q)"
+      @push-toast="(type, msg) => pushToast(type, msg)"
+      @start-chat="(q) => openChat(q)"
     />
 
     <!-- AI 分析弹窗 -->
@@ -322,5 +314,6 @@ watch(() => props.visible, (v) => {
       @close="closeAiModal"
     />
   </div>
+  </ContentPanel>
 </template>
 

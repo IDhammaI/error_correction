@@ -32,7 +32,7 @@ const routes = [
   // 工作台（需要登录，:view 参数决定子视图）
   {
     path: '/app/:view?/:subview?',
-    component: () => import('@/views/WorkspaceView.vue'),
+    component: () => import('@/views/app/AppLayout.vue'),
     meta: { requiresAuth: true, layout: 'app' },
   },
   // 兜底：未匹配路径重定向到工作台

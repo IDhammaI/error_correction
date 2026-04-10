@@ -1,16 +1,18 @@
 <script setup>
-import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as api from '@/api.js'
+import { useTheme } from '@/composables/useTheme.js'
+import { useToast } from '@/composables/useToast.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import CustomSelect from '@/components/base/CustomSelect.vue'
 import GlassCard from '@/components/base/GlassCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 
-const props = defineProps({
-  theme: { type: String, default: 'light' },
-  visible: { type: Boolean, default: false },
-})
-
-const emit = defineEmits(['go-workspace', 'push-toast'])
+const { isDark } = useTheme()
+const { pushToast } = useToast()
+const { currentView } = useWorkspaceNav()
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 // ---- 统计数据 ----
 const stats = ref(null)
@@ -39,7 +41,7 @@ const loadStats = async () => {
     const data = await api.fetchDashboardStats(selectedSubject.value || undefined)
     stats.value = data
   } catch (e) {
-    emit('push-toast', 'error', '加载统计数据失败')
+    pushToast('error', '加载统计数据失败')
   } finally {
     statsLoading.value = false
   }
@@ -52,9 +54,9 @@ watch(selectedSubject, () => { loadStats() })
 const initCharts = async () => {
   await nextTick()
   if (!window.Chart || !stats.value) return
-  const isDark = props.theme === 'dark'
-  const textColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.8)'
-  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'
+  const dark = isDark.value
+  const textColor = dark ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.8)'
+  const gridColor = dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'
 
   initTrendChart(isDark, textColor, gridColor)
   initBarChart(isDark, textColor, gridColor)
@@ -172,9 +174,9 @@ const heatmapMax = computed(() => {
 })
 
 const heatmapCellColor = (val) => {
-  if (!val) return props.theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.03)'
+  if (!val) return theme.value === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.03)'
   const ratio = val / heatmapMax.value
-  if (props.theme === 'dark') {
+  if (theme.value === 'dark') {
     const alpha = 0.15 + ratio * 0.7
     return `rgba(99, 102, 241, ${alpha})`
   }
@@ -183,12 +185,10 @@ const heatmapCellColor = (val) => {
 }
 
 // ---- 生命周期 ----
-watch(() => props.visible, (v) => {
-  if (v) loadStats()
-}, { immediate: true })
+onMounted(() => loadStats())
 
-watch(() => [props.theme, stats.value], () => {
-  if (props.visible && stats.value) nextTick(initCharts)
+watch(() => [isDark.value, stats.value], () => {
+  if (stats.value) nextTick(initCharts)
 })
 
 onBeforeUnmount(() => {
@@ -199,12 +199,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ContentPanel title="数据面板">
+    <template #toolbar>
+      <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+      <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
+        <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+      </button>
+    </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 学科筛选（Teleport 到 ContentPanel header） -->
-      <Teleport v-if="subjects.length" to="#panel-toolbar-数据面板">
-        <CustomSelect v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-      </Teleport>
 
       <!-- 骨架屏（加载中） -->
       <template v-if="statsLoading">
@@ -318,6 +321,7 @@ onBeforeUnmount(() => {
       </template>
     </div>
   </div>
+  </ContentPanel>
 </template>
 
 <style scoped>

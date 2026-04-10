@@ -1,22 +1,23 @@
 <script setup>
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import * as api from '@/api.js'
 import { renderMarkdown, typesetMath } from '@/utils.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import GlassCard from '@/components/base/GlassCard.vue'
 import GlassButton from '@/components/base/GlassButton.vue'
 import SearchInput from '@/components/base/SearchInput.vue'
 import CustomSelect from '@/components/base/CustomSelect.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import { useToast } from '@/composables/useToast.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useTheme } from '@/composables/useTheme.js'
+
+const { pushToast } = useToast()
+const { selectedProvider, selectedModel } = useSystemStatus()
+const { isDark } = useTheme()
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 const noteContentRef = ref(null)
-
-const props = defineProps({
-  visible: Boolean,
-  modelProvider: { type: String, default: 'openai' },
-  modelName: { type: String, default: '' },
-  theme: String,
-})
-const emit = defineEmits(['push-toast', 'open-image'])
 
 // ---- 状态 ----
 const notes = ref([])
@@ -63,15 +64,13 @@ async function loadNotes() {
     notes.value = data.items
     total.value = data.total
   } catch (e) {
-    emit('push-toast', 'error', e.message)
+    pushToast('error', e.message)
   } finally {
     loading.value = false
   }
 }
 
-watch(() => props.visible, (v) => {
-  if (v) { loadNotes(); loadFilterOptions() }
-}, { immediate: true })
+onMounted(() => { loadNotes(); loadFilterOptions() })
 watch([page, filterSubject, filterTag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
 
 let keywordTimer = null
@@ -87,8 +86,6 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
-defineExpose({ triggerUpload })
-
 function handleFiles(e) {
   const files = e.target.files
   if (!files?.length) return
@@ -98,15 +95,15 @@ function handleFiles(e) {
 
   const formData = new FormData()
   for (const f of files) formData.append('files', f)
-  formData.append('model_provider', props.modelProvider)
-  if (props.modelName) formData.append('model_name', props.modelName)
+  formData.append('model_provider', selectedProvider.value)
+  if (selectedModel.value) formData.append('model_name', selectedModel.value)
 
   api.createNote(formData, {
     onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
     onSuccess: (data) => {
       creating.value = false
       createProgress.value = 100
-      emit('push-toast', 'success', '笔记整理完成')
+      pushToast('success', '笔记整理完成')
       loadNotes()
       // 自动打开新创建的笔记
       if (data.note) selectedNote.value = data.note
@@ -139,7 +136,7 @@ async function openNote(note) {
       if (noteContentRef.value) typesetMath(noteContentRef.value)
     }, 100)
   } catch (e) {
-    emit('push-toast', 'error', e.message)
+    pushToast('error', e.message)
   }
 }
 
@@ -163,14 +160,14 @@ async function saveEdit() {
     })
     selectedNote.value = updated
     editing.value = false
-    emit('push-toast', 'success', '已保存')
+    pushToast('success', '已保存')
     loadNotes()
     await nextTick()
     setTimeout(() => {
       if (noteContentRef.value) typesetMath(noteContentRef.value)
     }, 100)
   } catch (e) {
-    emit('push-toast', 'error', e.message)
+    pushToast('error', e.message)
   }
 }
 
@@ -179,16 +176,22 @@ async function doDelete(noteId) {
   if (!confirm('确认删除这条笔记？')) return
   try {
     await api.deleteNote(noteId)
-    emit('push-toast', 'success', '已删除')
+    pushToast('success', '已删除')
     if (selectedNote.value?.id === noteId) closeDetail()
     loadNotes()
   } catch (e) {
-    emit('push-toast', 'error', e.message)
+    pushToast('error', e.message)
   }
 }
 </script>
 
 <template>
+  <ContentPanel title="笔记库">
+    <template #toolbar>
+      <button @click="triggerUpload" class="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 text-xs font-medium text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0] transition-colors" title="上传笔记">
+        <i class="fa-solid fa-upload text-[10px]"></i> 上传笔记
+      </button>
+    </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
       
@@ -333,4 +336,5 @@ async function doDelete(noteId) {
       </div>
     </div>
   </div>
+  </ContentPanel>
 </template>
