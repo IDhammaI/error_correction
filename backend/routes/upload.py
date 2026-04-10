@@ -549,7 +549,8 @@ def get_split_record_detail(record_id):
     """获取单条分割记录的完整数据（含 questions）"""
     try:
         with SessionLocal() as db:
-            record = crud.get_split_record_by_id(db, record_id)
+            effective_uid = None if session.get('is_admin') else session.get('user_id')
+            record = crud.get_split_record_by_id(db, record_id, user_id=effective_uid)
             if not record:
                 return jsonify({"success": False, "error": "记录不存在"}), 404
 
