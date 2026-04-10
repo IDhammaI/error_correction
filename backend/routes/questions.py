@@ -466,12 +466,14 @@ def save_to_db():
         # 读取科目信息
         subject = _read_split_subject()
 
-        from core.state import session_lock, session_files, session_file_order
+        from core.state import session_lock, get_user_session
+        uid = session.get('user_id')
         with session_lock:
+            us = get_user_session(uid)
             batch_info = {
                 "original_filename": ", ".join(
-                    session_files.get(k, {}).get("filename", "未知")
-                    for k in session_file_order
+                    us["session_files"].get(k, {}).get("filename", "未知")
+                    for k in us["session_file_order"]
                 ),
                 "subject": subject,
                 "file_path": "",
