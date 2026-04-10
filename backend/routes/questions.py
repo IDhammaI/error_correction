@@ -281,7 +281,7 @@ def get_error_bank():
         with SessionLocal() as db:
             questions, total = crud.query_questions(
             db,
-            user_id=session.get('user_id'),
+            user_id=_effective_user_id(),
                 subject=subject,
                 knowledge_tag=knowledge_tag,
                 question_type=question_type,
@@ -317,7 +317,7 @@ def get_subjects():
     """获取所有科目列表"""
     try:
         with SessionLocal() as db:
-            subjects = crud.get_existing_subjects(db, user_id=session.get('user_id'))
+            subjects = crud.get_existing_subjects(db, user_id=_effective_user_id())
             return jsonify({'success': True, 'subjects': subjects})
     except Exception as e:
         logger.exception("获取科目列表失败")
@@ -329,7 +329,7 @@ def get_question_types():
     """获取所有题型列表"""
     try:
         with SessionLocal() as db:
-            types = crud.get_existing_question_types(db, user_id=session.get('user_id'))
+            types = crud.get_existing_question_types(db, user_id=_effective_user_id())
             return jsonify({'success': True, 'question_types': types})
     except Exception as e:
         logger.exception("获取题型列表失败")

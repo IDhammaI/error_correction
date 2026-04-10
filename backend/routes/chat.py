@@ -85,7 +85,11 @@ def create_chat():
 
         if question_id:
             with SessionLocal() as db:
-                question = db.query(Question).filter(Question.id == question_id).first()
+                uid = _effective_user_id()
+                q_query = db.query(Question).filter(Question.id == question_id)
+                if uid is not None:
+                    q_query = q_query.filter(Question.user_id == uid)
+                question = q_query.first()
                 if not question:
                     return jsonify({'success': False, 'error': '题目不存在'}), 404
                 chat_session = crud.create_chat_session(db, question_id=question_id, user_id=user_id, title=title)
@@ -185,7 +189,7 @@ def get_chat_messages(session_id):
         before_id = request.args.get('before_id', type=int)
 
         with SessionLocal() as db:
-            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id)
+            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id, user_id=_effective_user_id())
             return jsonify({
                 'success': True,
                 'messages': result['messages'],
@@ -226,13 +230,17 @@ def stream_chat(session_id):
             settings.load_providers_from_db(user_id)
 
         with SessionLocal() as db:
-            chat_session = db.query(ChatSessionModel).options(
+            uid = _effective_user_id()
+            cs_query = db.query(ChatSessionModel).options(
                 selectinload(ChatSessionModel.question)
                 .selectinload(Question.batch),
                 selectinload(ChatSessionModel.question)
                 .selectinload(Question.tags)
                 .selectinload(QuestionTagMapping.tag),
-            ).filter(ChatSessionModel.id == session_id).first()
+            ).filter(ChatSessionModel.id == session_id)
+            if uid is not None:
+                cs_query = cs_query.filter(ChatSessionModel.user_id == uid)
+            chat_session = cs_query.first()
             if not chat_session:
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
 

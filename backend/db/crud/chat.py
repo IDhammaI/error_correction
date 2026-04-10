@@ -39,10 +39,17 @@ def create_chat_session(
 _VALID_ROLES = ('user', 'assistant')
 
 
-def add_chat_message(db: Session, session_id: int, role: str, content: str) -> ChatMessage:
+def add_chat_message(db: Session, session_id: int, role: str, content: str, user_id=None) -> ChatMessage:
     """向对话中追加一条消息"""
     if role not in _VALID_ROLES:
         raise ValueError(f"无效的消息角色: {role}（可选: {', '.join(_VALID_ROLES)}）")
+    # 验证 session 归属
+    if user_id is not None:
+        owner_check = db.query(ChatSession).filter(
+            ChatSession.id == session_id, ChatSession.user_id == user_id
+        ).first()
+        if not owner_check:
+            raise ValueError("对话不存在或无权操作")
     msg = ChatMessage(session_id=session_id, role=role, content=content)
     db.add(msg)
     try:
@@ -63,8 +70,16 @@ def get_chat_messages(
     session_id: int,
     limit: int = 30,
     before_id: Optional[int] = None,
+    user_id=None,
 ) -> Dict[str, Any]:
     """游标分页获取对话消息"""
+    # 验证 session 归属
+    if user_id is not None:
+        owner_check = db.query(ChatSession).filter(
+            ChatSession.id == session_id, ChatSession.user_id == user_id
+        ).first()
+        if not owner_check:
+            return {"messages": [], "hasMore": False}
     query = db.query(ChatMessage).filter(ChatMessage.session_id == session_id)
     if before_id:
         query = query.filter(ChatMessage.id < before_id)
