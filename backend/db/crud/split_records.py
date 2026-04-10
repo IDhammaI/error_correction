@@ -36,7 +36,7 @@ def save_split_record(
     try:
         db.commit()
         db.refresh(record)
-        _cleanup_old_split_records(db)
+        _cleanup_old_split_records(db, user_id=user_id)
         return record
     except Exception as e:
         db.rollback()
@@ -44,16 +44,21 @@ def save_split_record(
         raise
 
 
-def _cleanup_old_split_records(db: Session):
-    """删除超出上限的最旧分割记录"""
-    count = db.query(func.count(SplitRecord.id)).scalar()
+def _cleanup_old_split_records(db: Session, user_id=None):
+    """删除超出上限的最旧分割记录（按用户隔离）"""
+    count_query = db.query(func.count(SplitRecord.id))
+    if user_id is not None:
+        count_query = count_query.filter(SplitRecord.user_id == user_id)
+    count = count_query.scalar()
     if count <= MAX_SPLIT_RECORDS:
         return
     overflow = count - MAX_SPLIT_RECORDS
+    ids_query = db.query(SplitRecord.id)
+    if user_id is not None:
+        ids_query = ids_query.filter(SplitRecord.user_id == user_id)
     old_ids = [
         row[0] for row in
-        db.query(SplitRecord.id)
-        .order_by(SplitRecord.created_at.asc())
+        ids_query.order_by(SplitRecord.created_at.asc())
         .limit(overflow)
         .all()
     ]
@@ -78,6 +83,9 @@ def get_recent_split_records(db, limit: int = 10, user_id=None):
     return query.order_by(SplitRecord.created_at.desc()).limit(limit).all()
 
 
-def get_split_record_by_id(db: Session, record_id: int) -> Optional[SplitRecord]:
+def get_split_record_by_id(db: Session, record_id: int, user_id=None) -> Optional[SplitRecord]:
     """按 ID 获取单条分割记录（含完整 questions_json）"""
-    return db.query(SplitRecord).filter(SplitRecord.id == record_id).first()
+    query = db.query(SplitRecord).filter(SplitRecord.id == record_id)
+    if user_id is not None:
+        query = query.filter(SplitRecord.user_id == user_id)
+    return query.first()

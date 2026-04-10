@@ -83,15 +83,12 @@ def get_chat_messages(
     }
 
 
-def get_chat_sessions_by_question(db: Session, question_id: int, limit: int = 50) -> List[ChatSession]:
+def get_chat_sessions_by_question(db: Session, question_id: int, limit: int = 50, user_id=None) -> List[ChatSession]:
     """获取某道题目的对话会话"""
-    return (
-        db.query(ChatSession)
-        .filter(ChatSession.question_id == question_id)
-        .order_by(ChatSession.updated_at.desc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(ChatSession).filter(ChatSession.question_id == question_id)
+    if user_id is not None:
+        query = query.filter(ChatSession.user_id == user_id)
+    return query.order_by(ChatSession.updated_at.desc()).limit(limit).all()
 
 
 def get_user_chat_sessions(
@@ -119,9 +116,12 @@ def get_all_chat_sessions(
     db: Session,
     page: int = 1,
     page_size: int = 20,
+    user_id=None,
 ) -> Tuple[List[ChatSession], int]:
-    """分页获取所有对话会话"""
+    """分页获取对话会话（user_id 非 None 时按用户过滤）"""
     query = db.query(ChatSession)
+    if user_id is not None:
+        query = query.filter(ChatSession.user_id == user_id)
     total = query.count()
     sessions = (
         query.options(selectinload(ChatSession.question))
@@ -133,9 +133,12 @@ def get_all_chat_sessions(
     return sessions, total
 
 
-def update_chat_session_title(db: Session, session_id: int, title: str) -> Optional[ChatSession]:
+def update_chat_session_title(db: Session, session_id: int, title: str, user_id=None) -> Optional[ChatSession]:
     """更新对话标题"""
-    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    query = db.query(ChatSession).filter(ChatSession.id == session_id)
+    if user_id is not None:
+        query = query.filter(ChatSession.user_id == user_id)
+    session = query.first()
     if not session:
         return None
     session.title = title
@@ -144,9 +147,12 @@ def update_chat_session_title(db: Session, session_id: int, title: str) -> Optio
     return session
 
 
-def delete_chat_session(db: Session, session_id: int) -> bool:
+def delete_chat_session(db: Session, session_id: int, user_id=None) -> bool:
     """删除对话（级联删除消息）"""
-    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    query = db.query(ChatSession).filter(ChatSession.id == session_id)
+    if user_id is not None:
+        query = query.filter(ChatSession.user_id == user_id)
+    session = query.first()
     if not session:
         return False
     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
