@@ -239,5 +239,6 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     app.run(
         host='0.0.0.0', port=5001, debug=debug,
+        threaded=True,                           # 多线程处理并发请求
         exclude_patterns=["*site-packages*"],    # 排除第三方库文件变更触发的重载
     )
