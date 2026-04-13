@@ -133,24 +133,32 @@ def get_questions_by_subject(
     db: Session,
     subject: str,
     limit: int = 100,
-    offset: int = 0
+    offset: int = 0,
+    user_id=None,
 ) -> List[Question]:
     """按科目查询题目"""
-    return db.query(Question).join(UploadBatch).filter(
+    query = db.query(Question).join(UploadBatch).filter(
         UploadBatch.subject == subject
-    ).order_by(Question.created_at.desc()).offset(offset).limit(limit).all()
+    )
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return query.order_by(Question.created_at.desc()).offset(offset).limit(limit).all()
 
 
 def get_questions_by_tag(
     db: Session,
     tag_name: str,
     limit: int = 100,
-    offset: int = 0
+    offset: int = 0,
+    user_id=None,
 ) -> List[Question]:
     """按标签查询题目"""
-    return db.query(Question).join(QuestionTagMapping).join(KnowledgeTag).filter(
+    query = db.query(Question).join(QuestionTagMapping).join(KnowledgeTag).filter(
         KnowledgeTag.tag_name == tag_name
-    ).order_by(Question.created_at.desc()).offset(offset).limit(limit).all()
+    )
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return query.order_by(Question.created_at.desc()).offset(offset).limit(limit).all()
 
 
 def get_history_questions(
@@ -158,7 +166,8 @@ def get_history_questions(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    user_id=None,
 ) -> Tuple[List[Question], int]:
     """
     分页查询历史题目（全部题目）
@@ -174,6 +183,9 @@ def get_history_questions(
         (题目列表, 总数)
     """
     query = db.query(Question).join(UploadBatch)
+
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
 
     if start_date:
         query = query.filter(UploadBatch.upload_time >= start_date)
@@ -203,7 +215,8 @@ def search_questions(
     knowledge_tag: Optional[str] = None,
     question_type: Optional[str] = None,
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    user_id=None,
 ) -> Tuple[List[Question], int]:
     """
     搜索题目（知识点/题型/关键字）
@@ -220,6 +233,9 @@ def search_questions(
         (题目列表, 总数)
     """
     query = db.query(Question)
+
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
 
     # 关键字搜索：匹配 content_json 中的内容
     if keyword:
@@ -319,30 +335,36 @@ def query_questions(
     return questions, total
 
 
-def get_questions_by_ids(db: Session, question_ids: List[int]) -> List[Question]:
+def get_questions_by_ids(db: Session, question_ids: List[int], user_id=None) -> List[Question]:
     """按 ID 列表批量查询题目"""
     if not question_ids:
         return []
-    return (
+    query = (
         db.query(Question)
         .options(joinedload(Question.batch), joinedload(Question.tags).joinedload(QuestionTagMapping.tag))
         .filter(Question.id.in_(question_ids))
-        .all()
     )
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return query.all()
 
 
-def delete_question(db: Session, question_id: int) -> bool:
+def delete_question(db: Session, question_id: int, user_id=None) -> bool:
     """
     删除题目
 
     Args:
         db: 数据库会话
         question_id: 题目ID
+        user_id: 用户ID（非 None 时校验归属）
 
     Returns:
         是否删除成功
     """
-    question = db.query(Question).filter(Question.id == question_id).first()
+    query = db.query(Question).filter(Question.id == question_id)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    question = query.first()
     if not question:
         return False
 
@@ -361,9 +383,12 @@ def delete_question(db: Session, question_id: int) -> bool:
     return True
 
 
-def update_user_answer(db: Session, question_id: int, user_answer: str) -> Optional[Question]:
+def update_user_answer(db: Session, question_id: int, user_answer: str, user_id=None) -> Optional[Question]:
     """更新用户答案"""
-    question = db.query(Question).filter(Question.id == question_id).first()
+    query = db.query(Question).filter(Question.id == question_id)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    question = query.first()
     if not question:
         return None
 
@@ -379,9 +404,12 @@ def update_user_answer(db: Session, question_id: int, user_answer: str) -> Optio
         raise
 
 
-def update_question_answer(db: Session, question_id: int, answer: str) -> Optional[Question]:
+def update_question_answer(db: Session, question_id: int, answer: str, user_id=None) -> Optional[Question]:
     """保存/更新题目答案（Markdown 格式）"""
-    question = db.query(Question).filter(Question.id == question_id).first()
+    query = db.query(Question).filter(Question.id == question_id)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    question = query.first()
     if not question:
         return None
 
@@ -400,12 +428,15 @@ def update_question_answer(db: Session, question_id: int, answer: str) -> Option
 VALID_REVIEW_STATUSES = ('待复习', '复习中', '已掌握')
 
 
-def update_review_status(db: Session, question_id: int, review_status: str) -> Optional[Question]:
+def update_review_status(db: Session, question_id: int, review_status: str, user_id=None) -> Optional[Question]:
     """更新题目复习状态"""
     if review_status not in VALID_REVIEW_STATUSES:
         raise ValueError(f"无效的复习状态: {review_status}，可选值: {VALID_REVIEW_STATUSES}")
 
-    question = db.query(Question).filter(Question.id == question_id).first()
+    query = db.query(Question).filter(Question.id == question_id)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    question = query.first()
     if not question:
         return None
 

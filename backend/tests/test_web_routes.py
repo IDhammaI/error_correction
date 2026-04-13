@@ -18,13 +18,16 @@ from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base
+from db.models import Base, User
 from db import crud
+
+# 测试用户 ID，与 client fixture 中的 session['user_id'] 一致
+TEST_USER_ID = 1
 
 
 @pytest.fixture
 def test_db():
-    """内存数据库 + 建表"""
+    """内存数据库 + 建表 + 创建测试用户"""
     engine = create_engine("sqlite:///:memory:", echo=False)
 
     @event.listens_for(engine, "connect")
@@ -36,6 +39,10 @@ def test_db():
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
     session = Session()
+    # 创建测试用户（与 client session 中的 user_id 匹配）
+    user = User(id=TEST_USER_ID, username="test", email="test@test.com", password_hash="x")
+    session.add(user)
+    session.commit()
     yield session
     session.close()
 
@@ -65,8 +72,9 @@ def client(test_db):
         app.config["TESTING"] = True
         with app.test_client() as c:
             with c.session_transaction() as sess:
-                sess['user_id'] = 1
+                sess['user_id'] = TEST_USER_ID
                 sess['username'] = 'test'
+                sess['session_version'] = 0
             yield c
 
 
@@ -185,7 +193,7 @@ class TestDeleteQuestionRoute:
         save_questions_to_db(test_db, qs, {
             "original_filename": "test.pdf",
             "subject": "数学",
-        })
+        }, user_id=TEST_USER_ID)
 
         # 查询刚插入的题目 ID
         from db.models import Question
@@ -239,7 +247,7 @@ class TestErrorBankRoute:
         save_questions_to_db(test_db, qs, {
             "original_filename": "test.pdf",
             "subject": "数学",
-        })
+        }, user_id=TEST_USER_ID)
         resp = client.get("/api/error-bank")
         data = resp.get_json()
         assert data["total"] == 1
@@ -269,7 +277,7 @@ class TestSubjectsRoute:
             "question_type": "选择题",
             "content_blocks": [{"block_type": "text", "content": "t"}],
             "has_formula": False, "has_image": False,
-        }], {"original_filename": "a.pdf", "subject": "高中数学"})
+        }], {"original_filename": "a.pdf", "subject": "高中数学"}, user_id=TEST_USER_ID)
         resp = client.get("/api/subjects")
         assert "高中数学" in resp.get_json()["subjects"]
 
@@ -309,7 +317,7 @@ class TestUpdateAnswerRoute:
             "question_type": "选择题",
             "content_blocks": [{"block_type": "text", "content": "答案测试"}],
             "has_formula": False, "has_image": False,
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         from db.models import Question
         q = test_db.query(Question).first()
         resp = client.patch(f"/api/question/{q.id}/answer", json={"user_answer": "选B"})
@@ -351,7 +359,7 @@ class TestUpdateReviewStatusRoute:
             "question_type": "选择题",
             "content_blocks": [{"block_type": "text", "content": "状态测试"}],
             "has_formula": False, "has_image": False,
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         from db.models import Question
         q = test_db.query(Question).first()
         resp = client.patch(f"/api/question/{q.id}/review-status", json={"review_status": "无效"})
@@ -368,7 +376,7 @@ class TestUpdateReviewStatusRoute:
             "question_type": "选择题",
             "content_blocks": [{"block_type": "text", "content": "复习状态测试"}],
             "has_formula": False, "has_image": False,
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         from db.models import Question
         q = test_db.query(Question).first()
         resp = client.patch(f"/api/question/{q.id}/review-status", json={"review_status": "已掌握"})
@@ -405,7 +413,7 @@ class TestDashboardStatsRoute:
             "content_blocks": [{"block_type": "text", "content": "统计测试"}],
             "has_formula": False, "has_image": False,
             "knowledge_tags": ["导数"],
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         resp = client.get("/api/dashboard-stats")
         data = resp.get_json()
         assert data["total_questions"] == 1
@@ -422,14 +430,14 @@ class TestDashboardStatsRoute:
             "content_blocks": [{"block_type": "text", "content": "数学题"}],
             "has_formula": False, "has_image": False,
             "knowledge_tags": ["函数"],
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         save_questions_to_db(test_db, [{
             "question_id": "2",
             "question_type": "选择题",
             "content_blocks": [{"block_type": "text", "content": "英语题"}],
             "has_formula": False, "has_image": False,
             "knowledge_tags": ["语法"],
-        }], {"original_filename": "b.pdf", "subject": "英语"})
+        }], {"original_filename": "b.pdf", "subject": "英语"}, user_id=TEST_USER_ID)
         resp = client.get("/api/dashboard-stats")
         data = resp.get_json()
         assert data["total_questions"] == 2
@@ -460,7 +468,7 @@ class TestErrorBankReviewStatusFilter:
                 "content_blocks": [{"block_type": "text", "content": "已掌握题"}],
                 "has_formula": False, "has_image": False,
             },
-        ], {"original_filename": "a.pdf", "subject": "数学"})
+        ], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         from db.models import Question
         qs = test_db.query(Question).all()
         update_review_status(test_db, qs[1].id, "已掌握")
@@ -501,7 +509,7 @@ class TestAiAnalysisRoute:
             "content_blocks": [{"block_type": "text", "content": "AI分析测试"}],
             "has_formula": False, "has_image": False,
             "knowledge_tags": ["导数"],
-        }], {"original_filename": "a.pdf", "subject": "数学"})
+        }], {"original_filename": "a.pdf", "subject": "数学"}, user_id=TEST_USER_ID)
         from db.models import Question
         q = test_db.query(Question).first()
         resp = client.post("/api/ai-analysis", json={"question_ids": [q.id]})

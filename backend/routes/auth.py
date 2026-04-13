@@ -83,6 +83,7 @@ def auth_register():
 
     session["user_id"] = user_id
     session["username"] = username_out
+    session["is_admin"] = bool(is_admin_out)
     session["session_version"] = session_version_out
     return jsonify(
         {
@@ -239,6 +240,7 @@ def auth_login():
             return jsonify({"error": "账号或密码错误"}), 401
         session["user_id"] = user.id
         session["username"] = user.username
+        session["is_admin"] = bool(user.is_admin)
         session["session_version"] = user.session_version or 0
         return jsonify(
             {

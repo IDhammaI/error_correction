@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('notes', __name__)
 
 
+def _effective_user_id():
+    """管理员返回 None（不过滤），普通用户返回 user_id"""
+    if session.get('is_admin'):
+        return None
+    return session.get('user_id')
+
+
 def _allowed_image(filename):
     """检查是否为允许的图片格式"""
     return PurePath(filename).suffix.lower().lstrip('.') in {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
@@ -192,7 +199,7 @@ def get_note(note_id):
     """获取单条笔记详情"""
     try:
         with SessionLocal() as db:
-            note = crud.get_note_by_id(db, note_id)
+            note = crud.get_note_by_id(db, note_id, user_id=_effective_user_id())
             if not note:
                 return jsonify({'success': False, 'error': '笔记不存在'}), 404
             return jsonify({
@@ -217,6 +224,7 @@ def update_note_route(note_id):
                 content_markdown=data.get('content_markdown'),
                 subject=data.get('subject'),
                 knowledge_tags=data.get('knowledge_tags'),
+                user_id=_effective_user_id(),
             )
             if not note:
                 return jsonify({'success': False, 'error': '笔记不存在'}), 404
@@ -234,7 +242,7 @@ def delete_note_route(note_id):
     """删除笔记"""
     try:
         with SessionLocal() as db:
-            if not crud.delete_note(db, note_id):
+            if not crud.delete_note(db, note_id, user_id=_effective_user_id()):
                 return jsonify({'success': False, 'error': '笔记不存在'}), 404
             return jsonify({'success': True})
     except Exception as e:

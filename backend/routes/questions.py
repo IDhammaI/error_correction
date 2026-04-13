@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('questions', __name__)
 
 
+def _effective_user_id():
+    """管理员返回 None（不过滤），普通用户返回 user_id"""
+    if session.get('is_admin'):
+        return None
+    return session.get('user_id')
+
+
 def _serialize_question(q: Question) -> dict:
     """将 Question ORM 对象序列化为前端 JSON 格式"""
     subject = None
@@ -134,7 +141,8 @@ def get_history():
                 start_date=start_date,
                 end_date=end_date,
                 page=page,
-                page_size=page_size
+                page_size=page_size,
+                user_id=_effective_user_id(),
             )
 
             total_pages = (total + page_size - 1) // page_size
@@ -189,7 +197,8 @@ def search_questions():
                 knowledge_tag=knowledge_tag if knowledge_tag else None,
                 question_type=question_type if question_type else None,
                 page=page,
-                page_size=page_size
+                page_size=page_size,
+                user_id=_effective_user_id(),
             )
 
             total_pages = (total + page_size - 1) // page_size
@@ -219,7 +228,7 @@ def delete_question(question_id):
     """
     try:
         with SessionLocal() as db:
-            success = crud.delete_question(db, question_id)
+            success = crud.delete_question(db, question_id, user_id=_effective_user_id())
             if success:
                 return jsonify({
                     'success': True,
@@ -272,7 +281,7 @@ def get_error_bank():
         with SessionLocal() as db:
             questions, total = crud.query_questions(
             db,
-            user_id=session.get('user_id'),
+            user_id=_effective_user_id(),
                 subject=subject,
                 knowledge_tag=knowledge_tag,
                 question_type=question_type,
@@ -308,7 +317,7 @@ def get_subjects():
     """获取所有科目列表"""
     try:
         with SessionLocal() as db:
-            subjects = crud.get_existing_subjects(db, user_id=session.get('user_id'))
+            subjects = crud.get_existing_subjects(db, user_id=_effective_user_id())
             return jsonify({'success': True, 'subjects': subjects})
     except Exception as e:
         logger.exception("获取科目列表失败")
@@ -320,7 +329,7 @@ def get_question_types():
     """获取所有题型列表"""
     try:
         with SessionLocal() as db:
-            types = crud.get_existing_question_types(db, user_id=session.get('user_id'))
+            types = crud.get_existing_question_types(db, user_id=_effective_user_id())
             return jsonify({'success': True, 'question_types': types})
     except Exception as e:
         logger.exception("获取题型列表失败")
@@ -335,6 +344,9 @@ def update_question(question_id):
         with SessionLocal() as db:
             question = db.get(Question, question_id)
             if not question:
+                return jsonify({'success': False, 'error': '题目不存在'}), 404
+            uid = _effective_user_id()
+            if uid is not None and question.user_id != uid:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
             try:
                 if 'content' in data:
@@ -367,7 +379,7 @@ def update_question_answer(question_id):
             return jsonify({'success': False, 'error': '答案内容过长（最多 10000 字符）'}), 400
 
         with SessionLocal() as db:
-            question = crud.update_user_answer(db, question_id, user_answer)
+            question = crud.update_user_answer(db, question_id, user_answer, user_id=_effective_user_id())
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
@@ -393,7 +405,7 @@ def update_question_review_status(question_id):
             return jsonify({'success': False, 'error': '缺少 review_status 字段'}), 400
 
         with SessionLocal() as db:
-            question = crud.update_review_status(db, question_id, review_status)
+            question = crud.update_review_status(db, question_id, review_status, user_id=_effective_user_id())
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
@@ -454,12 +466,14 @@ def save_to_db():
         # 读取科目信息
         subject = _read_split_subject()
 
-        from core.state import session_lock, session_files, session_file_order
+        from core.state import session_lock, get_user_session
+        uid = session.get('user_id')
         with session_lock:
+            us = get_user_session(uid)
             batch_info = {
                 "original_filename": ", ".join(
-                    session_files.get(k, {}).get("filename", "未知")
-                    for k in session_file_order
+                    us["session_files"].get(k, {}).get("filename", "未知")
+                    for k in us["session_file_order"]
                 ),
                 "subject": subject,
                 "file_path": "",
@@ -529,7 +543,7 @@ def ai_analysis():
             return jsonify({'success': False, 'error': '单次最多分析 20 道题目'}), 400
 
         with SessionLocal() as db:
-            questions = crud.get_questions_by_ids(db, question_ids)
+            questions = crud.get_questions_by_ids(db, question_ids, user_id=_effective_user_id())
             if not questions:
                 return jsonify({'success': False, 'error': '未找到对应题目'}), 404
 
@@ -585,7 +599,7 @@ def export_from_db():
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
         with SessionLocal() as db:
-            questions_orm = crud.get_questions_by_ids(db, selected_ids)
+            questions_orm = crud.get_questions_by_ids(db, selected_ids, user_id=_effective_user_id())
             if not questions_orm:
                 return jsonify({'success': False, 'error': '未找到对应题目'}), 404
 
@@ -630,7 +644,7 @@ def save_question_answer(question_id):
             return jsonify({'success': False, 'error': '答案内容过长（最多 50000 字符）'}), 400
 
         with SessionLocal() as db:
-            question = crud.update_question_answer(db, question_id, answer)
+            question = crud.update_question_answer(db, question_id, answer, user_id=_effective_user_id())
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 

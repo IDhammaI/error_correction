@@ -106,11 +106,14 @@ def get_notes(
     return notes, total
 
 
-def get_note_by_id(db: Session, note_id: int) -> Optional[Note]:
+def get_note_by_id(db: Session, note_id: int, user_id=None) -> Optional[Note]:
     """根据 ID 获取单条笔记"""
-    return db.query(Note).options(
+    query = db.query(Note).options(
         selectinload(Note.tags).selectinload(NoteTagMapping.tag),
-    ).filter(Note.id == note_id).first()
+    ).filter(Note.id == note_id)
+    if user_id is not None:
+        query = query.filter(Note.user_id == user_id)
+    return query.first()
 
 
 def update_note(
@@ -120,6 +123,7 @@ def update_note(
     content_markdown: str = None,
     subject: str = None,
     knowledge_tags: List[str] = None,
+    user_id=None,
 ) -> Optional[Note]:
     """更新笔记内容
 
@@ -133,7 +137,10 @@ def update_note(
     Returns:
         更新后的 Note 对象，不存在返回 None
     """
-    note = db.query(Note).filter(Note.id == note_id).first()
+    query = db.query(Note).filter(Note.id == note_id)
+    if user_id is not None:
+        query = query.filter(Note.user_id == user_id)
+    note = query.first()
     if not note:
         return None
 
@@ -160,9 +167,12 @@ def update_note(
     return note
 
 
-def delete_note(db: Session, note_id: int) -> bool:
+def delete_note(db: Session, note_id: int, user_id=None) -> bool:
     """删除笔记（级联删除标签关联）"""
-    note = db.query(Note).filter(Note.id == note_id).first()
+    query = db.query(Note).filter(Note.id == note_id)
+    if user_id is not None:
+        query = query.filter(Note.user_id == user_id)
+    note = query.first()
     if not note:
         return False
     db.delete(note)

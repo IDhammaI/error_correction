@@ -10,10 +10,8 @@ from flask import Blueprint, request, jsonify, session
 import core.state as state
 from core.state import (
     workflow_graph,
-    session_files,
-    session_file_order,
-    cancelled_file_keys,
     session_lock,
+    get_user_session,
 )
 from db import SessionLocal
 from db import crud
@@ -117,6 +115,7 @@ def upload_file():
             return jsonify({'error': '没有上传文件'}), 400
 
         results_out = []
+        uid = session.get('user_id')
         for fk, file in prepared:
             file_key = fk or f"{uuid.uuid4().hex}"
 
@@ -126,9 +125,10 @@ def upload_file():
             file.save(filepath)
 
             with session_lock:
-                cancelled = file_key in cancelled_file_keys
+                us = get_user_session(uid)
+                cancelled = file_key in us["cancelled_file_keys"]
                 if cancelled:
-                    cancelled_file_keys.discard(file_key)
+                    us["cancelled_file_keys"].discard(file_key)
 
             if cancelled:
                 try:
@@ -138,17 +138,18 @@ def upload_file():
                 continue
 
             with session_lock:
-                if state.current_thread_id is not None:
-                    state.current_thread_id = None
-                    state.session_files.clear()
-                    state.session_file_order.clear()
+                us = get_user_session(uid)
+                if us["current_thread_id"] is not None:
+                    us["current_thread_id"] = None
+                    us["session_files"].clear()
+                    us["session_file_order"].clear()
 
-                session_files[file_key] = {
+                us["session_files"][file_key] = {
                     "filename": file.filename,
                     "filepath": filepath,
                 }
-                if file_key not in session_file_order:
-                    session_file_order.append(file_key)
+                if file_key not in us["session_file_order"]:
+                    us["session_file_order"].append(file_key)
 
             results_out.append({
                 "file_key": file_key,
@@ -188,24 +189,28 @@ def cancel_file():
                 'error': '缺少 file_key'
             }), 400
 
-        if state.current_thread_id is not None:
-            return jsonify({
-                'success': False,
-                'error': '已开始分割，无法撤销单个文件；请重置后重新上传'
-            }), 400
+        uid = session.get('user_id')
+        with session_lock:
+            us = get_user_session(uid)
+            if us["current_thread_id"] is not None:
+                return jsonify({
+                    'success': False,
+                    'error': '已开始分割，无法撤销单个文件；请重置后重新上传'
+                }), 400
 
         filepath = None
         existed = False
         with session_lock:
-            cancelled_file_keys.add(file_key)
+            us = get_user_session(uid)
+            us["cancelled_file_keys"].add(file_key)
 
-            existed = file_key in session_files
-            v = session_files.pop(file_key, None) or {}
+            existed = file_key in us["session_files"]
+            v = us["session_files"].pop(file_key, None) or {}
             filepath = v.get('filepath')
-            if file_key in session_file_order:
-                session_file_order.remove(file_key)
+            if file_key in us["session_file_order"]:
+                us["session_file_order"].remove(file_key)
 
-            cancelled_file_keys.discard(file_key)
+            us["cancelled_file_keys"].discard(file_key)
 
         if filepath:
             try:
@@ -233,11 +238,13 @@ def run_erase():
     擦除后的文件路径保存在会话状态中，供后续 /api/ocr 使用。
     """
     try:
+        uid = session.get('user_id')
         with session_lock:
-            keys = list(session_file_order)
+            us = get_user_session(uid)
+            keys = list(us["session_file_order"])
             file_paths = []
             for k in keys:
-                v = session_files.get(k) or {}
+                v = us["session_files"].get(k) or {}
                 fp = v.get('filepath')
                 if fp:
                     file_paths.append(fp)
@@ -263,7 +270,8 @@ def run_erase():
 
         # 保存擦除后的路径到会话，供 /api/ocr 复用
         with session_lock:
-            state.erased_file_paths = erased_paths
+            us = get_user_session(uid)
+            us["erased_file_paths"] = erased_paths
 
         preview = []
         for i, (orig, erased) in enumerate(zip(file_paths, erased_paths)):
@@ -312,16 +320,18 @@ def run_ocr():
         # 优先使用擦除后的路径
         file_paths = None
         with session_lock:
-            if hasattr(state, 'erased_file_paths') and state.erased_file_paths:
-                file_paths = list(state.erased_file_paths)
-                state.erased_file_paths = None  # 用完即清
+            us = get_user_session(user_id)
+            if us["erased_file_paths"]:
+                file_paths = list(us["erased_file_paths"])
+                us["erased_file_paths"] = None  # 用完即清
 
         if not file_paths:
             with session_lock:
-                keys = list(session_file_order)
+                us = get_user_session(user_id)
+                keys = list(us["session_file_order"])
                 file_paths = []
                 for k in keys:
-                    v = session_files.get(k) or {}
+                    v = us["session_files"].get(k) or {}
                     fp = v.get('filepath')
                     if fp:
                         file_paths.append(fp)
@@ -467,10 +477,11 @@ def split_questions():
                     }
 
         with session_lock:
-            keys = list(session_file_order)
+            us = get_user_session(user_id)
+            keys = list(us["session_file_order"])
             file_paths = []
             for k in keys:
-                v = session_files.get(k) or {}
+                v = us["session_files"].get(k) or {}
                 fp = v.get('filepath')
                 if fp:
                     file_paths.append(fp)
@@ -481,8 +492,11 @@ def split_questions():
                 'error': '请先上传文件'
             }), 400
 
-        state.current_thread_id = str(uuid.uuid4())
-        config = {"configurable": {"thread_id": state.current_thread_id}}
+        with session_lock:
+            us = get_user_session(user_id)
+            us["current_thread_id"] = str(uuid.uuid4())
+            thread_id = us["current_thread_id"]
+        config = {"configurable": {"thread_id": thread_id}}
 
         initial_state = {
             "file_paths": file_paths,
@@ -501,13 +515,14 @@ def split_questions():
             subject = _read_split_subject()
 
             with session_lock:
+                us = get_user_session(user_id)
                 file_names = [
-                    session_files.get(k, {}).get("filename", "未知")
-                    for k in session_file_order
+                    us["session_files"].get(k, {}).get("filename", "未知")
+                    for k in us["session_file_order"]
                 ]
 
             with SessionLocal() as db:
-                crud.save_split_record(db, subject, model_provider, file_names, questions, user_id=session.get('user_id'))
+                crud.save_split_record(db, subject, model_provider, file_names, questions, user_id=user_id)
         except Exception:
             logger.warning("保存分割记录失败，不影响主流程", exc_info=True)
 
@@ -549,7 +564,8 @@ def get_split_record_detail(record_id):
     """获取单条分割记录的完整数据（含 questions）"""
     try:
         with SessionLocal() as db:
-            record = crud.get_split_record_by_id(db, record_id)
+            uid = None if session.get('is_admin') else session.get('user_id')
+            record = crud.get_split_record_by_id(db, record_id, user_id=uid)
             if not record:
                 return jsonify({"success": False, "error": "记录不存在"}), 404
 

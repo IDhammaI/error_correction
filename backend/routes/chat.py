@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('chat', __name__)
 
 
+def _effective_user_id():
+    """管理员返回 None（不过滤），普通用户返回 user_id"""
+    if session.get('is_admin'):
+        return None
+    return session.get('user_id')
+
+
 def _serialize_chat_session(s) -> dict:
     """将 ChatSession ORM 对象序列化为前端 JSON"""
     return {
@@ -57,7 +64,7 @@ def get_question_chats(question_id):
     """获取某道题目的所有对话会话"""
     try:
         with SessionLocal() as db:
-            sessions = crud.get_chat_sessions_by_question(db, question_id)
+            sessions = crud.get_chat_sessions_by_question(db, question_id, user_id=_effective_user_id())
             return jsonify({
                 'success': True,
                 'sessions': [_serialize_chat_session(s) for s in sessions],
@@ -78,7 +85,11 @@ def create_chat():
 
         if question_id:
             with SessionLocal() as db:
-                question = db.query(Question).filter(Question.id == question_id).first()
+                uid = _effective_user_id()
+                q_query = db.query(Question).filter(Question.id == question_id)
+                if uid is not None:
+                    q_query = q_query.filter(Question.user_id == uid)
+                question = q_query.first()
                 if not question:
                     return jsonify({'success': False, 'error': '题目不存在'}), 404
                 chat_session = crud.create_chat_session(db, question_id=question_id, user_id=user_id, title=title)
@@ -124,7 +135,7 @@ def update_chat_title(session_id):
             return jsonify({'success': False, 'error': '标题不能为空'}), 400
 
         with SessionLocal() as db:
-            s = crud.update_chat_session_title(db, session_id, title)
+            s = crud.update_chat_session_title(db, session_id, title, user_id=_effective_user_id())
             if not s:
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
             return jsonify({'success': True, 'session': _serialize_chat_session(s)})
@@ -138,7 +149,7 @@ def delete_chat(session_id):
     """删除对话"""
     try:
         with SessionLocal() as db:
-            if not crud.delete_chat_session(db, session_id):
+            if not crud.delete_chat_session(db, session_id, user_id=_effective_user_id()):
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
             return jsonify({'success': True})
     except Exception as e:
@@ -154,7 +165,7 @@ def get_chat_sessions():
         page_size = min(100, max(1, request.args.get('page_size', 20, type=int)))
 
         with SessionLocal() as db:
-            sessions, total = crud.get_all_chat_sessions(db, page=page, page_size=page_size)
+            sessions, total = crud.get_all_chat_sessions(db, page=page, page_size=page_size, user_id=_effective_user_id())
             total_pages = (total + page_size - 1) // page_size
 
             return jsonify({
@@ -178,7 +189,7 @@ def get_chat_messages(session_id):
         before_id = request.args.get('before_id', type=int)
 
         with SessionLocal() as db:
-            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id)
+            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id, user_id=_effective_user_id())
             return jsonify({
                 'success': True,
                 'messages': result['messages'],
@@ -219,13 +230,17 @@ def stream_chat(session_id):
             settings.load_providers_from_db(user_id)
 
         with SessionLocal() as db:
-            chat_session = db.query(ChatSessionModel).options(
+            uid = _effective_user_id()
+            cs_query = db.query(ChatSessionModel).options(
                 selectinload(ChatSessionModel.question)
                 .selectinload(Question.batch),
                 selectinload(ChatSessionModel.question)
                 .selectinload(Question.tags)
                 .selectinload(QuestionTagMapping.tag),
-            ).filter(ChatSessionModel.id == session_id).first()
+            ).filter(ChatSessionModel.id == session_id)
+            if uid is not None:
+                cs_query = cs_query.filter(ChatSessionModel.user_id == uid)
+            chat_session = cs_query.first()
             if not chat_session:
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
 
