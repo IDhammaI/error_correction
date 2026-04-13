@@ -11,7 +11,7 @@ let resolveEnter = null
 export function usePageTransition() {
   /**
    * 显示遮罩
-   * 返回一个 Promise，该 Promise 将在 AppLoading 组件触发 @after-enter 后 resolve
+   * 返回一个 Promise，该 Promise 将在 BaseLoading 组件触发 @after-enter 后 resolve
    */
   const show = () => {
     if (hideTimer) {
@@ -38,7 +38,7 @@ export function usePageTransition() {
   }
 
   /**
-   * 遮罩淡入动画完成后的回调，由 App.vue 监听 AppLoading 事件后调用
+   * 遮罩淡入动画完成后的回调，由 App.vue 监听 BaseLoading 事件后调用
    */
   const notifyEnterCompleted = () => {
     if (resolveEnter) {

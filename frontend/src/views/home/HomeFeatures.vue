@@ -89,7 +89,7 @@ const FEATURES = [
           <!-- 卡片主体背景层 — brand-btn 风格白玻璃 -->
           <div class="relative h-full w-full rounded-[19px] p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-top-color: rgba(255,255,255,0.15); border-bottom-color: rgba(255,255,255,0.03);">
 
-            <!-- 图标容器（BrandLogo 风格） -->
+            <!-- 图标容器（BaseLogo 风格） -->
             <div class="feature-icon relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
               <span class="feature-icon__grid absolute inset-0 pointer-events-none"></span>
               <component :is="f.icon" class="relative h-5 w-5 text-white" />

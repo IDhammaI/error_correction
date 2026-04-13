@@ -1,16 +1,24 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import * as api from '@/api.js'
 import { renderMarkdown, typesetMath } from '@/utils.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import { useToast } from '@/composables/useToast.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useAuth } from '@/composables/useAuth.js'
+import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 
-const props = defineProps({
-  visible: Boolean,
-  sessionId: { type: Number, default: null },
-  modelProvider: { type: String, default: 'openai' },
-  modelName: { type: String, default: '' },
-  username: { type: String, default: '' },
-})
-const emit = defineEmits(['push-toast', 'create-chat', 'session-title-updated'])
+const { pushToast } = useToast()
+const { selectedProvider, selectedModel } = useSystemStatus()
+const { currentUser } = useAuth()
+const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
+const { currentView } = useWorkspaceNav()
+
+const sessionId = computed(() => activeAiChatId.value)
+const modelProvider = computed(() => selectedProvider.value)
+const modelName = computed(() => selectedModel.value)
+const username = computed(() => currentUser.value?.username || '')
 
 // ---- 对话消息 ----
 const messages = ref([])
@@ -19,21 +27,21 @@ const streaming = ref(false)
 const messagesContainer = ref(null)
 const deepThink = ref(false)
 
-watch(() => props.sessionId, (id) => {
+watch(sessionId, (id) => {
   if (id) loadMessages()
   else messages.value = []
 }, { immediate: true })
 
 async function loadMessages() {
-  if (!props.sessionId) return
+  if (!sessionId.value) return
   try {
-    const result = await api.fetchMessages(props.sessionId, { limit: 50 })
+    const result = await api.fetchMessages(sessionId.value, { limit: 50 })
     messages.value = result.messages || []
     await nextTick()
     scrollToBottom()
     if (messagesContainer.value) typesetMath(messagesContainer.value)
   } catch (e) {
-    emit('push-toast', 'error', e.message)
+    pushToast('error', e.message)
   }
 }
 
@@ -45,7 +53,7 @@ function scrollToBottom() {
 
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text || !props.sessionId || streaming.value) return
+  if (!text || !sessionId.value || streaming.value) return
 
   inputText.value = ''
   // 消息结构：{ role, content, reasoning?, reasoningOpen? }
@@ -61,11 +69,11 @@ async function sendMessage() {
 
   try {
     const resp = await api.streamChat(
-      props.sessionId,
+      sessionId.value,
       text,
-      props.modelProvider,
+      modelProvider.value,
       null,
-      props.modelName,
+      modelName.value,
       { deepThink: useDeepThink },
     )
 
@@ -103,7 +111,7 @@ async function sendMessage() {
           }
           if (payload.done) {
             const firstMsg = text.slice(0, 20) + (text.length > 20 ? '...' : '')
-            emit('session-title-updated', props.sessionId, firstMsg)
+            onAiChatTitleUpdated(sessionId.value, firstMsg)
           }
           if (payload.error) {
             lastMsg().content += `\n\n⚠️ ${payload.error}`
@@ -141,6 +149,7 @@ function autoResize() {
 </script>
 
 <template>
+  <ContentPanel title="AI 对话">
   <div class="flex flex-col h-full">
     <!-- 消息区域（含空状态） -->
     <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
@@ -257,7 +266,7 @@ function autoResize() {
                 <i class="fa-solid fa-plus text-sm"></i>
               </button>
               <button
-                @click="sessionId ? sendMessage() : emit('create-chat')"
+                @click="sessionId ? sendMessage() : createAiChat(currentView)"
                 :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                 class="h-8 w-8 rounded-full flex items-center justify-center transition-all"
                 :class="inputText.trim() && sessionId
@@ -273,4 +282,5 @@ function autoResize() {
       </div>
     </div>
   </div>
+  </ContentPanel>
 </template>

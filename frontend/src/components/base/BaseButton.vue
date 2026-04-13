@@ -1,7 +1,7 @@
 <script setup>
 /**
- * HomeButton.vue
- * 落地页按钮（primary/secondary/cta 变体）
+ * BaseButton.vue
+ * 品牌按钮（primary/secondary/cta 变体）
  */
 import { computed } from 'vue'
 

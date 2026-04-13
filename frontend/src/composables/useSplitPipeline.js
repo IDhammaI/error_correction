@@ -165,7 +165,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
         .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
       const data = await api.saveToDb(Array.from(selectedIds), answers)
       pushToast('success', data.message || '已导入错题库')
-      errorBankRef.value?.refresh()
+      errorBankRef?.value?.refresh()
     } catch (e) {
       pushToast('error', '导入失败: ' + (e instanceof Error ? e.message : String(e)))
     }

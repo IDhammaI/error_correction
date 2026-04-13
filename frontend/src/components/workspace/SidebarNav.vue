@@ -3,7 +3,7 @@
  * SidebarNav.vue
  * 工作台左侧边栏导航（PC 端）+ 底部 Tab 导航（移动端）
  */
-import BrandLogo from '@/components/base/BrandLogo.vue'
+import BaseLogo from '@/components/base/BaseLogo.vue'
 
 const props = defineProps({
   currentView: { type: String, required: true },
@@ -58,7 +58,7 @@ const toggleGroup = (gi) => {
       <!-- Logo 标题区 -->
       <div class="flex h-20 items-center justify-between px-4 py-6">
         <button @click="emit('navigate-home')" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回首页">
-          <BrandLogo size="sm" />
+          <BaseLogo size="sm" />
           <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
         </button>
         <div class="flex items-center gap-1">

@@ -1,16 +1,18 @@
 <script setup>
-import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as api from '@/api.js'
-import CustomSelect from '@/components/base/CustomSelect.vue'
-import GlassCard from '@/components/base/GlassCard.vue'
+import { useTheme } from '@/composables/useTheme.js'
+import { useToast } from '@/composables/useToast.js'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
+import BaseCard from '@/components/base/BaseCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 
-const props = defineProps({
-  theme: { type: String, default: 'light' },
-  visible: { type: Boolean, default: false },
-})
-
-const emit = defineEmits(['go-workspace', 'push-toast'])
+const { isDark } = useTheme()
+const { pushToast } = useToast()
+const { currentView } = useWorkspaceNav()
+const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 // ---- 统计数据 ----
 const stats = ref(null)
@@ -39,7 +41,7 @@ const loadStats = async () => {
     const data = await api.fetchDashboardStats(selectedSubject.value || undefined)
     stats.value = data
   } catch (e) {
-    emit('push-toast', 'error', '加载统计数据失败')
+    pushToast('error', '加载统计数据失败')
   } finally {
     statsLoading.value = false
   }
@@ -52,9 +54,9 @@ watch(selectedSubject, () => { loadStats() })
 const initCharts = async () => {
   await nextTick()
   if (!window.Chart || !stats.value) return
-  const isDark = props.theme === 'dark'
-  const textColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.8)'
-  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'
+  const dark = isDark.value
+  const textColor = dark ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.8)'
+  const gridColor = dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'
 
   initTrendChart(isDark, textColor, gridColor)
   initBarChart(isDark, textColor, gridColor)
@@ -172,9 +174,9 @@ const heatmapMax = computed(() => {
 })
 
 const heatmapCellColor = (val) => {
-  if (!val) return props.theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.03)'
+  if (!val) return theme.value === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.03)'
   const ratio = val / heatmapMax.value
-  if (props.theme === 'dark') {
+  if (theme.value === 'dark') {
     const alpha = 0.15 + ratio * 0.7
     return `rgba(99, 102, 241, ${alpha})`
   }
@@ -183,12 +185,10 @@ const heatmapCellColor = (val) => {
 }
 
 // ---- 生命周期 ----
-watch(() => props.visible, (v) => {
-  if (v) loadStats()
-}, { immediate: true })
+onMounted(() => loadStats())
 
-watch(() => [props.theme, stats.value], () => {
-  if (props.visible && stats.value) nextTick(initCharts)
+watch(() => [isDark.value, stats.value], () => {
+  if (stats.value) nextTick(initCharts)
 })
 
 onBeforeUnmount(() => {
@@ -199,12 +199,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ContentPanel title="数据面板">
+    <template #toolbar>
+      <BaseSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+      <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
+        <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
+      </button>
+    </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 学科筛选（Teleport 到 ContentPanel header） -->
-      <Teleport v-if="subjects.length" to="#panel-toolbar-数据面板">
-        <CustomSelect v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-      </Teleport>
 
       <!-- 骨架屏（加载中） -->
       <template v-if="statsLoading">
@@ -221,7 +224,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
-        <!-- 图表骨架：精确复刻 GlassCard + 标题行 + canvas 区域 -->
+        <!-- 图表骨架：精确复刻 BaseCard + 标题行 + canvas 区域 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div v-for="i in 2" :key="i"
             class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
@@ -262,31 +265,31 @@ onBeforeUnmount(() => {
 
         <!-- 图表区第一行：趋势 + 条形图 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <GlassCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-chart-line text-blue-500"></i> 最近 30 天趋势
             </h3>
             <div class="relative h-[240px] w-full"><canvas ref="trendCanvas"></canvas></div>
-          </GlassCard>
-          <GlassCard>
+          </BaseCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-ranking-star text-indigo-500"></i> Top 10 易错知识点
             </h3>
             <div v-if="stats?.tag_stats?.length" class="relative h-[240px] w-full"><canvas ref="barCanvas"></canvas></div>
             <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无标签数据</div>
-          </GlassCard>
+          </BaseCard>
         </div>
 
         <!-- 图表区第二行：堆叠柱状图 + 热力图 -->
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <GlassCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-chart-bar text-emerald-500"></i> 知识点掌握状态
             </h3>
             <div v-if="stats?.tag_status_stats?.length" class="relative h-[360px] w-full"><canvas ref="stackedCanvas"></canvas></div>
             <div v-else class="flex h-[360px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
-          </GlassCard>
-          <GlassCard>
+          </BaseCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-fire text-rose-500"></i> 知识点 × 题型分布
             </h3>
@@ -313,11 +316,12 @@ onBeforeUnmount(() => {
               </table>
             </div>
             <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无题型交叉数据</div>
-          </GlassCard>
+          </BaseCard>
         </div>
       </template>
     </div>
   </div>
+  </ContentPanel>
 </template>
 
 <style scoped>

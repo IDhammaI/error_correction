@@ -25,14 +25,14 @@ const routes = [
     redirect: '/auth/login',
     meta: { layout: 'auth' },
     children: [
-      { path: 'login',    component: () => import('@/views/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
+      { path: 'login',    component: () => import('@/views/auth/LoginView.vue'), meta: { order: 0, layout: 'auth' } },
       { path: 'register', component: () => import('@/views/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
     ],
   },
   // 工作台（需要登录，:view 参数决定子视图）
   {
     path: '/app/:view?/:subview?',
-    component: () => import('@/views/WorkspaceView.vue'),
+    component: () => import('@/views/app/AppLayout.vue'),
     meta: { requiresAuth: true, layout: 'app' },
   },
   // 兜底：未匹配路径重定向到工作台

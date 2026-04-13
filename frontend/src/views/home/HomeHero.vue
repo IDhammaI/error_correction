@@ -5,8 +5,8 @@
  */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
-import HomeButton from './HomeButton.vue'
-import HomePill from './HomePill.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
+import HomePill from '@/components/home/HomePill.vue'
 
 const emit = defineEmits(['scrollToSection'])
 
@@ -159,14 +159,14 @@ onUnmounted(() => {
         </p>
 
         <div class="flex gap-3 justify-center">
-          <HomeButton to="/auth">
+          <BaseButton to="/auth">
             <UploadCloud class="w-4 h-4" />
             开始使用
-          </HomeButton>
-          <HomeButton variant="secondary" href="#demo">
+          </BaseButton>
+          <BaseButton variant="secondary" href="#demo">
             查看演示
             <ArrowRight class="w-4 h-4" />
-          </HomeButton>
+          </BaseButton>
         </div>
       </div>
     </section>

@@ -3,7 +3,7 @@
  * SplitLoading.vue
  * 分割加载动画
  */
-import BrandLogo from '@/components/base/BrandLogo.vue'
+import BaseLogo from '@/components/base/BaseLogo.vue'
 
 defineProps({
   title: { type: String, default: 'AI 正在深度解析' },
@@ -27,7 +27,7 @@ defineProps({
 
           <!-- 核心图标 -->
           <div class="core-icon">
-            <BrandLogo size="lg" />
+            <BaseLogo size="lg" />
             <!-- 核心脉冲 -->
             <div class="core-pulse"></div>
           </div>

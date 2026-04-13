@@ -3,9 +3,10 @@
  * ProviderDialog.vue
  * API Provider 配置弹窗
  */
-import { ref, computed, watch, inject } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useToast } from '@/composables/useToast.js'
 
-const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] ${msg}`) })
+const { pushToast } = useToast()
 
 const props = defineProps({
   open: { type: Boolean, default: false },

@@ -1,21 +1,25 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch, inject } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { fetchMessages, streamChat } from '@/api.js'
 import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils.js'
+import { useToast } from '@/composables/useToast.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useAuth } from '@/composables/useAuth.js'
+import { useChatSession } from '@/composables/useChatSession.js'
+import ContentPanel from '@/components/workspace/ContentPanel.vue'
 
 const PAGE_SIZE = 30
 
-const props = defineProps({
-  sessionId: { type: Number, default: null },
-  question: { type: Object, default: null },
-  modelProvider: { type: String, default: 'openai' },
-  modelName: { type: String, default: '' },
-  username: { type: String, default: '' },
-})
+const { pushToast } = useToast()
+const { selectedProvider, selectedModel } = useSystemStatus()
+const { currentUser } = useAuth()
+const { chatSessionId, chatQuestion, backToErrorBank } = useChatSession()
 
-const emit = defineEmits(['back'])
-
-const pushToast = inject('pushToast', (type, msg) => { console.warn(`[${type}] ${msg}`) })
+const sessionId = computed(() => chatSessionId.value)
+const question = computed(() => chatQuestion.value)
+const modelProvider = computed(() => selectedProvider.value)
+const modelName = computed(() => selectedModel.value)
+const username = computed(() => currentUser.value?.username || '')
 
 const toMsg = (m) => ({ id: m.id, role: m.role, content: m.content })
 
@@ -27,7 +31,7 @@ const snippetEl = ref(null)
 const hasMore = ref(false)
 const loadingMore = ref(false)
 
-const snippet = computed(() => getQuestionSnippet(props.question, 0, '未知题目'))
+const snippet = computed(() => getQuestionSnippet(question.value, 0, '未知题目'))
 
 let abortCtrl = null
 let scrollRafId = null
@@ -46,9 +50,9 @@ const scrollToBottom = async () => {
 }
 
 const loadHistory = async () => {
-  if (!props.sessionId) return
+  if (!sessionId.value) return
   try {
-    const data = await fetchMessages(props.sessionId, { limit: PAGE_SIZE })
+    const data = await fetchMessages(sessionId.value, { limit: PAGE_SIZE })
     messages.value = data.messages.map(toMsg)
     hasMore.value = data.hasMore
     scrollToBottom()
@@ -60,7 +64,7 @@ const loadHistory = async () => {
 }
 
 const loadOlder = async () => {
-  if (!hasMore.value || loadingMore.value || !props.sessionId) return
+  if (!hasMore.value || loadingMore.value || !sessionId.value) return
   const firstMsg = messages.value[0]
   if (!firstMsg || !firstMsg.id) return
 
@@ -70,7 +74,7 @@ const loadOlder = async () => {
     const el = listEl.value
     const prevHeight = el ? el.scrollHeight : 0
 
-    const data = await fetchMessages(props.sessionId, {
+    const data = await fetchMessages(sessionId.value, {
       limit: PAGE_SIZE,
       beforeId: firstMsg.id,
     })
@@ -104,7 +108,7 @@ const onScroll = () => {
 
 const sendMessage = async () => {
   const text = inputText.value.trim()
-  if (!text || streaming.value || !props.sessionId) return
+  if (!text || streaming.value || !sessionId.value) return
 
   inputText.value = ''
   messages.value.push({ role: 'user', content: text })
@@ -114,7 +118,7 @@ const sendMessage = async () => {
 
   abortCtrl = new AbortController()
   try {
-    const resp = await streamChat(props.sessionId, text, props.modelProvider, abortCtrl.signal, props.modelName)
+    const resp = await streamChat(sessionId.value, text, modelProvider.value, abortCtrl.signal, modelName.value)
     if (!resp.ok) {
       const err = await resp.json().catch(() => null)
       throw new Error((err && err.error) || `HTTP ${resp.status}`)
@@ -170,7 +174,7 @@ onMounted(async () => {
   await nextTick()
   typesetMath(snippetEl.value)
 })
-watch(() => props.sessionId, () => {
+watch(sessionId, () => {
   abortCtrl?.abort()
   mdCache.clear()
   loadHistory()
@@ -187,13 +191,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ContentPanel title="AI 辅导">
   <div class="flex h-full flex-col">
     <!-- 顶栏 -->
     <div
       class="flex shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/70 px-5 py-4 dark:border-white/10 dark:bg-[#0A0A0F]/60"
     >
       <button
-        @click="emit('back')"
+        @click="backToErrorBank()"
         class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
       >
         <i class="fa-solid fa-arrow-left"></i>
@@ -327,4 +332,5 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+  </ContentPanel>
 </template>

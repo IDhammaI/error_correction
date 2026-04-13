@@ -3,7 +3,8 @@
  * StatusBar.vue
  * 状态栏（引擎状态 + 模型选择）
  */
-import { computed, ref, watch, inject } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useToast } from '@/composables/useToast.js'
 import {
   Listbox,
   ListboxButton,
@@ -37,7 +38,7 @@ const hideTooltip = () => {
 }
 
 const emit = defineEmits(['update:selectedModel'])
-const pushToast = inject('pushToast')
+const { pushToast } = useToast()
 
 const props = defineProps({
   statusLoading: { type: Boolean, default: true },
