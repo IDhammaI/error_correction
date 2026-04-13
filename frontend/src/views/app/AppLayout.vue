@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
 /* 视图切换淡入淡出 */
 .view-fade-enter-active,
 .view-fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease-out;
 }
 .view-fade-enter-from,
 .view-fade-leave-to {
