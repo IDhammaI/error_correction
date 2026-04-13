@@ -1,6 +1,6 @@
 <script setup>
 /**
- * GlassButton.vue
+ * BaseGhostButton.vue
  * 毛玻璃风格按钮
  */
 defineProps({

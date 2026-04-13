@@ -4,7 +4,7 @@
  * 统计数字卡片组件，带数字滚动动画。
  */
 import { ref, watch, onMounted } from 'vue'
-import GlassCard from '@/components/base/GlassCard.vue'
+import BaseCard from '@/components/base/BaseCard.vue'
 
 const props = defineProps({
   label: { type: String, required: true },
@@ -55,7 +55,7 @@ watch(() => props.value, (v) => { animateTo(v) })
 </script>
 
 <template>
-  <GlassCard padding="p-6" class="stat-card group transition-all hover:shadow-md">
+  <BaseCard padding="p-6" class="stat-card group transition-all hover:shadow-md">
     <div class="flex items-center gap-4">
       <div
         class="flex size-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-500 group-hover:scale-110"
@@ -78,6 +78,6 @@ watch(() => props.value, (v) => { animateTo(v) })
         </div>
       </div>
     </div>
-  </GlassCard>
+  </BaseCard>
 </template>
 

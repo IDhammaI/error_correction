@@ -1,6 +1,6 @@
 <script setup>
 /**
- * GlassCard.vue
+ * BaseCard.vue
  * 毛玻璃风格卡片容器
  */
 defineProps({

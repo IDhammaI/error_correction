@@ -1,9 +1,9 @@
 <script setup>
 /**
- * AppLoading.vue
- * 全局加载遮罩（BrandLogo + 进度条动画）
+ * BaseLoading.vue
+ * 全局加载遮罩（BaseLogo + 进度条动画）
  */
-import BrandLogo from '@/components/base/BrandLogo.vue'
+import BaseLogo from '@/components/base/BaseLogo.vue'
 
 defineProps({
   visible: { type: Boolean, default: true },
@@ -14,7 +14,7 @@ const emit = defineEmits(['after-enter'])
 <template>
   <Transition name="loading-fade" @after-enter="emit('after-enter')">
     <div v-if="visible" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
-      <BrandLogo size="lg" breathe />
+      <BaseLogo size="lg" breathe />
       <div class="w-48">
         <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
           <div class="h-full rounded-full bg-gradient-to-r from-[rgba(129,115,223,0.8)] to-[rgba(99,87,199,0.8)] loading-bar"></div>

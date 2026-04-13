@@ -3,7 +3,7 @@
  * ErrorBankFilterPanel.vue
  * 错题库筛选侧边栏
  */
-import CustomSelect from '@/components/base/CustomSelect.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 
 const props = defineProps({
   filters: Object,
@@ -27,17 +27,17 @@ const emit = defineEmits(['close', 'toggle-tag'])
 
     <div>
       <label class="mb-1.5 block text-xs font-medium text-[#62666d]">学科</label>
-      <CustomSelect v-model="filters.subject" :options="subjects" placeholder="全部学科" />
+      <BaseSelect v-model="filters.subject" :options="subjects" placeholder="全部学科" />
     </div>
 
     <div>
       <label class="mb-1.5 block text-xs font-medium text-[#62666d]">题型</label>
-      <CustomSelect v-model="filters.question_type" :options="questionTypes" placeholder="全部题型" />
+      <BaseSelect v-model="filters.question_type" :options="questionTypes" placeholder="全部题型" />
     </div>
 
     <div>
       <label class="mb-1.5 block text-xs font-medium text-[#62666d]">复习状态</label>
-      <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" placeholder="全部状态" />
+      <BaseSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" placeholder="全部状态" />
     </div>
 
     <div v-if="tagNames?.length">

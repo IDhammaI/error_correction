@@ -25,7 +25,7 @@ const routes = [
     redirect: '/auth/login',
     meta: { layout: 'auth' },
     children: [
-      { path: 'login',    component: () => import('@/views/auth/LoginView.vue'),    meta: { order: 0, layout: 'auth' } },
+      { path: 'login',    component: () => import('@/views/auth/LoginView.vue'), meta: { order: 0, layout: 'auth' } },
       { path: 'register', component: () => import('@/views/auth/RegisterView.vue'), meta: { order: 1, layout: 'auth' } },
     ],
   },

@@ -7,13 +7,13 @@ const { initTheme, setTheme, isDark } = useTheme()
 // 首页固定深色：记住用户原始主题，离开时恢复
 let savedTheme = null
 
-import HomeNav from '@/components/home/HomeNav.vue'
-import HomeHero from '@/components/home/HomeHero.vue'
-import HomeFeatures from '@/components/home/HomeFeatures.vue'
-import HomeWorkflow from '@/components/home/HomeWorkflow.vue'
-import HomeDemo from '@/components/home/HomeDemo.vue'
-import HomeCta from '@/components/home/HomeCta.vue'
-import HomeBackToTop from '@/components/home/HomeBackToTop.vue'
+import HomeHeader from '@/components/home/HomeHeader.vue'
+import HomeSideNav from '@/components/home/HomeSideNav.vue'
+import HomeHero from '@/views/home/HomeHero.vue'
+import HomeFeatures from '@/views/home/HomeFeatures.vue'
+import HomeWorkflow from '@/views/home/HomeWorkflow.vue'
+import HomeDemo from '@/views/home/HomeDemo.vue'
+import HomeFooter from '@/components/home/HomeFooter.vue'
 
 const SECTIONS = [
   { id: 'hero',     label: '首页' },
@@ -250,12 +250,18 @@ onUnmounted(() => {
 
     <!-- 🌟 真正的全局绝对底层固定背景 🌟 -->
     <!-- 将背景移出任何可能带有 transform / overflow-hidden 的包裹层，确保 fixed 完美生效 -->
-    <HomeNav
+    <HomeHeader
       :navScrolled="navScrolled"
       :activeSection="activeSection"
-      :indicatorTop="indicatorTop"
       :sections="SECTIONS"
       @scrollToSection="scrollToSectionSnap"
+    />
+    <HomeSideNav
+      :activeSection="activeSection"
+      :sections="SECTIONS"
+      :showBackToTop="backToTopVisible"
+      @scrollToSection="scrollToSectionSnap"
+      @back-to-top="scrollToY(0, 1000)"
     />
 
     <!-- 主内容包裹层 -->
@@ -277,7 +283,7 @@ onUnmounted(() => {
 
         <HomeDemo />
 
-        <HomeCta />
+        <HomeFooter />
 
         <!-- 全局 Footer -->
         <div class="border-t border-white/[0.06] py-4 relative z-10 bg-[#0A0A0F]/50 w-full mt-auto">
@@ -301,11 +307,6 @@ onUnmounted(() => {
       </div><!-- /滚动叠盖层 -->
 
     </div><!-- /主内容包裹层 -->
-
-    <HomeBackToTop
-      :visible="backToTopVisible"
-      @click="scrollToY(0, 1000)"
-    />
 
   </div>
 </template>

@@ -5,8 +5,8 @@ import { useTheme } from '@/composables/useTheme.js'
 import { useToast } from '@/composables/useToast.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import CustomSelect from '@/components/base/CustomSelect.vue'
-import GlassCard from '@/components/base/GlassCard.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
+import BaseCard from '@/components/base/BaseCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 
 const { isDark } = useTheme()
@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
 <template>
   <ContentPanel title="数据面板">
     <template #toolbar>
-      <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+      <BaseSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
       <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-3 py-1.5 text-xs font-medium text-[#f7f8f8]">
         <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
       </button>
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
-        <!-- 图表骨架：精确复刻 GlassCard + 标题行 + canvas 区域 -->
+        <!-- 图表骨架：精确复刻 BaseCard + 标题行 + canvas 区域 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div v-for="i in 2" :key="i"
             class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
@@ -265,31 +265,31 @@ onBeforeUnmount(() => {
 
         <!-- 图表区第一行：趋势 + 条形图 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <GlassCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-chart-line text-blue-500"></i> 最近 30 天趋势
             </h3>
             <div class="relative h-[240px] w-full"><canvas ref="trendCanvas"></canvas></div>
-          </GlassCard>
-          <GlassCard>
+          </BaseCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-ranking-star text-indigo-500"></i> Top 10 易错知识点
             </h3>
             <div v-if="stats?.tag_stats?.length" class="relative h-[240px] w-full"><canvas ref="barCanvas"></canvas></div>
             <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无标签数据</div>
-          </GlassCard>
+          </BaseCard>
         </div>
 
         <!-- 图表区第二行：堆叠柱状图 + 热力图 -->
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <GlassCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-chart-bar text-emerald-500"></i> 知识点掌握状态
             </h3>
             <div v-if="stats?.tag_status_stats?.length" class="relative h-[360px] w-full"><canvas ref="stackedCanvas"></canvas></div>
             <div v-else class="flex h-[360px] items-center justify-center text-sm text-slate-400">暂无掌握状态数据</div>
-          </GlassCard>
-          <GlassCard>
+          </BaseCard>
+          <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
               <i class="fa-solid fa-fire text-rose-500"></i> 知识点 × 题型分布
             </h3>
@@ -316,7 +316,7 @@ onBeforeUnmount(() => {
               </table>
             </div>
             <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无题型交叉数据</div>
-          </GlassCard>
+          </BaseCard>
         </div>
       </template>
     </div>

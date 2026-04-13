@@ -6,8 +6,7 @@ import { useSelectableList } from '@/composables/useSelectableList.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
 import AiAnalysisModal from '@/components/review/AiAnalysisModal.vue'
-import CustomSelect from '@/components/base/CustomSelect.vue'
-import PageHeader from '@/components/base/PageHeader.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import QuestionItem from '@/components/question/QuestionItem.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useImageModal } from '@/composables/useImageModal.js'
@@ -177,21 +176,14 @@ onMounted(() => { loadAll() })
 
 <template>
   <ContentPanel title="待复习">
+    <template #toolbar>
+      <BaseSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
+      <button @click="currentView = 'workspace'" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
+        <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
+      </button>
+    </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <!-- 页面标题 -->
-      <PageHeader
-        title="待复习"
-      >
-        <template #default>
-          <div class="flex items-center gap-4">
-            <CustomSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-            <button @click="currentView = 'workspace'" class="btn-primary group h-10 px-8 shadow-md shadow-blue-500/20">
-              <i class="fa-solid fa-plus-circle transition-transform group-hover:rotate-90"></i> 录入新题目
-            </button>
-          </div>
-        </template>
-      </PageHeader>
 
       <!-- 操作栏 -->
       <div class="mb-6 flex flex-wrap items-center justify-between gap-4">

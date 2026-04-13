@@ -1,6 +1,6 @@
 <script setup>
 /**
- * CustomSelect.vue
+ * BaseSelect.vue
  * 自定义下拉选择器
  */
 import { ref } from 'vue'

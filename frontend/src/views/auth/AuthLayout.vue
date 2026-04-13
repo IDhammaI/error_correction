@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import HomePill from '@/components/home/HomePill.vue'
-import BrandLogo from '@/components/base/BrandLogo.vue'
+import BaseLogo from '@/components/base/BaseLogo.vue'
 
 const { initTheme } = useTheme()
 const route = useRoute()
@@ -116,7 +116,7 @@ onMounted(() => {
 
       <!-- 顶部 Logo -->
       <div class="relative flex items-center gap-3">
-        <BrandLogo breathe />
+        <BaseLogo breathe />
         <span class="text-base font-semibold text-white/80 tracking-wide">智卷错题本</span>
       </div>
 

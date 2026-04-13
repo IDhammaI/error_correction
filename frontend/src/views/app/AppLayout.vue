@@ -20,7 +20,6 @@ import SidebarNav from '@/components/workspace/SidebarNav.vue'
 import ImageModal from '@/components/base/ImageModal.vue'
 import ToastContainer from '@/components/base/ToastContainer.vue'
 import WorkspaceBackground from '@/components/workspace/WorkspaceBackground.vue'
-import WorkspaceLoading from '@/components/workspace/WorkspaceLoading.vue'
 import AnswerInputModal from '@/components/workspace/AnswerInputModal.vue'
 import WorkspaceView from '@/views/app/WorkspaceView.vue'
 import Dashboard from '@/views/app/DashboardView.vue'
@@ -98,8 +97,6 @@ watch(currentView, (newView) => {
 })
 
 // ── 生命周期 ────────────────────────────────────────────
-const pageLoading = ref(true)
-
 onMounted(() => {
   initTheme()
   document.addEventListener('keydown', onKeydown)
@@ -108,16 +105,13 @@ onMounted(() => {
   nextTick(updateIndicator)
   watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
 
-  setTimeout(() => {
-    pageLoading.value = false
-    if (!globalLoading.value) {
-      doFetchStatus()
-    } else {
-      const unwatch = watch(globalLoading, (val) => {
-        if (!val) { doFetchStatus(); unwatch() }
-      })
-    }
-  }, 2000)
+  if (!globalLoading.value) {
+    doFetchStatus()
+  } else {
+    const unwatch = watch(globalLoading, (val) => {
+      if (!val) { doFetchStatus(); unwatch() }
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -130,7 +124,6 @@ onBeforeUnmount(() => {
   <div class="flex h-screen w-full overflow-hidden bg-[#0c0c0e] font-sans text-slate-300 relative">
 
     <WorkspaceBackground />
-    <WorkspaceLoading :loading="pageLoading" />
 
     <!-- 侧边栏导航 -->
     <SidebarNav
