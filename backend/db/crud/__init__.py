@@ -78,6 +78,7 @@ from db.crud.stats import (
 
 from db.crud.chat import (
     create_chat_session,
+    get_chat_session_by_public_id,
     add_chat_message,
     get_chat_messages,
     get_chat_sessions_by_question,
@@ -157,6 +158,7 @@ __all__ = [
     "get_tag_type_stats",
     # chat
     "create_chat_session",
+    "get_chat_session_by_public_id",
     "add_chat_message",
     "get_chat_messages",
     "get_chat_sessions_by_question",

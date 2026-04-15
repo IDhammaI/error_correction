@@ -25,7 +25,7 @@ def _effective_user_id():
 def _serialize_chat_session(s) -> dict:
     """将 ChatSession ORM 对象序列化为前端 JSON"""
     return {
-        'id': s.id,
+        'id': s.public_id,
         'title': s.title or '新对话',
         'question_id': s.question_id,
         'created_at': s.created_at.isoformat() if s.created_at else None,
@@ -125,38 +125,6 @@ def get_my_chat_sessions():
         return jsonify({'success': False, 'error': '获取对话列表失败'}), 500
 
 
-@bp.route('/chat/<int:session_id>', methods=['PATCH'])
-def update_chat_title(session_id):
-    """更新对话标题"""
-    try:
-        data = request.get_json(silent=True) or {}
-        title = data.get('title', '').strip()
-        if not title:
-            return jsonify({'success': False, 'error': '标题不能为空'}), 400
-
-        with SessionLocal() as db:
-            s = crud.update_chat_session_title(db, session_id, title, user_id=_effective_user_id())
-            if not s:
-                return jsonify({'success': False, 'error': '对话不存在'}), 404
-            return jsonify({'success': True, 'session': _serialize_chat_session(s)})
-    except Exception as e:
-        logger.exception("更新对话标题失败")
-        return jsonify({'success': False, 'error': '更新失败'}), 500
-
-
-@bp.route('/chat/<int:session_id>', methods=['DELETE'])
-def delete_chat(session_id):
-    """删除对话"""
-    try:
-        with SessionLocal() as db:
-            if not crud.delete_chat_session(db, session_id, user_id=_effective_user_id()):
-                return jsonify({'success': False, 'error': '对话不存在'}), 404
-            return jsonify({'success': True})
-    except Exception as e:
-        logger.exception("删除对话失败")
-        return jsonify({'success': False, 'error': '删除失败'}), 500
-
-
 @bp.route('/chat/sessions', methods=['GET'])
 def get_chat_sessions():
     """分页获取所有对话会话"""
@@ -181,7 +149,45 @@ def get_chat_sessions():
         return jsonify({'success': False, 'error': '获取对话会话列表失败'}), 500
 
 
-@bp.route('/chat/<int:session_id>/messages', methods=['GET'])
+@bp.route('/chat/<session_id>', methods=['PATCH'])
+def update_chat_title(session_id):
+    """更新对话标题"""
+    try:
+        data = request.get_json(silent=True) or {}
+        title = data.get('title', '').strip()
+        if not title:
+            return jsonify({'success': False, 'error': '标题不能为空'}), 400
+
+        with SessionLocal() as db:
+            cs = crud.get_chat_session_by_public_id(db, session_id, user_id=_effective_user_id())
+            if not cs:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            s = crud.update_chat_session_title(db, cs.id, title, user_id=_effective_user_id())
+            if not s:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            return jsonify({'success': True, 'session': _serialize_chat_session(s)})
+    except Exception as e:
+        logger.exception("更新对话标题失败")
+        return jsonify({'success': False, 'error': '更新失败'}), 500
+
+
+@bp.route('/chat/<session_id>', methods=['DELETE'])
+def delete_chat(session_id):
+    """删除对话"""
+    try:
+        with SessionLocal() as db:
+            cs = crud.get_chat_session_by_public_id(db, session_id, user_id=_effective_user_id())
+            if not cs:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            if not crud.delete_chat_session(db, cs.id, user_id=_effective_user_id()):
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            return jsonify({'success': True})
+    except Exception as e:
+        logger.exception("删除对话失败")
+        return jsonify({'success': False, 'error': '删除失败'}), 500
+
+
+@bp.route('/chat/<session_id>/messages', methods=['GET'])
 def get_chat_messages(session_id):
     """游标分页获取对话消息"""
     try:
@@ -189,7 +195,10 @@ def get_chat_messages(session_id):
         before_id = request.args.get('before_id', type=int)
 
         with SessionLocal() as db:
-            result = crud.get_chat_messages(db, session_id, limit=limit, before_id=before_id, user_id=_effective_user_id())
+            cs = crud.get_chat_session_by_public_id(db, session_id, user_id=_effective_user_id())
+            if not cs:
+                return jsonify({'success': False, 'error': '对话不存在'}), 404
+            result = crud.get_chat_messages(db, cs.id, limit=limit, before_id=before_id, user_id=_effective_user_id())
             return jsonify({
                 'success': True,
                 'messages': result['messages'],
@@ -201,7 +210,7 @@ def get_chat_messages(session_id):
         return jsonify({'success': False, 'error': '获取对话消息失败'}), 500
 
 
-@bp.route('/chat/<int:session_id>/stream', methods=['POST'])
+@bp.route('/chat/<session_id>/stream', methods=['POST'])
 def stream_chat(session_id):
     """SSE 流式对话"""
     from agents.teach import stream_teach
@@ -237,7 +246,7 @@ def stream_chat(session_id):
                 selectinload(ChatSessionModel.question)
                 .selectinload(Question.tags)
                 .selectinload(QuestionTagMapping.tag),
-            ).filter(ChatSessionModel.id == session_id)
+            ).filter(ChatSessionModel.public_id == session_id)
             if uid is not None:
                 cs_query = cs_query.filter(ChatSessionModel.user_id == uid)
             chat_session = cs_query.first()
@@ -249,12 +258,12 @@ def stream_chat(session_id):
             q_data = _serialize_question(question) if question else None
 
             # 加载历史消息（最近 20 条）
-            history_result = crud.get_chat_messages(db, session_id, limit=20)
+            history_result = crud.get_chat_messages(db, chat_session.id, limit=20)
             history = [{"role": m["role"], "content": m["content"]} for m in history_result["messages"]]
 
             # 追加用户消息
             history.append({"role": "user", "content": message})
-            crud.add_chat_message(db, session_id, "user", message)
+            crud.add_chat_message(db, chat_session.id, "user", message)
 
         def generate():
             full_response = []
@@ -287,7 +296,8 @@ def stream_chat(session_id):
             if assistant_content:
                 try:
                     with SessionLocal() as db:
-                        crud.add_chat_message(db, session_id, "assistant", assistant_content)
+                        # 此处需使用数据库内部自增 id，而非 public_id
+                        crud.add_chat_message(db, chat_session.id, "assistant", assistant_content)
                 except Exception as e:
                     logger.error(f"保存 assistant 回复失败: {e}")
 

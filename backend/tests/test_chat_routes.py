@@ -15,6 +15,7 @@
 import json
 import pytest
 from unittest.mock import patch
+import uuid
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
@@ -148,10 +149,14 @@ class TestCreateChat:
         data = resp.get_json()
         assert data["success"] is True
         assert "id" in data["session"]
+        uuid.UUID(str(data["session"]["id"]))
 
     def test_missing_question_id(self, client, test_db):
         resp = client.post("/api/chat", json={})
-        assert resp.status_code == 400
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        uuid.UUID(str(data["session"]["id"]))
 
     def test_nonexistent_question(self, client, test_db):
         resp = client.post("/api/chat", json={"question_id": 99999})
@@ -193,7 +198,7 @@ class TestGetChatMessages:
     def test_empty(self, client, test_db):
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id)
-        resp = client.get(f"/api/chat/{session.id}/messages")
+        resp = client.get(f"/api/chat/{session.public_id}/messages")
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["messages"] == []
@@ -204,7 +209,7 @@ class TestGetChatMessages:
         session = crud.create_chat_session(test_db, q.id)
         crud.add_chat_message(test_db, session.id, "user", "你好")
         crud.add_chat_message(test_db, session.id, "assistant", "你好呀")
-        resp = client.get(f"/api/chat/{session.id}/messages")
+        resp = client.get(f"/api/chat/{session.public_id}/messages")
         data = resp.get_json()
         assert len(data["messages"]) == 2
 
@@ -215,7 +220,7 @@ class TestGetChatMessages:
             role = "user" if i % 2 == 0 else "assistant"
             crud.add_chat_message(test_db, session.id, role, f"消息{i}")
 
-        resp = client.get(f"/api/chat/{session.id}/messages?limit=3")
+        resp = client.get(f"/api/chat/{session.public_id}/messages?limit=3")
         data = resp.get_json()
         assert len(data["messages"]) == 3
         assert data["hasMore"] is True
@@ -232,7 +237,7 @@ class TestStreamChat:
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id)
         resp = client.post(
-            f"/api/chat/{session.id}/stream",
+            f"/api/chat/{session.public_id}/stream",
             json={"message": ""},
         )
         assert resp.status_code == 400
@@ -241,7 +246,7 @@ class TestStreamChat:
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id)
         resp = client.post(
-            f"/api/chat/{session.id}/stream",
+            f"/api/chat/{session.public_id}/stream",
             json={"message": "你好", "model_provider": "invalid_provider"},
         )
         assert resp.status_code == 400
@@ -250,7 +255,7 @@ class TestStreamChat:
 
     def test_nonexistent_session(self, client, test_db):
         resp = client.post(
-            "/api/chat/99999/stream",
+            "/api/chat/00000000-0000-0000-0000-000000000000/stream",
             json={"message": "你好"},
         )
         assert resp.status_code == 404

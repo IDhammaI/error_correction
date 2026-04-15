@@ -32,6 +32,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def _migrate_schema():
     """轻量级自动迁移：为已有表补充新列"""
     import sqlite3
+    import uuid
     conn = sqlite3.connect(str(settings.db_path))
     try:
         cursor = conn.cursor()
@@ -51,6 +52,28 @@ def _migrate_schema():
             cursor.execute("DROP TABLE IF EXISTS chat_messages")
             cursor.execute("DROP TABLE IF EXISTS chat_sessions")
             conn.commit()
+
+        # chat_sessions.public_id：对外使用 UUID，避免暴露自增主键
+        cursor.execute("PRAGMA table_info(chat_sessions)")
+        cs_columns = {row[1] for row in cursor.fetchall()}
+        if 'public_id' not in cs_columns:
+            cursor.execute("ALTER TABLE chat_sessions ADD COLUMN public_id TEXT")
+            conn.commit()
+
+        # 回填历史数据的 public_id
+        cursor.execute("SELECT id FROM chat_sessions WHERE public_id IS NULL OR public_id = ''")
+        missing_rows = cursor.fetchall()
+        for (sid,) in missing_rows:
+            cursor.execute(
+                "UPDATE chat_sessions SET public_id = ? WHERE id = ?",
+                (str(uuid.uuid4()), sid),
+            )
+        if missing_rows:
+            conn.commit()
+
+        # 给 public_id 创建唯一索引（SQLite 不支持后加 UNIQUE 约束，用唯一索引替代）
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessions_public_id_unique ON chat_sessions(public_id)")
+        conn.commit()
     finally:
         conn.close()
 

@@ -36,7 +36,18 @@ def migrate():
     # 增量列迁移（新增字段时在此追加）
     with engine.connect() as conn:
         _add_column_if_missing(conn, "users", "session_version", "INTEGER", 0)
+        _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
         conn.commit()
+
+    # 回填 chat_sessions.public_id（历史数据兼容）
+    import uuid
+    from db.models import ChatSession
+    with SessionLocal() as db:
+        rows = db.query(ChatSession).filter((ChatSession.public_id == None) | (ChatSession.public_id == "")).all()
+        if rows:
+            for s in rows:
+                s.public_id = str(uuid.uuid4())
+            db.commit()
 
     default_users = [
         {"email": "admin@admin.com",  "username": "Admin",  "password": "123456", "is_admin": True},

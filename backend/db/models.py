@@ -2,6 +2,7 @@
 数据库 ORM 模型定义
 """
 
+import uuid
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -106,6 +107,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True)
+    public_id = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     question_id = Column(Integer, ForeignKey("questions.id"), nullable=True, index=True)
     title = Column(String(255), default="新对话")
