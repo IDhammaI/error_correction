@@ -85,6 +85,12 @@ watch(collapsedGroups, () => {
 // ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
+const updateChatCollapsed = (v) => { chatCollapsed.value = v }
+const updateUserMenuOpen = (v) => { userMenuOpen.value = v }
+const updateChatMenuOpenId = (v) => { chatMenuOpenId.value = v }
+const updateRenameText = (v) => { renameText.value = v }
+const updateRenamingChatId = (v) => { renamingChatId.value = v }
+const updateNavRef = (el) => { navRef.value = el }
 
 // ── 键盘事件 ────────────────────────────────────────────
 const onKeydown = (e) => {
@@ -150,11 +156,12 @@ onBeforeUnmount(() => {
       :user-menu-open="userMenuOpen"
       @update:current-view="(v) => currentView = v"
       @update:collapsed-groups="(v) => Object.assign(collapsedGroups, v)"
-      @update:chat-collapsed="(v) => chatCollapsed = v"
-      @update:user-menu-open="(v) => userMenuOpen = v"
-      @update:chat-menu-open-id="(v) => chatMenuOpenId = v"
-      @update:rename-text="(v) => renameText = v"
-      @update:nav-ref="(el) => navRef = el"
+      @update:chat-collapsed="updateChatCollapsed"
+      @update:user-menu-open="updateUserMenuOpen"
+      @update:chat-menu-open-id="updateChatMenuOpenId"
+      @update:rename-text="updateRenameText"
+      @update:renaming-chat-id="updateRenamingChatId"
+      @update:nav-ref="updateNavRef"
       @navigate-home="navigateToHome"
       @logout="handleLogout"
       @toggle-theme="toggleTheme"

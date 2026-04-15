@@ -194,19 +194,20 @@ function autoResize() {
                 </Transition>
               </div>
               <!-- 正文内容 -->
-              <div v-if="msg.role === 'assistant'" v-html="renderMarkdown(msg.content)" class="prose prose-sm prose-invert max-w-none"></div>
-              <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
-            </div>
-          </div>
-
-          <!-- 流式加载指示 -->
-          <div v-if="streaming && messages.length && !messages[messages.length - 1].content" class="flex justify-start">
-            <div class="brand-btn rounded-2xl rounded-bl-lg px-4 py-3">
-              <div class="flex gap-1">
+              <div
+                v-if="msg.role === 'assistant' && !(streaming && i === messages.length - 1 && !msg.content)"
+                v-html="renderMarkdown(msg.content)"
+                class="prose prose-sm prose-invert max-w-none"
+              ></div>
+              <div
+                v-else-if="msg.role === 'assistant' && streaming && i === messages.length - 1 && !msg.content"
+                class="flex gap-1"
+              >
                 <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 0ms"></span>
                 <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 150ms"></span>
                 <span class="w-2 h-2 rounded-full bg-[#62666d] animate-bounce" style="animation-delay: 300ms"></span>
               </div>
+              <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
             </div>
           </div>
         </div>

@@ -37,7 +37,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:currentView', 'update:collapsedGroups', 'update:chatCollapsed',
-  'update:userMenuOpen', 'update:chatMenuOpenId', 'update:renameText',
+  'update:userMenuOpen', 'update:chatMenuOpenId', 'update:renameText', 'update:renamingChatId',
   'update:navRef',
   'navigate-home', 'logout', 'toggle-theme',
   'create-ai-chat', 'select-ai-chat',
@@ -54,177 +54,182 @@ const toggleGroup = (gi) => {
 
 <template>
   <!-- ================== PC端：左侧边栏导航 ================== -->
-  <aside class="hidden w-64 flex-col justify-between md:flex z-20">
-    <div>
-      <!-- Logo 标题区 -->
-      <div class="flex h-20 items-center justify-between px-4 py-6">
-        <button @click="emit('navigate-home')" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回首页">
-          <BaseLogo size="sm" />
-          <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
-        </button>
-        <div class="flex items-center gap-1">
-          <button @click="setView('settings')" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="系统设置">
-            <i class="fa-solid fa-gear text-xs"></i>
+  <aside class="hidden w-64 min-h-0 flex-col md:flex z-20">
+    <div class="flex min-h-0 flex-1 flex-col">
+      <div>
+        <!-- Logo 标题区 -->
+        <div class="flex h-20 items-center justify-between px-4 py-6">
+          <button @click="emit('navigate-home')" class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-white/[0.04] transition-colors" title="返回首页">
+            <BaseLogo size="sm" />
+            <span class="text-sm font-medium text-[#f7f8f8]">智卷错题本</span>
           </button>
-          <button @click="emit('logout')" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="退出登录">
-            <i class="fa-solid fa-right-from-bracket text-xs"></i>
-          </button>
+          <div class="flex items-center gap-1">
+            <button @click="setView('settings')" class="flex h-7 w-7 items-center justify-center rounded-md text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="系统设置">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+            <button @click="emit('logout')" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] text-[#62666d] hover:bg-white/[0.04] hover:text-[#8a8f98] transition-colors" title="退出登录">
+              <i class="fa-solid fa-right-from-bracket text-xs"></i>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- 视图切换菜单 — Linear 分组折叠 -->
-      <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 px-4 relative">
-        <!-- 滑动指示器 -->
-        <div
-          class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
-          :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
-          :style="indicatorStyle"
-        ></div>
+        <!-- 视图切换菜单 — Linear 分组折叠 -->
+        <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 px-4 relative">
+          <!-- 滑动指示器 -->
+          <div
+            class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
+            :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
+            :style="indicatorStyle"
+          ></div>
 
-        <template v-for="(group, gi) in navGroups" :key="gi">
-          <!-- 分组标题（可折叠） -->
-          <button
-            v-if="group.label"
-            @click="group.collapsible && toggleGroup(gi)"
-            class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors"
-            :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'"
-          >
-            <span>{{ group.label }}</span>
-            <i
-              v-if="group.collapsible"
-              class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200"
-              :class="collapsedGroups[gi] ? '' : 'rotate-90'"
-            ></i>
-          </button>
+          <template v-for="(group, gi) in navGroups" :key="gi">
+            <!-- 分组标题（可折叠） -->
+            <button
+              v-if="group.label"
+              @click="group.collapsible && toggleGroup(gi)"
+              class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors"
+              :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'"
+            >
+              <span>{{ group.label }}</span>
+              <i
+                v-if="group.collapsible"
+                class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200"
+                :class="collapsedGroups[gi] ? '' : 'rotate-90'"
+              ></i>
+            </button>
 
-          <!-- 分组内容（grid 折叠动画） -->
-          <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
-          <div class="overflow-hidden">
-          <div class="flex flex-col gap-1">
-            <template v-for="item in group.items" :key="item.id">
-              <!-- 禁用项 -->
-              <button
-                v-if="item.disabled"
-                disabled
-                class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
-              >
-                <div class="flex items-center gap-3">
+            <!-- 分组内容（grid 折叠动画） -->
+            <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+            <div class="overflow-hidden">
+            <div class="flex flex-col gap-1">
+              <template v-for="item in group.items" :key="item.id">
+                <!-- 禁用项 -->
+                <button
+                  v-if="item.disabled"
+                  disabled
+                  class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-[#62666d]"
+                >
+                  <div class="flex items-center gap-3">
+                    <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
+                    <span>{{ item.label }}</span>
+                  </div>
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
+                </button>
+                <!-- 普通项 -->
+                <button
+                  v-else
+                  :ref="el => navBtnRefs[item.id] = el"
+                  @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
+                  class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  :class="item.match(currentView)
+                    ? 'text-white'
+                    : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
+                >
                   <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
                   <span>{{ item.label }}</span>
-                </div>
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.04] text-[#62666d]">敬请期待</span>
-              </button>
-              <!-- 普通项 -->
-              <button
-                v-else
-                :ref="el => navBtnRefs[item.id] = el"
-                @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
-                class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
-                :class="item.match(currentView)
-                  ? 'text-white'
-                  : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
-              >
-                <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                <span>{{ item.label }}</span>
-              </button>
-            </template>
-          </div>
-          </div>
-          </div>
-        </template>
-      </nav>
-    </div>
-
-    <!-- AI 对话历史列表 -->
-    <div class="flex-1 min-h-0 flex flex-col mt-4 px-4">
-      <div class="flex items-center justify-between px-3 pt-4 pb-2">
-        <button @click="emit('update:chatCollapsed', !chatCollapsed)" class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors cursor-pointer">
-          <span>对话</span>
-          <i class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200" :class="chatCollapsed ? '' : 'rotate-90'"></i>
-        </button>
-        <button @click="emit('create-ai-chat')" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
-          <i class="fa-solid fa-plus text-[10px]"></i>
-        </button>
-      </div>
-      <!-- 折叠动画 -->
-      <div class="grid transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
-      <div class="overflow-hidden">
-      <div class="flex-1 overflow-y-auto pb-2 custom-scrollbar relative" @click="emit('update:chatMenuOpenId', null)">
-        <!-- 对话区滑动指示器 -->
-        <div
-          class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
-          :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
-          :style="chatIndicatorStyle"
-        ></div>
-
-        <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-[#62666d]">
-          暂无对话
-        </div>
-        <div
-          v-for="s in aiChatSessions"
-          :key="s.id"
-          :ref="el => chatBtnRefs[s.id] = el"
-          class="group relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-md mb-px cursor-pointer transition-colors"
-          :class="activeAiChatId === s.id && currentView === 'ai-chat'
-            ? 'text-white'
-            : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'"
-          @click="renamingChatId !== s.id && emit('select-ai-chat', s)"
-        >
-          <i class="fa-solid fa-message text-[10px] shrink-0" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
-
-          <!-- 重命名输入框 -->
-          <input
-            v-if="renamingChatId === s.id"
-            :value="renameText"
-            @input="emit('update:renameText', $event.target.value)"
-            data-rename-input
-            @click.stop
-            @keydown.enter="emit('confirm-rename-chat', s)"
-            @keydown.escape="$emit('update:renamingChatId', null)"
-            @blur="emit('confirm-rename-chat', s)"
-            class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-white/[0.12] py-0.5 text-[#f7f8f8]"
-          />
-          <span v-else class="relative z-10 flex-1 truncate text-xs">{{ s.title }}</span>
-
-          <!-- 三个点按钮 -->
-          <button
-            @click.stop="emit('toggle-chat-menu', s.id)"
-            class="shrink-0 opacity-0 group-hover:opacity-100 text-[#62666d] hover:text-[#d0d6e0] transition-all"
-          >
-            <i class="fa-solid fa-ellipsis text-[10px]"></i>
-          </button>
-
-          <!-- Dropdown 菜单 -->
-          <Transition
-            enter-active-class="transition duration-100 ease-out"
-            enter-from-class="opacity-0 scale-95"
-            enter-to-class="opacity-100 scale-100"
-            leave-active-class="transition duration-75 ease-in"
-            leave-from-class="opacity-100 scale-100"
-            leave-to-class="opacity-0 scale-95"
-          >
-            <div
-              v-if="chatMenuOpenId === s.id"
-              class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden"
-              @click.stop
-            >
-              <button
-                @click="emit('start-rename-chat', s)"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
-              >
-                <i class="fa-solid fa-pen text-[10px] w-3 text-center text-[#62666d]"></i> 重命名
-              </button>
-              <button
-                @click="emit('update:chatMenuOpenId', null); emit('delete-ai-chat', s.id)"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
-              >
-                <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
-              </button>
+                </button>
+              </template>
             </div>
-          </Transition>
+            </div>
+            </div>
+          </template>
+        </nav>
+      </div>
+
+      <!-- AI 对话历史列表 -->
+      <div class="mt-4 flex min-h-0 flex-1 flex-col px-4">
+        <div class="flex items-center justify-between px-3 pt-4 pb-2">
+          <button @click="emit('update:chatCollapsed', !chatCollapsed)" class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-[#62666d] hover:text-[#8a8f98] transition-colors cursor-pointer">
+            <span>对话</span>
+            <i class="fa-solid fa-play text-[8px] text-[#62666d] transition-transform duration-200" :class="chatCollapsed ? '' : 'rotate-90'"></i>
+          </button>
+          <button @click="emit('create-ai-chat')" class="text-[#8a8f98] hover:text-[#d0d6e0] transition-colors">
+            <i class="fa-solid fa-plus text-[10px]"></i>
+          </button>
         </div>
-      </div>
-      </div>
+        <!-- 折叠动画 -->
+        <div class="grid min-h-0 flex-1 transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+        <div class="flex min-h-0 flex-col overflow-hidden">
+        <div class="relative h-full overflow-y-auto pb-2 custom-scrollbar" @click="emit('update:chatMenuOpenId', null)">
+          <!-- 对话区滑动指示器 -->
+          <div
+            class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
+            :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
+            :style="chatIndicatorStyle"
+          ></div>
+
+          <div v-if="aiChatSessions.length === 0" class="px-3 py-4 text-center text-xs text-[#62666d]">
+            暂无对话
+          </div>
+          <div
+            v-for="s in aiChatSessions"
+            :key="s.id"
+            :ref="el => chatBtnRefs[s.id] = el"
+            class="group relative flex items-center gap-2 px-3 py-1.5 rounded-md mb-px cursor-pointer transition-colors"
+            :class="[
+              chatMenuOpenId === s.id ? 'z-20' : 'z-10',
+              activeAiChatId === s.id && currentView === 'ai-chat'
+                ? 'text-white'
+                : 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]',
+            ]"
+            @click="renamingChatId !== s.id && emit('select-ai-chat', s)"
+          >
+            <i class="fa-solid fa-message text-[10px] shrink-0" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
+
+            <!-- 重命名输入框 -->
+            <input
+              v-if="renamingChatId === s.id"
+              :value="renameText"
+              @input="emit('update:renameText', $event.target.value)"
+              data-rename-input
+              @click.stop
+              @keydown.enter="emit('confirm-rename-chat', s)"
+              @keydown.escape="$emit('update:renamingChatId', null)"
+              @blur="emit('confirm-rename-chat', s)"
+              class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-white/[0.12] py-0.5 text-[#f7f8f8]"
+            />
+            <span v-else class="relative z-10 flex-1 truncate text-xs">{{ s.title }}</span>
+
+            <!-- 三个点按钮 -->
+            <button
+              @click.stop="emit('toggle-chat-menu', s.id)"
+              class="shrink-0 opacity-0 group-hover:opacity-100 text-[#62666d] hover:text-[#d0d6e0] transition-all"
+            >
+              <i class="fa-solid fa-ellipsis text-[10px]"></i>
+            </button>
+
+            <!-- Dropdown 菜单 -->
+            <Transition
+              enter-active-class="transition duration-100 ease-out"
+              enter-from-class="opacity-0 scale-95"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition duration-75 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div
+                v-if="chatMenuOpenId === s.id"
+                class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden"
+                @click.stop
+              >
+                <button
+                  @click="emit('start-rename-chat', s)"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[#d0d6e0] hover:bg-white/[0.05] transition-colors"
+                >
+                  <i class="fa-solid fa-pen text-[10px] w-3 text-center text-[#62666d]"></i> 重命名
+                </button>
+                <button
+                  @click="emit('update:chatMenuOpenId', null); emit('delete-ai-chat', s.id)"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+                >
+                  <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+        </div>
+        </div>
       </div>
     </div>
 
