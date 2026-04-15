@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import HomePill from '@/components/home/HomePill.vue'
 import BaseLogo from '@/components/base/BaseLogo.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 
 const { initTheme } = useTheme()
 const route = useRoute()
@@ -171,10 +172,12 @@ onMounted(() => {
     <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-16 relative bg-[#0e0e16]">
 
       <!-- 返回主页 -->
-      <a href="/" class="absolute top-6 right-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-white/50 bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:text-white/70 transition-all">
-        <i class="fas fa-arrow-left text-xs"></i>
-        返回主页
-      </a>
+      <div class="absolute top-6 right-6 z-10">
+        <BaseButton href="/" variant="secondary" size="sm" class="flex items-center gap-2 !px-4 !py-2 !h-auto text-white/50 hover:text-white/70 bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] !rounded-lg">
+          <i class="fas fa-arrow-left text-xs"></i>
+          返回主页
+        </BaseButton>
+      </div>
 
       <!-- 移动端 Logo（小屏显示） -->
       <div class="lg:hidden text-center mb-8">
