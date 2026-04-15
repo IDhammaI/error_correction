@@ -38,6 +38,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:currentView', 'update:collapsedGroups', 'update:chatCollapsed',
   'update:userMenuOpen', 'update:chatMenuOpenId', 'update:renameText',
+  'update:navRef',
   'navigate-home', 'logout', 'toggle-theme',
   'create-ai-chat', 'select-ai-chat',
   'start-rename-chat', 'confirm-rename-chat', 'delete-ai-chat', 'toggle-chat-menu',
