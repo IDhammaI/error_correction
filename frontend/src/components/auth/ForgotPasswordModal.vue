@@ -132,10 +132,10 @@ async function resetPassword() {
               >
                 <template #append>
                   <button type="button" @click="sendCode" :disabled="codeSending || countdown > 0"
-                    class="shrink-0 h-10 px-4 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="countdown > 0
-                      ? 'bg-white/[0.03] text-white/30 border border-white/[0.06]'
-                      : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/30'">
+                      ? 'bg-white/[0.02] border-white/[0.05] text-white/30'
+                      : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:text-white/85'">
                     <i v-if="codeSending" class="fas fa-spinner fa-spin"></i>
                     <template v-else-if="countdown > 0">{{ countdown }}s</template>
                     <template v-else>发送验证码</template>
