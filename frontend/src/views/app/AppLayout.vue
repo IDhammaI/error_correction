@@ -2,23 +2,22 @@
 /**
  * AppLayout.vue
  * App 布局容器 — 侧边栏导航 + 内容区视图切换
- * 仅负责：导航、布局、全局状态（主题/认证/Toast/弹窗）
+ * 仅负责：导航、布局、全局状态（主题/认证/弹窗）
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 import { usePageTransition } from '@/composables/usePageTransition.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { useImageModal } from '@/composables/useImageModal.js'
-import { useWorkspaceToast } from '@/composables/useWorkspaceToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useSidebarIndicator } from '@/composables/useSidebarIndicator.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
+import { useToast } from '@/composables/useToast.js'
 import SidebarNav from '@/components/workspace/SidebarNav.vue'
 import ImageModal from '@/components/base/ImageModal.vue'
-import ToastContainer from '@/components/base/ToastContainer.vue'
 import WorkspaceBackground from '@/components/workspace/WorkspaceBackground.vue'
 import AnswerInputModal from '@/components/workspace/AnswerInputModal.vue'
 import WorkspaceView from '@/views/app/WorkspaceView.vue'
@@ -35,7 +34,7 @@ const router = useRouter()
 const { currentUser } = useAuth()
 const { loading: globalLoading } = usePageTransition()
 const { isDark, toggleTheme, initTheme } = useTheme()
-const { toasts, pushToast } = useWorkspaceToast()
+const { pushToast } = useToast()
 const { modalOpen, modalSrc, modalScale, closeModal } = useImageModal()
 const { doFetchStatus } = useSystemStatus()
 const {
@@ -59,8 +58,6 @@ const {
   saveAnswerAndChat,
 } = useChatSession()
 
-provide('pushToast', pushToast) // useToast() composable injects this key
-
 // ── 认证 ────────────────────────────────────────────────
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 const userMenuOpen = ref(false)
@@ -68,6 +65,7 @@ const userMenuOpen = ref(false)
 const handleLogout = async () => {
   try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) {}
   currentUser.value = null
+  pushToast('success', '已退出登录')
   router.push('/auth')
 }
 
@@ -203,7 +201,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 全局弹窗与通知 -->
+    <!-- 全局弹窗 -->
     <Teleport to="body">
       <ImageModal
         :open="modalOpen"
@@ -212,7 +210,6 @@ onBeforeUnmount(() => {
         @close="closeModal"
         @update:scale="(s) => modalScale = s"
       />
-      <ToastContainer :toasts="toasts" />
       <AnswerInputModal
         :open="answerModalOpen"
         :text="answerModalText"

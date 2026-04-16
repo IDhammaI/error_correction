@@ -2,11 +2,13 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
+import { useToast } from '@/composables/useToast.js'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 
 const router = useRouter()
 const { currentUser } = useAuth()
+const { pushToast } = useToast()
 
 const loading = ref(false)
 const error = ref('')
@@ -70,7 +72,7 @@ async function handleSendCode() {
   if (sendingCode.value || countdown.value > 0) return
   const email = (form.email || '').trim()
   if (!email || !email.includes('@')) {
-    error.value = '请先填写有效邮箱'
+    pushToast('error', '请先填写有效邮箱')
     return
   }
   if (sendDebounceTimer) clearTimeout(sendDebounceTimer)
@@ -84,7 +86,7 @@ async function handleSendCode() {
         credentials: 'include',
         body: JSON.stringify({ email, type: 'register' }),
       })
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({ }))
       if (!res.ok) {
         // 429 频率限制：解析剩余秒数，启动错误提示倒计时
         if (res.status === 429) {
@@ -96,7 +98,7 @@ async function handleSendCode() {
         }
         return
       }
-      success.value = '验证码已发送到邮箱，请查收'
+      pushToast('success', '验证码已发送到邮箱，请查收')
       startCountdown(60)
     } catch {
       error.value = '网络错误，请重试'
