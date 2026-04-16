@@ -3,6 +3,7 @@
  * SidebarNav.vue
  * 工作台左侧边栏导航（PC 端）+ 底部 Tab 导航（移动端）
  */
+import { computed } from 'vue'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 
 const props = defineProps({
@@ -50,6 +51,16 @@ const toggleGroup = (gi) => {
   next[gi] = !next[gi]
   emit('update:collapsedGroups', next)
 }
+
+const userDisplayName = computed(() => {
+  const user = props.currentUser || {}
+  return user.display_name || user.nickname || user.username || '未登录用户'
+})
+
+const userInitial = computed(() => {
+  const source = userDisplayName.value || props.currentUser?.username || ''
+  return source.trim()?.[0]?.toUpperCase() || '?'
+})
 </script>
 
 <template>
@@ -276,11 +287,20 @@ const toggleGroup = (gi) => {
         class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors"
       >
         <div class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium" style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
-          <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
-          <span class="relative z-10">{{ currentUser?.username?.[0]?.toUpperCase() ?? '?' }}</span>
+          <img
+            v-if="currentUser?.avatar_url"
+            :src="currentUser.avatar_url"
+            alt="用户头像"
+            class="h-full w-full object-cover"
+          />
+          <template v-else>
+            <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
+            <span class="relative z-10">{{ userInitial }}</span>
+          </template>
         </div>
         <div class="flex-1 min-w-0 text-left">
-          <p class="text-sm text-[#f7f8f8] truncate leading-tight">{{ currentUser?.username }}</p>
+          <p class="text-sm text-[#f7f8f8] truncate leading-tight">{{ userDisplayName }}</p>
+          <p class="text-xs text-[#62666d] truncate leading-tight">@{{ currentUser?.username || 'guest' }}</p>
         </div>
         <i class="fa-solid fa-chevron-up text-[10px] text-[#62666d]"></i>
       </button>

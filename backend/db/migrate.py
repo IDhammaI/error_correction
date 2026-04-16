@@ -36,6 +36,10 @@ def migrate():
     # 增量列迁移（新增字段时在此追加）
     with engine.connect() as conn:
         _add_column_if_missing(conn, "users", "session_version", "INTEGER", 0)
+        _add_column_if_missing(conn, "users", "display_name", "VARCHAR(50)")
+        _add_column_if_missing(conn, "users", "nickname", "VARCHAR(50)")
+        _add_column_if_missing(conn, "users", "avatar_path", "TEXT")
+        _add_column_if_missing(conn, "users", "avatar_url", "TEXT")
         _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
         conn.commit()
 

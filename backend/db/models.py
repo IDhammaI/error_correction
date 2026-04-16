@@ -17,6 +17,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(50), nullable=False)
+    display_name = Column(String(50), nullable=True)
+    nickname = Column(String(50), nullable=True)
+    avatar_path = Column(Text, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)

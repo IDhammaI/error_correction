@@ -28,6 +28,52 @@ export async function updateAppConfig(config) {
   throw new Error((data && data.error) || '更新配置失败')
 }
 
+export async function updateProfile(profile) {
+  const resp = await fetch('/api/auth/profile', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`)
+  if (data && data.success) return data.user
+  throw new Error((data && data.error) || '更新个人资料失败')
+}
+
+export function uploadProfileAvatar(file, { onSuccess, onError, onAbort } = {}) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const xhr = new XMLHttpRequest()
+  xhr.open('POST', '/api/auth/profile/avatar', true)
+
+  xhr.addEventListener('load', () => {
+    let data = null
+    try { data = JSON.parse(xhr.responseText) } catch (_) {}
+    if (xhr.status >= 200 && xhr.status < 300 && data && data.success) {
+      onSuccess?.(data.user)
+    } else {
+      onError?.((data && data.error) || `HTTP ${xhr.status}`)
+    }
+  })
+
+  xhr.addEventListener('error', () => onError?.('头像上传失败: 网络错误'))
+  xhr.addEventListener('abort', () => onAbort?.())
+
+  xhr.send(formData)
+  return xhr
+}
+
+export async function deleteProfileAvatar() {
+  const resp = await fetch('/api/auth/profile/avatar', {
+    method: 'DELETE',
+  })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`)
+  if (data && data.success) return data.user
+  throw new Error((data && data.error) || '删除头像失败')
+}
+
 export async function fetchStatus() {
   const resp = await fetch('/api/status')
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)

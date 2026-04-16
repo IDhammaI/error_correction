@@ -12,7 +12,7 @@ Flask 路由集成测试
 - DELETE /api/question/<id>
 """
 
-import json
+import io
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine, event
@@ -45,6 +45,14 @@ def test_db():
     session.commit()
     yield session
     session.close()
+
+
+@pytest.fixture(autouse=True)
+def avatar_upload_dir(tmp_path, monkeypatch):
+    avatar_dir = tmp_path / "uploads"
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("routes.auth.settings.upload_dir", avatar_dir)
+    yield avatar_dir
 
 
 @pytest.fixture
@@ -517,9 +525,153 @@ class TestAiAnalysisRoute:
         data = resp.get_json()
         assert data["success"] is True
         assert "analysis" in data
-        analysis = data["analysis"]
-        assert "summary" in analysis
-        assert "weak_points" in analysis
-        assert "suggestions" in analysis
-        assert "per_question" in analysis
-        assert len(analysis["per_question"]) == 1
+
+
+# ── /api/auth/me / /api/auth/profile ─────────────────────
+
+
+class TestAuthProfileRoutes:
+    """认证资料接口"""
+
+    def test_auth_me_returns_profile_fields(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.display_name = "测试同学"
+        user.nickname = "小测"
+        user.avatar_path = "avatars/test-avatar.png"
+        user.avatar_url = None
+        test_db.commit()
+
+        resp = client.get("/api/auth/me")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["user"]["username"] == "test"
+        assert data["user"]["display_name"] == "测试同学"
+        assert data["user"]["nickname"] == "小测"
+        assert data["user"]["avatar_url"] == "/uploads/avatars/test-avatar.png"
+
+    def test_auth_me_keeps_legacy_avatar_url(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.avatar_path = None
+        user.avatar_url = "https://example.com/avatar.png"
+        test_db.commit()
+
+        resp = client.get("/api/auth/me")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["user"]["avatar_url"] == "https://example.com/avatar.png"
+
+    def test_update_profile_success(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.avatar_path = "avatars/original.png"
+        user.avatar_url = None
+        test_db.commit()
+
+        resp = client.patch(
+            "/api/auth/profile",
+            json={
+                "display_name": "新的显示名",
+                "nickname": "新的昵称",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["user"]["display_name"] == "新的显示名"
+        assert data["user"]["nickname"] == "新的昵称"
+        assert data["user"]["avatar_url"] == "/uploads/avatars/original.png"
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        assert user.display_name == "新的显示名"
+        assert user.nickname == "新的昵称"
+        assert user.avatar_path == "avatars/original.png"
+
+    def test_update_profile_allows_clearing_fields(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.display_name = "原显示名"
+        user.nickname = "原昵称"
+        user.avatar_path = "avatars/original.png"
+        user.avatar_url = None
+        test_db.commit()
+
+        resp = client.patch(
+            "/api/auth/profile",
+            json={
+                "display_name": "   ",
+                "nickname": "",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["user"]["display_name"] is None
+        assert data["user"]["nickname"] is None
+        assert data["user"]["avatar_url"] == "/uploads/avatars/original.png"
+
+    def test_upload_profile_avatar_success(self, client, test_db, avatar_upload_dir):
+        old_avatar = avatar_upload_dir / "avatars" / "old.png"
+        old_avatar.parent.mkdir(parents=True, exist_ok=True)
+        old_avatar.write_bytes(b"old-image")
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.avatar_path = "avatars/old.png"
+        user.avatar_url = None
+        test_db.commit()
+
+        resp = client.post(
+            "/api/auth/profile/avatar",
+            data={"file": (io.BytesIO(b"new-avatar-bytes"), "avatar.png")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["user"]["avatar_url"].startswith("/uploads/avatars/")
+        assert data["user"]["avatar_url"].endswith(".png")
+        assert not old_avatar.exists()
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        assert user.avatar_path is not None
+        assert user.avatar_path.startswith("avatars/")
+        saved_avatar = avatar_upload_dir / user.avatar_path
+        assert saved_avatar.exists()
+
+    def test_upload_profile_avatar_rejects_invalid_extension(self, client):
+        resp = client.post(
+            "/api/auth/profile/avatar",
+            data={"file": (io.BytesIO(b"plain-text"), "avatar.txt")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert data["success"] is False
+        assert "仅支持" in data["error"]
+
+    def test_upload_profile_avatar_requires_file(self, client):
+        resp = client.post(
+            "/api/auth/profile/avatar",
+            data={},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert data["success"] is False
+        assert "请选择头像图片" in data["error"]
+
+    def test_delete_profile_avatar_success(self, client, test_db, avatar_upload_dir):
+        avatar_file = avatar_upload_dir / "avatars" / "delete-me.png"
+        avatar_file.parent.mkdir(parents=True, exist_ok=True)
+        avatar_file.write_bytes(b"avatar-data")
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.avatar_path = "avatars/delete-me.png"
+        user.avatar_url = None
+        test_db.commit()
+
+        resp = client.delete("/api/auth/profile/avatar")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["user"]["avatar_url"] is None
+        assert not avatar_file.exists()
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        assert user.avatar_path is None

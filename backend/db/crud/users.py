@@ -10,7 +10,13 @@ logger = logging.getLogger(__name__)
 
 def create_user(db, email, password_hash, username, is_admin=False):
     """创建用户"""
-    user = User(email=email, password_hash=password_hash, username=username, is_admin=is_admin)
+    user = User(
+        email=email,
+        password_hash=password_hash,
+        username=username,
+        display_name=username,
+        is_admin=is_admin,
+    )
     db.add(user)
     try:
         db.commit()
@@ -37,6 +43,38 @@ def get_user_by_login(db, identifier):
     return db.query(User).filter(
         (func.lower(User.email) == identifier.lower()) | (User.username == identifier)
     ).first()
+
+
+def update_user_profile(db, user_id: int, *, display_name=None, nickname=None):
+    """更新用户资料"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    user.display_name = display_name
+    user.nickname = nickname
+    try:
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception:
+        db.rollback()
+        raise
+
+
+def update_user_avatar(db, user_id: int, avatar_path):
+    """更新用户头像路径"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    user.avatar_path = avatar_path
+    user.avatar_url = None
+    try:
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception:
+        db.rollback()
+        raise
 
 
 def update_user_password(db, email: str, new_password_hash: str) -> bool:

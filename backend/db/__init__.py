@@ -10,6 +10,7 @@ import sys
 # 添加 backend 目录到路径以支持导入 config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import settings
+from db.models import Base
 
 # 确保数据库目录存在
 db_dir = settings.db_path.parent
@@ -41,6 +42,21 @@ def _migrate_schema():
         columns = {row[1] for row in cursor.fetchall()}
         if 'answer' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN answer TEXT")
+            conn.commit()
+
+        cursor.execute("PRAGMA table_info(users)")
+        user_columns = {row[1] for row in cursor.fetchall()}
+        if 'display_name' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
+            conn.commit()
+        if 'nickname' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN nickname TEXT")
+            conn.commit()
+        if 'avatar_path' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
+            conn.commit()
+        if 'avatar_url' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
             conn.commit()
 
         # chat_sessions 表：question_id 需要改为 nullable
@@ -79,16 +95,6 @@ def _migrate_schema():
 
 
 def init_db():
-    """应用启动时调用：建表 + 迁移"""
-    from db.models import Base
+    """初始化数据库：建表并执行轻量级自动迁移"""
     Base.metadata.create_all(bind=engine)
     _migrate_schema()
-
-
-def get_db():
-    """获取数据库会话（用于手动管理）"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

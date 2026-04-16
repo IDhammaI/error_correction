@@ -31,6 +31,8 @@ from db.crud.users import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_login,
+    update_user_profile,
+    update_user_avatar,
     update_user_password,
 )
 
@@ -121,6 +123,8 @@ __all__ = [
     "get_user_by_email",
     "get_user_by_id",
     "get_user_by_login",
+    "update_user_profile",
+    "update_user_avatar",
     "update_user_password",
     # email verification
     "get_verification_by_email",
