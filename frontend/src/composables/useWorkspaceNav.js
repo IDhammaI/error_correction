@@ -5,6 +5,8 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
+const DEFAULT_SETTINGS_SUBVIEW = 'profile'
+
 const VIEW_TO_PATH = {
   workspace: '/app/workspace',
   workspace_review: '/app/workspace/review',
@@ -13,12 +15,17 @@ const VIEW_TO_PATH = {
   'error-bank': '/app/error-bank',
   notes: '/app/notes',
   'ai-chat': '/app/ai-chat',
-  settings: '/app/settings',
+  settings: `/app/settings/${DEFAULT_SETTINGS_SUBVIEW}`,
   'split-history': '/app/split-history',
   chat: '/app/chat',
 }
 
 const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history'])
+
+const SETTINGS_NAV_ITEMS = [
+  { id: 'profile', label: '用户资料设置', icon: 'fa-user-gear' },
+  { id: 'api', label: 'API 设置', icon: 'fa-plug-circle-bolt' },
+]
 
 const NAV_GROUPS = [
   {
@@ -68,12 +75,39 @@ export function useWorkspaceNav() {
     },
   })
 
+  const currentSettingsSubView = computed(() => {
+    if (currentView.value !== 'settings') return DEFAULT_SETTINGS_SUBVIEW
+    const subview = String(route.params.subview || '').trim()
+    return SETTINGS_NAV_ITEMS.some(item => item.id === subview)
+      ? subview
+      : DEFAULT_SETTINGS_SUBVIEW
+  })
+
+  const setSettingsSubView = (subview, { replace = false } = {}) => {
+    const target = SETTINGS_NAV_ITEMS.some(item => item.id === subview)
+      ? subview
+      : DEFAULT_SETTINGS_SUBVIEW
+    const path = `/app/settings/${target}`
+    if (route.path === path) return
+    return replace ? router.replace(path) : router.push(path)
+  }
+
   if (!initialized) {
     initialized = true
     watch(currentView, (v) => {
       if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
-    })
+    }, { immediate: true })
   }
+
+  watch(
+    () => [route.params.view, route.params.subview],
+    ([view, subview]) => {
+      if (view === 'settings' && !subview) {
+        setSettingsSubView(DEFAULT_SETTINGS_SUBVIEW, { replace: true })
+      }
+    },
+    { immediate: true },
+  )
 
   const navigateToHome = () => {
     document.body.style.transition = 'opacity 0.25s ease, transform 0.25s ease'
@@ -83,8 +117,9 @@ export function useWorkspaceNav() {
   }
 
   return {
-    currentView, lastWorkspaceView, collapsedGroups, chatCollapsed,
-    NAV_GROUPS, WORKSPACE_VIEWS,
+    currentView, currentSettingsSubView, setSettingsSubView,
+    lastWorkspaceView, collapsedGroups, chatCollapsed,
+    NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS,
     navigateToHome,
   }
 }

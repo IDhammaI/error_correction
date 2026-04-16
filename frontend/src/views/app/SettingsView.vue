@@ -11,9 +11,22 @@ import ProviderSection from '@/components/settings/ProviderSection.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 
+const props = defineProps({
+  section: { type: String, default: 'profile' },
+})
+
 const { currentUser } = useAuth()
 const { pushToast } = useToast()
 const { doFetchStatus } = useSystemStatus()
+
+const isProfileSection = computed(() => props.section === 'profile')
+const isApiSection = computed(() => props.section === 'api')
+const pageTitle = computed(() => isApiSection.value ? 'API 设置' : '用户资料设置')
+const pageDescription = computed(() => {
+  return isApiSection.value
+    ? '管理 AI 模型供应商与 OCR 服务连接参数，修改即时生效。'
+    : '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
+})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -364,11 +377,11 @@ onMounted(() => { loadConfig() })
 </script>
 
 <template>
-  <ContentPanel title="系统设置">
+  <ContentPanel :title="pageTitle">
     <div class="relative h-full overflow-y-auto">
       <div class="container relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div class="mb-8 pl-2 sm:pl-0">
-          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">配置个人资料、AI 模型供应商和 OCR 服务连接参数，修改即时生效。</p>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ pageDescription }}</p>
         </div>
 
         <div v-if="loading" class="flex items-center justify-center py-20">
@@ -376,7 +389,7 @@ onMounted(() => { loadConfig() })
           <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">加载配置中...</span>
         </div>
 
-        <div v-else class="space-y-6">
+        <div v-else-if="isProfileSection" class="space-y-6">
           <section class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="flex flex-col gap-6 md:flex-row md:items-start">
               <div class="flex items-center gap-4 md:w-56 md:flex-col md:items-center md:text-center">
@@ -473,7 +486,9 @@ onMounted(() => { loadConfig() })
               </div>
             </div>
           </section>
+        </div>
 
+        <div v-else class="space-y-6">
           <ProviderSection
             icon="fa-solid fa-bolt"
             title="OpenAI 兼容 API"

@@ -50,8 +50,9 @@ const {
   startRenameChat, confirmRenameChat, deleteAiChat,
 } = useAiChatSessions(pushToast)
 const {
-  currentView, lastWorkspaceView, collapsedGroups, chatCollapsed,
-  NAV_GROUPS, WORKSPACE_VIEWS, navigateToHome,
+  currentView, currentSettingsSubView, setSettingsSubView,
+  lastWorkspaceView, collapsedGroups, chatCollapsed,
+  NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
 const {
   answerModalOpen, answerModalText, answerModalSaving,
@@ -83,12 +84,26 @@ watch(collapsedGroups, () => {
 // ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
-const updateChatCollapsed = (v) => { chatCollapsed.value = v }
-const updateUserMenuOpen = (v) => { userMenuOpen.value = v }
-const updateChatMenuOpenId = (v) => { chatMenuOpenId.value = v }
-const updateRenameText = (v) => { renameText.value = v }
-const updateRenamingChatId = (v) => { renamingChatId.value = v }
-const updateNavRef = (el) => { navRef.value = el }
+const updateCurrentView = (v) => {
+  currentView.value = v
+}
+
+const createRefSetter = (target) => (value) => {
+  target.value = value
+}
+
+const updateCurrentSettingsSubView = (v) => {
+  setSettingsSubView(v)
+}
+
+const updateCollapsedGroups = createRefSetter(collapsedGroups)
+const updateChatCollapsed = createRefSetter(chatCollapsed)
+const updateUserMenuOpen = createRefSetter(userMenuOpen)
+const updateChatMenuOpenId = createRefSetter(chatMenuOpenId)
+const updateRenameText = createRefSetter(renameText)
+const updateRenamingChatId = createRefSetter(renamingChatId)
+const updateNavRef = createRefSetter(navRef)
+
 
 // ── 键盘事件 ────────────────────────────────────────────
 const onKeydown = (e) => {
@@ -132,6 +147,8 @@ onBeforeUnmount(() => {
     <!-- 侧边栏导航 -->
     <SidebarNav
       :current-view="currentView"
+      :current-settings-sub-view="currentSettingsSubView"
+      :settings-nav-items="SETTINGS_NAV_ITEMS"
       :last-workspace-view="lastWorkspaceView"
       :current-user="currentUser"
       :is-dark="isDark"
@@ -152,8 +169,9 @@ onBeforeUnmount(() => {
       :renaming-chat-id="renamingChatId"
       :rename-text="renameText"
       :user-menu-open="userMenuOpen"
-      @update:current-view="(v) => currentView = v"
-      @update:collapsed-groups="(v) => Object.assign(collapsedGroups, v)"
+      @update:current-view="updateCurrentView"
+      @update:current-settings-sub-view="updateCurrentSettingsSubView"
+      @update:collapsed-groups="updateCollapsedGroups"
       @update:chat-collapsed="updateChatCollapsed"
       @update:user-menu-open="updateUserMenuOpen"
       @update:chat-menu-open-id="updateChatMenuOpenId"
@@ -180,7 +198,7 @@ onBeforeUnmount(() => {
           <ReviewView v-else-if="currentView === 'review'" key="review" />
           <Dashboard v-else-if="currentView === 'dashboard'" key="dashboard" />
           <ErrorBank v-else-if="currentView === 'error-bank'" key="error-bank" />
-          <SettingsView v-else-if="currentView === 'settings'" key="settings" />
+          <SettingsView v-else-if="currentView === 'settings'" key="settings" :section="currentSettingsSubView" />
           <ChatView v-else-if="currentView === 'chat'" key="chat" />
           <NoteView v-else-if="currentView === 'notes'" key="notes" />
           <ChatPage v-else-if="currentView === 'ai-chat'" key="ai-chat" />
