@@ -15,9 +15,17 @@ const props = defineProps({
   section: { type: String, default: 'profile' },
 })
 
-const { currentUser } = useAuth()
+const { currentUser, quota, setCurrentUser } = useAuth()
 const { pushToast } = useToast()
 const { doFetchStatus } = useSystemStatus()
+
+const quotaResetText = computed(() => {
+  const resetAt = quota.value?.reset_at
+  if (!resetAt) return '每日凌晨自动重置免费体验次数'
+  const date = new Date(resetAt)
+  if (Number.isNaN(date.getTime())) return '每日凌晨自动重置免费体验次数'
+  return `下次重置时间：${date.toLocaleString('zh-CN', { hour12: false })}`
+})
 
 const isProfileSection = computed(() => props.section === 'profile')
 const isApiSection = computed(() => props.section === 'api')
@@ -87,7 +95,7 @@ const saveProfile = async () => {
       display_name: profileForm.value.display_name,
       nickname: profileForm.value.nickname,
     })
-    currentUser.value = user
+    setCurrentUser(user)
     pushToast('success', '个人资料已保存')
   } catch (e) {
     profileError.value = e instanceof Error ? e.message : String(e)
@@ -117,17 +125,17 @@ const submitAvatarUpload = () => {
   profileError.value = ''
   avatarUploadXhr.value = uploadProfileAvatar(selectedAvatarFile.value, {
     onSuccess: (user) => {
-      currentUser.value = user
+      setCurrentUser(user)
       clearAvatarPreview()
       profileUploading.value = false
       avatarUploadXhr.value = null
       pushToast('success', '头像已更新')
     },
-    onError: (message) => {
-      profileError.value = message
+    onError: (error) => {
+      profileError.value = error instanceof Error ? error.message : String(error)
       profileUploading.value = false
       avatarUploadXhr.value = null
-      pushToast('error', message)
+      pushToast('error', profileError.value)
     },
     onAbort: () => {
       profileUploading.value = false
@@ -142,7 +150,7 @@ const removeAvatar = async () => {
   profileError.value = ''
   try {
     const user = await deleteProfileAvatar()
-    currentUser.value = user
+    setCurrentUser(user)
     clearAvatarPreview()
     pushToast('success', '头像已删除')
   } catch (e) {
@@ -390,6 +398,35 @@ onMounted(() => { loadConfig() })
         </div>
 
         <div v-else-if="isProfileSection" class="space-y-6">
+          <section class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
+            <div class="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white">免费体验额度</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">使用平台托管的 AI / OCR 服务时会消耗每日免费次数；使用你自己的已配置 provider 不会扣减。</p>
+              </div>
+              <div class="rounded-full border border-[rgb(145,132,235)]/20 bg-[rgb(145,132,235)]/10 px-3 py-1 text-xs font-medium text-[rgb(145,132,235)]">
+                {{ quota?.remaining ?? '--' }} / {{ quota?.daily_free_quota ?? '--' }}
+              </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">每日额度</p>
+                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{{ quota?.daily_free_quota ?? '--' }}</p>
+              </div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">今日已用</p>
+                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{{ quota?.daily_free_used ?? '--' }}</p>
+              </div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">今日剩余</p>
+                <p class="mt-2 text-2xl font-semibold text-[rgb(145,132,235)]">{{ quota?.remaining ?? '--' }}</p>
+              </div>
+            </div>
+
+            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{{ quotaResetText }}</p>
+          </section>
+
           <section class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="flex flex-col gap-6 md:flex-row md:items-start">
               <div class="flex items-center gap-4 md:w-56 md:flex-col md:items-center md:text-center">

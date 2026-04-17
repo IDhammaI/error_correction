@@ -13,12 +13,13 @@ Flask 路由集成测试
 """
 
 import io
+import uuid
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, User
+from db.models import Base, User, SystemProviderConfig
 from db import crud
 
 # 测试用户 ID，与 client fixture 中的 session['user_id'] 一致
@@ -70,7 +71,8 @@ def client(test_db):
             pass
 
     fake = FakeSessionLocal()
-    with patch("routes.settings.SessionLocal", fake), \
+    with patch("web_app.SessionLocal", fake), \
+         patch("routes.settings.SessionLocal", fake), \
          patch("routes.questions.SessionLocal", fake), \
          patch("routes.stats.SessionLocal", fake), \
          patch("routes.upload.SessionLocal", fake), \
@@ -105,6 +107,36 @@ class TestStatusRoute:
         assert "available_models" in status
         assert isinstance(status["available_models"], list)
         assert len(status["available_models"]) >= 1
+
+    def test_falls_back_to_managed_provider(self, client, test_db):
+        provider = SystemProviderConfig(
+            id=str(uuid.uuid4()),
+            category="openai",
+            name="平台 OpenAI",
+            is_active=True,
+            api_key="sk-managed",
+            base_url="https://example.com",
+            model_name="gpt-4o-mini",
+        )
+        ocr_provider = SystemProviderConfig(
+            id=str(uuid.uuid4()),
+            category="paddleocr",
+            name="平台 OCR",
+            is_active=True,
+            api_key="ocr-token",
+            base_url="https://ocr.example.com",
+            model_name="PaddleOCR-VL-1.5",
+        )
+        test_db.add(provider)
+        test_db.add(ocr_provider)
+        test_db.commit()
+
+        status = client.get("/api/status").get_json()["status"]
+        openai = next(m for m in status["available_models"] if m["value"] == "openai")
+        assert openai["configured"] is True
+        assert openai["managed"] is True
+        assert openai["default_model"] == "gpt-4o-mini"
+        assert status["paddleocr_configured"] is True
 
 
 # ── /api/history ─────────────────────────────────────────
@@ -549,16 +581,23 @@ class TestAuthProfileRoutes:
         assert data["user"]["nickname"] == "小测"
         assert data["user"]["avatar_url"] == "/uploads/avatars/test-avatar.png"
 
-    def test_auth_me_keeps_legacy_avatar_url(self, client, test_db):
+
+    def test_auth_me_returns_quota_snapshot(self, client, test_db):
         user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
-        user.avatar_path = None
-        user.avatar_url = "https://example.com/avatar.png"
+        user.daily_free_quota = 5
+        user.daily_free_used = 2
+        user.daily_free_quota_date = "2000-01-01"
         test_db.commit()
 
         resp = client.get("/api/auth/me")
         assert resp.status_code == 200
         data = resp.get_json()
-        assert data["user"]["avatar_url"] == "https://example.com/avatar.png"
+        quota = data["user"]["quota"]
+        assert quota["daily_free_quota"] == 5
+        assert quota["daily_free_used"] == 0
+        assert quota["remaining"] == 5
+        assert quota["quota_date"] != "2000-01-01"
+        assert quota["reset_at"] is not None
 
     def test_update_profile_success(self, client, test_db):
         user = test_db.query(User).filter(User.id == TEST_USER_ID).first()

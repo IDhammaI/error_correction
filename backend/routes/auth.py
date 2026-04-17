@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from core.config import settings
 from core.mail import send_smtp_email
+from core.quota import get_daily_quota_snapshot
 from db import SessionLocal
 from db import crud
 
@@ -35,7 +36,7 @@ def _avatar_upload_dir() -> str:
     return os.path.join(str(settings.upload_dir), "avatars")
 
 
-def _serialize_user(user):
+def _serialize_user(user, db=None):
     avatar_url = None
     avatar_path = (getattr(user, "avatar_path", None) or "").strip()
     legacy_avatar_url = (getattr(user, "avatar_url", None) or "").strip()
@@ -43,6 +44,13 @@ def _serialize_user(user):
         avatar_url = f"/uploads/{avatar_path.replace(os.sep, '/')}"
     elif legacy_avatar_url:
         avatar_url = legacy_avatar_url
+    quota = get_daily_quota_snapshot(db, user) if db is not None else {
+        "daily_free_quota": max(int(getattr(user, "daily_free_quota", 5) or 5), 0),
+        "daily_free_used": max(int(getattr(user, "daily_free_used", 0) or 0), 0),
+        "remaining": max(int(getattr(user, "daily_free_quota", 5) or 5) - int(getattr(user, "daily_free_used", 0) or 0), 0),
+        "quota_date": getattr(user, "daily_free_quota_date", None),
+        "reset_at": None,
+    }
     return {
         "id": user.id,
         "email": user.email,
@@ -51,6 +59,7 @@ def _serialize_user(user):
         "nickname": user.nickname,
         "avatar_url": avatar_url,
         "is_admin": user.is_admin,
+        "quota": quota,
     }
 
 
@@ -152,7 +161,7 @@ def auth_register():
         pwd_hash = generate_password_hash(password)
         user = crud.create_user(db, email=email, password_hash=pwd_hash, username=username)
         crud.delete_verification_by_email(db, email)
-        user_payload = _serialize_user(user)
+        user_payload = _serialize_user(user, db)
         session_version_out = user.session_version or 0
 
     session["user_id"] = user_payload["id"]
@@ -301,7 +310,7 @@ def auth_login():
         session["username"] = user.username
         session["is_admin"] = bool(user.is_admin)
         session["session_version"] = user.session_version or 0
-        return jsonify({"user": _serialize_user(user)})
+        return jsonify({"user": _serialize_user(user, db)})
 
 
 @bp.route("/logout", methods=["POST"])
@@ -322,7 +331,7 @@ def auth_me():
         if not user:
             session.clear()
             return jsonify({"error": "用户不存在", "code": "UNAUTHORIZED"}), 401
-        return jsonify({"user": _serialize_user(user)})
+        return jsonify({"user": _serialize_user(user, db)})
 
 
 @bp.route("/profile", methods=["PATCH"])
@@ -349,7 +358,7 @@ def update_profile():
         if not user:
             session.clear()
             return jsonify({"success": False, "error": "用户不存在"}), 404
-        return jsonify({"success": True, "user": _serialize_user(user)})
+        return jsonify({"success": True, "user": _serialize_user(user, db)})
 
 
 @bp.route("/profile/avatar", methods=["POST"])

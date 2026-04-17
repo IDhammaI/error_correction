@@ -7,7 +7,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
 
 const router = useRouter()
-const { currentUser } = useAuth()
+const { setCurrentUser } = useAuth()
 
 const loading = ref(false)
 const error = ref('')
@@ -27,7 +27,7 @@ async function handleLogin() {
     if (!res.ok) {
       error.value = data.error || '登录失败'
     } else {
-      currentUser.value = data.user
+      setCurrentUser(data.user)
       router.push('/app')
     }
   } catch {

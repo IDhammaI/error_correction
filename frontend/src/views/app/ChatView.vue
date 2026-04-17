@@ -10,9 +10,11 @@ import ContentPanel from '@/components/workspace/ContentPanel.vue'
 
 const PAGE_SIZE = 30
 
+const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
+
 const { pushToast } = useToast()
 const { selectedProvider, selectedModel } = useSystemStatus()
-const { currentUser } = useAuth()
+const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { chatSessionId, chatQuestion, backToErrorBank } = useChatSession()
 
 const sessionId = computed(() => chatSessionId.value)
@@ -111,6 +113,7 @@ const sendMessage = async () => {
   if (!text || streaming.value || !sessionId.value) return
 
   inputText.value = ''
+  const rollbackIndex = messages.value.length
   messages.value.push({ role: 'user', content: text })
   messages.value.push({ role: 'assistant', content: '' })
   streaming.value = true
@@ -121,7 +124,11 @@ const sendMessage = async () => {
     const resp = await streamChat(sessionId.value, text, modelProvider.value, abortCtrl.signal, modelName.value)
     if (!resp.ok) {
       const err = await resp.json().catch(() => null)
-      throw new Error((err && err.error) || `HTTP ${resp.status}`)
+      const error = new Error((err && err.error) || `HTTP ${resp.status}`)
+      error.status = resp.status
+      error.code = err?.code || null
+      error.quota = err?.quota || null
+      throw error
     }
 
     const reader = resp.body.getReader()
@@ -149,10 +156,17 @@ const sendMessage = async () => {
         } catch (_) {}
       }
     }
+    await refreshCurrentUser()
   } catch (e) {
-    const last = messages.value[messages.value.length - 1]
-    if (last && last.role === 'assistant' && !last.content) {
-      last.content = `⚠️ 请求失败: ${e.message}`
+    if (e?.code === QUOTA_EXCEEDED_CODE) {
+      messages.value.splice(rollbackIndex, 2)
+      if (e.quota) setQuotaSnapshot(e.quota)
+      pushToast('error', e.message || '今日免费体验次数已用完')
+    } else {
+      const last = messages.value[messages.value.length - 1]
+      if (last && last.role === 'assistant' && !last.content) {
+        last.content = `⚠️ 请求失败: ${e.message}`
+      }
     }
   } finally {
     streaming.value = false
@@ -161,6 +175,7 @@ const sendMessage = async () => {
     await typesetMath(listEl.value)
   }
 }
+
 
 const onKeydown = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {

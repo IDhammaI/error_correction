@@ -102,8 +102,11 @@ from db.crud.providers import (
     _mask_secret,
     _serialize_provider,
     get_user_providers,
+    get_system_providers,
     save_user_providers,
+    save_system_providers,
     get_active_provider,
+    get_active_system_provider,
 )
 
 from db.crud.notes import (
@@ -180,8 +183,11 @@ __all__ = [
     "_mask_secret",
     "_serialize_provider",
     "get_user_providers",
+    "get_system_providers",
     "save_user_providers",
+    "save_system_providers",
     "get_active_provider",
+    "get_active_system_provider",
     # notes
     "save_note",
     "get_notes",

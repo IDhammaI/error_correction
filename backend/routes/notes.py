@@ -13,6 +13,7 @@ from pathlib import PurePath
 from flask import Blueprint, request, jsonify, session
 
 from core.config import settings
+from core.quota import consume_daily_free_quota, has_daily_free_quota, quota_exceeded_response, uses_server_llm, uses_server_ocr
 from db import SessionLocal
 from db import crud
 
@@ -53,6 +54,40 @@ def _serialize_note(note) -> dict:
     }
 
 
+def _apply_provider_context(db, user_id):
+    managed_llm = {}
+    for category in ('openai', 'anthropic'):
+        provider = crud.get_active_system_provider(db, category)
+        if provider and provider.api_key:
+            managed_llm[category] = settings.build_provider_config(
+                category,
+                api_key=provider.api_key or '',
+                base_url=provider.base_url or '',
+                model_name=provider.model_name or None,
+                light_model_name=getattr(provider, 'light_model_name', None) or None,
+                supports_function_calling=getattr(provider, 'supports_function_calling', True),
+            )
+
+    ocr_provider = crud.get_active_system_provider(db, 'paddleocr')
+    managed_ocr = (
+        settings.build_ocr_config(
+            api_url=ocr_provider.base_url or '',
+            token=ocr_provider.api_key or '',
+            model=ocr_provider.model_name or 'PaddleOCR-VL-1.5',
+            use_doc_orientation=getattr(ocr_provider, 'use_doc_orientation', False),
+            use_doc_unwarping=getattr(ocr_provider, 'use_doc_unwarping', False),
+            use_chart_recognition=getattr(ocr_provider, 'use_chart_recognition', False),
+        )
+        if ocr_provider else {}
+    )
+
+    settings.apply_managed_providers(managed_llm, managed_ocr)
+    if user_id:
+        settings.load_providers_from_db(user_id, db=db)
+    else:
+        settings.reload_providers()
+
+
 @bp.route('/', methods=['POST'])
 def create_note():
     """上传笔记图片 → OCR → LLM 整理 → 保存
@@ -76,6 +111,21 @@ def create_note():
     model_name = request.form.get('model_name') or None
 
     try:
+        should_consume_quota = False
+        with SessionLocal() as db:
+            if user_id:
+                uses_server_side_ocr = uses_server_ocr(db, user_id)
+                uses_server_side_llm = uses_server_llm(db, user_id, model_provider)
+                should_consume_quota = uses_server_side_ocr or uses_server_side_llm
+                if should_consume_quota:
+                    quota_user = crud.get_user_by_id(db, user_id)
+                    if not quota_user:
+                        session.clear()
+                        return jsonify({'success': False, 'error': '用户不存在'}), 401
+                    if not has_daily_free_quota(db, quota_user):
+                        payload, status = quota_exceeded_response(db, quota_user)
+                        return jsonify(payload), status
+
         # 1. 保存上传图片
         saved_paths = []
         for f in files:
@@ -96,8 +146,9 @@ def create_note():
 
         # 从数据库加载用户 OCR 凭据
         ocr_kwargs = {}
-        if user_id:
-            with SessionLocal() as db:
+        with SessionLocal() as db:
+            _apply_provider_context(db, user_id)
+            if user_id:
                 ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
                 if ocr_provider:
                     ocr_kwargs = {
@@ -129,9 +180,6 @@ def create_note():
             return jsonify({'success': False, 'error': 'OCR 未识别到任何文字，请检查图片'}), 400
 
         # 3. LLM 整理
-        if user_id:
-            settings.load_providers_from_db(user_id)
-
         from agents.note import invoke_note_organize
         result = invoke_note_organize(ocr_text, provider=model_provider, model_name=model_name)
 
@@ -147,6 +195,16 @@ def create_note():
                 knowledge_tags=result.knowledge_tags,
                 user_id=user_id,
             )
+            note_id = note.id
+
+        if should_consume_quota and user_id:
+            with SessionLocal() as db:
+                quota_user = crud.get_user_by_id(db, user_id)
+                if quota_user:
+                    consume_daily_free_quota(db, quota_user)
+
+        with SessionLocal() as db:
+            note = crud.get_note_by_id(db, note_id, user_id=_effective_user_id())
             return jsonify({
                 'success': True,
                 'note': _serialize_note(note),

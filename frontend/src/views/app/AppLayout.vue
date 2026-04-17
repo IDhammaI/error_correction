@@ -31,7 +31,7 @@ import ChatPage from '@/views/app/ChatPageView.vue'
 
 // ── 全局 Composables ────────────────────────────────────
 const router = useRouter()
-const { currentUser } = useAuth()
+const { currentUser, clearCurrentUser } = useAuth()
 const { loading: globalLoading } = usePageTransition()
 const { isDark, toggleTheme, initTheme } = useTheme()
 const { pushToast } = useToast()
@@ -65,7 +65,7 @@ const userMenuOpen = ref(false)
 
 const handleLogout = async () => {
   try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) {}
-  currentUser.value = null
+  clearCurrentUser()
   pushToast('success', '已退出登录')
   router.push('/auth')
 }

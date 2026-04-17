@@ -58,6 +58,15 @@ def _migrate_schema():
         if 'avatar_url' not in user_columns:
             cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
             conn.commit()
+        if 'daily_free_quota' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota INTEGER DEFAULT 5")
+            conn.commit()
+        if 'daily_free_used' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_used INTEGER DEFAULT 0")
+            conn.commit()
+        if 'daily_free_quota_date' not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota_date TEXT")
+            conn.commit()
 
         # chat_sessions 表：question_id 需要改为 nullable
         # SQLite 不支持 ALTER COLUMN，需要重建表

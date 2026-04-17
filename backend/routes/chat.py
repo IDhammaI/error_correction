@@ -9,6 +9,7 @@ from db import SessionLocal
 from db import crud
 from db.models import Question, ChatSession as ChatSessionModel, QuestionTagMapping
 from core.config import settings
+from core.quota import consume_daily_free_quota, has_daily_free_quota, quota_exceeded_response, uses_server_llm
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,27 @@ def _effective_user_id():
     if session.get('is_admin'):
         return None
     return session.get('user_id')
+
+
+def _apply_provider_context(db, user_id):
+    managed_llm = {}
+    for category in ('openai', 'anthropic'):
+        provider = crud.get_active_system_provider(db, category)
+        if provider and provider.api_key:
+            managed_llm[category] = settings.build_provider_config(
+                category,
+                api_key=provider.api_key or '',
+                base_url=provider.base_url or '',
+                model_name=provider.model_name or None,
+                light_model_name=getattr(provider, 'light_model_name', None) or None,
+                supports_function_calling=getattr(provider, 'supports_function_calling', True),
+            )
+
+    settings.apply_managed_providers(managed_llm)
+    if user_id:
+        settings.load_providers_from_db(user_id, db=db)
+    else:
+        settings.reload_providers()
 
 
 def _serialize_chat_session(s) -> dict:
@@ -233,12 +255,9 @@ def stream_chat(session_id):
         if not settings.is_valid_provider(model_provider):
             return jsonify({'success': False, 'error': f'不支持的模型供应商: {model_provider}'}), 400
 
-        # 从数据库加载用户的 LLM 凭据
         user_id = session.get('user_id')
-        if user_id:
-            settings.load_providers_from_db(user_id)
-
         with SessionLocal() as db:
+            _apply_provider_context(db, user_id)
             uid = _effective_user_id()
             cs_query = db.query(ChatSessionModel).options(
                 selectinload(ChatSessionModel.question)
@@ -253,6 +272,17 @@ def stream_chat(session_id):
             if not chat_session:
                 return jsonify({'success': False, 'error': '对话不存在'}), 404
 
+            should_consume_quota = bool(user_id) and uses_server_llm(db, user_id, model_provider)
+            quota_user_id = user_id
+            if should_consume_quota:
+                quota_user = crud.get_user_by_id(db, user_id)
+                if not quota_user:
+                    session.clear()
+                    return jsonify({'success': False, 'error': '用户不存在'}), 401
+                if not has_daily_free_quota(db, quota_user):
+                    payload, status = quota_exceeded_response(db, quota_user)
+                    return jsonify(payload), status
+
             # 独立对话或题目绑定对话
             question = chat_session.question
             q_data = _serialize_question(question) if question else None
@@ -261,9 +291,10 @@ def stream_chat(session_id):
             history_result = crud.get_chat_messages(db, chat_session.id, limit=20)
             history = [{"role": m["role"], "content": m["content"]} for m in history_result["messages"]]
 
-            # 追加用户消息
+            # 额度校验通过后再追加用户消息
             history.append({"role": "user", "content": message})
             crud.add_chat_message(db, chat_session.id, "user", message)
+            chat_session_id = chat_session.id
 
         def generate():
             full_response = []
@@ -296,8 +327,11 @@ def stream_chat(session_id):
             if assistant_content:
                 try:
                     with SessionLocal() as db:
-                        # 此处需使用数据库内部自增 id，而非 public_id
-                        crud.add_chat_message(db, chat_session.id, "assistant", assistant_content)
+                        crud.add_chat_message(db, chat_session_id, "assistant", assistant_content)
+                        if should_consume_quota and quota_user_id:
+                            quota_user = crud.get_user_by_id(db, quota_user_id)
+                            if quota_user:
+                                consume_daily_free_quota(db, quota_user)
                 except Exception as e:
                     logger.error(f"保存 assistant 回复失败: {e}")
 

@@ -119,6 +119,13 @@ def require_login():
     return None
 
 
+@app.teardown_request
+def clear_request_provider_context(error=None):
+    """请求结束后清理请求级 provider 上下文，避免线程复用串状态。"""
+    settings.clear_request_provider_context()
+    return None
+
+
 # ============================================================
 # 注册 Blueprint 路由
 # ============================================================

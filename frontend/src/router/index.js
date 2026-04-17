@@ -49,18 +49,11 @@ const router = createRouter({
 
 // ── 前置守卫：认证检查 + 过渡动画 ─────────────────────────
 router.beforeEach(async (to, from) => {
-  const { currentUser, authChecked } = useAuth()
+  const { currentUser, authChecked, refreshCurrentUser } = useAuth()
 
   // 首次导航时请求登录态
   if (!authChecked.value) {
-    try {
-      const res = await fetch('/api/auth/me')
-      if (res.ok) {
-        const data = await res.json()
-        currentUser.value = data.user
-      }
-    } catch (_) {}
-    authChecked.value = true
+    await refreshCurrentUser()
   }
 
   // 未登录 → 拦截到登录页

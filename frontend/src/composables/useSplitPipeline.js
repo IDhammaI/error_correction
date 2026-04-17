@@ -1,7 +1,11 @@
 import { ref } from 'vue'
 import * as api from '@/api.js'
+import { useAuth } from '@/composables/useAuth.js'
+
+const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath) {
+  const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
   const eraseLoading = ref(false)
   const eraseImages = ref([])
   const eraseDone = ref(false)
@@ -9,6 +13,17 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const ocrPages = ref([])
   const ocrDone = ref(false)
   const eraseEnabled = ref(true)
+
+  const syncQuotaFromError = (error) => {
+    if (error?.quota) setQuotaSnapshot(error.quota)
+    return error?.code === QUOTA_EXCEEDED_CODE
+  }
+
+  const refreshQuotaSnapshot = async () => {
+    try {
+      await refreshCurrentUser()
+    } catch (_) {}
+  }
 
   const startProcess = () => {
     if (eraseEnabled.value) {
@@ -51,9 +66,14 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       const data = await api.runOcr()
       ocrPages.value = data.pages || []
       ocrDone.value = true
+      await refreshQuotaSnapshot()
       pushToast('success', `OCR 完成，共 ${data.pages?.length || 0} 页`)
     } catch (e) {
-      pushToast('error', e.message || 'OCR 失败')
+      if (syncQuotaFromError(e)) {
+        pushToast('error', e.message || '今日免费体验次数已用完')
+      } else {
+        pushToast('error', e.message || 'OCR 失败')
+      }
       currentView.value = 'workspace'
       step.value = S.value.UPLOAD
     } finally {
@@ -87,6 +107,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
           pushToast('success', `成功分割 ${questions.value.length} 道题目`)
         }
         await typesetMath()
+        await refreshQuotaSnapshot()
         setTimeout(() => {
           if (currentView.value === 'workspace') {
             currentView.value = 'workspace_review'
@@ -94,7 +115,11 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
         }, 800)
       }
     } catch (e) {
-      pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
+      if (syncQuotaFromError(e)) {
+        pushToast('error', e.message || '今日免费体验次数已用完')
+      } else {
+        pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
+      }
     } finally {
       splitting.value = false
     }
@@ -112,22 +137,27 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       formData.append('model_provider', selectedProvider.value)
       if (selectedModel.value) formData.append('model_name', selectedModel.value)
 
-      const result = await new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         api.createNote(formData, {
           onSuccess: (data) => resolve(data),
-          onError: (msg) => reject(new Error(msg)),
+          onError: (error) => reject(error),
         })
       })
 
       splitCompleted.value = true
       step.value = S.value.EXPORT
+      await refreshQuotaSnapshot()
       pushToast('success', '笔记整理完成！')
 
       setTimeout(() => {
         currentView.value = 'notes'
       }, 800)
     } catch (e) {
-      pushToast('error', '笔记整理失败: ' + (e instanceof Error ? e.message : String(e)))
+      if (syncQuotaFromError(e)) {
+        pushToast('error', e.message || '今日免费体验次数已用完')
+      } else {
+        pushToast('error', '笔记整理失败: ' + (e instanceof Error ? e.message : String(e)))
+      }
     } finally {
       splitting.value = false
     }

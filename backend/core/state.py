@@ -32,6 +32,7 @@ def get_user_session(user_id) -> dict:
             "session_file_order": [],     # 上传顺序
             "cancelled_file_keys": set(), # 已取消的文件 key
             "erased_file_paths": None,    # 擦除后的文件路径列表
+            "ocr_cache_uses_server_ocr": False,  # OCR 预览缓存是否已消耗平台 OCR 额度
         }
     return _user_sessions[key]
 

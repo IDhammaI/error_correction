@@ -78,6 +78,14 @@ const userInitial = computed(() => {
   const source = userDisplayName.value || props.currentUser?.username || ''
   return source.trim()?.[0]?.toUpperCase() || '?'
 })
+
+const userQuota = computed(() => props.currentUser?.quota || null)
+const userQuotaSummary = computed(() => {
+  const remaining = userQuota.value?.remaining
+  const total = userQuota.value?.daily_free_quota
+  if (remaining == null || total == null) return ''
+  return `今日剩余 ${remaining} / ${total} 次`
+})
 </script>
 
 <template>
@@ -350,7 +358,8 @@ const userInitial = computed(() => {
           </div>
           <div class="flex-1 min-w-0 text-left">
             <p class="text-sm text-[#f7f8f8] truncate leading-tight">{{ userDisplayName }}</p>
-            <p class="text-xs text-[#62666d] truncate leading-tight">@{{ currentUser?.username || 'guest' }}</p>
+            <p v-if="userQuotaSummary" class="mt-0.5 text-xs text-[rgb(145,132,235)] truncate leading-tight">{{ userQuotaSummary }}</p>
+            <p v-else class="text-xs text-[#62666d] truncate leading-tight">@{{ currentUser?.username || 'guest' }}</p>
           </div>
           <i class="fa-solid fa-chevron-up text-[10px] text-[#62666d]"></i>
         </button>

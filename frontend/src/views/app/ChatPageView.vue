@@ -9,9 +9,11 @@ import { useAuth } from '@/composables/useAuth.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 
+const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
+
 const { pushToast } = useToast()
 const { selectedProvider, selectedModel } = useSystemStatus()
-const { currentUser } = useAuth()
+const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
 const { currentView } = useWorkspaceNav()
 
@@ -56,6 +58,7 @@ async function sendMessage() {
   if (!text || !sessionId.value || streaming.value) return
 
   inputText.value = ''
+  const rollbackIndex = messages.value.length
   // 消息结构：{ role, content, reasoning?, reasoningOpen? }
   messages.value.push({ role: 'user', content: text })
   messages.value.push({ role: 'assistant', content: '', reasoning: '', reasoningOpen: false })
@@ -77,6 +80,15 @@ async function sendMessage() {
       { deepThink: useDeepThink },
     )
 
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => null)
+      const error = new Error((err && err.error) || `HTTP ${resp.status}`)
+      error.status = resp.status
+      error.code = err?.code || null
+      error.quota = err?.quota || null
+      throw error
+    }
+
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
@@ -96,12 +108,11 @@ async function sendMessage() {
           const payload = JSON.parse(line.slice(6))
           if (payload.reasoning) {
             lastMsg().reasoning += payload.reasoning
-            lastMsg().reasoningOpen = true  // 思考中自动展开
+            lastMsg().reasoningOpen = true
             await nextTick()
             scrollToBottom()
           }
           if (payload.token) {
-            // 收到正文 token 时折叠思考过程
             if (lastMsg().reasoningOpen && lastMsg().reasoning) {
               lastMsg().reasoningOpen = false
             }
@@ -120,16 +131,22 @@ async function sendMessage() {
       }
     }
 
+    await refreshCurrentUser()
     await nextTick()
     if (messagesContainer.value) typesetMath(messagesContainer.value)
   } catch (e) {
-    if (e.name !== 'AbortError') {
+    if (e?.code === QUOTA_EXCEEDED_CODE) {
+      messages.value.splice(rollbackIndex, 2)
+      if (e.quota) setQuotaSnapshot(e.quota)
+      pushToast('error', e.message || '今日免费体验次数已用完')
+    } else if (e.name !== 'AbortError') {
       messages.value[messages.value.length - 1].content += `\n\n⚠️ ${e.message}`
     }
   } finally {
     streaming.value = false
   }
 }
+
 
 const textareaRef = ref(null)
 

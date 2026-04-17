@@ -10,12 +10,13 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
-import { useTheme } from '@/composables/useTheme.js'
+import { useAuth } from '@/composables/useAuth.js'
+
+const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 const { pushToast } = useToast()
 const { selectedProvider, selectedModel } = useSystemStatus()
-const { isDark } = useTheme()
-const theme = computed(() => isDark.value ? 'dark' : 'light')
+const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
 
 const noteContentRef = ref(null)
 
@@ -100,21 +101,26 @@ function handleFiles(e) {
 
   api.createNote(formData, {
     onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       creating.value = false
       createProgress.value = 100
+      await refreshCurrentUser().catch(() => {})
       pushToast('success', '笔记整理完成')
       loadNotes()
-      // 自动打开新创建的笔记
       if (data.note) selectedNote.value = data.note
     },
-    onError: (msg) => {
+    onError: (error) => {
       creating.value = false
-      emit('push-toast', 'error', msg)
+      createProgress.value = 0
+      if (error?.quota) setQuotaSnapshot(error.quota)
+      if (error?.code === QUOTA_EXCEEDED_CODE) {
+        pushToast('error', error.message || '今日免费体验次数已用完')
+        return
+      }
+      pushToast('error', error instanceof Error ? error.message : String(error))
     },
   })
 
-  // 模拟 OCR + LLM 处理进度
   let fakeProgress = 50
   const timer = setInterval(() => {
     if (!creating.value) { clearInterval(timer); return }
@@ -124,6 +130,7 @@ function handleFiles(e) {
 
   e.target.value = ''
 }
+
 
 // ---- 详情 ----
 async function openNote(note) {

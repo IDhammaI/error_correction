@@ -16,6 +16,47 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('settings', __name__)
 
 
+def _require_admin():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': '需要管理员权限'}), 403
+    return None
+
+
+def _managed_llm_from_provider(category: str, provider):
+    return settings.build_provider_config(
+        category,
+        api_key=provider.api_key or '',
+        base_url=provider.base_url or '',
+        model_name=provider.model_name or None,
+        light_model_name=getattr(provider, 'light_model_name', None) or None,
+        supports_function_calling=getattr(provider, 'supports_function_calling', True),
+    )
+
+
+def _managed_ocr_from_provider(provider):
+    return settings.build_ocr_config(
+        api_url=provider.base_url or '',
+        token=provider.api_key or '',
+        model=provider.model_name or 'PaddleOCR-VL-1.5',
+        use_doc_orientation=getattr(provider, 'use_doc_orientation', False),
+        use_doc_unwarping=getattr(provider, 'use_doc_unwarping', False),
+        use_chart_recognition=getattr(provider, 'use_chart_recognition', False),
+    )
+
+
+def _apply_system_provider_context(db):
+    managed_llm = {}
+    for category in ('openai', 'anthropic'):
+        provider = crud.get_active_system_provider(db, category)
+        if provider and provider.api_key:
+            managed_llm[category] = _managed_llm_from_provider(category, provider)
+
+    ocr_provider = crud.get_active_system_provider(db, 'paddleocr')
+    managed_ocr = _managed_ocr_from_provider(ocr_provider) if ocr_provider else {}
+    settings.apply_managed_providers(managed_llm, managed_ocr)
+    return managed_llm, managed_ocr
+
+
 @bp.route('/models/erase', methods=['POST'])
 def erase_text():
     """文字擦除接口
@@ -78,38 +119,37 @@ def get_status():
         # 检查 EnsExam 模型权重是否存在
         ensexam_configured = settings.model_path.exists()
 
-        if user_id:
-            # 已登录：从数据库读取用户配置
-            with SessionLocal() as db:
-                paddle_provider = crud.get_active_provider(db, user_id, 'paddleocr')
-                paddleocr_configured = bool(paddle_provider and paddle_provider.api_key and paddle_provider.base_url)
+        with SessionLocal() as db:
+            managed_llm, managed_ocr = _apply_system_provider_context(db)
+            paddle_provider = crud.get_active_provider(db, user_id, 'paddleocr') if user_id else None
+            paddleocr_configured = bool(
+                (paddle_provider and paddle_provider.api_key and paddle_provider.base_url) or managed_ocr
+            )
 
-                # 构建用户级可用模型列表
-                available_models = []
-                for category, label in [('openai', 'OpenAI'), ('anthropic', 'Anthropic')]:
-                    provider = crud.get_active_provider(db, user_id, category)
-                    if provider and provider.api_key:
-                        available_models.append({
-                            'value': category,
-                            'label': provider.name or label,
-                            'configured': True,
-                            'status': '配置成功',
-                            'default_model': provider.model_name or '',
-                            'models': [provider.model_name] if provider.model_name else [],
-                        })
-                    else:
-                        available_models.append({
-                            'value': category,
-                            'label': label,
-                            'configured': False,
-                            'status': '未配置',
-                            'default_model': '',
-                            'models': [],
-                        })
-        else:
-            # 未登录：返回空状态
-            paddleocr_configured = False
             available_models = []
+            for category, label in [('openai', 'OpenAI'), ('anthropic', 'Anthropic')]:
+                provider = crud.get_active_provider(db, user_id, category) if user_id else None
+                if provider and provider.api_key:
+                    available_models.append({
+                        'value': category,
+                        'label': provider.name or label,
+                        'configured': True,
+                        'status': '配置成功',
+                        'default_model': provider.model_name or '',
+                        'models': [provider.model_name] if provider.model_name else [],
+                        'managed': False,
+                    })
+                else:
+                    managed_cfg = managed_llm.get(category)
+                    available_models.append({
+                        'value': category,
+                        'label': f'{label}（平台托管）' if managed_cfg and managed_cfg.configured else label,
+                        'configured': bool(managed_cfg and managed_cfg.configured),
+                        'status': '平台托管已配置' if managed_cfg and managed_cfg.configured else '未配置',
+                        'default_model': managed_cfg.model_name if managed_cfg and managed_cfg.configured else '',
+                        'models': [managed_cfg.model_name] if managed_cfg and managed_cfg.configured and managed_cfg.model_name else [],
+                        'managed': bool(managed_cfg and managed_cfg.configured),
+                    })
 
         status = {
             'paddleocr_configured': paddleocr_configured,
@@ -164,6 +204,8 @@ def update_config():
         with SessionLocal() as db:
             try:
                 crud.save_user_providers(db, user_id, data)
+                _apply_system_provider_context(db)
+                settings.load_providers_from_db(user_id)
             except Exception:
                 db.rollback()
                 raise
@@ -172,6 +214,42 @@ def update_config():
     except Exception as e:
         logger.exception("更新配置失败")
         return jsonify({'success': False, 'error': '更新配置失败，请检查日志'}), 500
+
+
+@bp.route('/admin/system-config', methods=['GET'])
+def get_system_config():
+    """获取管理员维护的系统级 provider 配置"""
+    denied = _require_admin()
+    if denied:
+        return denied
+    try:
+        with SessionLocal() as db:
+            config = crud.get_system_providers(db)
+        return jsonify({'success': True, 'config': config})
+    except Exception:
+        logger.exception("获取系统级配置失败")
+        return jsonify({'success': False, 'error': '获取系统级配置失败'}), 500
+
+
+@bp.route('/admin/system-config', methods=['PUT'])
+def update_system_config():
+    """保存管理员维护的系统级 provider 配置"""
+    denied = _require_admin()
+    if denied:
+        return denied
+    try:
+        data = request.get_json(force=True) or {}
+        with SessionLocal() as db:
+            try:
+                crud.save_system_providers(db, data)
+                _apply_system_provider_context(db)
+            except Exception:
+                db.rollback()
+                raise
+        return jsonify({'success': True})
+    except Exception:
+        logger.exception("更新系统级配置失败")
+        return jsonify({'success': False, 'error': '更新系统级配置失败，请检查日志'}), 500
 
 
 @bp.route('/models/list', methods=['POST'])
@@ -190,26 +268,31 @@ def list_models():
         api_key = data.get('api_key') or ''
         base_url = data.get('base_url') or ''
 
-        # 如果前端没传 key，从数据库读取已保存的配置
         if not api_key:
             user_id = session.get('user_id')
             provider_id = data.get('provider_id')
-            if user_id:
-                with SessionLocal() as db:
+            with SessionLocal() as db:
+                _, _ = _apply_system_provider_context(db)
+                if user_id:
                     if provider_id:
-                        provider = db.query(ProviderConfig).filter_by(
-                            id=provider_id, user_id=user_id
-                        ).first()
+                        provider = db.query(ProviderConfig).filter_by(id=provider_id, user_id=user_id).first()
                     else:
                         provider = crud.get_active_provider(db, user_id, provider_type)
                     if provider:
-                        if not api_key:
-                            api_key = provider.api_key or ''
-                        if not base_url:
-                            base_url = provider.base_url or ''
+                        api_key = api_key or provider.api_key or ''
+                        base_url = base_url or provider.base_url or ''
+                if not api_key and provider_type in ('openai', 'anthropic'):
+                    system_provider = crud.get_active_system_provider(db, provider_type)
+                    if system_provider:
+                        api_key = system_provider.api_key or ''
+                        base_url = base_url or system_provider.base_url or ''
+            if not api_key and provider_type in ('openai', 'anthropic'):
+                managed_cfg = settings.get_managed_provider(provider_type)
+                api_key = api_key or managed_cfg.api_key or ''
+                base_url = base_url or managed_cfg.base_url or ''
 
         if not api_key:
-            return jsonify({'error': '未提供 API Key，请先在设置中配置'}), 400
+            return jsonify({'error': '未提供 API Key，请先在设置中配置，或联系管理员配置平台托管 provider'}), 400
 
         if provider_type == 'openai':
             url = (base_url.rstrip('/') if base_url else 'https://api.openai.com') + '/v1/models'
@@ -266,26 +349,30 @@ def test_paddleocr():
         api_token = data.get('api_token') or ''
         api_url = data.get('api_url') or ''
 
-        # 前端未提供凭据时，从数据库读取已保存的配置
         if not api_token or not api_url:
             user_id = session.get('user_id')
             provider_id = data.get('provider_id')
-            if user_id:
-                with SessionLocal() as db:
+            with SessionLocal() as db:
+                _, managed_ocr = _apply_system_provider_context(db)
+                if user_id:
                     if provider_id:
-                        provider = db.query(ProviderConfig).filter_by(
-                            id=provider_id, user_id=user_id
-                        ).first()
+                        provider = db.query(ProviderConfig).filter_by(id=provider_id, user_id=user_id).first()
                     else:
                         provider = crud.get_active_provider(db, user_id, 'paddleocr')
                     if provider:
-                        if not api_token:
-                            api_token = provider.api_key or ''
-                        if not api_url:
-                            api_url = provider.base_url or ''
+                        api_token = api_token or provider.api_key or ''
+                        api_url = api_url or provider.base_url or ''
+                if not api_token or not api_url:
+                    system_provider = crud.get_active_system_provider(db, 'paddleocr')
+                    if system_provider:
+                        api_token = api_token or system_provider.api_key or ''
+                        api_url = api_url or system_provider.base_url or ''
+            if managed_ocr:
+                api_token = api_token or managed_ocr.get('token', '')
+                api_url = api_url or managed_ocr.get('api_url', '')
 
         if not api_token or not api_url:
-            return jsonify({'error': '未提供 API Token 或 API URL'}), 400
+            return jsonify({'error': '未提供 API Token 或 API URL，请先在设置中配置，或联系管理员配置平台托管 OCR'}), 400
 
         # 用 GET 请求 API URL，带 token 验证认证是否有效
         headers = {'Authorization': f'bearer {api_token}'}

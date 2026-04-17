@@ -2,6 +2,7 @@ import logging
 import os
 import threading
 import time
+from contextvars import ContextVar
 from pathlib import Path
 
 from pydantic import model_validator
@@ -11,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 _CONNECTION_CACHE_TTL = 60  # 连通性检测缓存有效期（秒）
 _providers_lock = threading.Lock()  # 保护 llm_providers 并发读写
+_request_provider_context: ContextVar[dict[str, "LLMProviderConfig"] | None] = ContextVar(
+    "request_provider_context",
+    default=None,
+)
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent  # backend/core/ → backend/
 _PROJECT_ROOT = _BACKEND_ROOT.parent
@@ -191,6 +196,26 @@ class Settings(BaseSettings):
     registration_send_interval_seconds: int = 60
     registration_max_attempts: int = 5
 
+    # 平台托管 provider 默认配置（管理员通过 .env 注入）
+    default_openai_api_key: str = ""
+    default_openai_base_url: str = ""
+    default_openai_model_name: str = "gpt-4o-mini"
+    default_openai_light_model_name: str = ""
+    default_openai_supports_function_calling: bool = True
+    default_anthropic_api_key: str = ""
+    default_anthropic_base_url: str = ""
+    default_anthropic_model_name: str = "claude-sonnet-4-20250514"
+    default_paddleocr_api_url: str = ""
+    default_paddleocr_api_token: str = ""
+    default_paddleocr_model: str = "PaddleOCR-VL-1.5"
+    default_paddleocr_use_doc_orientation: bool = False
+    default_paddleocr_use_doc_unwarping: bool = False
+    default_paddleocr_use_chart_recognition: bool = False
+
+    # 当前生效的系统级托管 provider（来源：数据库优先，环境变量兜底）
+    managed_llm_providers: dict[str, LLMProviderConfig] | None = None
+    managed_ocr_config: dict[str, object] | None = None
+
     # LLM 供应商注册表
     llm_providers: dict[str, LLMProviderConfig] | None = None
 
@@ -211,12 +236,15 @@ class Settings(BaseSettings):
         if self.model_path is None:
             self.model_path = _BACKEND_ROOT / "models" / "weight" / "best.pth"
 
-        # 初始化 LLM 供应商注册表
+        # 初始化系统级托管 provider（默认先读环境变量，启动后可被数据库覆盖）
+        if self.managed_llm_providers is None:
+            self.managed_llm_providers = self._build_env_managed_llm_providers()
+        if self.managed_ocr_config is None:
+            self.managed_ocr_config = self._build_env_managed_ocr_config()
+
+        # 初始化当前生效的 LLM 供应商注册表
         if self.llm_providers is None:
-            self.llm_providers = {
-                "openai": OpenAICompatibleConfig(),
-                "anthropic": AnthropicCompatibleConfig(),
-            }
+            self.llm_providers = self._clone_provider_registry(self.managed_llm_providers)
         return self
 
     def ensure_dirs(self):
@@ -230,31 +258,178 @@ class Settings(BaseSettings):
     def _normalize_provider(name: str) -> str:
         return (name or "").strip().lower()
 
+    def build_provider_config(
+        self,
+        name: str,
+        *,
+        api_key: str = "",
+        base_url: str = "",
+        model_name: str | None = None,
+        light_model_name: str | None = None,
+        supports_function_calling: bool = True,
+    ) -> LLMProviderConfig:
+        key = self._normalize_provider(name)
+        if key == "openai":
+            return OpenAICompatibleConfig(
+                api_key=api_key,
+                base_url=base_url,
+                model_name=model_name or OpenAICompatibleConfig.model_fields["model_name"].default,
+                light_model_name=light_model_name or None,
+                supports_function_calling=supports_function_calling,
+            )
+        if key == "anthropic":
+            return AnthropicCompatibleConfig(
+                api_key=api_key,
+                base_url=base_url,
+                model_name=model_name or AnthropicCompatibleConfig.model_fields["model_name"].default,
+            )
+        raise ValueError(f"不支持的模型供应商: {key}")
+
+    def build_ocr_config(
+        self,
+        *,
+        api_url: str = "",
+        token: str = "",
+        model: str = "PaddleOCR-VL-1.5",
+        use_doc_orientation: bool = False,
+        use_doc_unwarping: bool = False,
+        use_chart_recognition: bool = False,
+    ) -> dict[str, object]:
+        if not api_url or not token:
+            return {}
+        return {
+            "api_url": api_url,
+            "token": token,
+            "model": model,
+            "use_doc_orientation": use_doc_orientation,
+            "use_doc_unwarping": use_doc_unwarping,
+            "use_chart_recognition": use_chart_recognition,
+        }
+
+    def _build_env_managed_llm_providers(self) -> dict[str, LLMProviderConfig]:
+        return {
+            "openai": self.build_provider_config(
+                "openai",
+                api_key=self.default_openai_api_key,
+                base_url=self.default_openai_base_url,
+                model_name=self.default_openai_model_name,
+                light_model_name=self.default_openai_light_model_name or None,
+                supports_function_calling=self.default_openai_supports_function_calling,
+            ),
+            "anthropic": self.build_provider_config(
+                "anthropic",
+                api_key=self.default_anthropic_api_key,
+                base_url=self.default_anthropic_base_url,
+                model_name=self.default_anthropic_model_name,
+            ),
+        }
+
+    def _build_env_managed_ocr_config(self) -> dict[str, object]:
+        return self.build_ocr_config(
+            api_url=self.default_paddleocr_api_url,
+            token=self.default_paddleocr_api_token,
+            model=self.default_paddleocr_model,
+            use_doc_orientation=self.default_paddleocr_use_doc_orientation,
+            use_doc_unwarping=self.default_paddleocr_use_doc_unwarping,
+            use_chart_recognition=self.default_paddleocr_use_chart_recognition,
+        )
+
+    def _clone_provider_registry(
+        self, providers: dict[str, LLMProviderConfig] | None
+    ) -> dict[str, LLMProviderConfig]:
+        providers = providers or {}
+        cloned = {}
+        for name, cfg in providers.items():
+            cloned[name] = self.build_provider_config(
+                name,
+                api_key=cfg.api_key,
+                base_url=cfg.base_url,
+                model_name=cfg.model_name,
+                light_model_name=cfg.light_model_name,
+                supports_function_calling=getattr(cfg, "supports_function_calling", True),
+            )
+        return cloned
+
+    def apply_managed_providers(
+        self,
+        managed_llm_providers: dict[str, LLMProviderConfig] | None = None,
+        managed_ocr_config: dict[str, object] | None = None,
+    ) -> None:
+        llm_providers = self._build_env_managed_llm_providers()
+        for name, cfg in (managed_llm_providers or {}).items():
+            if cfg and cfg.configured:
+                llm_providers[self._normalize_provider(name)] = cfg
+
+        with _providers_lock:
+            self.managed_llm_providers = llm_providers
+            self.managed_ocr_config = managed_ocr_config or self._build_env_managed_ocr_config()
+            self.llm_providers = self._clone_provider_registry(self.managed_llm_providers)
+        self._clear_agent_cache()
+
+    def _current_provider_registry(self) -> dict[str, LLMProviderConfig]:
+        request_registry = _request_provider_context.get()
+        if request_registry is not None:
+            return request_registry
+        with _providers_lock:
+            return self.llm_providers or self._clone_provider_registry(self.managed_llm_providers)
+
+    def activate_request_providers(
+        self,
+        providers: dict[str, LLMProviderConfig] | None = None,
+    ) -> None:
+        base = providers if providers is not None else self.managed_llm_providers
+        _request_provider_context.set(self._clone_provider_registry(base))
+        self._clear_agent_cache()
+
+    def clear_request_provider_context(self) -> None:
+        _request_provider_context.set(None)
+        self._clear_agent_cache()
+
+    def get_managed_provider(self, name: str) -> LLMProviderConfig:
+        key = self._normalize_provider(name)
+        with _providers_lock:
+            providers = self.managed_llm_providers or self._build_env_managed_llm_providers()
+        if key not in providers:
+            raise ValueError(f"不支持的模型供应商: {key}")
+        return providers[key]
+
+    def has_managed_provider(self, name: str) -> bool:
+        return self.get_managed_provider(name).configured
+
+    def get_managed_ocr_config(self) -> dict[str, object]:
+        with _providers_lock:
+            return dict(self.managed_ocr_config or {})
+
+    def has_managed_ocr(self) -> bool:
+        return bool(self.get_managed_ocr_config())
+
     def get_provider(self, name: str) -> LLMProviderConfig:
         """按名称获取供应商配置，不存在则抛出 ValueError"""
         key = self._normalize_provider(name)
-        with _providers_lock:
-            if key not in self.llm_providers:
-                known = ", ".join(self.llm_providers.keys())
-                raise ValueError(f"不支持的模型供应商: {key}（可选: {known}）")
-            return self.llm_providers[key]
+        providers = self._current_provider_registry()
+        if key not in providers:
+            known = ", ".join(providers.keys())
+            raise ValueError(f"不支持的模型供应商: {key}（可选: {known}）")
+        return providers[key]
 
     def is_valid_provider(self, name: str) -> bool:
-        with _providers_lock:
-            return self._normalize_provider(name) in self.llm_providers
+        return self._normalize_provider(name) in self._current_provider_registry()
 
-    def reload_providers(self) -> None:
-        """重置 LLM 供应商配置为空（清除缓存）
+    def reload_providers(
+        self,
+        *,
+        base_providers: dict[str, LLMProviderConfig] | None = None,
+    ) -> None:
+        """按系统级托管 provider 重置当前请求上下文中的 LLM 配置。"""
+        self.activate_request_providers(base_providers)
 
-        调用后需通过 load_providers_from_db() 重新加载用户凭据。
-        """
-        with _providers_lock:
-            self.llm_providers["openai"] = OpenAICompatibleConfig()
-            self.llm_providers["anthropic"] = AnthropicCompatibleConfig()
-
-        self._clear_agent_cache()
-
-    def load_providers_from_db(self, user_id: int) -> None:
+    def load_providers_from_db(
+        self,
+        user_id: int,
+        *,
+        db=None,
+        base_providers: dict[str, LLMProviderConfig] | None = None,
+    ) -> None:
         """从数据库加载用户的 LLM provider 配置，注入到 settings 中
 
         在请求入口调用，使整个下游链路（init_model / agent 等）
@@ -263,20 +438,30 @@ class Settings(BaseSettings):
         from db import SessionLocal
         from db.crud import get_active_provider
 
-        with SessionLocal() as db:
-            for category, ConfigClass in [("openai", OpenAICompatibleConfig), ("anthropic", AnthropicCompatibleConfig)]:
+        request_registry = self._clone_provider_registry(
+            base_providers if base_providers is not None else self.managed_llm_providers
+        )
+        owns_db = db is None
+        if owns_db:
+            db = SessionLocal()
+        try:
+            for category in [("openai"), ("anthropic")]:
                 provider = get_active_provider(db, user_id, category)
                 if provider and provider.api_key:
-                    cfg = ConfigClass(
+                    cfg = self.build_provider_config(
+                        category,
                         api_key=provider.api_key,
                         base_url=provider.base_url or "",
-                        model_name=provider.model_name or ConfigClass.model_fields["model_name"].default,
+                        model_name=provider.model_name or None,
                         light_model_name=provider.light_model_name or None,
                         supports_function_calling=provider.supports_function_calling if hasattr(provider, 'supports_function_calling') else True,
                     )
-                    with _providers_lock:
-                        self.llm_providers[category] = cfg
+                    request_registry[category] = cfg
+        finally:
+            if owns_db:
+                db.close()
 
+        _request_provider_context.set(request_registry)
         self._clear_agent_cache()
 
     def _clear_agent_cache(self):

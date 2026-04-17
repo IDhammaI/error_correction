@@ -7,7 +7,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 
 const router = useRouter()
-const { currentUser } = useAuth()
+const { setCurrentUser } = useAuth()
 const { pushToast } = useToast()
 
 const loading = ref(false)
@@ -131,7 +131,7 @@ async function handleRegister() {
       error.value = data.error || '注册失败'
     } else {
       success.value = '注册成功！正在登录...'
-      currentUser.value = data.user
+      setCurrentUser(data.user)
       router.push('/app')
     }
   } catch {
