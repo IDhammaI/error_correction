@@ -42,7 +42,7 @@ const emit = defineEmits([
 
 <template>
   <!-- 工具栏：状态 + 模式切换 + 擦除开关 -->
-  <div class="flex flex-wrap items-center gap-3 py-2">
+  <div class="flex flex-wrap items-center gap-3">
     <!-- 模式切换 -->
     <div class="flex items-center rounded-md brand-btn p-0.5">
       <button
@@ -95,11 +95,11 @@ const emit = defineEmits([
   <!-- 上传区 -->
   <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center py-8 gap-6">
     <!-- 引导信息 -->
-    <div class="text-center max-w-md">
+    <div class="w-full max-w-2xl text-center">
       <h3 class="text-base font-medium text-[#f7f8f8] mb-2">
         {{ uploadMode === 'note' ? '上传手写笔记' : '上传试卷图片' }}
       </h3>
-      <p class="text-sm text-[#62666d] leading-relaxed">
+      <p class="text-sm leading-relaxed text-[#62666d] md:whitespace-nowrap">
         {{ uploadMode === 'note'
           ? '支持拍照或扫描件，AI 将自动识别内容并整理为结构化笔记'
           : '支持 PDF 和图片格式，AI 将自动完成 OCR 识别、题目分割和知识点标注'
