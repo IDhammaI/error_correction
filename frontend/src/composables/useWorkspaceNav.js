@@ -23,6 +23,7 @@ const VIEW_TO_PATH = {
 const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history'])
 
 const SETTINGS_NAV_ITEMS = [
+  { id: 'quota', label: '免费额度', icon: 'fa-gauge-high' },
   { id: 'profile', label: '用户资料设置', icon: 'fa-user-gear' },
   { id: 'api', label: 'API 设置', icon: 'fa-plug-circle-bolt' },
 ]

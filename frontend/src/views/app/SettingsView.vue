@@ -28,7 +28,18 @@ const quotaResetText = computed(() => {
 })
 
 const isProfileSection = computed(() => props.section === 'profile')
+const isQuotaSection = computed(() => props.section === 'quota')
 const isApiSection = computed(() => props.section === 'api')
+const settingsPageTitle = computed(() => {
+  if (isApiSection.value) return 'API 设置'
+  if (isQuotaSection.value) return '免费额度'
+  return '用户资料设置'
+})
+const settingsPageDescription = computed(() => {
+  if (isApiSection.value) return '集中管理 AI 与 OCR provider 的接口配置。'
+  if (isQuotaSection.value) return '查看系统托管 AI / OCR 服务的免费体验额度与每日重置时间。'
+  return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
+})
 const pageTitle = computed(() => isApiSection.value ? 'API 设置' : '用户资料设置')
 const pageDescription = computed(() => {
   return isApiSection.value
@@ -385,11 +396,11 @@ onMounted(() => { loadConfig() })
 </script>
 
 <template>
-  <ContentPanel :title="pageTitle">
+  <ContentPanel :title="settingsPageTitle">
     <div class="relative h-full overflow-y-auto">
       <div class="container relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div class="mb-8 pl-2 sm:pl-0">
-          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ pageDescription }}</p>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ settingsPageDescription }}</p>
         </div>
 
         <div v-if="loading" class="flex items-center justify-center py-20">
@@ -397,8 +408,8 @@ onMounted(() => { loadConfig() })
           <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">加载配置中...</span>
         </div>
 
-        <div v-else-if="isProfileSection" class="space-y-6">
-          <section class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
+        <div v-else-if="isProfileSection || isQuotaSection" class="space-y-6">
+          <section v-if="isQuotaSection" class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h2 class="text-xl font-semibold text-slate-900 dark:text-white">免费体验额度</h2>
@@ -427,7 +438,7 @@ onMounted(() => { loadConfig() })
             <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{{ quotaResetText }}</p>
           </section>
 
-          <section class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
+          <section v-if="isProfileSection" class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="flex flex-col gap-6 md:flex-row md:items-start">
               <div class="flex items-center gap-4 md:w-56 md:flex-col md:items-center md:text-center">
                 <div class="h-20 w-20 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] text-white shadow-sm">
