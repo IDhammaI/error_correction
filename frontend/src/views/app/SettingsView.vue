@@ -398,7 +398,7 @@ onMounted(() => { loadConfig() })
 <template>
   <ContentPanel :title="settingsPageTitle">
     <div class="relative h-full overflow-y-auto">
-      <div class="container relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
+      <div class="container relative z-10 mx-auto max-w-3xl">
         <div class="mb-8 pl-2 sm:pl-0">
           <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ settingsPageDescription }}</p>
         </div>

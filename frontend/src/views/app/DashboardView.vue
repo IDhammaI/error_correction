@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
       </button>
     </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
-    <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
+    <div class="container relative z-10 mx-auto">
 
       <!-- 骨架屏（加载中） -->
       <template v-if="statsLoading">

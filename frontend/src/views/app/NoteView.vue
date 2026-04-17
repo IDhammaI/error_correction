@@ -199,11 +199,11 @@ async function doDelete(noteId) {
         <i class="fa-solid fa-upload text-[10px]"></i> 上传笔记
       </button>
     </template>
-  <div class="relative h-full overflow-y-auto custom-scrollbar">
-    <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
+  <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto custom-scrollbar">
+    <div class="container relative z-10 mx-auto flex min-h-0 flex-1 flex-col">
       
       <!-- List View -->
-      <div v-if="!selectedNote">
+      <div v-if="!selectedNote" class="flex min-h-0 flex-1 flex-col">
         <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
 
         <!-- 筛选栏（对齐错题库风格） -->
@@ -230,7 +230,7 @@ async function doDelete(noteId) {
         </div>
 
         <!-- Notes Grid -->
-        <div class="relative">
+        <div class="relative flex-1 flex flex-col">
           <EmptyState
             v-if="!loading && notes.length === 0"
             icon="fa-solid fa-book-open"
