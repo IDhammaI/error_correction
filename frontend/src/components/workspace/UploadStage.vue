@@ -3,6 +3,7 @@
  * UploadStage.vue
  * 工作台第一页：上传与分析（模式切换 + 擦除开关 + 流程步骤 + 文件上传）
  */
+import BaseTooltip from '@/components/base/BaseTooltip.vue'
 import StatusBar from '@/components/workspace/StatusBar.vue'
 import FileUploader from '@/components/workspace/FileUploader.vue'
 import FileList from '@/components/workspace/FileList.vue'
@@ -47,14 +48,14 @@ const emit = defineEmits([
     <div class="flex items-center rounded-md brand-btn p-0.5">
       <button
         @click="emit('update:upload-mode', 'exam')"
-        class="h-7 px-3 rounded text-xs font-medium transition-all"
+        class="h-7 rounded px-3 text-xs font-medium transition-all"
         :class="uploadMode === 'exam' ? 'bg-white/[0.06] text-[#f7f8f8]' : 'text-[#62666d] hover:text-[#8a8f98]'"
       >
         <i class="fa-solid fa-file-lines mr-1.5"></i>试卷分割
       </button>
       <button
         @click="emit('update:upload-mode', 'note')"
-        class="h-7 px-3 rounded text-xs font-medium transition-all"
+        class="h-7 rounded px-3 text-xs font-medium transition-all"
         :class="uploadMode === 'note' ? 'bg-white/[0.06] text-[#f7f8f8]' : 'text-[#62666d] hover:text-[#8a8f98]'"
       >
         <i class="fa-solid fa-book-open mr-1.5"></i>笔记整理
@@ -65,16 +66,19 @@ const emit = defineEmits([
 
     <!-- 擦除开关 -->
     <label class="flex cursor-pointer items-center gap-2" @click="emit('update:erase-enabled', !eraseEnabled)">
-      <div class="relative h-4 w-7 rounded-full transition-colors" :class="eraseEnabled ? 'bg-[rgb(129,115,223)]' : 'bg-white/[0.08]'">
-        <div class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform" :class="eraseEnabled ? 'translate-x-3' : 'translate-x-0.5'"></div>
+      <div
+        class="relative h-4 w-7 rounded-full transition-colors"
+        :class="eraseEnabled ? 'bg-[rgb(129,115,223)]' : 'bg-white/[0.08]'"
+      >
+        <div
+          class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform"
+          :class="eraseEnabled ? 'translate-x-3' : 'translate-x-0.5'"
+        ></div>
       </div>
       <span class="text-xs text-[#8a8f98]">擦除笔迹</span>
-      <span class="relative group/tip">
-        <i class="fa-solid fa-circle-question text-[10px] text-[#62666d] cursor-help"></i>
-        <span class="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-md bg-[#191a1b] border border-white/[0.08] text-xs text-[#d0d6e0] whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity">
-          上传后自动擦除图片中的手写笔迹
-        </span>
-      </span>
+      <BaseTooltip text="上传后自动擦除图片中的手写笔迹" placement="bottom" align="center">
+        <i class="fa-solid fa-circle-question cursor-help text-[10px] text-[#62666d]"></i>
+      </BaseTooltip>
     </label>
 
     <!-- 引擎状态 -->
@@ -93,10 +97,10 @@ const emit = defineEmits([
   </div>
 
   <!-- 上传区 -->
-  <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center py-8 gap-6">
+  <div class="flex flex-1 min-h-0 flex-col items-center justify-center gap-6 overflow-y-auto custom-scrollbar py-8">
     <!-- 引导信息 -->
     <div class="w-full max-w-2xl text-center">
-      <h3 class="text-base font-medium text-[#f7f8f8] mb-2">
+      <h3 class="mb-2 text-base font-medium text-[#f7f8f8]">
         {{ uploadMode === 'note' ? '上传手写笔记' : '上传试卷图片' }}
       </h3>
       <p class="text-sm leading-relaxed text-[#62666d] md:whitespace-nowrap">
@@ -108,7 +112,7 @@ const emit = defineEmits([
     </div>
 
     <!-- 流程步骤卡片 -->
-    <div class="grid grid-cols-4 gap-4 w-full max-w-2xl">
+    <div class="grid w-full max-w-2xl grid-cols-4 gap-4">
       <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.04]">
           <i class="fa-solid fa-cloud-arrow-up text-xl text-[rgb(129,115,223)]"></i>
