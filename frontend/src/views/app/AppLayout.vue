@@ -103,6 +103,7 @@ const updateChatMenuOpenId = createRefSetter(chatMenuOpenId)
 const updateRenameText = createRefSetter(renameText)
 const updateRenamingChatId = createRefSetter(renamingChatId)
 const updateNavRef = createRefSetter(navRef)
+const updateChatListRef = createRefSetter(chatListRef)
 
 
 // ── 键盘事件 ────────────────────────────────────────────
@@ -162,6 +163,7 @@ onBeforeUnmount(() => {
       :chat-collapsed="chatCollapsed"
       :ai-chat-sessions="aiChatSessions"
       :active-ai-chat-id="activeAiChatId"
+      :chat-list-ref="chatListRef"
       :chat-btn-refs="chatBtnRefs"
       :chat-indicator-style="chatIndicatorStyle"
       :chat-indicator-transition="chatIndicatorTransition"
@@ -178,6 +180,7 @@ onBeforeUnmount(() => {
       @update:rename-text="updateRenameText"
       @update:renaming-chat-id="updateRenamingChatId"
       @update:nav-ref="updateNavRef"
+      @update:chat-list-ref="updateChatListRef"
       @navigate-home="navigateToHome"
       @logout="handleLogout"
       @toggle-theme="toggleTheme"

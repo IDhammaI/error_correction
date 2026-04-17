@@ -41,7 +41,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:currentView', 'update:currentSettingsSubView', 'update:collapsedGroups', 'update:chatCollapsed',
   'update:userMenuOpen', 'update:chatMenuOpenId', 'update:renameText', 'update:renamingChatId',
-  'update:navRef',
+  'update:navRef', 'update:chatListRef',
   'navigate-home', 'logout', 'toggle-theme',
   'create-ai-chat', 'select-ai-chat',
   'start-rename-chat', 'confirm-rename-chat', 'delete-ai-chat', 'toggle-chat-menu',
@@ -147,7 +147,6 @@ const userQuotaSummary = computed(() => {
             <!-- 滑动指示器 -->
             <div
               class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-btn"
-              :class="indicatorTransition ? 'transition-all duration-300 ease-out' : ''"
               :style="indicatorStyle"
             ></div>
 
@@ -219,11 +218,10 @@ const userQuotaSummary = computed(() => {
           <!-- 折叠动画 -->
           <div class="grid min-h-0 flex-1 transition-[grid-template-rows] duration-200 ease-out" :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
           <div class="flex min-h-0 flex-col overflow-hidden">
-          <div class="relative h-full overflow-y-auto pb-2 custom-scrollbar" @click="emit('update:chatMenuOpenId', null)">
+          <div :ref="(el) => $emit('update:chatListRef', el)" class="relative h-full overflow-y-auto pb-2 custom-scrollbar" @click="emit('update:chatMenuOpenId', null)">
             <!-- 对话区滑动指示器 -->
             <div
-              class="absolute left-0 right-0 z-0 rounded-md overflow-hidden brand-btn"
-              :class="chatIndicatorTransition ? 'transition-all duration-300 ease-out' : ''"
+              class="absolute left-0 right-0 z-0 rounded-lg overflow-hidden brand-btn"
               :style="chatIndicatorStyle"
             ></div>
 
@@ -234,7 +232,7 @@ const userQuotaSummary = computed(() => {
               v-for="s in aiChatSessions"
               :key="s.id"
               :ref="el => chatBtnRefs[s.id] = el"
-              class="group relative flex items-center gap-2 px-3 py-1.5 rounded-md mb-px cursor-pointer transition-colors"
+              class="group relative mb-px flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
               :class="[
                 chatMenuOpenId === s.id ? 'z-20' : 'z-10',
                 activeAiChatId === s.id && currentView === 'ai-chat'
@@ -243,7 +241,7 @@ const userQuotaSummary = computed(() => {
               ]"
               @click="renamingChatId !== s.id && emit('select-ai-chat', s)"
             >
-              <i class="fa-solid fa-message text-[10px] shrink-0" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
+              <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm" :class="activeAiChatId === s.id && currentView === 'ai-chat' ? 'text-white/60' : 'text-[#62666d]'"></i>
 
               <!-- 重命名输入框 -->
               <input
@@ -257,7 +255,7 @@ const userQuotaSummary = computed(() => {
                 @blur="emit('confirm-rename-chat', s)"
                 class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-white/[0.12] py-0.5 text-[#f7f8f8]"
               />
-              <span v-else class="relative z-10 flex-1 truncate text-xs">{{ s.title }}</span>
+              <span v-else class="relative z-10 flex-1 truncate">{{ s.title }}</span>
 
               <!-- 三个点按钮 -->
               <button
