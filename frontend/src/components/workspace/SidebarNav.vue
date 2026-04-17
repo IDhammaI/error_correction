@@ -95,7 +95,7 @@ const userQuotaSummary = computed(() => {
       <div class="flex min-h-0 flex-1 flex-col px-4 py-4">
         <button
           @click="returnToApp"
-          class="mb-4 inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 text-sm font-medium text-[#d0d6e0] transition-colors hover:bg-white/[0.04] hover:text-white"
+          class="mb-4 inline-flex items-center gap-2 px-3 pt-2 text-sm font-medium text-[#8a8f98] transition-colors hover:text-white"
         >
           <i class="fa-solid fa-arrow-left text-xs"></i>
           <span>返回应用</span>
