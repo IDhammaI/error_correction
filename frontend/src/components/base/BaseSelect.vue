@@ -30,7 +30,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
     <button
       type="button"
       @click.stop="toggle"
-      class="flex h-9 w-full items-center justify-between rounded-xl border border-slate-200/70 bg-white/80 px-3 text-left text-sm font-medium text-slate-500 transition-colors hover:border-slate-300 dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:border-white/[0.12]"
+      class="flex h-9 w-full items-center justify-between rounded-md border border-slate-200/70 bg-white/80 px-3 text-left text-sm font-medium text-slate-500 transition-colors hover:border-slate-300 dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:border-white/[0.12]"
       :class="[
         open ? 'border-slate-300 dark:border-white/[0.15]' : '',
         modelValue ? 'text-slate-800 dark:text-[#d0d6e0]' : 'text-slate-500 dark:text-[#62666d]',
@@ -40,7 +40,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
       <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform duration-200 dark:text-[#62666d]" :class="open ? 'rotate-180' : ''"></i>
     </button>
     <Transition name="dropdown">
-      <div v-if="open" class="absolute left-0 top-full z-50 mt-1 min-w-full overflow-hidden rounded-xl border border-slate-200/70 bg-white/95 py-1 shadow-lg shadow-slate-200/60 dark:border-white/[0.08] dark:bg-[#1c1c20] dark:shadow-black/40">
+      <div v-if="open" class="absolute left-0 top-full z-50 mt-1 min-w-full overflow-hidden rounded-md border border-slate-200/70 bg-white/95 py-1 shadow-lg shadow-slate-200/60 dark:border-white/[0.08] dark:bg-[#1c1c20] dark:shadow-black/40">
         <div class="no-scrollbar max-h-56 overflow-y-auto">
           <button
             type="button"
