@@ -70,9 +70,32 @@ const bindProps = computed(() => {
   border-top-color: rgba(255, 255, 255, 0.15);
   border-bottom-color: rgba(255, 255, 255, 0.03);
 }
+:root.dark .home-btn--secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+:root:not(.dark) .home-btn--secondary {
+  background: #ffffff;
+  color: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
 .home-btn--secondary:hover {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.8);
+}
+:root.dark .home-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+:root:not(.dark) .home-btn--secondary:hover {
+  background: #f9fafb;
+  color: rgba(0, 0, 0, 0.9);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 /* ── CTA: 更强的品牌色，用于转化区 ── */

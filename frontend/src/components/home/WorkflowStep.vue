@@ -26,25 +26,25 @@ const props = defineProps({
 <template>
   <div
     class="relative p-4 rounded-lg cursor-pointer transition-all duration-500"
-    :class="isActive ? 'brand-btn transform scale-105' : 'border border-transparent hover:bg-white/[0.03] hover:border-white/[0.05]'"
+    :class="isActive ? 'brand-btn transform scale-105' : 'border border-transparent hover:bg-gray-100 dark:hover:bg-white/[0.03] hover:border-gray-200 dark:hover:border-white/[0.05]'"
   >
     <div class="flex flex-col items-center text-center">
       <div
         class="relative overflow-hidden w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-500"
-        :class="isPast || isActive ? 'wf-icon--active text-white' : 'bg-white/[0.04] text-white/25 border border-white/[0.06]'"
+        :class="isPast || isActive ? 'wf-icon--active text-white' : 'bg-gray-100 dark:bg-white/[0.04] text-gray-400 dark:text-white/25 border border-gray-200 dark:border-white/[0.06]'"
       >
         <span v-if="isPast || isActive" class="wf-icon__grid absolute inset-0 pointer-events-none"></span>
         <component :is="icon" class="relative w-5 h-5" />
       </div>
       <h4
-        class="text-sm font-semibold mb-1"
-        :class="isActive ? 'text-white/90' : 'text-white/40'"
+        class="text-sm font-semibold mb-1 transition-colors duration-500"
+        :class="isActive ? 'text-gray-900 dark:text-white/90' : 'text-gray-500 dark:text-white/40'"
       >
         {{ title }}
       </h4>
       <p
-        class="text-xs"
-        :class="isActive ? 'text-white/50' : 'text-white/25'"
+        class="text-xs transition-colors duration-500"
+        :class="isActive ? 'text-gray-600 dark:text-white/50' : 'text-gray-400 dark:text-white/25'"
       >
         {{ desc }}
       </p>
