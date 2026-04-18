@@ -13,10 +13,10 @@ const emit = defineEmits(['after-enter'])
 
 <template>
   <Transition name="loading-fade" @after-enter="emit('after-enter')">
-    <div v-if="visible" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-[#0A0A0F]">
+    <div v-if="visible" class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-8 bg-white dark:bg-[#0A0A0F] transition-colors duration-200">
       <BaseLogo size="lg" breathe />
       <div class="w-48">
-        <div class="h-0.5 w-full rounded-full bg-white/10 overflow-hidden">
+        <div class="h-0.5 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden transition-colors">
           <div class="h-full rounded-full bg-gradient-to-r from-[rgba(129,115,223,0.8)] to-[rgba(99,87,199,0.8)] loading-bar"></div>
         </div>
       </div>
