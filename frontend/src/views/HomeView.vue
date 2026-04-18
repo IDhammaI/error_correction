@@ -270,10 +270,10 @@ onUnmounted(() => {
       <HomeHero @scrollToSection="scrollToSectionSnap" />
 
       <!-- ② 滚动叠盖层（实色背景完全遮住 Hero sticky） -->
-      <div class="relative z-10 overflow-hidden" style="background: #0A0A0F;">
+      <div class="relative z-10 overflow-hidden bg-slate-50 dark:bg-[#0A0A0F] transition-colors duration-200">
 
         <!-- 背景装饰：波纹纹理 -->
-        <div class="absolute inset-0 pointer-events-none z-0">
+        <div class="absolute inset-0 pointer-events-none z-0 opacity-40 dark:opacity-20 dark:invert-0 invert">
           <div class="home-bg-topo"></div>
         </div>
 
@@ -286,20 +286,20 @@ onUnmounted(() => {
         <HomeFooter />
 
         <!-- 全局 Footer -->
-        <div class="border-t border-white/[0.06] py-4 relative z-10 bg-[#0A0A0F]/50 w-full mt-auto">
-          <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/30 px-4">
+        <div class="border-t border-gray-200 dark:border-white/[0.06] py-4 relative z-10 bg-white/50 dark:bg-[#0A0A0F]/50 w-full mt-auto transition-colors duration-200">
+          <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500 dark:text-white/30 px-4 transition-colors duration-200">
             <div class="flex items-center gap-2">
               <div class="footer-logo relative overflow-hidden p-1.5 rounded-lg flex items-center justify-center">
                 <span class="footer-logo__grid absolute inset-0 pointer-events-none"></span>
-                <img src="/logo.svg" class="relative w-4 h-4 brightness-0 invert" alt="logo" />
+                <img src="/logo.svg" class="relative w-4 h-4 brightness-0 invert transition-all" alt="logo" />
               </div>
-              <span class="font-semibold text-white/50 tracking-wide">智卷错题本</span>
+              <span class="font-semibold text-gray-600 dark:text-white/50 tracking-wide transition-colors">智卷错题本</span>
             </div>
             <p class="text-center">© 2026 Intelligent Error Book Generation System. All rights reserved.</p>
             <div class="flex gap-6 pr-12 md:pr-0">
-              <a href="#" class="hover:text-white/70 transition-colors">架构文档</a>
-              <a href="#" class="hover:text-white/70 transition-colors">隐私政策</a>
-              <a href="#" class="hover:text-white/70 transition-colors">联系我们</a>
+              <a href="#" class="hover:text-gray-900 dark:hover:text-white/70 transition-colors">架构文档</a>
+              <a href="#" class="hover:text-gray-900 dark:hover:text-white/70 transition-colors">隐私政策</a>
+              <a href="#" class="hover:text-gray-900 dark:hover:text-white/70 transition-colors">联系我们</a>
             </div>
           </div>
         </div>
@@ -389,7 +389,6 @@ html { scroll-padding-top: 80px; }
 .home-bg-topo {
   position: absolute;
   inset: 0;
-  opacity: 0.2;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1000 1000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' fill='none' stroke='%23ffffff' stroke-width='1' opacity='0.3'/%3E%3Cpath d='M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.15' /%3E%3C/svg%3E");
   background-size: cover;
   background-position: center;

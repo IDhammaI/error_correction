@@ -50,17 +50,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section id="workflow" class="relative z-10 py-24 overflow-hidden">
+  <section id="workflow" class="relative z-10 py-24 overflow-hidden bg-slate-50 dark:bg-transparent transition-colors duration-200">
+    <!-- 顶部分割线 -->
+    <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-white/[0.06] to-transparent transition-colors duration-200"></div>
+
     <div class="reveal max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
       <div class="text-center mb-16">
-        <h2 class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep" style="
+        <h2 class="reveal text-3xl font-semibold tracking-tight mb-4">
+          <span class="text-transparent bg-clip-text animate-gradient-sweep dark:hidden" style="
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(79, 70, 229) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-size: 200% auto;
+          ">极简四步，自动运转</span>
+          <span class="text-transparent bg-clip-text animate-gradient-sweep hidden dark:inline" style="
             background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
             background-size: 200% auto;
-          ">极简四步，自动运转</h2>
-        <p class="text-white/40 text-sm">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
+          ">极简四步，自动运转</span>
+        </h2>
+        <p class="text-gray-600 dark:text-white/40 text-sm transition-colors duration-200">将原本需要耗费数小时的繁杂抄录，浓缩进点击之间。</p>
       </div>
 
       <div class="relative max-w-4xl mx-auto">
+        <!-- 连接线 -->
+        <div class="absolute top-10 left-12 right-12 h-px bg-gray-200 dark:bg-white/[0.06] hidden lg:block transition-colors duration-200 z-0">
+          <div
+            class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out"
+            :style="{ width: getProgressWidth() }"
+          ></div>
+        </div>
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 relative z-10">
           <WorkflowStep
             v-for="(s, i) in STEPS"
