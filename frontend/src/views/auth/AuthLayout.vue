@@ -245,6 +245,13 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   transition: background-color 9999s ease;
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus {
   -webkit-text-fill-color: #e2e8f0;
   caret-color: #e2e8f0;
 }
