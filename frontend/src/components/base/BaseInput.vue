@@ -62,7 +62,7 @@ const inputType = computed(() => {
 
 <template>
   <div>
-    <label v-if="label" class="block text-sm font-medium text-white/60 mb-2">{{ label }}</label>
+    <label v-if="label" class="block text-sm font-medium text-gray-700 dark:text-white/60 mb-2 transition-colors">{{ label }}</label>
     <div :class="['relative', { 'flex gap-2': $slots.append }]">
       <div class="relative flex-1 min-w-0">
         <input
@@ -75,8 +75,8 @@ const inputType = computed(() => {
           :maxlength="maxlength"
           :inputmode="inputmode"
           :class="[
-            'w-full h-10 px-4 rounded-xl border bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all text-sm outline-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
-            error ? 'border-rose-500/50 focus:border-rose-500/50' : 'border-white/[0.08] focus:border-indigo-500/50',
+            'w-full h-10 px-4 rounded-xl border bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all text-sm outline-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
+            error ? 'border-rose-500/50 focus:border-rose-500/50' : 'border-gray-200 dark:border-white/[0.08] focus:border-indigo-500/50 dark:focus:border-indigo-500/50',
             type === 'password' ? 'pr-11' : '',
             inputClass
           ]"
@@ -85,7 +85,7 @@ const inputType = computed(() => {
           v-if="type === 'password'"
           type="button"
           @click="showPwd = !showPwd"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition-colors"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white/25 dark:hover:text-white/50 transition-colors"
         >
           <i :class="showPwd ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
         </button>

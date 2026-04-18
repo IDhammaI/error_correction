@@ -75,14 +75,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-[#0A0A0F]">
+  <div class="min-h-screen flex bg-slate-50 dark:bg-[#0A0A0F] transition-colors duration-200">
 
     <!-- 左侧品牌区（大屏显示） -->
-    <div ref="brandRef" class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden p-12 bg-gradient-to-br from-[#12121a] to-[#0A0A0F]">
+    <div ref="brandRef" class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden p-12 bg-gradient-to-br from-indigo-50 to-white dark:from-[#12121a] dark:to-[#0A0A0F] transition-colors duration-200">
       <!-- 底层：紫色曲线（暗态） -->
       <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 600 800" preserveAspectRatio="none" fill="none">
-        <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgba(129,115,223,0.12)" stroke-width="2.5" />
-        <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgba(129,115,223,0.08)" stroke-width="2" />
+        <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgba(129,115,223,0.12)" class="dark:stroke-indigo-400/10 stroke-indigo-600/10" stroke-width="2.5" />
+        <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgba(129,115,223,0.08)" class="dark:stroke-indigo-400/10 stroke-indigo-600/10" stroke-width="2" />
       </svg>
       <!-- 亮层：鼠标跟随发光的紫色曲线（通过 mask 只显示鼠标附近） -->
       <div class="auth-glow-layer absolute inset-0 pointer-events-none">
@@ -92,14 +92,14 @@ onMounted(() => {
         </svg>
       </div>
       <!-- 底部紫色光晕 -->
-      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[200px] pointer-events-none rounded-full bg-indigo-500/[0.08] blur-[80px]"></div>
+      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[200px] pointer-events-none rounded-full bg-indigo-500/10 dark:bg-indigo-500/[0.08] blur-[80px] transition-colors"></div>
 
       <!-- 不规则星星 -->
       <div class="absolute inset-0 pointer-events-none">
         <div
           v-for="(s, i) in stars"
           :key="i"
-          class="absolute rounded-full bg-white star-twinkle"
+          class="absolute rounded-full bg-indigo-400 dark:bg-white star-twinkle transition-colors"
           :style="{
             left: s.left + '%',
             top: s.top + '%',
@@ -113,42 +113,46 @@ onMounted(() => {
       </div>
 
       <!-- 右侧分割线 -->
-      <div class="absolute top-0 right-0 bottom-0 w-px pointer-events-none bg-gradient-to-b from-transparent via-white/[0.08] to-transparent"></div>
+      <div class="absolute top-0 right-0 bottom-0 w-px pointer-events-none bg-gradient-to-b from-transparent via-gray-200 dark:via-white/[0.08] to-transparent transition-colors"></div>
 
       <!-- 顶部 Logo -->
       <div class="relative flex items-center gap-3">
         <BaseLogo breathe />
-        <span class="text-base font-semibold text-white/80 tracking-wide">智卷错题本</span>
+        <span class="text-base font-semibold text-gray-900 dark:text-white/80 tracking-wide transition-colors">智卷错题本</span>
       </div>
 
       <!-- 中部主文案 -->
       <div class="relative">
         <HomePill class="mb-6" />
-        <h2 class="text-4xl font-semibold text-white leading-tight mb-4 tracking-tight">
+        <h2 class="text-4xl font-semibold text-gray-900 dark:text-white leading-tight mb-4 tracking-tight transition-colors">
           重塑错题整理<br />
-          <span class="text-transparent bg-clip-text animate-gradient-sweep" style="
+          <span class="text-transparent bg-clip-text animate-gradient-sweep dark:hidden" style="
+            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(79, 70, 229) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-size: 200% auto;
+          ">一键生成知识图谱</span>
+          <span class="text-transparent bg-clip-text animate-gradient-sweep hidden dark:inline" style="
             background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
             background-size: 200% auto;
           ">一键生成知识图谱</span>
         </h2>
-        <p class="text-sm text-white/45 leading-relaxed max-w-sm">
+        <p class="text-sm text-gray-500 dark:text-white/45 leading-relaxed max-w-sm transition-colors">
           专为中学生与大学生研发。上传凌乱试卷，AI 自动完成图片分割、OCR 纠错及 LaTeX 公式还原。
         </p>
 
         <!-- 特性列表 — 鼠标跟随染色图标 -->
         <ul class="mt-8 space-y-4">
-          <li v-for="(f, i) in FEATURES" :key="f.text" :ref="el => featureRefs[i] = el" class="flex items-center gap-3 text-sm text-white/60">
+          <li v-for="(f, i) in FEATURES" :key="f.text" :ref="el => featureRefs[i] = el" class="flex items-center gap-3 text-sm text-gray-600 dark:text-white/60 transition-colors">
             <!-- 图标容器: 双层结构 -->
             <div class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl p-px overflow-hidden">
               <!-- 默认边框 -->
-              <div class="absolute inset-0 bg-white/[0.08] rounded-xl"></div>
+              <div class="absolute inset-0 bg-gray-200 dark:bg-white/[0.08] rounded-xl transition-colors"></div>
               <!-- 鼠标跟随边框高光 -->
               <div class="pointer-events-none absolute inset-0"
                 style="background: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), rgba(151,137,222,0.7), transparent 50%);"></div>
               <!-- 图标内部 -->
-              <div class="relative h-full w-full bg-[#15151e] rounded-[11px] flex items-center justify-center">
+              <div class="relative h-full w-full bg-white dark:bg-[#15151e] rounded-[11px] flex items-center justify-center transition-colors">
                 <!-- 白色底层图标 -->
-                <i :class="`fas ${f.icon} text-xs text-white/50 absolute`"></i>
+                <i :class="`fas ${f.icon} text-xs text-gray-400 dark:text-white/50 absolute transition-colors`"></i>
                 <!-- 鼠标跟随染色图标 -->
                 <div class="absolute inset-0 flex items-center justify-center"
                   style="mask-image: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), black 0%, transparent 100%);
@@ -163,17 +167,17 @@ onMounted(() => {
       </div>
 
       <!-- 底部版权 -->
-      <div class="relative text-xs text-white/20">
+      <div class="relative text-xs text-gray-400 dark:text-white/20 transition-colors">
         © {{ new Date().getFullYear() }} 智卷错题本 · All rights reserved
       </div>
     </div>
 
     <!-- 右侧表单区 -->
-    <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-16 relative bg-[#0e0e16]">
+    <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 lg:px-16 relative bg-white dark:bg-[#0e0e16] transition-colors duration-200">
 
       <!-- 返回主页 -->
       <div class="absolute top-6 right-6 z-10">
-        <BaseButton href="/" variant="secondary" size="sm" class="flex items-center gap-2 !px-4 !py-2 !h-auto text-white/50 hover:text-white/70 bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] !rounded-lg">
+        <BaseButton href="/" variant="secondary" size="sm" class="flex items-center gap-2 !px-4 !py-2 !h-auto !rounded-lg">
           <i class="fas fa-arrow-left text-xs"></i>
           返回主页
         </BaseButton>
@@ -182,39 +186,39 @@ onMounted(() => {
       <!-- 移动端 Logo（小屏显示） -->
       <div class="lg:hidden text-center mb-8">
         <div class="relative inline-flex mb-4">
-          <div class="bg-white/[0.04] border border-white/[0.08] p-2.5 rounded-xl">
-            <img src="/logo.svg" class="w-7 h-7 brightness-0 invert opacity-70" alt="logo" />
+          <div class="bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] p-2.5 rounded-xl transition-colors">
+            <img src="/logo.svg" class="w-7 h-7 brightness-0 dark:invert opacity-70 transition-all" alt="logo" />
           </div>
         </div>
-        <h1 class="text-2xl font-semibold text-white tracking-wide">智卷错题本</h1>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-wide transition-colors">智卷错题本</h1>
       </div>
 
       <div class="w-full max-w-sm">
         <!-- 标题 -->
         <div class="mb-8">
-          <h3 class="text-2xl font-semibold text-white">
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white transition-colors">
             {{ route.path === '/auth/login' ? '欢迎回来' : '创建账户' }}
           </h3>
-          <p class="text-sm text-white/35 mt-1">
+          <p class="text-sm text-gray-500 dark:text-white/35 mt-1 transition-colors">
             {{ route.path === '/auth/login' ? '登录以继续使用你的错题本' : '免费注册，开始智能错题整理' }}
           </p>
         </div>
 
         <!-- Tab 切换 -->
-        <div class="flex rounded-xl bg-white/[0.03] border border-white/[0.06] p-1 mb-6">
+        <div class="flex rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] p-1 mb-6 transition-colors">
           <RouterLink
             to="/auth/login"
             class="flex-1 py-2 text-sm font-medium rounded-lg text-center transition-all"
             :class="route.path === '/auth/login'
-              ? 'bg-white/[0.08] text-white'
-              : 'text-white/35 hover:text-white/60'"
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.08] dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/60'"
           >登录</RouterLink>
           <RouterLink
             to="/auth/register"
             class="flex-1 py-2 text-sm font-medium rounded-lg text-center transition-all"
             :class="route.path === '/auth/register'
-              ? 'bg-white/[0.08] text-white'
-              : 'text-white/35 hover:text-white/60'"
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.08] dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/60'"
           >注册</RouterLink>
         </div>
 
@@ -226,7 +230,7 @@ onMounted(() => {
         </RouterView>
 
         <!-- 底部版权（移动端） -->
-        <p class="lg:hidden text-center text-xs text-white/20 mt-8">
+        <p class="lg:hidden text-center text-xs text-gray-400 dark:text-white/20 mt-8 transition-colors">
           © {{ new Date().getFullYear() }} 智卷错题本
         </p>
       </div>

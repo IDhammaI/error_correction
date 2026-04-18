@@ -173,10 +173,10 @@ onBeforeUnmount(() => {
             type="button"
             @click="handleSendCode"
             :disabled="sendingCode || countdown > 0"
-            class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-gray-700 dark:text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             :class="countdown > 0
-              ? 'bg-white/[0.02] border-white/[0.05] text-white/30'
-              : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:text-white/85'"
+              ? 'bg-gray-100 border-gray-200 text-gray-400 dark:bg-white/[0.02] dark:border-white/[0.05] dark:text-white/30'
+              : 'bg-white border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-white/[0.03] dark:border-white/[0.08] dark:hover:bg-white/[0.06] dark:hover:text-white/85'"
           >
             <i v-if="sendingCode" class="fas fa-spinner fa-spin"></i>
             <template v-else-if="countdown > 0">{{ countdown }}s</template>
@@ -217,13 +217,13 @@ onBeforeUnmount(() => {
         placeholder="再次输入密码"
         :error="passwordMismatch()"
       />
-      <p v-if="passwordMismatch()" class="text-xs text-rose-400 mt-1">两次密码不一致</p>
+      <p v-if="passwordMismatch()" class="text-xs text-rose-500 dark:text-rose-400 mt-1 transition-colors">两次密码不一致</p>
     </div>
 
-    <p v-if="error" class="text-sm text-rose-400 flex items-center gap-2">
+    <p v-if="error" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2 transition-colors">
       <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}
     </p>
-    <p v-if="success" class="text-sm text-emerald-400 flex items-center gap-2">
+    <p v-if="success" class="text-sm text-emerald-500 dark:text-emerald-400 flex items-center gap-2 transition-colors">
       <i class="fas fa-circle-check text-xs"></i>{{ success }}
     </p>
 
