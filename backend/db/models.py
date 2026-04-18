@@ -2,6 +2,7 @@
 数据库 ORM 模型定义
 """
 
+import uuid
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -16,10 +17,17 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(50), nullable=False)
+    display_name = Column(String(50), nullable=True)
+    nickname = Column(String(50), nullable=True)
+    avatar_path = Column(Text, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
     session_version = Column(Integer, default=0, nullable=False)
+    daily_free_quota = Column(Integer, default=5, nullable=False)
+    daily_free_used = Column(Integer, default=0, nullable=False)
+    daily_free_quota_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     questions = relationship("Question", back_populates="user")
@@ -51,6 +59,27 @@ class ProviderConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="provider_configs")
+
+
+class SystemProviderConfig(Base):
+    """系统级 API 供应商配置（管理员维护，全站共享）"""
+    __tablename__ = "system_provider_configs"
+
+    id = Column(String(36), primary_key=True)  # UUID
+    category = Column(String(20), nullable=False)  # 'openai' | 'anthropic' | 'paddleocr'
+    name = Column(String(100), default="")
+    is_active = Column(Boolean, default=False)
+    api_key = Column(Text, default="")
+    base_url = Column(Text, default="")
+    model_name = Column(String(100), default="")
+    light_model_name = Column(String(100), default="")
+    supports_function_calling = Column(Boolean, default=True)
+    # PaddleOCR 专用
+    use_doc_orientation = Column(Boolean, default=False)
+    use_doc_unwarping = Column(Boolean, default=False)
+    use_chart_recognition = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class UploadBatch(Base):
@@ -106,6 +135,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True)
+    public_id = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     question_id = Column(Integer, ForeignKey("questions.id"), nullable=True, index=True)
     title = Column(String(255), default="新对话")

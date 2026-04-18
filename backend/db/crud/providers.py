@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from db.models import ProviderConfig
+from db.models import ProviderConfig, SystemProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,8 @@ def _mask_secret(value: str, visible: int = 4) -> str:
     return "*" * 4 + value[-visible:]
 
 
-def _serialize_provider(p: ProviderConfig) -> dict:
-    """序列化 ProviderConfig 为前端可用 dict（密钥脱敏）"""
+def _serialize_provider(p) -> dict:
+    """序列化 provider 为前端可用 dict（密钥脱敏）"""
     d = {
         "id": p.id,
         "name": p.name,
@@ -40,13 +40,8 @@ def _serialize_provider(p: ProviderConfig) -> dict:
     return d
 
 
-def get_user_providers(db: Session, user_id: int) -> dict:
-    """获取用户的所有 provider 配置，按类别分组返回"""
-    providers = db.query(ProviderConfig).filter(
-        ProviderConfig.user_id == user_id
-    ).order_by(ProviderConfig.created_at).all()
-
-    result = {
+def _empty_provider_payload() -> dict:
+    return {
         "openai_providers": [],
         "anthropic_providers": [],
         "paddleocr_providers": [],
@@ -54,6 +49,43 @@ def get_user_providers(db: Session, user_id: int) -> dict:
         "active_anthropic_id": None,
         "active_paddleocr_id": None,
     }
+
+
+def get_user_providers(db: Session, user_id: int) -> dict:
+    """获取用户的所有 provider 配置，按类别分组返回"""
+    providers = db.query(ProviderConfig).filter(
+        ProviderConfig.user_id == user_id
+    ).order_by(ProviderConfig.created_at).all()
+
+    result = _empty_provider_payload()
+    category_key = {
+        "openai": "openai_providers",
+        "anthropic": "anthropic_providers",
+        "paddleocr": "paddleocr_providers",
+    }
+    active_key = {
+        "openai": "active_openai_id",
+        "anthropic": "active_anthropic_id",
+        "paddleocr": "active_paddleocr_id",
+    }
+
+    for p in providers:
+        key = category_key.get(p.category)
+        if key:
+            result[key].append(_serialize_provider(p))
+        if p.is_active:
+            ak = active_key.get(p.category)
+            if ak:
+                result[ak] = p.id
+
+    return result
+
+
+def get_system_providers(db: Session) -> dict:
+    """获取系统级 provider 配置，供管理员管理平台托管服务"""
+    providers = db.query(SystemProviderConfig).order_by(SystemProviderConfig.created_at).all()
+
+    result = _empty_provider_payload()
     category_key = {
         "openai": "openai_providers",
         "anthropic": "anthropic_providers",
@@ -157,10 +189,75 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
     db.commit()
 
 
+def save_system_providers(db: Session, data: dict) -> None:
+    """保存系统级 provider 配置（全量覆盖）"""
+    active_ids = {
+        "openai": data.get("active_openai_id"),
+        "anthropic": data.get("active_anthropic_id"),
+        "paddleocr": data.get("active_paddleocr_id"),
+    }
+
+    existing = {p.id: p for p in db.query(SystemProviderConfig).all()}
+    submitted_ids = set()
+    items_to_save = []
+
+    category_map = {
+        "openai_providers": "openai",
+        "anthropic_providers": "anthropic",
+        "paddleocr_providers": "paddleocr",
+    }
+
+    for list_key, category in category_map.items():
+        for item in data.get(list_key, []):
+            pid = item.get("id")
+            submitted_ids.add(pid)
+            old = existing.get(pid)
+
+            new_api_key = item.get("api_key") or item.get("api_token") or ""
+            if not new_api_key and old:
+                new_api_key = old.api_key or ""
+
+            items_to_save.append({
+                "id": pid,
+                "category": category,
+                "name": item.get("name", ""),
+                "is_active": pid == active_ids.get(category),
+                "api_key": new_api_key,
+                "base_url": item.get("base_url") or item.get("api_url") or "",
+                "model_name": item.get("model_name") or item.get("model") or "",
+                "light_model_name": item.get("light_model_name", ""),
+                "supports_function_calling": item.get("supports_function_calling", True),
+                "use_doc_orientation": item.get("use_doc_orientation", False),
+                "use_doc_unwarping": item.get("use_doc_unwarping", False),
+                "use_chart_recognition": item.get("use_chart_recognition", False),
+            })
+
+    for pid in set(existing.keys()) - submitted_ids:
+        db.delete(existing[pid])
+
+    for item in items_to_save:
+        old = existing.get(item["id"])
+        if old:
+            for k, v in item.items():
+                setattr(old, k, v)
+        else:
+            db.add(SystemProviderConfig(**item))
+
+    db.commit()
+
+
 def get_active_provider(db: Session, user_id: int, category: str) -> Optional[ProviderConfig]:
     """获取用户指定类别的激活 provider（用于后端调用 LLM/OCR 时读取凭据）"""
     return db.query(ProviderConfig).filter(
         ProviderConfig.user_id == user_id,
         ProviderConfig.category == category,
         ProviderConfig.is_active == True,
+    ).first()
+
+
+def get_active_system_provider(db: Session, category: str) -> Optional[SystemProviderConfig]:
+    """获取系统级激活 provider（用于平台托管 provider）"""
+    return db.query(SystemProviderConfig).filter(
+        SystemProviderConfig.category == category,
+        SystemProviderConfig.is_active == True,
     ).first()

@@ -16,6 +16,7 @@ from core.state import (
 from db import SessionLocal
 from db import crud
 from core.config import settings
+from core.quota import consume_daily_free_quota, has_daily_free_quota, quota_exceeded_response, uses_server_llm, uses_server_ocr
 from src.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,68 @@ def _serialize_split_record(r) -> dict:
         "question_count": r.question_count,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
+
+
+def _apply_provider_context(db, user_id: Optional[int]) -> None:
+    managed_llm = {}
+    for category in ('openai', 'anthropic'):
+        provider = crud.get_active_system_provider(db, category)
+        if provider and provider.api_key:
+            managed_llm[category] = settings.build_provider_config(
+                category,
+                api_key=provider.api_key or '',
+                base_url=provider.base_url or '',
+                model_name=provider.model_name or None,
+                light_model_name=getattr(provider, 'light_model_name', None) or None,
+                supports_function_calling=getattr(provider, 'supports_function_calling', True),
+            )
+
+    ocr_provider = crud.get_active_system_provider(db, 'paddleocr')
+    managed_ocr = (
+        settings.build_ocr_config(
+            api_url=ocr_provider.base_url or '',
+            token=ocr_provider.api_key or '',
+            model=ocr_provider.model_name or 'PaddleOCR-VL-1.5',
+            use_doc_orientation=getattr(ocr_provider, 'use_doc_orientation', False),
+            use_doc_unwarping=getattr(ocr_provider, 'use_doc_unwarping', False),
+            use_chart_recognition=getattr(ocr_provider, 'use_chart_recognition', False),
+        )
+        if ocr_provider else {}
+    )
+
+    settings.apply_managed_providers(managed_llm, managed_ocr)
+    if user_id:
+        settings.load_providers_from_db(user_id, db=db)
+    else:
+        settings.reload_providers()
+
+
+def _ocr_cache_key(user_id: Optional[int]) -> str:
+    return str(user_id) if user_id is not None else "anon"
+
+
+def _ocr_cache_path(user_id: Optional[int]) -> str:
+    return os.path.join(str(settings.results_dir), f"ocr_cache_{_ocr_cache_key(user_id)}.json")
+
+
+def _clear_ocr_cache(user_id: Optional[int]) -> None:
+    cache_path = _ocr_cache_path(user_id)
+    try:
+        os.remove(cache_path)
+    except FileNotFoundError:
+        pass
+
+
+def _mark_server_ocr_cache(user_id: Optional[int], value: bool) -> None:
+    with session_lock:
+        us = get_user_session(user_id)
+        us["ocr_cache_uses_server_ocr"] = bool(value)
+
+
+def _has_server_ocr_cache(user_id: Optional[int]) -> bool:
+    with session_lock:
+        cached = bool(get_user_session(user_id).get("ocr_cache_uses_server_ocr"))
+    return cached and os.path.exists(_ocr_cache_path(user_id))
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +206,8 @@ def upload_file():
                     us["current_thread_id"] = None
                     us["session_files"].clear()
                     us["session_file_order"].clear()
+                    us["ocr_cache_uses_server_ocr"] = False
+                    _clear_ocr_cache(uid)
 
                 us["session_files"][file_key] = {
                     "filename": file.filename,
@@ -150,6 +215,8 @@ def upload_file():
                 }
                 if file_key not in us["session_file_order"]:
                     us["session_file_order"].append(file_key)
+                us["ocr_cache_uses_server_ocr"] = False
+                _clear_ocr_cache(uid)
 
             results_out.append({
                 "file_key": file_key,
@@ -209,8 +276,9 @@ def cancel_file():
             filepath = v.get('filepath')
             if file_key in us["session_file_order"]:
                 us["session_file_order"].remove(file_key)
+            us["ocr_cache_uses_server_ocr"] = False
+            _clear_ocr_cache(uid)
 
-            us["cancelled_file_keys"].discard(file_key)
 
         if filepath:
             try:
@@ -272,6 +340,8 @@ def run_erase():
         with session_lock:
             us = get_user_session(uid)
             us["erased_file_paths"] = erased_paths
+            us["ocr_cache_uses_server_ocr"] = False
+        _clear_ocr_cache(uid)
 
         preview = []
         for i, (orig, erased) in enumerate(zip(file_paths, erased_paths)):
@@ -304,8 +374,10 @@ def run_ocr():
         # 加载 OCR 凭据
         user_id = session.get('user_id')
         ocr_credentials = {}
-        if user_id:
-            with SessionLocal() as db:
+        _mark_server_ocr_cache(user_id, False)
+        with SessionLocal() as db:
+            _apply_provider_context(db, user_id)
+            if user_id:
                 ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
                 if ocr_provider:
                     ocr_credentials = {
@@ -388,9 +460,10 @@ def run_ocr():
         import json
         results_dir = str(settings.results_dir)
         os.makedirs(results_dir, exist_ok=True)
-        ocr_cache_path = os.path.join(results_dir, "ocr_cache.json")
+        ocr_cache_path = _ocr_cache_path(user_id)
         with open(ocr_cache_path, 'w', encoding='utf-8') as f:
             json.dump(ocr_data, f, ensure_ascii=False, indent=2)
+        _mark_server_ocr_cache(user_id, False)
 
         # 构建前端预览数据：每页的图片 + bbox 标注
         preview_pages = []
@@ -462,9 +535,22 @@ def split_questions():
         # 从数据库加载用户的 LLM + OCR 凭据
         user_id = session.get('user_id')
         ocr_credentials = {}
-        if user_id:
-            settings.load_providers_from_db(user_id)
-            with SessionLocal() as db:
+        should_consume_quota = False
+        with SessionLocal() as db:
+            _apply_provider_context(db, user_id)
+            if user_id:
+                uses_server_side_ocr = uses_server_ocr(db, user_id)
+                uses_server_side_llm = uses_server_llm(db, user_id, model_provider)
+                should_consume_quota = uses_server_side_ocr or uses_server_side_llm
+                if should_consume_quota:
+                    quota_user = crud.get_user_by_id(db, user_id)
+                    if not quota_user:
+                        session.clear()
+                        return jsonify({'success': False, 'error': '用户不存在'}), 401
+                    if not has_daily_free_quota(db, quota_user):
+                        payload, status = quota_exceeded_response(db, quota_user)
+                        return jsonify(payload), status
+
                 ocr_provider = crud.get_active_provider(db, user_id, 'paddleocr')
                 if ocr_provider:
                     ocr_credentials = {
@@ -503,9 +589,11 @@ def split_questions():
             "model_provider": model_provider,
             "model_name": model_name,
             "ocr_credentials": ocr_credentials,
+            "ocr_cache_path": _ocr_cache_path(user_id),
         }
         workflow_graph.invoke(initial_state, config=config)
         result_state = workflow_graph.invoke(None, config=config)
+        _mark_server_ocr_cache(user_id, False)
 
         questions = result_state.get('questions', [])
         warnings = result_state.get('warnings', [])
@@ -525,6 +613,12 @@ def split_questions():
                 crud.save_split_record(db, subject, model_provider, file_names, questions, user_id=user_id)
         except Exception:
             logger.warning("保存分割记录失败，不影响主流程", exc_info=True)
+
+        if should_consume_quota and user_id:
+            with SessionLocal() as db:
+                quota_user = crud.get_user_by_id(db, user_id)
+                if quota_user:
+                    consume_daily_free_quota(db, quota_user)
 
         return jsonify({
             'success': True,

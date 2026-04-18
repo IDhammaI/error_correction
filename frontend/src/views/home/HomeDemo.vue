@@ -4,6 +4,7 @@
  * 落地页产品演示区
  */
 import { ArrowRight, Sparkles, CheckCircle2, FileDown } from 'lucide-vue-next'
+import BaseButton from '@/components/base/BaseButton.vue'
 </script>
 
 <template>
@@ -59,9 +60,9 @@ import { ArrowRight, Sparkles, CheckCircle2, FileDown } from 'lucide-vue-next'
               <span class="text-xs text-emerald-400/70 flex items-center gap-1.5">
                 <CheckCircle2 class="w-3 h-3" /> 已过滤手写痕迹
               </span>
-              <button class="text-xs bg-white/[0.06] text-white/60 hover:bg-white/[0.1] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors border border-white/[0.06]">
+              <BaseButton variant="secondary" size="sm" class="flex items-center gap-1.5 border-white/[0.06] bg-white/[0.06] hover:bg-white/[0.1] !px-3 !py-1.5 !h-auto">
                 导出 MD <FileDown class="w-3 h-3" />
-              </button>
+              </BaseButton>
             </div>
           </div>
         </div>

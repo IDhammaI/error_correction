@@ -12,7 +12,7 @@
 - **笔记整理**：上传手写笔记图片，OCR + LLM 自动结构化整理为 Markdown
 - **AI 解题**：独立解题 Agent，逐步给出解题过程
 - **AI 教学**：教学讲解 Agent，绑定错题上下文的一对一辅导
-- **AI 对话**：独立多轮对话，支持 SSE 流式输出和深度思考（DeepSeek Reasoner）
+- **AI 对话**：独立多轮对话，支持 SSE 流式输出和深度思考（DeepSeek Reasoner）；会话对外使用 UUID public_id，避免暴露数据库自增主键，并支持 `/app/ai-chat/:sessionId` 直达历史会话
 - **复习计划**：间隔复习，追踪错题掌握状态
 - **数据统计**：Dashboard 可视化，按科目/题型/时间维度分析
 - **导出**：导出为 Markdown 文件，按大题分组

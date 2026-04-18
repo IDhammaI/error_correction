@@ -1,6 +1,7 @@
 """对话 CRUD（支持题目绑定对话和独立对话）"""
 
 import logging
+import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -25,6 +26,8 @@ def create_chat_session(
         title: 对话标题
     """
     session = ChatSession(question_id=question_id, user_id=user_id, title=title)
+    if not getattr(session, "public_id", None):
+        session.public_id = str(uuid.uuid4())
     db.add(session)
     try:
         db.commit()
@@ -37,6 +40,12 @@ def create_chat_session(
 
 
 _VALID_ROLES = ('user', 'assistant')
+
+def get_chat_session_by_public_id(db: Session, public_id: str, user_id=None) -> Optional[ChatSession]:
+    query = db.query(ChatSession).filter(ChatSession.public_id == public_id)
+    if user_id is not None:
+        query = query.filter(ChatSession.user_id == user_id)
+    return query.first()
 
 
 def add_chat_message(db: Session, session_id: int, role: str, content: str, user_id=None) -> ChatMessage:

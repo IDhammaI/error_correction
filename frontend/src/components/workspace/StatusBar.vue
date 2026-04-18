@@ -118,7 +118,7 @@ const modelStatusError = computed(() => {
 
 <template>
   <div
-    class="relative z-20 flex flex-wrap items-center gap-4 py-2 text-sm shrink-0"
+    class="relative z-20 flex flex-wrap items-center gap-4 text-sm shrink-0"
   >
     <div class="flex items-center gap-2.5">
       <span class="text-xs font-medium uppercase tracking-[0.15em] text-[#62666d]">

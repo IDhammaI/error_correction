@@ -31,6 +31,8 @@ from db.crud.users import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_login,
+    update_user_profile,
+    update_user_avatar,
     update_user_password,
 )
 
@@ -79,6 +81,7 @@ from db.crud.stats import (
 
 from db.crud.chat import (
     create_chat_session,
+    get_chat_session_by_public_id,
     add_chat_message,
     get_chat_messages,
     get_chat_sessions_by_question,
@@ -100,8 +103,11 @@ from db.crud.providers import (
     _mask_secret,
     _serialize_provider,
     get_user_providers,
+    get_system_providers,
     save_user_providers,
+    save_system_providers,
     get_active_provider,
+    get_active_system_provider,
 )
 
 from db.crud.notes import (
@@ -121,6 +127,8 @@ __all__ = [
     "get_user_by_email",
     "get_user_by_id",
     "get_user_by_login",
+    "update_user_profile",
+    "update_user_avatar",
     "update_user_password",
     # email verification
     "get_verification_by_email",
@@ -159,6 +167,7 @@ __all__ = [
     "get_tag_type_stats",
     # chat
     "create_chat_session",
+    "get_chat_session_by_public_id",
     "add_chat_message",
     "get_chat_messages",
     "get_chat_sessions_by_question",
@@ -176,8 +185,11 @@ __all__ = [
     "_mask_secret",
     "_serialize_provider",
     "get_user_providers",
+    "get_system_providers",
     "save_user_providers",
+    "save_system_providers",
     "get_active_provider",
+    "get_active_system_provider",
     # notes
     "save_note",
     "get_notes",

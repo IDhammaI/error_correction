@@ -28,18 +28,19 @@ class PaddleOCRClient:
                  use_chart_recognition=None):
         """初始化客户端
 
-        优先使用传入的参数，未提供时回退到环境变量。
+        优先使用传入参数，其次使用平台托管默认配置。
         """
-        self.api_url = api_url or ""
-        self.token = token or ""
-        self.model = model or "PaddleOCR-VL-1.5"
-        self.use_doc_orientation = use_doc_orientation or False
-        self.use_doc_unwarping = use_doc_unwarping or False
-        self.use_chart_recognition = use_chart_recognition or False
+        from core.config import settings
+
+        managed_cfg = settings.get_managed_ocr_config()
+        self.api_url = api_url or managed_cfg.get("api_url", "")
+        self.token = token or managed_cfg.get("token", "")
+        self.model = model or managed_cfg.get("model", "PaddleOCR-VL-1.5")
+        self.use_doc_orientation = use_doc_orientation if use_doc_orientation is not None else managed_cfg.get("use_doc_orientation", False)
+        self.use_doc_unwarping = use_doc_unwarping if use_doc_unwarping is not None else managed_cfg.get("use_doc_unwarping", False)
+        self.use_chart_recognition = use_chart_recognition if use_chart_recognition is not None else managed_cfg.get("use_chart_recognition", False)
         if not self.api_url or not self.token:
-            raise ValueError(
-                "缺少 PaddleOCR 配置，请在设置页面配置 PaddleOCR 服务"
-            )
+            raise ValueError("缺少 PaddleOCR 配置，请先在设置中配置，或由管理员设置 APP_DEFAULT_PADDLEOCR_*")
 
     @property
     def _headers(self) -> Dict[str, str]:

@@ -5,6 +5,7 @@
  */
 import { ref, reactive, onUnmounted, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -14,8 +15,6 @@ const emit = defineEmits(['close'])
 const step = ref(1)        // 1: 表单  2: 完成
 const loading = ref(false)
 const error = ref('')
-const showPwd = ref(false)
-const showConfirm = ref(false)
 const form = reactive({ email: '', code: '', password: '', confirm: '' })
 
 // 验证码倒计时
@@ -29,8 +28,6 @@ watch(() => props.open, (val) => {
   if (val) {
     step.value = 1
     error.value = ''
-    showPwd.value = false
-    showConfirm.value = false
     Object.assign(form, { email: '', code: '', password: '', confirm: '' })
     countdown.value = 0
     clearInterval(timer)
@@ -127,53 +124,48 @@ async function resetPassword() {
             <p class="text-sm text-white/40 mb-6">输入注册邮箱和验证码，设置新密码</p>
 
             <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-white/60 mb-2">邮箱</label>
-                <div class="flex gap-2">
-                  <input v-model="form.email" type="email" placeholder="your@email.com"
-                    class="flex-1 min-w-0 h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm" />
+              <BaseInput
+                v-model="form.email"
+                type="email"
+                label="邮箱"
+                placeholder="your@email.com"
+              >
+                <template #append>
                   <button type="button" @click="sendCode" :disabled="codeSending || countdown > 0"
-                    class="shrink-0 h-10 px-4 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="countdown > 0
-                      ? 'bg-white/[0.03] text-white/30 border border-white/[0.06]'
-                      : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/30'">
+                      ? 'bg-white/[0.02] border-white/[0.05] text-white/30'
+                      : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:text-white/85'">
                     <i v-if="codeSending" class="fas fa-spinner fa-spin"></i>
                     <template v-else-if="countdown > 0">{{ countdown }}s</template>
                     <template v-else>发送验证码</template>
                   </button>
-                </div>
-              </div>
+                </template>
+              </BaseInput>
 
-              <div>
-                <label class="block text-sm font-medium text-white/60 mb-2">验证码</label>
-                <input v-model="form.code" type="text" inputmode="numeric" maxlength="6" placeholder="请输入验证码"
-                  autocomplete="one-time-code"
-                  class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm tracking-widest" />
-              </div>
+              <BaseInput
+                v-model="form.code"
+                label="验证码"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="请输入验证码"
+                autocomplete="one-time-code"
+                inputClass="tracking-widest"
+              />
 
-              <div>
-                <label class="block text-sm font-medium text-white/60 mb-2">新密码</label>
-                <div class="relative">
-                  <input v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="请输入新密码（至少 6 位）"
-                    class="w-full h-10 px-4 pr-11 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm" />
-                  <button type="button" @click="showPwd = !showPwd"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition-colors">
-                    <i :class="showPwd ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
-                  </button>
-                </div>
-              </div>
+              <BaseInput
+                v-model="form.password"
+                type="password"
+                label="新密码"
+                placeholder="请输入新密码（至少 6 位）"
+              />
 
-              <div>
-                <label class="block text-sm font-medium text-white/60 mb-2">确认密码</label>
-                <div class="relative">
-                  <input v-model="form.confirm" :type="showConfirm ? 'text' : 'password'" placeholder="再次输入新密码"
-                    class="w-full h-10 px-4 pr-11 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm" />
-                  <button type="button" @click="showConfirm = !showConfirm"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition-colors">
-                    <i :class="showConfirm ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
-                  </button>
-                </div>
-              </div>
+              <BaseInput
+                v-model="form.confirm"
+                type="password"
+                label="确认密码"
+                placeholder="再次输入新密码"
+              />
 
               <p v-if="error" class="text-sm text-rose-400 flex items-center gap-2">
                 <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}

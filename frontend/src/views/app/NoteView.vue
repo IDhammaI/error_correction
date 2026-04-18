@@ -10,12 +10,13 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
-import { useTheme } from '@/composables/useTheme.js'
+import { useAuth } from '@/composables/useAuth.js'
+
+const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 const { pushToast } = useToast()
 const { selectedProvider, selectedModel } = useSystemStatus()
-const { isDark } = useTheme()
-const theme = computed(() => isDark.value ? 'dark' : 'light')
+const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
 
 const noteContentRef = ref(null)
 
@@ -100,21 +101,26 @@ function handleFiles(e) {
 
   api.createNote(formData, {
     onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       creating.value = false
       createProgress.value = 100
+      await refreshCurrentUser().catch(() => {})
       pushToast('success', '笔记整理完成')
       loadNotes()
-      // 自动打开新创建的笔记
       if (data.note) selectedNote.value = data.note
     },
-    onError: (msg) => {
+    onError: (error) => {
       creating.value = false
-      emit('push-toast', 'error', msg)
+      createProgress.value = 0
+      if (error?.quota) setQuotaSnapshot(error.quota)
+      if (error?.code === QUOTA_EXCEEDED_CODE) {
+        pushToast('error', error.message || '今日免费体验次数已用完')
+        return
+      }
+      pushToast('error', error instanceof Error ? error.message : String(error))
     },
   })
 
-  // 模拟 OCR + LLM 处理进度
   let fakeProgress = 50
   const timer = setInterval(() => {
     if (!creating.value) { clearInterval(timer); return }
@@ -124,6 +130,7 @@ function handleFiles(e) {
 
   e.target.value = ''
 }
+
 
 // ---- 详情 ----
 async function openNote(note) {
@@ -192,11 +199,11 @@ async function doDelete(noteId) {
         <i class="fa-solid fa-upload text-[10px]"></i> 上传笔记
       </button>
     </template>
-  <div class="relative h-full overflow-y-auto custom-scrollbar">
-    <div class="container relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-8">
+  <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto custom-scrollbar">
+    <div class="container relative z-10 mx-auto flex min-h-0 flex-1 flex-col">
       
       <!-- List View -->
-      <div v-if="!selectedNote">
+      <div v-if="!selectedNote" class="flex min-h-0 flex-1 flex-col">
         <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
 
         <!-- 筛选栏（对齐错题库风格） -->
@@ -223,7 +230,7 @@ async function doDelete(noteId) {
         </div>
 
         <!-- Notes Grid -->
-        <div class="relative">
+        <div class="relative flex-1 flex flex-col">
           <EmptyState
             v-if="!loading && notes.length === 0"
             icon="fa-solid fa-book-open"

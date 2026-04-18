@@ -50,6 +50,7 @@ class WorkflowState(TypedDict, total=False):
     # 数据库凭据（由路由层注入，避免环境变量依赖）
     llm_credentials: Dict[str, Any]      # {api_key, base_url, light_model_name, supports_function_calling}
     ocr_credentials: Dict[str, Any]      # {api_url, token, model, use_doc_orientation, ...}
+    ocr_cache_path: str                  # OCR 预览缓存文件路径（按用户隔离）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -673,7 +674,7 @@ def split_questions_node(state: WorkflowState) -> dict:
         os.remove(meta_path)
 
     # ── Step 1: OCR 解析（优先使用缓存） ──
-    ocr_cache_path = os.path.join(results_dir, "ocr_cache.json")
+    ocr_cache_path = state.get("ocr_cache_path") or os.path.join(results_dir, "ocr_cache.json")
     ocr_data = None
     if os.path.exists(ocr_cache_path):
         try:

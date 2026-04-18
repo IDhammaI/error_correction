@@ -2,13 +2,15 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
+import { useToast } from '@/composables/useToast.js'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
 
 const router = useRouter()
-const { currentUser } = useAuth()
+const { setCurrentUser } = useAuth()
+const { pushToast } = useToast()
 
 const loading = ref(false)
-const showPwd = ref(false)
 const error = ref('')
 const success = ref('')
 const form = reactive({ username: '', email: '', password: '', confirm: '', code: '' })
@@ -70,7 +72,7 @@ async function handleSendCode() {
   if (sendingCode.value || countdown.value > 0) return
   const email = (form.email || '').trim()
   if (!email || !email.includes('@')) {
-    error.value = '请先填写有效邮箱'
+    pushToast('error', '请先填写有效邮箱')
     return
   }
   if (sendDebounceTimer) clearTimeout(sendDebounceTimer)
@@ -84,7 +86,7 @@ async function handleSendCode() {
         credentials: 'include',
         body: JSON.stringify({ email, type: 'register' }),
       })
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({ }))
       if (!res.ok) {
         // 429 频率限制：解析剩余秒数，启动错误提示倒计时
         if (res.status === 429) {
@@ -96,7 +98,7 @@ async function handleSendCode() {
         }
         return
       }
-      success.value = '验证码已发送到邮箱，请查收'
+      pushToast('success', '验证码已发送到邮箱，请查收')
       startCountdown(60)
     } catch {
       error.value = '网络错误，请重试'
@@ -129,7 +131,7 @@ async function handleRegister() {
       error.value = data.error || '注册失败'
     } else {
       success.value = '注册成功！正在登录...'
-      currentUser.value = data.user
+      setCurrentUser(data.user)
       router.push('/app')
     }
   } catch {
@@ -148,94 +150,72 @@ onBeforeUnmount(() => {
 
 <template>
   <form @submit.prevent="handleRegister" class="space-y-4">
+    <BaseInput
+      v-model="form.username"
+      label="用户名"
+      required
+      autocomplete="username"
+      placeholder="您的昵称"
+      maxlength="50"
+    />
+
     <div>
-      <label class="block text-sm font-medium text-white/60 mb-2">用户名</label>
-      <input
-        v-model="form.username"
-        type="text"
+      <BaseInput
+        v-model="form.email"
+        type="email"
+        label="邮箱"
         required
-        autocomplete="username"
-        placeholder="您的昵称"
-        maxlength="50"
-        class="w-full h-10 px-4 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
-      />
+        autocomplete="email"
+        placeholder="your@email.com"
+      >
+        <template #append>
+          <button
+            type="button"
+            @click="handleSendCode"
+            :disabled="sendingCode || countdown > 0"
+            class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="countdown > 0
+              ? 'bg-white/[0.02] border-white/[0.05] text-white/30'
+              : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:text-white/85'"
+          >
+            <i v-if="sendingCode" class="fas fa-spinner fa-spin"></i>
+            <template v-else-if="countdown > 0">{{ countdown }}s</template>
+            <template v-else>发送验证码</template>
+          </button>
+        </template>
+      </BaseInput>
     </div>
 
-    <div>
-      <label class="block text-sm font-medium text-white/60 mb-2">邮箱</label>
-      <div class="flex gap-2">
-        <input
-          v-model="form.email"
-          type="email"
-          required
-          autocomplete="email"
-          placeholder="your@email.com"
-          class="flex-1 min-w-0 h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
-        />
-        <button
-          type="button"
-          @click="handleSendCode"
-          :disabled="sendingCode || countdown > 0"
-          class="shrink-0 h-10 px-4 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          :class="countdown > 0
-            ? 'bg-white/[0.03] text-white/30 border border-white/[0.06]'
-            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/30'"
-        >
-          <i v-if="sendingCode" class="fas fa-spinner fa-spin"></i>
-          <template v-else-if="countdown > 0">{{ countdown }}s</template>
-          <template v-else>发送验证码</template>
-        </button>
-      </div>
-    </div>
+    <BaseInput
+      v-model="form.code"
+      label="验证码"
+      required
+      inputmode="numeric"
+      maxlength="6"
+      placeholder="6 位验证码"
+      autocomplete="one-time-code"
+      inputClass="tracking-widest"
+    />
+
+    <BaseInput
+      v-model="form.password"
+      type="password"
+      label="密码"
+      required
+      autocomplete="new-password"
+      placeholder="至少 6 位"
+      inputClass="minlength-6"
+    />
 
     <div>
-      <label class="block text-sm font-medium text-white/60 mb-2">验证码</label>
-      <input
-        v-model="form.code"
-        type="text"
-        required
-        inputmode="numeric"
-        maxlength="6"
-        placeholder="6 位验证码"
-        autocomplete="one-time-code"
-        class="w-full h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm tracking-widest"
-      />
-    </div>
-
-    <div>
-      <label class="block text-sm font-medium text-white/60 mb-2">密码</label>
-      <div class="relative">
-        <input
-          v-model="form.password"
-          :type="showPwd ? 'text' : 'password'"
-          required
-          autocomplete="new-password"
-          placeholder="至少 6 位"
-          minlength="6"
-          class="w-full h-10 px-4 pr-11 rounded-lg border border-white/[0.08] bg-white/[0.05] text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm"
-        />
-        <button
-          type="button"
-          @click="showPwd = !showPwd"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition-colors"
-        >
-          <i :class="showPwd ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-xs"></i>
-        </button>
-      </div>
-    </div>
-
-    <div>
-      <label class="block text-sm font-medium text-white/60 mb-2">确认密码</label>
-      <input
+      <BaseInput
         v-model="form.confirm"
         type="password"
+        label="确认密码"
         required
         autocomplete="new-password"
         placeholder="再次输入密码"
-        class="w-full h-10 px-4 rounded-xl border bg-white/[0.03] text-white placeholder-white/25 focus:outline-none focus:ring-1 transition-all text-sm"
-        :class="passwordMismatch()
-          ? 'border-rose-500/50 focus:border-rose-500/50 focus:ring-rose-500/30'
-          : 'border-white/[0.08] focus:border-indigo-500/50 focus:ring-indigo-500/30'"
+        :error="passwordMismatch()"
       />
       <p v-if="passwordMismatch()" class="text-xs text-rose-400 mt-1">两次密码不一致</p>
     </div>

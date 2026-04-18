@@ -1,7 +1,9 @@
 import hmac
 import hashlib
 import logging
+import os
 import secrets
+import uuid
 from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify, session, current_app
@@ -9,12 +11,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from core.config import settings
 from core.mail import send_smtp_email
+from core.quota import get_daily_quota_snapshot
 from db import SessionLocal
 from db import crud
 
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("auth", __name__)
+
+_AVATAR_ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp"}
+_AVATAR_MAX_SIZE_MB = 5
 
 
 def _hash_registration_code(email: str, code: str, pepper: str) -> str:
@@ -24,6 +30,92 @@ def _hash_registration_code(email: str, code: str, pepper: str) -> str:
 
 def _generate_six_digit_code() -> str:
     return f"{secrets.randbelow(900000) + 100000}"
+
+
+def _avatar_upload_dir() -> str:
+    return os.path.join(str(settings.upload_dir), "avatars")
+
+
+def _serialize_user(user, db=None):
+    avatar_url = None
+    avatar_path = (getattr(user, "avatar_path", None) or "").strip()
+    legacy_avatar_url = (getattr(user, "avatar_url", None) or "").strip()
+    if avatar_path:
+        avatar_url = f"/uploads/{avatar_path.replace(os.sep, '/')}"
+    elif legacy_avatar_url:
+        avatar_url = legacy_avatar_url
+    quota = get_daily_quota_snapshot(db, user) if db is not None else {
+        "daily_free_quota": max(int(getattr(user, "daily_free_quota", 5) or 5), 0),
+        "daily_free_used": max(int(getattr(user, "daily_free_used", 0) or 0), 0),
+        "remaining": max(int(getattr(user, "daily_free_quota", 5) or 5) - int(getattr(user, "daily_free_used", 0) or 0), 0),
+        "quota_date": getattr(user, "daily_free_quota_date", None),
+        "reset_at": None,
+    }
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "display_name": user.display_name,
+        "nickname": user.nickname,
+        "avatar_url": avatar_url,
+        "is_admin": user.is_admin,
+        "quota": quota,
+    }
+
+
+def _normalize_profile_text(value, max_length: int):
+    text = (value or "").strip()
+    if not text:
+        return None
+    if len(text) > max_length:
+        raise ValueError(f"长度不能超过 {max_length} 个字符")
+    return text
+
+
+def _current_user_id():
+    return session.get("user_id")
+
+
+def _delete_avatar_file_if_exists(avatar_path: str | None):
+    if not avatar_path:
+        return
+    normalized = os.path.normpath(avatar_path)
+    prefix = f"avatars{os.sep}"
+    if normalized != "avatars" and not normalized.startswith(prefix):
+        return
+    file_path = os.path.abspath(os.path.join(str(settings.upload_dir), normalized))
+    avatar_root = os.path.abspath(_avatar_upload_dir())
+    if not file_path.startswith(avatar_root + os.sep):
+        return
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
+
+
+def _save_avatar_file(file_storage):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("请选择头像图片")
+
+    ext = os.path.splitext(file_storage.filename)[1].lower().lstrip('.')
+    if ext not in _AVATAR_ALLOWED_EXTENSIONS:
+        raise ValueError(f"头像仅支持 {', '.join(sorted(_AVATAR_ALLOWED_EXTENSIONS))} 格式")
+
+    file_storage.seek(0, 2)
+    file_size = file_storage.tell()
+    file_storage.seek(0)
+    max_bytes = _AVATAR_MAX_SIZE_MB * 1024 * 1024
+    if file_size <= 0:
+        raise ValueError("头像文件不能为空")
+    if file_size > max_bytes:
+        raise ValueError(f"头像大小不能超过 {_AVATAR_MAX_SIZE_MB}MB")
+
+    avatar_dir = _avatar_upload_dir()
+    os.makedirs(avatar_dir, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(avatar_dir, filename)
+    file_storage.save(file_path)
+    return f"avatars/{filename}", file_path
 
 
 @bp.route("/register", methods=["POST"])
@@ -48,11 +140,6 @@ def auth_register():
     submitted_hash = _hash_registration_code(email, code, pepper)
     now = datetime.utcnow()
 
-    user_id = None
-    username_out = None
-    email_out = None
-    is_admin_out = None
-
     with SessionLocal() as db:
         if crud.get_user_by_email(db, email):
             return jsonify({"success": False, "error": "该邮箱已注册"}), 409
@@ -74,28 +161,14 @@ def auth_register():
         pwd_hash = generate_password_hash(password)
         user = crud.create_user(db, email=email, password_hash=pwd_hash, username=username)
         crud.delete_verification_by_email(db, email)
-        # 将需要的字段提前取出为纯 Python 变量，避免脱离 Session 后访问 ORM 对象触发 DetachedInstanceError
-        user_id = user.id
-        username_out = user.username
-        email_out = user.email
-        is_admin_out = user.is_admin
+        user_payload = _serialize_user(user, db)
         session_version_out = user.session_version or 0
 
-    session["user_id"] = user_id
-    session["username"] = username_out
-    session["is_admin"] = bool(is_admin_out)
+    session["user_id"] = user_payload["id"]
+    session["username"] = user_payload["username"]
+    session["is_admin"] = bool(user_payload["is_admin"])
     session["session_version"] = session_version_out
-    return jsonify(
-        {
-            "success": True,
-            "user": {
-                "id": user_id,
-                "email": email_out,
-                "username": username_out,
-                "is_admin": is_admin_out,
-            },
-        }
-    ), 201
+    return jsonify({"success": True, "user": user_payload}), 201
 
 
 @bp.route("/send-code", methods=["POST"])
@@ -112,14 +185,12 @@ def send_code():
         return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
 
     now = datetime.utcnow()
-    # 提前生成验证码，保证频率检查与写入在同一个 DB 事务中（消除 TOCTOU 竞态）
     code = _generate_six_digit_code()
     pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
     code_hash = _hash_registration_code(email, code, pepper)
     expires_at = now + timedelta(minutes=settings.registration_code_ttl_minutes)
 
     with SessionLocal() as db:
-        # 频率限制与写入在同一 session，防止并发请求绕过限制
         row = crud.get_verification_by_email(db, email)
         if row and row.last_sent_at:
             delta = (now - row.last_sent_at).total_seconds()
@@ -130,8 +201,6 @@ def send_code():
                 ), 429
 
         user = crud.get_user_by_email(db, email)
-        # 防邮箱枚举：注册时邮箱已存在、重置时邮箱不存在，均返回相同成功响应但不实际发送
-        # 同时写入记录以保证频率限制行为一致，防止通过 429 差异探测邮箱
         if (code_type == "register" and user) or (code_type == "reset" and not user):
             crud.upsert_registration_code(db, email, "anti-enum-dummy", now + timedelta(minutes=1), now)
             return jsonify({"success": True, "message": "验证码已发送"})
@@ -197,7 +266,6 @@ def reset_password():
     with SessionLocal() as db:
         user = crud.get_user_by_email(db, email)
         if not user:
-            # 防枚举：与验证码错误返回相同提示
             return jsonify({"success": False, "error": "验证码错误"}), 400
 
         row = crud.get_verification_by_email(db, email)
@@ -242,16 +310,7 @@ def auth_login():
         session["username"] = user.username
         session["is_admin"] = bool(user.is_admin)
         session["session_version"] = user.session_version or 0
-        return jsonify(
-            {
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                    "is_admin": user.is_admin,
-                }
-            }
-        )
+        return jsonify({"user": _serialize_user(user, db)})
 
 
 @bp.route("/logout", methods=["POST"])
@@ -272,13 +331,88 @@ def auth_me():
         if not user:
             session.clear()
             return jsonify({"error": "用户不存在", "code": "UNAUTHORIZED"}), 401
-        return jsonify(
-            {
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                    "is_admin": user.is_admin,
-                }
-            }
+        return jsonify({"user": _serialize_user(user, db)})
+
+
+@bp.route("/profile", methods=["PATCH"])
+def update_profile():
+    """更新当前用户资料"""
+    user_id = _current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "error": "未登录"}), 401
+
+    data = request.get_json() or {}
+    try:
+        display_name = _normalize_profile_text(data.get("display_name"), 50)
+        nickname = _normalize_profile_text(data.get("nickname"), 50)
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    with SessionLocal() as db:
+        user = crud.update_user_profile(
+            db,
+            user_id,
+            display_name=display_name,
+            nickname=nickname,
         )
+        if not user:
+            session.clear()
+            return jsonify({"success": False, "error": "用户不存在"}), 404
+        return jsonify({"success": True, "user": _serialize_user(user, db)})
+
+
+@bp.route("/profile/avatar", methods=["POST"])
+def upload_profile_avatar():
+    """上传当前用户头像"""
+    user_id = _current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "error": "未登录"}), 401
+
+    file = request.files.get("file")
+    saved_avatar_path = None
+    saved_file_path = None
+    try:
+        saved_avatar_path, saved_file_path = _save_avatar_file(file)
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception:
+        logger.exception("保存头像文件失败")
+        return jsonify({"success": False, "error": "头像上传失败，请稍后重试"}), 500
+
+    with SessionLocal() as db:
+        user = crud.get_user_by_id(db, user_id)
+        if not user:
+            if saved_file_path and os.path.exists(saved_file_path):
+                os.remove(saved_file_path)
+            session.clear()
+            return jsonify({"success": False, "error": "用户不存在"}), 404
+
+        old_avatar_path = getattr(user, "avatar_path", None)
+        try:
+            user = crud.update_user_avatar(db, user_id, saved_avatar_path)
+        except Exception:
+            if saved_file_path and os.path.exists(saved_file_path):
+                os.remove(saved_file_path)
+            raise
+
+    _delete_avatar_file_if_exists(old_avatar_path)
+    return jsonify({"success": True, "user": _serialize_user(user)})
+
+
+@bp.route("/profile/avatar", methods=["DELETE"])
+def delete_profile_avatar():
+    """删除当前用户头像"""
+    user_id = _current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "error": "未登录"}), 401
+
+    with SessionLocal() as db:
+        user = crud.get_user_by_id(db, user_id)
+        if not user:
+            session.clear()
+            return jsonify({"success": False, "error": "用户不存在"}), 404
+        old_avatar_path = getattr(user, "avatar_path", None)
+        user = crud.update_user_avatar(db, user_id, None)
+
+    _delete_avatar_file_if_exists(old_avatar_path)
+    return jsonify({"success": True, "user": _serialize_user(user)})
