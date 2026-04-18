@@ -9,6 +9,7 @@ printed-vs-handwritten/
 OmniDocBench.json
 .vscode
 .claude/
+.trae/
 
 # uv环境
 .python-version
