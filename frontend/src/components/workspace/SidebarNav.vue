@@ -5,6 +5,7 @@
  */
 import { computed } from 'vue'
 import BaseLogo from '@/components/base/BaseLogo.vue'
+import BaseDropdown from '@/components/base/BaseDropdown.vue'
 
 const props = defineProps({
   currentView: { type: String, required: true },
@@ -302,25 +303,59 @@ const userQuotaSummary = computed(() => {
 
       <!-- 底部用户区 -->
       <div class="relative p-2">
-        <!-- Dropdown 菜单 -->
-        <Transition
-          enter-active-class="transition duration-150 ease-out"
-          enter-from-class="opacity-0 translate-y-2"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition duration-100 ease-in"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 translate-y-2"
+        <BaseDropdown 
+          :modelValue="userMenuOpen" 
+          @update:modelValue="(val) => emit('update:userMenuOpen', val)"
+          position="top" 
+          align="center" 
+          width="w-full" 
+          offset="mb-1"
+          panelClass="rounded-md brand-btn dark:bg-[#1b1b1d] backdrop-blur-md"
+          wrapperClass="block w-full"
         >
-          <div v-if="userMenuOpen" class="absolute bottom-full left-2 right-2 mb-1 rounded-md brand-btn overflow-hidden z-50">
+          <!-- 背景噪点 -->
+          <template #background>
+            <div class="ws-bg-noise hidden dark:block"></div>
+          </template>
+
+          <template #trigger="{ toggle }">
+            <!-- 用户信息 -->
             <button
-              @click="openSettings('profile'); emit('update:userMenuOpen', false)"
+              @click.stop="toggle"
+              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+            >
+              <div class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium" style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
+                <img
+                  v-if="currentUser?.avatar_url"
+                  :src="currentUser.avatar_url"
+                  alt="用户头像"
+                  class="h-full w-full object-cover"
+                />
+                <template v-else>
+                  <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
+                  <span class="relative z-10">{{ userInitial }}</span>
+                </template>
+              </div>
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm text-gray-900 dark:text-[#f7f8f8] truncate leading-tight transition-colors">{{ userDisplayName }}</p>
+                <p v-if="userQuotaSummary" class="mt-0.5 text-xs text-indigo-600 dark:text-[rgb(145,132,235)] truncate leading-tight transition-colors">{{ userQuotaSummary }}</p>
+                <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{ currentUser?.username || 'guest' }}</p>
+              </div>
+              <i class="fa-solid fa-chevron-up text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
+            </button>
+          </template>
+
+          <!-- Dropdown 菜单内容 -->
+          <template #default="{ close }">
+            <button
+              @click="openSettings('profile'); close()"
               class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors"
             >
               <i class="fa-solid fa-gear w-4 text-center text-xs text-gray-400 dark:text-[#62666d]"></i>
               系统设置
             </button>
             <button
-              @click="(e) => { emit('update:userMenuOpen', false); emit('toggle-theme', e.currentTarget) }"
+              @click="(e) => { close(); emit('toggle-theme', e.currentTarget) }"
               class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors"
             >
               <i class="fa-solid w-4 text-center text-xs text-gray-400 dark:text-[#62666d]" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
@@ -328,39 +363,14 @@ const userQuotaSummary = computed(() => {
             </button>
             <div class="border-t border-gray-200 dark:border-white/[0.05]"></div>
             <button
-              @click="emit('logout'); emit('update:userMenuOpen', false)"
+              @click="emit('logout'); close()"
               class="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
             >
               <i class="fas fa-right-from-bracket w-4 text-center text-xs"></i>
               退出登录
             </button>
-          </div>
-        </Transition>
-
-        <!-- 用户信息 -->
-        <button
-          @click="emit('update:userMenuOpen', !userMenuOpen)"
-          class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
-        >
-          <div class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium" style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
-            <img
-              v-if="currentUser?.avatar_url"
-              :src="currentUser.avatar_url"
-              alt="用户头像"
-              class="h-full w-full object-cover"
-            />
-            <template v-else>
-              <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
-              <span class="relative z-10">{{ userInitial }}</span>
-            </template>
-          </div>
-          <div class="flex-1 min-w-0 text-left">
-            <p class="text-sm text-gray-900 dark:text-[#f7f8f8] truncate leading-tight transition-colors">{{ userDisplayName }}</p>
-            <p v-if="userQuotaSummary" class="mt-0.5 text-xs text-indigo-600 dark:text-[rgb(145,132,235)] truncate leading-tight transition-colors">{{ userQuotaSummary }}</p>
-            <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{ currentUser?.username || 'guest' }}</p>
-          </div>
-          <i class="fa-solid fa-chevron-up text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
-        </button>
+          </template>
+        </BaseDropdown>
       </div>
     </template>
   </aside>
