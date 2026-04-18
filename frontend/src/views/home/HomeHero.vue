@@ -49,10 +49,10 @@ onUnmounted(() => {
 
 <template>
   <!-- ① Sticky Hero 容器 — Linear 风格 -->
-  <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex flex-col justify-center bg-[#0A0A0F]" style="contain: content;">
+  <div id="sticky-hero" class="sticky top-0 h-screen overflow-hidden z-0 flex flex-col justify-center bg-slate-50 dark:bg-[#0A0A0F]" style="contain: content;">
 
     <!-- 背景装饰：复杂流体拓扑波纹 (Fluid Topography) 基础层 -->
-    <div class="absolute inset-0 pointer-events-none z-0 opacity-20" style="
+    <div class="absolute inset-0 pointer-events-none z-0 opacity-[0.4] dark:opacity-20 dark:invert-0 invert" style="
       background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 1000 1000%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.005%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix type=%22matrix%22 values=%221 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 10 -4%22 /%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22 opacity=%220.3%22/%3E%3Cpath d=%22M0,100 C200,300 300,0 500,100 C700,200 800,-100 1000,100 M0,200 C250,400 350,100 550,200 C750,300 850,0 1000,200 M0,300 C300,500 400,200 600,300 C800,400 900,100 1000,300 M0,400 C350,600 450,300 650,400 C850,500 950,200 1000,400 M0,500 C400,700 500,400 700,500 C900,600 1000,300 1000,500 M0,600 C450,800 550,500 750,600 C950,700 1000,400 1000,600 M0,700 C500,900 600,600 800,700 C1000,800 1000,500 1000,700 M0,800 C550,1000 650,700 850,800 C1000,900 1000,600 1000,800 M0,900 C600,1100 700,800 900,900 C1000,1000 1000,700 1000,900%22 stroke=%22%23ffffff%22 stroke-width=%221%22 fill=%22none%22 opacity=%220.15%22 /%3E%3C/svg%3E');
       background-size: cover;
       background-position: center;
@@ -69,14 +69,7 @@ onUnmounted(() => {
       aspect-ratio: 1.3 / 1;
     ">
       <!-- 椭圆本体 -->
-      <div class="absolute inset-0" style="
-        border-radius: 50%;
-        background: linear-gradient(to bottom, rgba(92,81,148,0.5), rgba(47,40,91,0.95));
-        box-shadow:
-          inset 0 -20px 24px 0 rgba(255,255,255,0.15),
-          0 16px 32px 0 rgba(97,62,210,0.32),
-          inset 0 -1px 0 0 rgba(129,115,223,0.6);
-      "></div>
+      <div class="absolute inset-0 rounded-[50%] bg-gradient-to-b from-[#8173DF]/40 to-[#6357C7]/80 shadow-[inset_0_-20px_24px_0_rgba(99,87,199,0.6),0_24px_48px_0_rgba(99,87,199,0.8),0_0_32px_0_rgba(129,115,223,0.5),inset_0_-1px_0_0_rgba(255,255,255,1),inset_0_1px_0_0_rgba(255,255,255,1)] dark:from-[rgba(92,81,148,0.5)] dark:to-[rgba(47,40,91,0.95)] dark:shadow-[inset_0_-20px_24px_0_rgba(255,255,255,0.15),0_16px_32px_0_rgba(97,62,210,0.32),inset_0_-1px_0_0_rgba(129,115,223,0.6)] backdrop-blur-md"></div>
 
       <!-- 土星光环: LaTeX 公式 -->
       <!-- 放大容器以远离"土星"本体，同时增加 Z 轴旋转(rotateX)和倾斜(rotateZ)产生悬浮交错的纵深感 -->
@@ -95,11 +88,11 @@ onUnmounted(() => {
             <path id="saturn-ring-path-1" d="M 500, 980 A 480,480 0 1,0 500,20 A 480,480 0 1,0 500,980" fill="none" />
             
             <!-- 轨道装饰线 -->
-            <path d="M 500, 500 m -488, 0 a 488,488 0 1,1 976,0 a 488,488 0 1,1 -976,0" fill="none" stroke="rgba(129,115,223,0.2)" stroke-width="1" />
-            <path d="M 500, 500 m -472, 0 a 472,472 0 1,1 944,0 a 472,472 0 1,1 -944,0" fill="none" stroke="rgba(129,115,223,0.2)" stroke-width="1" />
+            <path d="M 500, 500 m -488, 0 a 488,488 0 1,1 976,0 a 488,488 0 1,1 -976,0" fill="none" class="stroke-indigo-900/30 dark:stroke-indigo-400/20" stroke-width="1.5" />
+            <path d="M 500, 500 m -472, 0 a 472,472 0 1,1 944,0 a 472,472 0 1,1 -944,0" fill="none" class="stroke-indigo-900/30 dark:stroke-indigo-400/20" stroke-width="1.5" />
 
             <!-- 公式文本 -->
-            <text fill="currentColor" class="text-indigo-200/80" font-family="'Times New Roman', Times, serif" font-size="18" font-style="italic" letter-spacing="5">
+            <text fill="currentColor" class="text-indigo-900/70 dark:text-indigo-200/80 font-bold" font-family="'Times New Roman', Times, serif" font-size="18" font-style="italic" letter-spacing="5">
               <textPath href="#saturn-ring-path-1" startOffset="0%">
                 ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt
               </textPath>
@@ -112,11 +105,11 @@ onUnmounted(() => {
             <path id="saturn-ring-path-2" d="M 500, 1040 A 540,540 0 1,0 500,-40 A 540,540 0 1,0 500,1040" fill="none" />
             
             <!-- 轨道装饰线 -->
-            <path d="M 500, 500 m -546, 0 a 546,546 0 1,1 1092,0 a 546,546 0 1,1 -1092,0" fill="none" stroke="rgba(129,115,223,0.15)" stroke-width="1" />
-            <path d="M 500, 500 m -534, 0 a 534,534 0 1,1 1068,0 a 534,534 0 1,1 -1068,0" fill="none" stroke="rgba(129,115,223,0.15)" stroke-width="1" />
+            <path d="M 500, 500 m -546, 0 a 546,546 0 1,1 1092,0 a 546,546 0 1,1 -1092,0" fill="none" class="stroke-indigo-900/25 dark:stroke-indigo-400/15" stroke-width="1.5" />
+            <path d="M 500, 500 m -534, 0 a 534,534 0 1,1 1068,0 a 534,534 0 1,1 -1068,0" fill="none" class="stroke-indigo-900/25 dark:stroke-indigo-400/15" stroke-width="1.5" />
 
             <!-- 公式文本 (换成另一组数学公式：傅里叶变换、高斯-博内定理、薛定谔、贝叶斯等) -->
-            <text fill="currentColor" class="text-indigo-200/70" font-family="'Times New Roman', Times, serif" font-size="14" font-style="italic" letter-spacing="6">
+            <text fill="currentColor" class="text-indigo-900/60 dark:text-indigo-200/70 font-bold" font-family="'Times New Roman', Times, serif" font-size="14" font-style="italic" letter-spacing="6">
               <textPath href="#saturn-ring-path-2" startOffset="0%">
                 F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2
               </textPath>
@@ -127,17 +120,17 @@ onUnmounted(() => {
     </div>
 
     <!-- 装饰: 光斑 -->
-    <div class="absolute pointer-events-none z-0 w-80 h-80 rounded-full blur-[120px] bg-indigo-600/[0.07]"
+    <div class="absolute pointer-events-none z-0 w-80 h-80 rounded-full blur-[120px] bg-indigo-600/[0.15] dark:bg-indigo-600/[0.07]"
       style="top: 25%; left: 8%;"
     ></div>
-    <div class="absolute pointer-events-none z-0 w-64 h-64 rounded-full blur-[100px] bg-violet-500/[0.05]"
+    <div class="absolute pointer-events-none z-0 w-64 h-64 rounded-full blur-[100px] bg-violet-500/[0.12] dark:bg-violet-500/[0.05]"
       style="top: 55%; right: 10%;"
     ></div>
 
     <!-- 装饰: 底部简约的环境光晕 -->
     <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80vw] h-[30vh] pointer-events-none z-0">
-      <div class="absolute inset-0 bg-indigo-500/10 blur-[100px] rounded-[100%] transform translate-y-1/2"></div>
-      <div class="absolute inset-0 bg-violet-500/5 blur-[120px] rounded-[100%] transform translate-y-1/2 scale-150"></div>
+      <div class="absolute inset-0 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[100px] rounded-[100%] transform translate-y-1/2"></div>
+      <div class="absolute inset-0 bg-violet-500/10 dark:bg-violet-500/5 blur-[120px] rounded-[100%] transform translate-y-1/2 scale-150"></div>
     </div>
 
     <!-- 首屏区块 — 居中布局 -->
@@ -146,15 +139,14 @@ onUnmounted(() => {
         <!-- 标签 -->
         <HomePill class="mb-6" />
 
-        <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-white">
+        <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-gray-900 dark:text-white">
           重塑错题整理<br />
-          <span class="text-transparent bg-clip-text animate-gradient-sweep" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+          <span class="text-transparent bg-clip-text animate-gradient-sweep bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(79,70,229)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)] dark:bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(255,255,255)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)]" style="
             background-size: 200% auto;
           ">一键生成知识图谱</span>
         </h1>
 
-        <p class="text-base text-white/40 mb-8 max-w-lg mx-auto leading-relaxed">
+        <p class="text-base text-gray-600 dark:text-white/40 mb-8 max-w-lg mx-auto leading-relaxed">
           上传试卷或手写笔记，AI 自动完成 OCR 识别、题目分割、公式还原、知识点标注。
         </p>
 
@@ -176,7 +168,7 @@ onUnmounted(() => {
       <div
         v-for="(s, i) in stars"
         :key="i"
-        class="absolute rounded-full bg-white"
+        class="absolute rounded-full bg-indigo-400 dark:bg-white"
         :style="{
           left: s.left + '%',
           top: s.top + '%',
@@ -190,7 +182,7 @@ onUnmounted(() => {
     <!-- 底部箭头 -->
     <button
       @click="emit('scrollToSection', 'features')"
-      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-white/20 hover:text-white/50 transition-colors cursor-pointer"
+      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-gray-400 hover:text-gray-700 dark:text-white/20 dark:hover:text-white/50 transition-colors cursor-pointer"
     >
       <i class="fa-solid fa-chevron-down text-lg animate-bounce"></i>
     </button>
