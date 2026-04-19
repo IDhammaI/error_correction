@@ -195,8 +195,8 @@ async function doDelete(noteId) {
 <template>
   <ContentPanel title="笔记库">
     <template #toolbar>
-      <button @click="triggerUpload" class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-[#8a8f98] dark:hover:bg-white/[0.06] dark:hover:text-[#d0d6e0] transition-colors" title="上传笔记">
-        <i class="fa-solid fa-upload text-[10px]"></i> 上传笔记
+      <button @click="triggerUpload" class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors" title="录入新笔记">
+        <i class="fa-solid fa-plus text-[10px]"></i> 录入
       </button>
     </template>
   <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto custom-scrollbar">
@@ -207,27 +207,38 @@ async function doDelete(noteId) {
         <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
 
         <!-- 筛选栏（对齐错题库风格） -->
-        <div class="relative z-20 mb-8">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <SearchInput v-model="filterKeyword" label="内容检索" placeholder="搜索笔记关键词..." />
-            <BaseSelect v-model="filterSubject" :options="subjects" label="学科" placeholder="全部学科" />
-            <BaseSelect v-model="filterTag" :options="tagNames" label="知识点" placeholder="全部知识点" />
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-[#62666d]">统计</label>
-              <div class="flex h-9 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#8a8f98]">
-                共 {{ total }} 条笔记
-              </div>
-            </div>
+        <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
+          <!-- 搜索框 -->
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
+            <input
+              v-model="filterKeyword"
+              type="text"
+              placeholder="搜索笔记..."
+              class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]"
+            />
           </div>
+          
+          <BaseSelect v-model="filterSubject" :options="subjects" placeholder="全部学科" class="h-8 w-32" />
+          <BaseSelect v-model="filterTag" :options="tagNames" placeholder="全部知识点" class="h-8 w-32" />
+          
+          <button
+            v-if="filterSubject || filterTag"
+            @click="filterSubject = ''; filterTag = ''"
+            class="text-xs text-gray-500 dark:text-[#62666d] hover:text-rose-500 dark:hover:text-rose-400 transition-colors ml-2"
+          >清除筛选</button>
 
+          <div class="ml-auto flex items-center text-xs text-gray-500 dark:text-[#8a8f98]">
+            共 {{ total }} 条笔记
+          </div>
+        </div>
           <!-- 进度条 -->
-          <div v-if="creating" class="mt-4">
+          <div v-if="creating" class="mb-4">
             <div class="h-1 rounded-full bg-gray-200 dark:bg-white/[0.06]">
               <div class="h-full rounded-full bg-indigo-500 dark:bg-[rgb(129,115,223)] transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-[#62666d]">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
           </div>
-        </div>
 
         <!-- Notes Grid -->
         <div class="relative flex-1 flex flex-col">
@@ -237,8 +248,8 @@ async function doDelete(noteId) {
             title="还没有笔记"
             description="上传手写笔记或板书照片，AI 自动整理为结构化知识点"
           >
-            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md bg-indigo-500 hover:bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm dark:brand-btn dark:text-[#f7f8f8]">
-              <i class="fa-solid fa-plus"></i> 上传笔记
+            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors bg-[rgb(129,115,223)] hover:bg-[rgb(145,132,235)] shadow-sm dark:brand-btn">
+              <i class="fa-solid fa-plus"></i> 录入新笔记
             </button>
           </EmptyState>
 
