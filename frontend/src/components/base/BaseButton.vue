@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  variant: { type: String, default: 'primary' },   // primary | secondary | cta
+  variant: { type: String, default: 'primary' },   // primary | secondary | cta | brand
   size: { type: String, default: 'md' },            // sm | md
   to: { type: String, default: '' },                // RouterLink 目标
   href: { type: String, default: '' },              // 普通链接
@@ -38,11 +38,12 @@ const bindProps = computed(() => {
         'home-btn--primary': variant === 'primary',
         'home-btn--secondary': variant === 'secondary',
         'home-btn--cta': variant === 'cta',
+        'home-btn--brand': variant === 'brand',
       },
     ]"
   >
     <!-- 内部网格纹理 -->
-    <span v-if="variant !== 'secondary'" class="btn-grid" aria-hidden="true"></span>
+    <span v-if="variant === 'primary' || variant === 'cta'" class="btn-grid" aria-hidden="true"></span>
     <slot />
   </component>
 </template>
@@ -110,6 +111,27 @@ const bindProps = computed(() => {
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
     0 0 24px 0 rgba(109, 92, 214, 0.3);
+}
+
+/* ── Brand: 应用内的主操作按钮风格（无内网格，轻量投影） ── */
+.home-btn--brand {
+  background-color: rgb(129, 115, 223);
+  color: #fff;
+  border: none;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.home-btn--brand:hover {
+  background-color: rgb(145, 132, 235);
+}
+:root.dark .home-btn--brand {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+:root.dark .home-btn--brand:hover {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* ── 按钮内网格纹理 ── */
