@@ -10,6 +10,9 @@ import ProviderDialog from '@/components/settings/ProviderDialog.vue'
 import ProviderSection from '@/components/settings/ProviderSection.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseListGroup from '@/components/base/BaseListGroup.vue'
+import BaseListItem from '@/components/base/BaseListItem.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 
 const props = defineProps({
   section: { type: String, default: 'profile' },
@@ -61,6 +64,139 @@ const avatarInputRef = ref(null)
 const selectedAvatarFile = ref(null)
 const avatarPreviewUrl = ref('')
 const avatarUploadXhr = ref(null)
+
+// ---------- 修改邮箱弹窗逻辑 ----------
+const isEmailDialogOpen = ref(false)
+const isEmailCodeDialogOpen = ref(false)
+const emailFormSaving = ref(false)
+const emailFormError = ref('')
+const emailCodeError = ref('')
+const emailForm = ref({ newEmail: '', code: '' })
+const emailCodeSending = ref(false)
+const emailChecking = ref(false)
+const emailCodeCooldown = ref(0)
+let emailCodeTimer = null
+
+const openEmailDialog = () => {
+  emailForm.value.newEmail = ''
+  emailForm.value.code = ''
+  emailFormError.value = ''
+  emailCodeError.value = ''
+  isEmailDialogOpen.value = true
+  isEmailCodeDialogOpen.value = false
+}
+
+const closeEmailDialog = () => {
+  isEmailDialogOpen.value = false
+}
+
+const closeEmailCodeDialog = () => {
+  isEmailCodeDialogOpen.value = false
+}
+
+const handleEmailNextStep = async () => {
+  if (!emailForm.value.newEmail || emailChecking.value) return
+  if (!emailForm.value.newEmail.includes('@')) {
+    emailFormError.value = '请输入有效的邮箱地址'
+    return
+  }
+  if (emailForm.value.newEmail === currentUser.value?.email) {
+    emailFormError.value = '新邮箱不能与当前邮箱相同'
+    return
+  }
+  
+  emailChecking.value = true
+  emailFormError.value = ''
+  
+  try {
+    const resp = await fetch('/api/auth/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailForm.value.newEmail }),
+    })
+    const data = await resp.json().catch(() => null)
+    if (!resp.ok || !data?.success) {
+      throw new Error(data?.error || '邮箱校验失败')
+    }
+    
+    // 校验通过，进入下一步
+    emailFormError.value = ''
+    isEmailDialogOpen.value = false
+    isEmailCodeDialogOpen.value = true
+    // 自动触发发送验证码
+    sendVerificationCode()
+  } catch (e) {
+    emailFormError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    emailChecking.value = false
+  }
+}
+
+const sendVerificationCode = async () => {
+  if (emailCodeSending.value || emailCodeCooldown.value > 0) return
+  
+  const currentEmail = currentUser.value?.email
+  if (!currentEmail) {
+    emailFormError.value = '未绑定原邮箱，无法发送验证码'
+    return
+  }
+
+  emailCodeSending.value = true
+  emailCodeError.value = ''
+  
+  try {
+    const resp = await fetch('/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentEmail, type: 'change_email' }),
+    })
+    const data = await resp.json().catch(() => null)
+    if (!resp.ok || !data?.success) {
+      throw new Error(data?.error || '发送失败，请重试')
+    }
+    
+    pushToast('success', '验证码已发送至原邮箱')
+    emailCodeCooldown.value = 60
+    emailCodeTimer = setInterval(() => {
+      emailCodeCooldown.value--
+      if (emailCodeCooldown.value <= 0) {
+        clearInterval(emailCodeTimer)
+      }
+    }, 1000)
+  } catch (e) {
+    emailCodeError.value = e instanceof Error ? e.message : String(e)
+    pushToast('error', emailCodeError.value)
+  } finally {
+    emailCodeSending.value = false
+  }
+}
+
+const submitEmailChange = async () => {
+  if (emailFormSaving.value || !emailForm.value.newEmail || !emailForm.value.code) return
+  
+  // 简单的前端校验
+  if (!emailForm.value.newEmail.includes('@')) {
+    emailFormError.value = '请输入有效的邮箱地址'
+    return
+  }
+
+  emailFormSaving.value = true
+  emailCodeError.value = ''
+  try {
+    const user = await updateProfile({ 
+      email: emailForm.value.newEmail,
+      code: emailForm.value.code 
+    })
+    setCurrentUser(user)
+    pushToast('success', '邮箱修改成功')
+    closeEmailCodeDialog()
+  } catch (e) {
+    emailCodeError.value = e instanceof Error ? e.message : String(e)
+    pushToast('error', emailCodeError.value)
+  } finally {
+    emailFormSaving.value = false
+  }
+}
 
 const userPreviewName = computed(() => {
   return profileForm.value.display_name.trim()
@@ -398,10 +534,7 @@ onMounted(() => { loadConfig() })
 <template>
   <ContentPanel :title="settingsPageTitle">
     <div class="relative h-full overflow-y-auto">
-      <div class="container relative z-10 mx-auto max-w-3xl">
-        <div class="mb-8 pl-2 sm:pl-0">
-          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ settingsPageDescription }}</p>
-        </div>
+      <div class="container relative z-10 mx-auto max-w-3xl pt-6">
 
         <div v-if="loading" class="flex items-center justify-center py-20">
           <i class="fa-solid fa-circle-notch fa-spin mr-3 text-2xl text-blue-500"></i>
@@ -438,100 +571,144 @@ onMounted(() => { loadConfig() })
             <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{{ quotaResetText }}</p>
           </section>
 
-          <section v-if="isProfileSection" class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
-            <div class="flex flex-col gap-6 md:flex-row md:items-start">
-              <div class="flex items-center gap-4 md:w-56 md:flex-col md:items-center md:text-center">
-                <div class="h-20 w-20 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] text-white shadow-sm">
-                  <img
-                    v-if="displayedAvatarUrl"
-                    :src="displayedAvatarUrl"
-                    alt="头像预览"
-                    class="h-full w-full object-cover"
-                  />
-                  <div
-                    v-else
-                    class="relative flex h-full w-full items-center justify-center text-2xl font-bold"
-                    style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);"
-                  >
-                    <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
-                    <span class="relative z-10">{{ userPreviewInitial }}</span>
-                  </div>
+          <section v-if="isProfileSection" class="mx-auto max-w-2xl pb-12">
+            <!-- 头像区域 (类 Linear 顶部居中大图) -->
+            <div class="mb-8 mt-4 flex flex-col items-center justify-center">
+              <div class="relative group h-24 w-24 overflow-hidden rounded-full border border-gray-200 bg-gray-50 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+                <img
+                  v-if="displayedAvatarUrl"
+                  :src="displayedAvatarUrl"
+                  alt="头像预览"
+                  class="h-full w-full object-cover transition-opacity group-hover:opacity-80"
+                />
+                <div
+                  v-else
+                  class="relative flex h-full w-full items-center justify-center text-3xl font-bold text-white transition-opacity group-hover:opacity-80"
+                  style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9));"
+                >
+                  <span class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
+                  <span class="relative z-10">{{ userPreviewInitial }}</span>
                 </div>
-                <div class="min-w-0">
-                  <p class="truncate text-base font-semibold text-slate-100 dark:text-[#f7f8f8]">{{ userPreviewName }}</p>
-                  <p class="truncate text-sm text-slate-500 dark:text-slate-400">@{{ currentUser?.username || 'guest' }}</p>
+                
+                <!-- 悬浮遮罩提示 -->
+                <div 
+                  class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                  @click="chooseAvatarFile"
+                >
+                  <i class="fas fa-camera text-white"></i>
                 </div>
               </div>
+              <input
+                ref="avatarInputRef"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,.bmp,image/png,image/jpeg,image/webp,image/bmp"
+                class="hidden"
+                @change="onAvatarFileChange"
+              />
 
-              <div class="flex-1 space-y-4">
-                <div>
-                  <h2 class="text-xl font-semibold text-slate-900 dark:text-white">个人资料</h2>
-                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">支持设置显示名称、昵称和自定义上传头像，侧边栏会立即同步展示。</p>
+              <!-- 头像操作按钮组 -->
+              <div v-if="selectedAvatarFile" class="mt-4 flex gap-2">
+                <BaseButton variant="primary" :disabled="profileUploading" @click="submitAvatarUpload" class="!px-3 !py-1 !text-xs !rounded-full">
+                  <i v-if="profileUploading" class="fas fa-spinner fa-spin"></i>
+                  <i v-else class="fas fa-check"></i> 保存头像
+                </BaseButton>
+                <BaseButton variant="secondary" :disabled="profileUploading" @click="clearAvatarPreview" class="!px-3 !py-1 !text-xs !rounded-full">
+                  取消
+                </BaseButton>
+              </div>
+              <div v-else-if="currentUser?.avatar_url" class="mt-4">
+                <button 
+                  @click="removeAvatar"
+                  :disabled="profileDeletingAvatar"
+                  class="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  <i v-if="profileDeletingAvatar" class="fas fa-spinner fa-spin mr-1"></i>移除头像
+                </button>
+              </div>
+            </div>
+
+            <!-- Linear 风格设置列表 -->
+            <BaseListGroup title="账户信息">
+              <!-- 用户名行 -->
+              <BaseListItem 
+                label="用户名" 
+                description="您的唯一登录凭证"
+              >
+                <div class="flex items-center justify-end gap-2 px-3 py-2">
+                  <span class="text-sm text-gray-900 dark:text-[#f7f8f8]">
+                    {{ '@' + (currentUser?.username || 'guest') }}
+                  </span>
                 </div>
-
-                <div class="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <input
-                    ref="avatarInputRef"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp,.bmp,image/png,image/jpeg,image/webp,image/bmp"
-                    class="hidden"
-                    @change="onAvatarFileChange"
-                  />
-
-                  <div class="flex flex-wrap items-center gap-3">
-                    <BaseButton variant="secondary" :disabled="profileUploading || profileDeletingAvatar" @click="chooseAvatarFile">
-                      <i class="fas fa-image text-xs"></i>
-                      <span>{{ selectedAvatarFile ? '重新选择图片' : '选择头像图片' }}</span>
-                    </BaseButton>
-
-                    <BaseButton variant="primary" :disabled="!selectedAvatarFile || profileUploading || profileDeletingAvatar" @click="submitAvatarUpload">
-                      <i v-if="profileUploading" class="fas fa-spinner fa-spin text-xs"></i>
-                      <i v-else class="fas fa-upload text-xs"></i>
-                      <span>{{ profileUploading ? '上传中...' : '上传头像' }}</span>
-                    </BaseButton>
-
-                    <BaseButton variant="secondary" :disabled="(!currentUser?.avatar_url && !selectedAvatarFile) || profileUploading || profileDeletingAvatar" @click="removeAvatar">
-                      <i v-if="profileDeletingAvatar" class="fas fa-spinner fa-spin text-xs"></i>
-                      <i v-else class="fas fa-trash text-xs"></i>
-                      <span>{{ profileDeletingAvatar ? '删除中...' : '删除头像' }}</span>
-                    </BaseButton>
-                  </div>
-
-                  <p class="text-sm text-slate-500 dark:text-slate-400">
-                    支持 png、jpg、jpeg、webp、bmp，大小不超过 5MB。
-                  </p>
-
-                  <p v-if="selectedAvatarFile" class="text-sm text-slate-400 dark:text-slate-400">
-                    已选择：{{ selectedAvatarFile.name }}
-                  </p>
+              </BaseListItem>
+              
+              <!-- 邮箱行 -->
+              <BaseListItem 
+                label="注册邮箱" 
+              >
+                <div class="flex items-center justify-end gap-3 px-3 py-2">
+                  <span class="text-[13px] font-medium text-gray-900 dark:text-[#f7f8f8]">
+                    {{ currentUser?.email || '未绑定邮箱' }}
+                  </span>
+                  <!-- 修改邮箱的图标按钮 -->
+                  <button 
+                    type="button" 
+                    class="flex h-6 w-6 shrink-0 items-center justify-center !rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.05)] text-[#6B6F76] hover:bg-[#F2F3F5] hover:text-[#111318] dark:bg-white/[0.04] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] dark:text-[#8A8F98] dark:hover:bg-white/[0.08] dark:hover:text-[#f7f8f8] transition-colors"
+                    title="修改邮箱"
+                    @click="openEmailDialog"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10.1805 3.34195L4.14166 9.416C5.32948 9.77021 6.29238 10.6629 6.74008 11.8184L12.6877 5.8425C11.6642 5.22123 10.8043 4.36352 10.1805 3.34195Z"></path>
+                      <path d="M13.7391 4.71631C14.1575 4.02948 14.0727 3.11738 13.4846 2.5219C12.8908 1.92072 11.9784 1.83892 11.298 2.27649C11.8547 3.31132 12.7037 4.15999 13.7391 4.71631Z"></path>
+                      <path d="M3.03104 10.7502C4.30296 10.7658 5.36645 11.7423 5.49783 13.0114C4.83268 13.426 3.40197 13.7922 2.53114 13.9886C2.2001 14.0632 1.92026 13.7602 2.02075 13.4373C2.25326 12.6902 2.64592 11.5136 3.03104 10.7502Z"></path>
+                    </svg>
+                  </button>
                 </div>
-
-                <BaseInput
-                  v-model="profileForm.display_name"
-                  label="显示名称"
+              </BaseListItem>
+              
+              <!-- 显示名称行 -->
+              <BaseListItem 
+                label="显示名称" 
+                description="用于在应用中展示的主要名称"
+              >
+                <BaseInput 
+                  v-model="profileForm.display_name" 
                   placeholder="例如：小哲"
                   maxlength="50"
+                  inputClass="!h-9 !py-1.5 shadow-sm no-underline"
                 />
-
-                <BaseInput
-                  v-model="profileForm.nickname"
-                  label="昵称"
+              </BaseListItem>
+              
+              <!-- 昵称行 -->
+              <BaseListItem 
+                label="当前昵称" 
+                description="可选的个性化称呼"
+              >
+                <BaseInput 
+                  v-model="profileForm.nickname" 
                   placeholder="例如：数学冲刺版"
                   maxlength="50"
+                  inputClass="!h-9 !py-1.5 shadow-sm no-underline"
                 />
+              </BaseListItem>
+            </BaseListGroup>
 
-                <p v-if="profileError" class="flex items-center gap-2 text-sm text-rose-400">
-                  <i class="fas fa-circle-exclamation text-xs"></i>
-                  <span>{{ profileError }}</span>
-                </p>
+            <!-- 错误提示 -->
+            <p v-if="profileError" class="mb-4 flex items-center gap-2 text-sm text-rose-400 justify-center">
+              <i class="fas fa-circle-exclamation text-xs"></i>
+              <span>{{ profileError }}</span>
+            </p>
 
-                <div class="flex justify-end">
-                  <BaseButton variant="primary" :disabled="profileSaving || profileUploading || profileDeletingAvatar" @click="saveProfile">
-                    <i v-if="profileSaving" class="fas fa-spinner fa-spin text-xs"></i>
-                    <span>{{ profileSaving ? '保存中...' : '保存个人资料' }}</span>
-                  </BaseButton>
-                </div>
-              </div>
+            <!-- 保存按钮 -->
+            <div class="flex justify-center mt-6">
+              <BaseButton 
+                variant="primary" 
+                :disabled="profileSaving || profileUploading || profileDeletingAvatar" 
+                @click="saveProfile"
+                class="!w-full max-w-xs !h-12 !rounded-xl !text-base"
+              >
+                <i v-if="profileSaving" class="fas fa-spinner fa-spin mr-2"></i>
+                {{ profileSaving ? '保存中...' : '保存更改' }}
+              </BaseButton>
             </div>
           </section>
         </div>
@@ -583,5 +760,111 @@ onMounted(() => { loadConfig() })
         @confirm="onDialogConfirm"
       />
     </div>
+
+    <!-- 修改邮箱第一步：输入新邮箱 -->
+    <BaseModal
+      :open="isEmailDialogOpen"
+      title="修改邮箱"
+      maxWidth="max-w-[30rem]"
+      bodyClass="px-6 pb-2"
+      @close="closeEmailDialog"
+    >
+      <form id="email-step1-form" autocomplete="off" class="space-y-6" @submit.prevent="handleEmailNextStep">
+        <div class="space-y-6">
+          <div class="space-y-3 text-[15px] leading-[1.6] text-slate-600 dark:text-slate-300">
+            <p>如果您想更改当前账号的邮箱地址，我们需要向您的原邮箱发送一封验证邮件。此更改将应用于您所在的所有工作区。</p>
+            <p>在继续操作之前，请确保新邮箱地址尚未绑定至现有账号。</p>
+          </div>
+
+          <div>
+            <label class="mb-2 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">输入您希望绑定的新邮箱地址</label>
+            <BaseInput
+              v-model="emailForm.newEmail"
+              type="email"
+              placeholder="新邮箱地址"
+              inputClass="h-10 text-[15px] shadow-sm"
+              required
+            />
+          </div>
+        </div>
+
+        <div v-if="emailFormError" class="text-sm text-rose-500 flex items-center gap-1.5">
+          <i class="fas fa-circle-exclamation"></i>
+          <span>{{ emailFormError }}</span>
+        </div>
+      </form>
+      <template #footer>
+        <BaseButton variant="secondary" class="!font-semibold !text-[13px] !h-9 !px-4 !rounded-lg" @click="closeEmailDialog">取消</BaseButton>
+        <BaseButton
+          type="submit"
+          form="email-step1-form"
+          class="!font-semibold !text-[13px] !h-9 !px-4 !rounded-lg"
+          :disabled="emailChecking || !emailForm.newEmail"
+        >
+          <i v-if="emailChecking" class="fa-solid fa-circle-notch fa-spin mr-1.5 text-[10px]"></i>
+          {{ emailChecking ? '验证中...' : '验证现有账号' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
+
+    <!-- 修改邮箱第二步：身份验证 -->
+    <BaseModal
+      :open="isEmailCodeDialogOpen"
+      title="修改邮箱"
+      maxWidth="max-w-[30rem]"
+      bodyClass="px-6 pb-2"
+      @close="closeEmailCodeDialog"
+    >
+      <form id="email-step2-form" autocomplete="off" class="space-y-6" @submit.prevent="submitEmailChange">
+        <div class="space-y-6">
+          <div class="space-y-3 text-[15px] leading-[1.6] text-slate-600 dark:text-slate-300">
+            <p>我们没有找到与 <strong class="font-medium text-slate-900 dark:text-[#f7f8f8]">{{ emailForm.newEmail }}</strong> 关联的现有账号。您可以安全地继续修改邮箱。</p>
+            <p>为了验证您的身份，我们需要向您当前的邮箱 <strong class="font-medium text-slate-900 dark:text-[#f7f8f8]">{{ currentUser?.email }}</strong> 发送验证码。</p>
+          </div>
+
+          <div>
+            <label class="mb-2 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">原邮箱验证码</label>
+            <div class="flex gap-3">
+              <BaseInput
+                v-model="emailForm.code"
+                type="text"
+                placeholder="6位数字验证码"
+                maxlength="6"
+                required
+                class="flex-1"
+                inputClass="h-10 text-[15px] shadow-sm"
+              />
+              <BaseButton 
+                type="button" 
+                variant="secondary" 
+                class="w-36 shrink-0 !font-semibold !text-[13px] !h-10 !px-4 !rounded-xl" 
+                :disabled="emailCodeCooldown > 0 || emailCodeSending"
+                @click="sendVerificationCode"
+              >
+                <i v-if="emailCodeSending" class="fa-solid fa-circle-notch fa-spin text-xs mr-1.5"></i>
+                <span v-else>{{ emailCodeCooldown > 0 ? `${emailCodeCooldown}秒后重发` : '获取验证码' }}</span>
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="emailCodeError" class="text-sm text-rose-500 flex items-center gap-1.5">
+          <i class="fas fa-circle-exclamation"></i>
+          <span>{{ emailCodeError }}</span>
+        </div>
+      </form>
+      <template #footer>
+        <BaseButton variant="secondary" class="!font-semibold !text-[13px] !h-9 !px-4 !rounded-lg" @click="closeEmailCodeDialog">取消</BaseButton>
+        <BaseButton
+          type="submit"
+          form="email-step2-form"
+          class="!font-semibold !text-[13px] !h-9 !px-4 !rounded-lg"
+          :disabled="emailFormSaving || !emailForm.code || emailForm.code.length !== 6"
+        >
+          <i v-if="emailFormSaving" class="fa-solid fa-circle-notch fa-spin mr-1.5 text-[10px]"></i>
+          {{ emailFormSaving ? '发送中...' : '发送验证链接' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </ContentPanel>
 </template>

@@ -5,6 +5,7 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useToast } from '@/composables/useToast.js'
+import BaseModal from '@/components/base/BaseModal.vue'
 
 const { pushToast } = useToast()
 
@@ -204,38 +205,18 @@ const selectOption = (field, value) => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <!-- 背景遮罩 -->
-    <div
-      class="fixed inset-0 z-[100] transition-colors duration-200 md:left-64"
-      :class="open ? 'bg-black/40 pointer-events-auto' : 'bg-transparent pointer-events-none'"
-      @click="emit('close')"
-    ></div>
+  <BaseModal
+    :open="open"
+    :title="typeConfig.title"
+    :iconBg="typeConfig.iconBg"
+    maxWidth="max-w-lg sm:w-[32rem]"
+    @close="emit('close')"
+  >
+    <template #icon>
+      <i class="fa-solid text-base" :class="typeConfig.iconCls"></i>
+    </template>
 
-    <Transition name="dialog-fade">
-      <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64" @click.self="emit('close')">
-        <!-- 弹窗主体 -->
-        <div class="relative w-full max-w-lg sm:w-[32rem] rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]">
-          <!-- 头部 -->
-          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-white/5">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-xl" :class="typeConfig.iconBg">
-                <i class="fa-solid text-base" :class="typeConfig.iconCls"></i>
-              </div>
-              <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">
-                {{ typeConfig.title }}
-              </h3>
-            </div>
-            <button
-              @click="emit('close')"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-            >
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-
-          <!-- 表单 -->
-          <form autocomplete="off" class="space-y-4 px-6 py-5" @submit.prevent="confirm" @click="openDropdown = null">
+    <form autocomplete="off" class="space-y-4" @submit.prevent="confirm" @click="openDropdown = null">
             <div>
               <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ? '服务名称' : '供应商名称' }}</label>
               <input
@@ -454,27 +435,23 @@ const selectOption = (field, value) => {
             </div>
           </form>
 
-          <!-- 底部按钮 -->
-          <div class="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-white/5">
-            <button
-              @click="emit('close')"
-              class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-5 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              取消
-            </button>
-            <button
-              @click="confirm"
-              class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all"
-              :class="typeConfig.btnCls"
-            >
-              <i class="fa-solid text-xs" :class="isEdit ? 'fa-check' : 'fa-plus'"></i>
-              {{ isEdit ? '保存修改' : '添加供应商' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+      <template #footer>
+        <button
+          type="button"
+          @click="emit('close')"
+          class="rounded-xl px-5 py-2 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-300"
+        >
+          取消
+        </button>
+        <button
+          @click="confirm"
+          class="rounded-xl px-5 py-2 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all active:scale-[0.97]"
+          :class="typeConfig.btnCls"
+        >
+          确认保存
+        </button>
+      </template>
+  </BaseModal>
 </template>
 
 <style scoped>
