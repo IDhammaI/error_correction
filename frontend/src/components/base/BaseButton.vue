@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  variant: { type: String, default: 'primary' },   // primary | secondary | cta | brand
+  variant: { type: String, default: 'primary' },   // primary | secondary | cta | ghost
   size: { type: String, default: 'md' },            // sm | md
   to: { type: String, default: '' },                // RouterLink 目标
   href: { type: String, default: '' },              // 普通链接
@@ -38,7 +38,7 @@ const bindProps = computed(() => {
         'home-btn--primary': variant === 'primary',
         'home-btn--secondary': variant === 'secondary',
         'home-btn--cta': variant === 'cta',
-        'home-btn--brand': variant === 'brand',
+        'home-btn--ghost': variant === 'ghost',
       },
     ]"
   >
@@ -113,25 +113,24 @@ const bindProps = computed(() => {
     0 0 24px 0 rgba(109, 92, 214, 0.3);
 }
 
-/* ── Brand: 应用内的主操作按钮风格（无内网格，轻量投影） ── */
-.home-btn--brand {
-  background-color: rgb(129, 115, 223);
-  color: #fff;
-  border: none;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+/* ── Ghost: 幽灵按钮，用于无背景仅边框/字体的操作 ── */
+.home-btn--ghost {
+  background: transparent;
+  color: rgba(107, 114, 128, 1); /* text-gray-500 */
+  border: 1px solid rgba(229, 231, 235, 1); /* border-gray-200 */
 }
-.home-btn--brand:hover {
-  background-color: rgb(145, 132, 235);
+:root.dark .home-btn--ghost {
+  color: rgba(138, 143, 152, 1); /* text-[#8a8f98] */
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
 }
-:root.dark .home-btn--brand {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.home-btn--ghost:hover {
+  background: rgba(249, 250, 251, 1); /* hover:bg-gray-50 */
+  color: rgba(55, 65, 81, 1); /* hover:text-gray-700 */
 }
-:root.dark .home-btn--brand:hover {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
-  border-color: rgba(255, 255, 255, 0.12);
+:root.dark .home-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(208, 214, 224, 1); /* hover:text-[#d0d6e0] */
 }
 
 /* ── 按钮内网格纹理 ── */

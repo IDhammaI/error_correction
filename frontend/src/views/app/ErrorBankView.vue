@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
           title="暂无匹配记录"
           description="调整筛选条件，或者开始新的录入"
         >
-          <BaseButton variant="brand" @click="currentView = 'workspace'">
+          <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
             <i class="fa-solid fa-plus"></i> 录入新题目
           </BaseButton>
         </EmptyState>

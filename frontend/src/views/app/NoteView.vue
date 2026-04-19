@@ -4,8 +4,8 @@ import * as api from '@/api.js'
 import { renderMarkdown, typesetMath } from '@/utils.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
-import BaseButton from '@/components/base/BaseButton.vue'
 import BaseGhostButton from '@/components/base/BaseGhostButton.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 import SearchInput from '@/components/base/SearchInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
@@ -249,7 +249,7 @@ async function doDelete(noteId) {
             title="还没有笔记"
             description="上传手写笔记或板书照片，AI 自动整理为结构化知识点"
           >
-            <BaseButton variant="brand" @click="triggerUpload">
+            <BaseButton @click="triggerUpload" variant="primary" size="sm">
               <i class="fa-solid fa-plus"></i> 录入新笔记
             </BaseButton>
           </EmptyState>
