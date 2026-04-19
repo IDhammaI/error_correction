@@ -110,18 +110,18 @@ async function resetPassword() {
 
         <!-- 弹窗主体 -->
         <div
-          class="relative w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0A0A0F]/95 backdrop-blur-xl p-6 shadow-xl"
+          class="relative w-full max-w-sm rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#0A0A0F]/95 backdrop-blur-xl p-6 shadow-xl transition-colors duration-200"
           @click.stop>
           <!-- 关闭按钮 -->
           <button @click="emit('close')"
-            class="absolute right-4 top-4 text-white/25 hover:text-white/50 transition-colors">
+            class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:text-white/25 dark:hover:text-white/50 transition-colors">
             <i class="fas fa-xmark text-sm"></i>
           </button>
 
           <!-- Step 1: 邮箱 + 验证码 + 新密码 -->
           <template v-if="step === 1">
-            <h3 class="text-xl font-bold text-white mb-1">找回密码</h3>
-            <p class="text-sm text-white/40 mb-6">输入注册邮箱和验证码，设置新密码</p>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1 transition-colors">找回密码</h3>
+            <p class="text-sm text-gray-500 dark:text-white/40 mb-6 transition-colors">输入注册邮箱和验证码，设置新密码</p>
 
             <div class="space-y-4">
               <BaseInput
@@ -132,10 +132,10 @@ async function resetPassword() {
               >
                 <template #append>
                   <button type="button" @click="sendCode" :disabled="codeSending || countdown > 0"
-                    class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="shrink-0 h-10 px-4 rounded-xl border text-xs font-medium text-gray-700 dark:text-white/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="countdown > 0
-                      ? 'bg-white/[0.02] border-white/[0.05] text-white/30'
-                      : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:text-white/85'">
+                      ? 'bg-gray-100 border-gray-200 text-gray-400 dark:bg-white/[0.02] dark:border-white/[0.05] dark:text-white/30'
+                      : 'bg-white border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-white/[0.03] dark:border-white/[0.08] dark:hover:bg-white/[0.06] dark:hover:text-white/85'">
                     <i v-if="codeSending" class="fas fa-spinner fa-spin"></i>
                     <template v-else-if="countdown > 0">{{ countdown }}s</template>
                     <template v-else>发送验证码</template>
@@ -167,7 +167,7 @@ async function resetPassword() {
                 placeholder="再次输入新密码"
               />
 
-              <p v-if="error" class="text-sm text-rose-400 flex items-center gap-2">
+              <p v-if="error" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2 transition-colors">
                 <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}
               </p>
 
@@ -181,11 +181,11 @@ async function resetPassword() {
           <!-- Step 2: 完成 -->
           <template v-else>
             <div class="text-center py-4">
-              <div class="inline-flex items-center justify-center size-12 rounded-full bg-emerald-500/10 mb-4">
-                <i class="fas fa-check text-emerald-400 text-xl"></i>
+              <div class="inline-flex items-center justify-center size-12 rounded-full bg-emerald-500/10 mb-4 transition-colors">
+                <i class="fas fa-check text-emerald-500 dark:text-emerald-400 text-xl transition-colors"></i>
               </div>
-              <h3 class="text-xl font-bold text-white mb-2">密码已重置</h3>
-              <p class="text-sm text-white/40 mb-6">请使用新密码登录</p>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">密码已重置</h3>
+              <p class="text-sm text-gray-500 dark:text-white/40 mb-6 transition-colors">请使用新密码登录</p>
               <BaseButton variant="cta" class="w-full" @click="emit('close')">
                 返回登录
               </BaseButton>

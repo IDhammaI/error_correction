@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-[#0c0c0e] font-sans text-slate-300 relative">
+  <div class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-[#0c0c0e] font-sans text-slate-900 dark:text-slate-300 relative transition-colors duration-200">
 
     <WorkspaceBackground />
 

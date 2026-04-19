@@ -28,18 +28,18 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
       @click="emit('split')"
     >
       <!-- 按钮本体 -->
-      <span class="relative overflow-hidden inline-flex h-full w-full items-center justify-center gap-2 rounded-md px-8 text-sm font-medium text-white brand-btn">
+      <span class="relative overflow-hidden inline-flex h-full w-full items-center justify-center gap-2 rounded-md px-8 text-sm font-medium text-white brand-btn transition-colors">
         <template v-if="splitting">
-          <i class="fa-solid fa-spinner fa-spin" :class="uploadMode === 'note' ? 'text-emerald-400' : 'text-white/80'"></i>
-          <span>{{ uploadMode === 'note' ? '正在整理笔记...' : '正在智能分割...' }}</span>
+          <i class="fa-solid fa-spinner fa-spin" :class="uploadMode === 'note' ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-600 dark:text-white/80'"></i>
+          <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '正在整理笔记...' : '正在智能分割...' }}</span>
         </template>
         <template v-else-if="splitCompleted">
-          <i class="fa-solid fa-check-double text-emerald-400"></i>
-          <span>{{ uploadMode === 'note' ? '整理已完成' : '解析已完成' }}</span>
+          <i class="fa-solid fa-check-double text-emerald-500 dark:text-emerald-400"></i>
+          <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '整理已完成' : '解析已完成' }}</span>
         </template>
         <template v-else>
-          <i class="fa-solid text-white/80" :class="uploadMode === 'note' ? 'fa-book-open' : eraseEnabled ? 'fa-eraser' : 'fa-eye'"></i>
-          <span>{{ uploadMode === 'note' ? '启动 AI 笔记整理' : eraseEnabled ? '开始擦除笔迹' : '开始 OCR 识别' }}</span>
+          <i class="fa-solid text-gray-600 dark:text-white/80" :class="uploadMode === 'note' ? 'fa-book-open' : eraseEnabled ? 'fa-eraser' : 'fa-eye'"></i>
+          <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '启动 AI 笔记整理' : eraseEnabled ? '开始擦除笔迹' : '开始 OCR 识别' }}</span>
         </template>
       </span>
     </button>
@@ -49,10 +49,10 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
       <button
         v-if="exportEnabled"
         type="button"
-        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-lg brand-btn px-8 text-sm font-medium tracking-widest text-[#f7f8f8] hover:border-white/[0.12] hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-30"
+        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-lg brand-btn px-8 text-sm font-medium tracking-widest text-gray-900 dark:text-[#f7f8f8] hover:border-gray-400 dark:hover:border-white/[0.12] hover:bg-gray-100 dark:hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-30 transition-colors"
         @click="emit('export')"
       >
-        <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
+        <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5 text-gray-600 dark:text-white/80"></i>
         导出错题本
       </button>
     </Transition>
@@ -62,10 +62,10 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
       <button
         v-if="exportEnabled"
         type="button"
-        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-lg brand-btn px-8 text-sm font-medium tracking-widest text-[#f7f8f8] hover:border-white/[0.12] hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-30"
+        class="group relative inline-flex h-14 items-center justify-center gap-3 rounded-lg brand-btn px-8 text-sm font-medium tracking-widest text-gray-900 dark:text-[#f7f8f8] hover:border-gray-400 dark:hover:border-white/[0.12] hover:bg-gray-100 dark:hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-30 transition-colors"
         @click="emit('save-to-db')"
       >
-        <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>
+        <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5 text-gray-600 dark:text-white/80"></i>
         导入错题库
       </button>
     </Transition>

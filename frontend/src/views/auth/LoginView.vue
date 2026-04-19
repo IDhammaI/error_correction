@@ -60,11 +60,11 @@ async function handleLogin() {
 
     <div class="flex justify-end">
       <button type="button" @click="fpOpen = true"
-        class="text-xs text-white/40 hover:text-indigo-400 transition-colors">
+        class="text-xs text-gray-500 dark:text-white/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
         忘记密码？
       </button>
     </div>
-    <p v-if="error" class="text-sm text-rose-400 flex items-center gap-2">
+    <p v-if="error" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2 transition-colors">
       <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}
     </p>
 

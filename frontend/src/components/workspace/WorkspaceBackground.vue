@@ -23,7 +23,7 @@ const bgStars = (() => {
     <div
       v-for="(s, i) in bgStars"
       :key="i"
-      class="absolute rounded-full bg-white ws-star"
+      class="absolute rounded-full bg-indigo-400 dark:bg-white ws-star transition-colors duration-200"
       :style="{
         left: s.left + '%',
         top: s.top + '%',

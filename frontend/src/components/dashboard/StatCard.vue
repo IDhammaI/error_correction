@@ -15,11 +15,11 @@ const props = defineProps({
 })
 
 const colorMap = {
-  indigo: 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-500/10',
-  blue: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10',
-  emerald: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10',
-  slate: 'text-slate-600 bg-slate-50 dark:text-slate-400 dark:bg-slate-500/10',
-  rose: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-500/10',
+  indigo: 'text-indigo-600 bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-500/10',
+  blue: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10',
+  emerald: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10',
+  slate: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-500/10',
+  rose: 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-500/10',
 }
 
 // 数字滚动动画

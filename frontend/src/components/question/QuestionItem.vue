@@ -5,6 +5,7 @@
  */
 import { ref, watch, nextTick } from 'vue'
 import { getQuestionSnippet, typesetMath } from '@/utils.js'
+import BaseCard from '@/components/base/BaseCard.vue'
 
 const props = defineProps({
   question: { type: Object, required: true },
@@ -52,16 +53,16 @@ const statusIcon = (status) => {
 </script>
 
 <template>
-  <div
+  <BaseCard
     @click="selectable ? emit('toggle-select', question.id) : emit('click', question)"
-    class="group cursor-pointer rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] hover:border-white/[0.1]"
-    :class="{ 'border-[rgb(129,115,223)]/40 bg-[rgb(129,115,223)]/[0.06]': selected }"
+    class="group cursor-pointer"
+    :class="{ '!border-indigo-400 !bg-indigo-50 dark:!border-[rgb(129,115,223)]/40 dark:!bg-[rgb(129,115,223)]/[0.06]': selected }"
   >
     <div class="flex items-start gap-4">
       <!-- 选择复选框 -->
       <div v-if="selectable" class="flex shrink-0 items-center pt-1" @click.stop="emit('toggle-select', question.id)">
         <div class="flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-all"
-          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white' : 'border-white/[0.15]'">
+          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white' : 'border-gray-200 dark:border-white/[0.15] bg-white dark:bg-transparent'">
           <i v-if="selected" class="fa-solid fa-check text-xs"></i>
         </div>
       </div>
@@ -71,13 +72,13 @@ const statusIcon = (status) => {
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <!-- 复习状态图标 -->
           <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
-          <span class="rounded-full bg-white/[0.04] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ question.question_type }}</span>
-          <span v-if="question.subject" class="rounded-full bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ question.subject }}</span>
-          <span v-for="tag in tags()" :key="tag" class="rounded-full border border-white/[0.06] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ tag }}</span>
+          <span class="rounded-full bg-gray-100 dark:bg-white/[0.04] px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] transition-colors">{{ question.question_type }}</span>
+          <span v-if="question.subject" class="rounded-full bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)] transition-colors">{{ question.subject }}</span>
+          <span v-for="tag in tags()" :key="tag" class="rounded-full border border-gray-200 dark:border-white/[0.06] px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] transition-colors">{{ tag }}</span>
         </div>
 
         <!-- 摘要 -->
-        <p class="line-clamp-2 text-sm font-medium leading-relaxed text-[#d0d6e0] group-hover:text-[#f7f8f8]">{{ summary() }}</p>
+        <p class="line-clamp-2 text-sm font-medium leading-relaxed text-gray-700 dark:text-[#d0d6e0] group-hover:text-gray-900 dark:group-hover:text-[#f7f8f8] transition-colors">{{ summary() }}</p>
 
         <!-- 题目图片 -->
         <div v-if="question.content_json?.some(b => b.block_type === 'image' && b.content)" class="mt-3 flex flex-wrap gap-2">
@@ -85,7 +86,7 @@ const statusIcon = (status) => {
             v-for="(b, i) in question.content_json.filter(b => b.block_type === 'image' && b.content)"
             :key="i"
             :src="b.content"
-            class="max-h-32 rounded-lg border border-white/[0.06] object-contain"
+            class="max-h-32 rounded-lg border border-gray-200 dark:border-white/[0.06] object-contain transition-colors"
             @click.stop
           />
         </div>
@@ -95,9 +96,9 @@ const statusIcon = (status) => {
           <div
             v-for="(opt, idx) in question.options_json"
             :key="idx"
-            class="flex items-start gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#8a8f98]"
+            class="flex items-start gap-2 rounded-md border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-[#8a8f98] transition-colors"
           >
-            <span class="shrink-0 text-[#62666d]">{{ String.fromCharCode(65 + idx) }}.</span>
+            <span class="shrink-0 text-gray-400 dark:text-[#62666d] transition-colors">{{ String.fromCharCode(65 + idx) }}.</span>
             <span class="line-clamp-1">{{ String(opt).replace(/^[A-Da-d][.、．]\s*/, '') }}</span>
           </div>
         </div>
@@ -111,5 +112,5 @@ const statusIcon = (status) => {
         <slot name="actions" :question="question" />
       </div>
     </div>
-  </div>
+  </BaseCard>
 </template>

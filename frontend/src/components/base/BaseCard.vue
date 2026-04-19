@@ -12,7 +12,7 @@ defineProps({
 <template>
   <div
     :class="[rounded, padding]"
-    class="border border-white/[0.06] bg-white/[0.02] transition-all hover:bg-white/[0.04] hover:border-white/[0.1]"
+    class="border border-gray-200 bg-white shadow-sm dark:border-white/[0.06] dark:bg-white/[0.02] transition-all hover:shadow-md hover:border-gray-300 dark:hover:bg-white/[0.04] dark:hover:border-white/[0.1]"
   >
     <slot />
   </div>

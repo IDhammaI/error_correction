@@ -151,12 +151,12 @@ defineExpose({ refresh: loadRecords })
   <div v-show="visible" class="flex h-full flex-col overflow-hidden">
     <div class="relative flex h-full flex-col">
       <!-- 页头 -->
-      <div class="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] shrink-0">
-        <span class="text-xs font-medium text-[#f7f8f8]">分割历史</span>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.05] shrink-0 transition-colors">
+        <span class="text-xs font-medium text-gray-900 dark:text-[#f7f8f8] transition-colors">分割历史</span>
         <button
           @click="loadRecords"
           :disabled="loading"
-          class="text-xs text-[#8a8f98] hover:text-[#d0d6e0] transition-colors disabled:opacity-50"
+          class="text-xs text-gray-500 dark:text-[#8a8f98] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors disabled:opacity-50"
         >
           <i class="fa-solid fa-arrows-rotate text-[10px]" :class="{ 'animate-spin': loading }"></i>
         </button>
@@ -167,13 +167,13 @@ defineExpose({ refresh: loadRecords })
 
         <!-- 加载状态 -->
         <div v-if="loading && !records.length" class="flex items-center justify-center py-10">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-[rgb(129,115,223)]"></div>
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 dark:border-white/10 border-t-[rgb(129,115,223)] transition-colors"></div>
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="!loading && !records.length" class="px-4 py-10 text-center">
-          <i class="fa-solid fa-clock-rotate-left text-lg text-[#62666d] mb-2"></i>
-          <p class="text-xs text-[#62666d]">暂无记录</p>
+        <div v-else-if="!loading && !records.length" class="px-4 py-10 text-center transition-colors">
+          <i class="fa-solid fa-clock-rotate-left text-lg text-gray-400 dark:text-[#62666d] mb-2 transition-colors"></i>
+          <p class="text-xs text-gray-400 dark:text-[#62666d] transition-colors">暂无记录</p>
         </div>
 
         <!-- 记录列表 -->
@@ -181,17 +181,17 @@ defineExpose({ refresh: loadRecords })
           <div
             v-for="(r, idx) in records"
             :key="r.id"
-            class="group cursor-pointer border-b border-white/[0.05] px-4 py-3 transition-colors hover:bg-white/[0.03]"
-            :class="activeRecord?.id === r.id ? 'bg-white/[0.04]' : ''"
+            class="group cursor-pointer border-b border-gray-200 dark:border-white/[0.05] px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+            :class="activeRecord?.id === r.id ? 'bg-gray-100 dark:bg-white/[0.04]' : ''"
             @click="openDetail(r)"
           >
             <!-- 一行：科目 + 时间 + 题数 -->
             <div class="flex items-center justify-between mb-1">
-              <span class="text-sm font-medium text-[#f7f8f8] truncate">{{ r.subject || '未识别' }}</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] truncate transition-colors">{{ r.subject || '未识别' }}</span>
               <span class="text-xs tabular-nums text-[rgb(129,115,223)]">{{ r.question_count }} 题</span>
             </div>
             <!-- 二行：文件数 + 时间 -->
-            <div class="flex items-center gap-2 text-xs text-[#62666d]">
+            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-[#62666d] transition-colors">
               <span>{{ (r.file_names || []).length }} 个文件</span>
               <span>·</span>
               <span :title="formatFullDate(r.created_at)">{{ formatDate(r.created_at) }}</span>
