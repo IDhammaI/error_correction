@@ -200,11 +200,11 @@ async function doDelete(noteId) {
         <i class="fa-solid fa-plus text-[10px]"></i> 录入
       </button>
     </template>
-  <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto custom-scrollbar">
-    <div class="container relative z-10 mx-auto flex min-h-0 flex-1 flex-col">
+  <div class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
+    <div class="relative z-10 flex-1 flex flex-col">
       
       <!-- List View -->
-      <div v-if="!selectedNote" class="flex min-h-0 flex-1 flex-col">
+      <div v-if="!selectedNote" class="relative flex-1 flex flex-col">
         <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
 
         <!-- 筛选栏（对齐错题库风格） -->
@@ -290,7 +290,7 @@ async function doDelete(noteId) {
       </div>
 
       <!-- Detail View -->
-      <div v-else>
+      <div v-else class="relative flex-1 flex flex-col">
         <!-- 详情工具栏 -->
         <div class="mb-6 flex items-center justify-between">
           <h3 class="text-base font-medium text-gray-900 dark:text-[#f7f8f8]">{{ selectedNote.title }}</h3>
