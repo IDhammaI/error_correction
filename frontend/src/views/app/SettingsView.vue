@@ -536,9 +536,53 @@ onMounted(() => { loadConfig() })
     <div class="relative h-full overflow-y-auto">
       <div class="container relative z-10 mx-auto max-w-3xl pt-6">
 
-        <div v-if="loading" class="flex items-center justify-center py-20">
-          <i class="fa-solid fa-circle-notch fa-spin mr-3 text-2xl text-blue-500"></i>
-          <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">加载配置中...</span>
+        <div v-if="loading && isProfileSection" class="mx-auto max-w-2xl animate-pulse">
+          <!-- 骨架屏：头像区域 -->
+          <div class="mb-8 mt-4 flex flex-col items-center justify-center">
+            <div class="h-24 w-24 rounded-full bg-gray-200 dark:bg-white/[0.08]"></div>
+          </div>
+          
+          <!-- 骨架屏：列表分组 -->
+          <BaseListGroup>
+            <template #header>
+              <div class="mb-3 ml-1 h-5 w-20 rounded bg-gray-200 dark:bg-white/[0.08]"></div>
+            </template>
+            
+            <BaseListItem skeleton />
+            <BaseListItem skeleton>
+              <template #skeleton-right>
+                <div class="flex items-center justify-end gap-3 w-full">
+                  <div class="h-4 w-32 rounded bg-gray-200 dark:bg-white/[0.08]"></div>
+                  <div class="h-6 w-6 shrink-0 rounded-full bg-gray-200 dark:bg-white/[0.08]"></div>
+                </div>
+              </template>
+            </BaseListItem>
+            <BaseListItem skeleton>
+              <template #skeleton-right>
+                <div class="h-9 w-full rounded-lg bg-gray-200 dark:bg-white/[0.08]"></div>
+              </template>
+            </BaseListItem>
+            <BaseListItem skeleton>
+              <template #skeleton-right>
+                <div class="h-9 w-full rounded-lg bg-gray-200 dark:bg-white/[0.08]"></div>
+              </template>
+            </BaseListItem>
+          </BaseListGroup>
+          
+          <!-- 骨架屏：保存按钮 -->
+          <div class="mt-6 flex justify-center">
+            <div class="h-12 w-full max-w-xs rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          </div>
+        </div>
+
+        <div v-else-if="loading && isQuotaSection" class="space-y-6 animate-pulse">
+          <div class="h-48 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
+        </div>
+
+        <div v-else-if="loading && isApiSection" class="space-y-6 animate-pulse">
+          <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
         </div>
 
         <div v-else-if="isProfileSection || isQuotaSection" class="space-y-6">
