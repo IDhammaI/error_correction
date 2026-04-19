@@ -130,24 +130,26 @@ def get_status():
             for category, label in [('openai', 'OpenAI'), ('anthropic', 'Anthropic')]:
                 provider = crud.get_active_provider(db, user_id, category) if user_id else None
                 if provider and provider.api_key:
+                    models = [m.strip() for m in provider.model_name.split(',')] if provider.model_name else []
                     available_models.append({
                         'value': category,
                         'label': provider.name or label,
                         'configured': True,
                         'status': '配置成功',
-                        'default_model': provider.model_name or '',
-                        'models': [provider.model_name] if provider.model_name else [],
+                        'default_model': models[0] if models else '',
+                        'models': models,
                         'managed': False,
                     })
                 else:
                     managed_cfg = managed_llm.get(category)
+                    managed_models = [m.strip() for m in managed_cfg.model_name.split(',')] if managed_cfg and managed_cfg.configured and managed_cfg.model_name else []
                     available_models.append({
                         'value': category,
                         'label': f'{label}（平台托管）' if managed_cfg and managed_cfg.configured else label,
                         'configured': bool(managed_cfg and managed_cfg.configured),
                         'status': '平台托管已配置' if managed_cfg and managed_cfg.configured else '未配置',
-                        'default_model': managed_cfg.model_name if managed_cfg and managed_cfg.configured else '',
-                        'models': [managed_cfg.model_name] if managed_cfg and managed_cfg.configured and managed_cfg.model_name else [],
+                        'default_model': managed_models[0] if managed_models else '',
+                        'models': managed_models,
                         'managed': bool(managed_cfg and managed_cfg.configured),
                     })
 

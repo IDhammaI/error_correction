@@ -269,6 +269,11 @@ class Settings(BaseSettings):
         supports_function_calling: bool = True,
     ) -> LLMProviderConfig:
         key = self._normalize_provider(name)
+
+        # 处理可能包含多个模型的字符串（取第一个作为默认）
+        if model_name and ',' in model_name:
+            model_name = [m.strip() for m in model_name.split(',') if m.strip()][0]
+
         if key == "openai":
             return OpenAICompatibleConfig(
                 api_key=api_key,

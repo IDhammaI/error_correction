@@ -199,8 +199,18 @@ const toggleDropdown = (field) => {
   openDropdown.value = openDropdown.value === field ? null : field
 }
 const selectOption = (field, value) => {
-  form.value[field] = value
-  openDropdown.value = null
+  if (field === 'model_name') {
+    let current = form.value.model_name ? form.value.model_name.split(',').map(s => s.trim()).filter(Boolean) : []
+    if (current.includes(value)) {
+      current = current.filter(m => m !== value)
+    } else {
+      current.push(value)
+    }
+    form.value.model_name = current.join(', ')
+  } else {
+    form.value[field] = value
+    openDropdown.value = null
+  }
 }
 </script>
 
@@ -267,7 +277,7 @@ const selectOption = (field, value) => {
             <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
               <div>
                 <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-                  {{ type === 'paddleocr' ? 'OCR 模型' : '默认模型' }}
+                  {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}
                   <span v-if="type !== 'paddleocr'" class="group relative">
                     <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
                     <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
@@ -293,10 +303,10 @@ const selectOption = (field, value) => {
                         type="button"
                         @click.stop="selectOption('model_name', m)"
                         class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-500/10"
-                        :class="form.model_name === m ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
+                        :class="(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m) ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'"
                       >
-                        <i v-if="form.model_name === m" class="fa-solid fa-check text-[10px] text-blue-500"></i>
-                        <span :class="form.model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
+                        <i v-if="(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m)" class="fa-solid fa-check text-[10px] text-blue-500"></i>
+                        <span :class="!(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m) ? 'pl-[18px]' : ''">{{ m }}</span>
                       </button>
                     </div>
                   </Transition>
@@ -306,7 +316,7 @@ const selectOption = (field, value) => {
                   v-else
                   v-model="form.model_name"
                   type="text"
-                  :placeholder="typeConfig.modelPlaceholder"
+                  :placeholder="type === 'paddleocr' ? 'e.g. PaddleOCR-VL-1.5' : 'e.g. gpt-4o, deepseek-chat'"
                   :class="inputCls"
                 />
               </div>
