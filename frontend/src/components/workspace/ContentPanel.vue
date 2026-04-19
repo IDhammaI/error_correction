@@ -14,11 +14,11 @@ const emit = defineEmits(['step-click'])
 </script>
 
 <template>
-  <div class="h-full flex flex-col rounded-none md:rounded-lg brand-btn overflow-hidden" style="background: rgba(255,255,255,0.04);">
+  <div class="h-full flex flex-col rounded-none md:rounded-lg brand-btn overflow-hidden dark:!bg-white/[0.04] transition-colors duration-200">
     <!-- 顶部栏 -->
-    <header class="flex items-center h-14 px-4 border-b border-white/[0.08] shrink-0 gap-4">
+    <header class="flex items-center h-14 px-4 border-b border-gray-200 dark:border-white/[0.08] shrink-0 gap-4 transition-colors">
       <!-- 标题 -->
-      <h2 class="text-sm font-medium text-[#f7f8f8] shrink-0">{{ title }}</h2>
+      <h2 class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] shrink-0 transition-colors">{{ title }}</h2>
 
       <!-- 步骤 tab（可选） -->
       <div v-if="steps.length" class="flex items-center gap-1 ml-2">
@@ -28,18 +28,18 @@ const emit = defineEmits(['step-click'])
           @click="emit('step-click', i)"
           class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors"
           :class="i === currentStep
-            ? 'bg-white/[0.06] text-[#f7f8f8] font-medium'
+            ? 'brand-gradient-bg text-white shadow-sm font-medium'
             : s.done
-              ? 'text-[#8a8f98] hover:bg-white/[0.04] hover:text-[#d0d6e0]'
-              : 'text-[#62666d] cursor-default'"
+              ? 'text-gray-500 dark:text-[#8a8f98] hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-700 dark:hover:text-[#d0d6e0]'
+              : 'text-gray-400 dark:text-[#62666d] cursor-default'"
         >
           <span
-            class="flex h-4 w-4 items-center justify-center rounded text-[10px]"
+            class="flex h-4 w-4 items-center justify-center rounded text-[10px] transition-colors"
             :class="s.done
               ? 'bg-[rgb(129,115,223)] text-white'
               : i === currentStep
-                ? 'bg-white/[0.08] text-[#f7f8f8]'
-                : 'bg-white/[0.04] text-[#62666d]'"
+                ? 'bg-white/20 text-white'
+                : 'bg-gray-100 dark:bg-white/[0.04] text-gray-400 dark:text-[#62666d]'"
           >
             <i v-if="s.done" class="fa-solid fa-check text-[8px]"></i>
             <span v-else>{{ i + 1 }}</span>
@@ -49,7 +49,7 @@ const emit = defineEmits(['step-click'])
       </div>
 
       <!-- 左侧附加操作 -->
-      <div v-if="$slots.actions" class="flex items-center gap-1 text-[#62666d]">
+      <div v-if="$slots.actions" class="flex items-center gap-1 text-gray-500 dark:text-[#62666d] transition-colors">
         <slot name="actions"></slot>
       </div>
 
@@ -69,9 +69,17 @@ const emit = defineEmits(['step-click'])
       </div>
 
       <!-- 右侧属性栏（可选） -->
-      <aside v-if="$slots.sidebar" class="hidden lg:flex w-80 shrink-0 flex-col border-l border-white/[0.05] overflow-y-auto">
+      <aside v-if="$slots.sidebar" class="hidden lg:flex w-80 shrink-0 flex-col border-l border-gray-200 dark:border-white/[0.05] overflow-y-auto transition-colors">
         <slot name="sidebar"></slot>
       </aside>
     </div>
   </div>
 </template>
+
+<style scoped>
+.brand-gradient-bg {
+  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  border: none;
+}
+</style>

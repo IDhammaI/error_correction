@@ -4,6 +4,7 @@
  * 题目卡片（错题库列表项）
  */
 import { ref, computed } from 'vue'
+import BaseCard from '@/components/base/BaseCard.vue'
 import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
 
 const props = defineProps({
@@ -73,42 +74,44 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 </script>
 
 <template>
-  <div
-    class="question-card group relative overflow-hidden rounded-2xl border bg-white/70 p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-white/[0.03]"
+  <BaseCard
+    class="question-card group relative overflow-hidden transition-shadow hover:shadow-md cursor-pointer"
+    padding="p-6"
+    rounded="rounded-2xl"
     :class="
       selected
-        ? 'border-blue-500/50 shadow-blue-500/10 dark:border-indigo-500/50 dark:shadow-indigo-500/20'
-        : 'border-slate-200/60 dark:border-white/10 hover:border-blue-200 dark:hover:border-white/15'
+        ? '!border-[rgb(129,115,223)]/50 !shadow-[rgb(129,115,223)]/10 dark:!border-[rgb(129,115,223)]/50 dark:!shadow-[rgb(129,115,223)]/20'
+        : 'hover:!border-[rgb(129,115,223)]/30 dark:hover:!border-white/15'
     "
     @click="emit('toggle', question.uid)"
   >
     <!-- 选中态背景 -->
     <div
       v-if="selected"
-      class="absolute inset-0 -z-10 bg-gradient-to-br from-blue-500/[0.03] to-indigo-500/[0.03] dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05]"
+      class="absolute inset-0 -z-10 bg-gradient-to-br from-[rgb(129,115,223)]/[0.03] to-[rgb(99,87,199)]/[0.03] dark:from-[rgb(129,115,223)]/[0.05] dark:to-[rgb(99,87,199)]/[0.05]"
     ></div>
 
     <!-- 大题标签 -->
     <div
       v-if="question.section_title"
-      class="mb-4 flex items-center gap-2 border-l-2 border-blue-400/60 pl-3 dark:border-indigo-400/50"
+      class="mb-4 flex items-center gap-2 border-l-2 border-[rgb(129,115,223)]/60 pl-3 dark:border-[rgb(129,115,223)]/50"
     >
-      <i class="fa-solid fa-layer-group text-xs text-blue-400 dark:text-indigo-400"></i>
-      <span class="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-400">{{ question.section_title }}</span>
+      <i class="fa-solid fa-layer-group text-xs text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)]"></i>
+      <span class="text-xs font-bold tracking-wide text-gray-500 dark:text-gray-400">{{ question.section_title }}</span>
     </div>
 
     <!-- 顶部状态栏 -->
     <div class="mb-6 flex items-start gap-4">
       <!-- 题型与标签 -->
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs font-bold tracking-widest text-slate-400 dark:text-slate-500">AI 识别标签</span>
-        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">
+        <span class="text-xs font-bold tracking-widest text-gray-400 dark:text-gray-500">AI 识别标签</span>
+        <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase tracking-widest text-gray-500 dark:bg-white/5 dark:text-gray-400">
           {{ question.question_type }}
         </span>
         <span
           v-for="tag in question.knowledge_tags"
           :key="tag"
-          class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+          class="rounded-full bg-[rgb(129,115,223)]/10 px-3 py-1 text-xs font-bold text-[rgb(129,115,223)] dark:bg-[rgb(129,115,223)]/20 dark:text-[rgb(145,132,235)]"
         >
           {{ tag }}
         </span>
@@ -116,12 +119,12 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 
       <!-- 右侧复选框 -->
       <div class="ml-auto flex items-center gap-4">
-        <span class="text-xs font-bold uppercase tracking-widest text-slate-400" :class="selected && 'text-blue-600 dark:text-indigo-400'">
+        <span class="text-xs font-bold uppercase tracking-widest text-gray-400" :class="selected && 'text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)]'">
           {{ selected ? '已选择' : '未选择' }}
         </span>
         <div
           class="flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-all"
-          :class="selected ? 'border-blue-500 bg-blue-500 text-white shadow-sm dark:border-indigo-500 dark:bg-indigo-500' : 'border-slate-200 bg-white dark:border-white/5 dark:bg-slate-800'"
+          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white shadow-sm' : 'border-gray-200 bg-white dark:border-white/5 dark:bg-[#15151e]'"
         >
           <i v-if="selected" class="fa-solid fa-check text-[10px]"></i>
         </div>
@@ -132,11 +135,11 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
     <div class="question-content relative">
       <template v-if="question.content_blocks?.length">
         <div v-for="(b, i) in question.content_blocks" :key="i">
-          <div v-if="b.block_type === 'text'" class="my-4 text-base font-medium leading-relaxed text-slate-800 dark:text-slate-200" v-html="isHtml(b.content) ? sanitizeHtml(b.content) : b.content"></div>
+          <div v-if="b.block_type === 'text'" class="my-4 text-base font-medium leading-relaxed text-gray-800 dark:text-[#d0d6e0]" v-html="isHtml(b.content) ? sanitizeHtml(b.content) : b.content"></div>
           <img
             v-else-if="b.block_type === 'image' && b.content"
             :src="b.content"
-            class="my-6 max-h-[400px] cursor-zoom-in rounded-2xl border border-slate-100 shadow-sm transition-transform hover:scale-[1.01] dark:border-white/5"
+            class="my-6 max-h-[400px] cursor-zoom-in rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm transition-transform hover:scale-[1.01]"
             @click.stop="() => emit('open-image', b.content)"
           />
         </div>
@@ -147,7 +150,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
         <img
           v-for="(src, i) in extraImages" :key="'extra-' + i"
           :src="src"
-          class="max-h-[200px] cursor-zoom-in rounded-2xl border border-slate-100 object-contain shadow-sm transition-transform hover:scale-[1.01] dark:border-white/5"
+          class="max-h-[200px] cursor-zoom-in rounded-2xl border border-gray-100 dark:border-white/5 object-contain shadow-sm transition-transform hover:scale-[1.01]"
           @click.stop="() => emit('open-image', src)"
         />
       </div>
@@ -157,33 +160,33 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
         <div
           v-for="(opt, idx) in question.options"
           :key="idx"
-          class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/30 p-4 text-[13px] font-bold text-slate-700 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-4 text-[13px] font-bold text-gray-700 hover:bg-gray-100/80 dark:border-white/5 dark:bg-white/5 dark:text-[#d0d6e0] dark:hover:bg-white/10 transition-colors"
         >
-          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white text-[10px] shadow-sm dark:bg-slate-800">{{ formatOption(opt)[0] }}</span>
+          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white text-[10px] shadow-sm dark:bg-[#15151e]">{{ formatOption(opt)[0] }}</span>
           <span class="flex-1">{{ formatOption(opt).slice(2) }}</span>
           <img
             v-if="optionImages?.[idx]"
             :src="optionImages[idx]"
-            class="max-h-[100px] max-w-[160px] shrink-0 cursor-zoom-in rounded-lg border border-slate-100 object-contain dark:border-white/5"
+            class="max-h-[100px] max-w-[160px] shrink-0 cursor-zoom-in rounded-lg border border-gray-100 object-contain dark:border-white/5"
             @click.stop="() => emit('open-image', optionImages[idx])"
           />
         </div>
       </div>
     </div>
 
-  </div>
+  </BaseCard>
 </template>
 
 <style>
 .question-content table {
-  @apply my-4 w-full border-collapse text-sm;
+  @apply my-4 w-full border-collapse text-sm transition-colors;
 }
 .question-content th,
 .question-content td {
-  @apply border border-slate-200 px-3 py-2 text-center dark:border-white/10;
+  @apply border border-gray-200 px-3 py-2 text-center dark:border-white/10 transition-colors;
 }
 .question-content th {
-  @apply bg-slate-50 font-bold dark:bg-white/[0.04];
+  @apply bg-gray-50 font-bold dark:bg-white/[0.04] transition-colors;
 }
 .question-content img {
   @apply inline-block max-h-[200px] object-contain;

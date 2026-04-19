@@ -38,8 +38,8 @@ defineProps({
 
         <!-- 文本引导 -->
         <div class="text-container">
-          <h3 class="status-title">{{ title }}</h3>
-          <p class="status-subtitle">{{ subtitle }}</p>
+          <h3 class="status-title text-slate-900 dark:text-white transition-colors">{{ title }}</h3>
+          <p class="status-subtitle text-slate-500 dark:text-slate-400 transition-colors">{{ subtitle }}</p>
 
           <!-- 模拟进度条 -->
           <div class="progress-container">
@@ -156,19 +156,13 @@ defineProps({
 .status-title {
   font-size: 1.125rem;
   font-weight: 900;
-  color: #0f172a;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
-}
-
-:root.dark .status-title {
-  color: white;
 }
 
 .status-subtitle {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
   line-height: 1.5;
 }
 

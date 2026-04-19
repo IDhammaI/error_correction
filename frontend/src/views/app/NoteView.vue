@@ -195,7 +195,7 @@ async function doDelete(noteId) {
 <template>
   <ContentPanel title="笔记库">
     <template #toolbar>
-      <button @click="triggerUpload" class="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 text-xs font-medium text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0] transition-colors" title="上传笔记">
+      <button @click="triggerUpload" class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-[#8a8f98] dark:hover:bg-white/[0.06] dark:hover:text-[#d0d6e0] transition-colors" title="上传笔记">
         <i class="fa-solid fa-upload text-[10px]"></i> 上传笔记
       </button>
     </template>
@@ -213,8 +213,8 @@ async function doDelete(noteId) {
             <BaseSelect v-model="filterSubject" :options="subjects" label="学科" placeholder="全部学科" />
             <BaseSelect v-model="filterTag" :options="tagNames" label="知识点" placeholder="全部知识点" />
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-[#62666d]">统计</label>
-              <div class="flex h-9 items-center rounded-md border border-white/[0.08] bg-white/[0.02] px-3 text-sm text-[#8a8f98]">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-[#62666d]">统计</label>
+              <div class="flex h-9 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#8a8f98]">
                 共 {{ total }} 条笔记
               </div>
             </div>
@@ -222,10 +222,10 @@ async function doDelete(noteId) {
 
           <!-- 进度条 -->
           <div v-if="creating" class="mt-4">
-            <div class="h-1 rounded-full bg-white/[0.06]">
-              <div class="h-full rounded-full bg-[rgb(129,115,223)] transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
+            <div class="h-1 rounded-full bg-gray-200 dark:bg-white/[0.06]">
+              <div class="h-full rounded-full bg-indigo-500 dark:bg-[rgb(129,115,223)] transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
             </div>
-            <p class="mt-1 text-xs text-[#62666d]">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-[#62666d]">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
           </div>
         </div>
 
@@ -237,28 +237,29 @@ async function doDelete(noteId) {
             title="还没有笔记"
             description="上传手写笔记或板书照片，AI 自动整理为结构化知识点"
           >
-            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+            <button @click="triggerUpload" class="inline-flex items-center gap-2 rounded-md bg-indigo-500 hover:bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm dark:brand-btn dark:text-[#f7f8f8]">
               <i class="fa-solid fa-plus"></i> 上传笔记
             </button>
           </EmptyState>
 
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div
+            <BaseCard
               v-for="note in notes"
               :key="note.id"
               @click="openNote(note)"
-              class="group cursor-pointer rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] hover:border-white/[0.1]"
+              class="group cursor-pointer"
+              padding="p-4"
             >
-              <h3 class="mb-2 text-sm font-medium text-[#f7f8f8] line-clamp-2">{{ note.title }}</h3>
-              <p class="mb-3 text-xs text-[#8a8f98] line-clamp-3">
+              <h3 class="mb-2 text-sm font-medium text-gray-900 dark:text-[#f7f8f8] line-clamp-2">{{ note.title }}</h3>
+              <p class="mb-3 text-xs text-gray-500 dark:text-[#8a8f98] line-clamp-3">
                 {{ note.content_markdown?.replace(/[#*`>\-]/g, '').slice(0, 120) }}...
               </p>
               <div class="flex flex-wrap items-center gap-2">
-                <span v-if="note.subject" class="rounded-md bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ note.subject }}</span>
-                <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag" class="rounded-md border border-white/[0.06] px-2 py-0.5 text-xs text-[#8a8f98]">{{ tag }}</span>
-                <span class="ml-auto text-xs text-[#62666d]">{{ note.updated_at?.slice(0, 10) }}</span>
+                <span v-if="note.subject" class="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-[rgb(129,115,223)]/10 dark:text-[rgb(145,132,235)]">{{ note.subject }}</span>
+                <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag" class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{ tag }}</span>
+                <span class="ml-auto text-xs text-gray-400 dark:text-[#62666d]">{{ note.updated_at?.slice(0, 10) }}</span>
               </div>
-            </div>
+            </BaseCard>
           </div>
 
           <!-- 分页 -->
@@ -268,7 +269,7 @@ async function doDelete(noteId) {
               :key="p"
               @click="page = p"
               class="size-8 rounded-md text-xs font-medium transition-all"
-              :class="p === page ? 'brand-btn text-[#f7f8f8]' : 'border border-white/[0.06] text-[#8a8f98] hover:bg-white/[0.04]'"
+              :class="p === page ? 'bg-indigo-500 text-white shadow-sm dark:brand-btn dark:text-[#f7f8f8]' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-white/[0.06] dark:bg-transparent dark:text-[#8a8f98] dark:hover:bg-white/[0.04]'"
             >
               {{ p }}
             </button>
@@ -280,15 +281,15 @@ async function doDelete(noteId) {
       <div v-else>
         <!-- 详情工具栏 -->
         <div class="mb-6 flex items-center justify-between">
-          <h3 class="text-base font-medium text-[#f7f8f8]">{{ selectedNote.title }}</h3>
+          <h3 class="text-base font-medium text-gray-900 dark:text-[#f7f8f8]">{{ selectedNote.title }}</h3>
           <div class="flex items-center gap-2">
-            <button @click="closeDetail" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+            <button @click="closeDetail" class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-arrow-left text-[10px]"></i> 返回
             </button>
-            <button v-if="!editing" @click="startEdit" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+            <button v-if="!editing" @click="startEdit" class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-pen text-[10px]"></i> 编辑
             </button>
-            <button @click="doDelete(selectedNote.id)" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors">
+            <button @click="doDelete(selectedNote.id)" class="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-rose-400 dark:hover:bg-rose-500/10 transition-colors">
               <i class="fa-solid fa-trash text-[10px]"></i> 删除
             </button>
           </div>

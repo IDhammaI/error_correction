@@ -22,24 +22,43 @@
   padding: 4px 10px;
   font-size: 13px;
   font-weight: 500;
-  color: #8a8f98;
+  color: #62666d;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
   transition: all 0.15s;
   cursor: pointer;
 }
 .filter-pill:hover {
+  background: #f7f8f8;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #111827;
+}
+.filter-pill--active {
+  background: rgba(129, 115, 223, 0.08);
+  border-color: rgba(129, 115, 223, 0.2);
+  color: rgb(129, 115, 223);
+}
+.filter-pill--active:hover {
+  background: rgba(129, 115, 223, 0.12);
+}
+
+.dark .filter-pill {
+  color: #8a8f98;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+.dark .filter-pill:hover {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
   color: #d0d6e0;
 }
-.filter-pill--active {
+.dark .filter-pill--active {
   background: rgba(129, 115, 223, 0.12);
   border-color: rgba(129, 115, 223, 0.3);
   color: rgb(145, 132, 235);
 }
-.filter-pill--active:hover {
+.dark .filter-pill--active:hover {
   background: rgba(129, 115, 223, 0.18);
 }
 

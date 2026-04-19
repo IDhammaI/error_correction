@@ -324,7 +324,7 @@ onBeforeUnmount(() => {
 <template>
   <ContentPanel title="错题库">
     <template #toolbar>
-      <button @click="currentView = 'workspace'" class="flex h-7 items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 text-xs font-medium text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0] transition-colors" title="录入新题目">
+      <button @click="currentView = 'workspace'" class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors" title="录入新题目">
         <i class="fa-solid fa-plus text-[10px]"></i> 录入
       </button>
     </template>
@@ -345,21 +345,21 @@ onBeforeUnmount(() => {
       <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
         <!-- 搜索框 -->
         <div class="relative">
-          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#62666d]"></i>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
           <input
             v-model="filters.keyword"
             type="text"
             placeholder="搜索题目..."
-            class="h-8 w-52 rounded-md border border-white/[0.08] bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-[#f7f8f8] placeholder-[#62666d] outline-none transition-colors hover:border-white/[0.12] focus:border-white/[0.15]"
+            class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]"
           />
         </div>
 
         <!-- 操作按钮（推到右侧） -->
         <div class="ml-auto flex items-center gap-1">
-          <button @click="toggleFilterPanel" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="filterPanelOpen ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="筛选设置">
+          <button @click="toggleFilterPanel" class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors" :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'" title="筛选设置">
             <i class="fa-solid fa-sliders text-xs"></i>
           </button>
-          <button @click="toggleSelectMode" class="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] transition-colors" :class="selectMode ? 'bg-white/[0.08] text-[#f7f8f8] border-white/[0.12]' : 'text-[#8a8f98] hover:bg-white/[0.06] hover:text-[#d0d6e0]'" title="导出题目">
+          <button @click="toggleSelectMode" class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors" :class="selectMode ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'" title="导出题目">
             <i class="fa-solid fa-file-export text-xs"></i>
           </button>
         </div>
@@ -382,7 +382,7 @@ onBeforeUnmount(() => {
         <button
           v-if="filters.subject || filters.question_type || filters.review_status || selectedTags.size"
           @click="filters.subject = ''; filters.question_type = ''; filters.review_status = ''; clearTagSelection()"
-          class="text-xs text-[#62666d] hover:text-rose-400 transition-colors"
+          class="text-xs text-gray-500 dark:text-[#62666d] hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
         >清除筛选</button>
       </div>
 
@@ -399,7 +399,7 @@ onBeforeUnmount(() => {
           title="暂无匹配记录"
           description="调整筛选条件，或者开始新的录入"
         >
-          <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md brand-btn px-4 py-2 text-sm font-medium text-[#f7f8f8]">
+          <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors bg-[rgb(129,115,223)] hover:bg-[rgb(145,132,235)] shadow-sm dark:brand-btn">
             <i class="fa-solid fa-plus"></i> 录入新题目
           </button>
         </EmptyState>
@@ -516,6 +516,8 @@ onBeforeUnmount(() => {
       @export="doExport"
       @clear="clearSelection"
     />
+
+
 
     <EditNoteDialog
       :open="dialogOpen"

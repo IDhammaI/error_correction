@@ -127,8 +127,8 @@ onBeforeUnmount(() => {
             @click="showSplitHistory = !showSplitHistory"
             class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
             :class="showSplitHistory
-              ? 'bg-white/[0.06] text-[#f7f8f8] border border-white/[0.12]'
-              : 'border border-white/[0.08] bg-white/[0.02] text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12]'"
+              ? 'bg-gray-200 dark:bg-white/[0.06] text-gray-900 dark:text-[#f7f8f8] border border-gray-300 dark:border-white/[0.12]'
+              : 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12]'"
           >
             <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
             分割历史
@@ -183,13 +183,13 @@ onBeforeUnmount(() => {
         <template #toolbar>
           <button
             @click="handleBack"
-            class="group inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
+            class="group inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12] transition-colors"
           >
             <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
             返回
           </button>
           <template v-if="eraseDone && !ocrLoading && !ocrDone">
-            <button @click="doErase" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+            <button @click="doErase" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
             </button>
             <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
             </button>
           </template>
           <template v-else-if="ocrDone && !splitCompleted && !splitting">
-            <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[#d0d6e0] hover:bg-white/[0.05] transition-colors">
+            <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
             </button>
             <button @click="doSplit" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">

@@ -47,7 +47,7 @@ function onPointerDown(event) {
 
     <!-- 无数据 -->
     <div v-else-if="!images.length" class="flex-1 flex items-center justify-center">
-      <p class="text-sm text-[#62666d]">暂无擦除数据</p>
+      <p class="text-sm text-gray-500 dark:text-[#62666d] transition-colors">暂无擦除数据</p>
     </div>
 
     <!-- 预览（单张 + 分页） -->
@@ -90,7 +90,7 @@ function onPointerDown(event) {
           :key="i"
           @click="currentPage = i; sliderPos = 50"
           class="h-2 rounded-full transition-all"
-          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-white/20 hover:bg-white/40'"
+          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
         />
       </div>
     </template>

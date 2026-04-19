@@ -46,7 +46,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             type="button"
             @click.stop="select('')"
             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100/80 dark:hover:bg-white/[0.04]"
-            :class="modelValue === '' ? 'text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-[#8a8f98]'"
+            :class="modelValue === '' ? 'text-slate-900 dark:text-[#f7f8f8] bg-slate-50 dark:bg-white/[0.02]' : 'text-slate-600 dark:text-[#8a8f98]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ placeholder }}</span>
             <i v-if="modelValue === ''" class="fa-solid fa-check shrink-0 text-[10px] text-[rgb(129,115,223)]"></i>
@@ -56,7 +56,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             type="button"
             @click.stop="select(opt)"
             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100/80 dark:hover:bg-white/[0.04]"
-            :class="modelValue === opt ? 'text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-[#8a8f98]'"
+            :class="modelValue === opt ? 'text-slate-900 dark:text-[#f7f8f8] bg-slate-50 dark:bg-white/[0.02]' : 'text-slate-600 dark:text-[#8a8f98]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ opt }}</span>
             <i v-if="modelValue === opt" class="fa-solid fa-check shrink-0 text-[10px] text-[rgb(129,115,223)]"></i>

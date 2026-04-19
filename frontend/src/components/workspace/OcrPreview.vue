@@ -113,7 +113,7 @@ const hoveredBlock = ref(null)
 
     <!-- 无数据 -->
     <div v-else-if="!pages.length" class="flex-1 flex items-center justify-center">
-      <p class="text-sm text-[#62666d]">暂无 OCR 数据</p>
+      <p class="text-sm text-gray-500 dark:text-[#62666d] transition-colors">暂无 OCR 数据</p>
     </div>
 
     <!-- 预览（单张 + 分页） -->
@@ -139,7 +139,7 @@ const hoveredBlock = ref(null)
           <span :style="tagStyle(block)">{{ block.label }}</span>
           <div
             v-if="hoveredBlock === `${currentPageData.page_index}-${bi}` && block.content"
-            class="absolute left-0 top-full z-50 mt-1 max-w-xs rounded-md bg-slate-900/95 border border-white/10 px-2 py-1 text-xs text-slate-200 shadow-lg"
+            class="absolute left-0 top-full z-50 mt-1 max-w-xs rounded-md bg-white/95 dark:bg-slate-900/95 border border-gray-200 dark:border-white/10 px-2 py-1 text-xs text-gray-700 dark:text-slate-200 shadow-lg transition-colors"
             style="pointer-events: none;"
           >
             {{ block.content }}
@@ -154,7 +154,7 @@ const hoveredBlock = ref(null)
           :key="i"
           @click="currentPage = i"
           class="h-2 rounded-full transition-all"
-          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-white/20 hover:bg-white/40'"
+          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
         />
       </div>
     </template>

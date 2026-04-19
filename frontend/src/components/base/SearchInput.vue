@@ -15,15 +15,15 @@ const emit = defineEmits(['update:modelValue'])
 
 <template>
   <div>
-    <label v-if="label" class="mb-1.5 block text-xs font-medium text-[#62666d]">{{ label }}</label>
+    <label v-if="label" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-[#62666d]">{{ label }}</label>
     <div class="relative group">
-      <i :class="icon" class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-xs text-[#62666d] transition-colors group-focus-within:text-[#8a8f98]"></i>
+      <i :class="icon" class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors group-focus-within:text-gray-500 dark:group-focus-within:text-[#8a8f98]"></i>
       <input
         :value="modelValue"
         @input="emit('update:modelValue', $event.target.value)"
         type="text"
         :placeholder="placeholder"
-        class="h-9 w-full rounded-md border border-white/[0.08] bg-white/[0.02] pl-9 pr-3 text-sm font-medium text-[#f7f8f8] placeholder-[#62666d] outline-none transition-colors hover:border-white/[0.12] focus:border-white/[0.15] border-top-color-[rgba(255,255,255,0.12)]"
+        class="h-9 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm font-medium text-gray-900 placeholder-gray-400 outline-none transition-colors hover:border-gray-300 focus:border-indigo-500 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#f7f8f8] dark:placeholder-[#62666d] dark:hover:border-white/[0.12] dark:focus:border-white/[0.15] dark:border-t-white/[0.12]"
       />
     </div>
   </div>
