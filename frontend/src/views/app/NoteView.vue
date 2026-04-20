@@ -2,7 +2,7 @@
 import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as api from '@/api.js'
-import { renderMarkdown, typesetMath } from '@/utils.js'
+import { renderMarkdown, typesetMath, getNotePreviewText } from '@/utils.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseGhostButton from '@/components/base/BaseGhostButton.vue'
@@ -41,14 +41,6 @@ const filterKeyword = ref('')
 const subjects = ref([])
 const tagNames = ref([])
 
-// 加载筛选选项
-async function loadFilterOptions() {
-  try {
-    const subjectData = await api.fetchSubjects()
-    subjects.value = subjectData.subjects || []
-  } catch (_) { }
-}
-
 // 详情/编辑
 const selectedNote = ref(null)
 const editing = ref(false)
@@ -75,8 +67,31 @@ async function loadNotes() {
   }
 }
 
-onMounted(() => { loadNotes(); loadFilterOptions() })
+// 加载筛选选项
+async function loadFilterOptions() {
+  try {
+    const subjectData = await api.fetchSubjects()
+    subjects.value = subjectData || []
+  } catch (_) { }
+}
+
+async function loadTags() {
+  try {
+    const tags = await api.fetchTagNames(filterSubject.value || undefined)
+    tagNames.value = tags || []
+  } catch (_) { }
+}
+
+onMounted(() => {
+  loadNotes()
+  loadFilterOptions()
+  loadTags()
+})
 watch([page, filterSubject, filterTag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
+watch(filterSubject, () => {
+  filterTag.value = ''
+  loadTags()
+})
 
 let keywordTimer = null
 watch(filterKeyword, () => {
@@ -281,7 +296,7 @@ async function doDelete(noteId) {
                 <h3 class="mb-2 text-sm font-medium text-gray-900 dark:text-[#f7f8f8] line-clamp-2">{{ note.title }}
                 </h3>
                 <p class="mb-3 text-xs text-gray-500 dark:text-[#8a8f98] line-clamp-3">
-                  {{ note.content_markdown?.replace(/[#*`>\-]/g, '').slice(0, 120) }}...
+                  {{ getNotePreviewText(note.content_markdown) }}
                 </p>
                 <div class="flex flex-wrap items-center gap-2">
                   <span v-if="note.subject"
