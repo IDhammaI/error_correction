@@ -589,30 +589,33 @@ onMounted(() => { loadConfig() })
           <section v-if="isQuotaSection" class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 class="text-xl font-semibold text-slate-900 dark:text-white">免费体验额度</h2>
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">使用平台托管的 AI / OCR 服务时会消耗每日免费次数；使用你自己的已配置 provider 不会扣减。</p>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-[#f7f8f8]">免费体验额度</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">使用平台托管的 AI / OCR 服务时会消耗每日免费次数；使用您自己的已配置 Provider 不会扣减。</p>
               </div>
-              <div class="rounded-full border border-[rgb(145,132,235)]/20 bg-[rgb(145,132,235)]/10 px-3 py-1 text-xs font-medium text-[rgb(145,132,235)]">
+              <div class="rounded-full border border-slate-200 bg-gray-50 px-3 py-1 text-xs font-bold text-slate-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-400">
                 {{ quota?.remaining ?? '--' }} / {{ quota?.daily_free_quota ?? '--' }}
               </div>
             </div>
 
             <div class="grid gap-4 md:grid-cols-3">
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p class="text-xs text-slate-500 dark:text-slate-400">每日额度</p>
-                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{{ quota?.daily_free_quota ?? '--' }}</p>
+              <div class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">每日额度</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_quota ?? '--' }}</p>
               </div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p class="text-xs text-slate-500 dark:text-slate-400">今日已用</p>
-                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{{ quota?.daily_free_used ?? '--' }}</p>
+              <div class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">今日已用</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_used ?? '--' }}</p>
               </div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p class="text-xs text-slate-500 dark:text-slate-400">今日剩余</p>
-                <p class="mt-2 text-2xl font-semibold text-[rgb(145,132,235)]">{{ quota?.remaining ?? '--' }}</p>
+              <div class="rounded-xl border border-slate-900 bg-slate-900 p-4 dark:border-[#f7f8f8] dark:bg-[#f7f8f8]">
+                <p class="text-xs font-medium text-white/70 dark:text-black/50">今日剩余</p>
+                <p class="mt-2 text-2xl font-bold text-white dark:text-black">{{ quota?.remaining ?? '--' }}</p>
               </div>
             </div>
 
-            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{{ quotaResetText }}</p>
+            <p class="mt-4 text-[13px] text-slate-400 dark:text-slate-500">
+              <i class="fa-regular fa-clock mr-1.5 opacity-70"></i>
+              {{ quotaResetText }}
+            </p>
           </section>
 
           <section v-if="isProfileSection" class="mx-auto max-w-2xl pb-12">
@@ -759,7 +762,7 @@ onMounted(() => { loadConfig() })
 
         <div v-else class="space-y-6">
           <ProviderSection
-            icon="fa-solid fa-bolt"
+            imgIcon="/src/assets/provider-openai.svg"
             title="OpenAI 兼容 API"
             subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等"
             :providers="openaiProviders"
@@ -771,7 +774,7 @@ onMounted(() => { loadConfig() })
           />
 
           <ProviderSection
-            icon="fa-solid fa-brain"
+            imgIcon="/src/assets/provider-anthropic.svg"
             title="Anthropic API"
             subtitle="Claude 系列模型"
             :providers="anthropicProviders"
@@ -783,7 +786,7 @@ onMounted(() => { loadConfig() })
           />
 
           <ProviderSection
-            icon="fa-solid fa-eye"
+            imgIcon="/src/assets/provider-paddleocr.svg"
             title="PaddleOCR"
             subtitle="文档 OCR 识别服务"
             :providers="paddleocrProviders"

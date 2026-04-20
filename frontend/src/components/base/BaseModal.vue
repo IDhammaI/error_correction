@@ -86,8 +86,8 @@ const emit = defineEmits(['close'])
 .dialog-overlay-enter-from,
 .dialog-overlay-leave-to {
   opacity: 0;
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(var(--dialog-backdrop-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--dialog-backdrop-blur, 8px));
 }
 
 .dialog-content-enter-active,
