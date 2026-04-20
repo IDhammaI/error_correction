@@ -28,7 +28,11 @@ output/
 __pycache__/
 backend/static/vue/assets
 
+# 模型权重文件
+backend/models/weight/
 
+# 示例上传文件
+example_uploads/notes/
 # 日志
 workflow.log
 
