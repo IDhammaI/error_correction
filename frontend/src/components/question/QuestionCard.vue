@@ -162,18 +162,16 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 
 <style scoped>
 .question-content :deep(table) {
-  @apply my-4 w-full rounded-xl border border-slate-200 bg-white/50 text-sm overflow-hidden;
+  @apply my-4 w-full rounded-xl border border-slate-200 bg-white/50 text-sm overflow-hidden dark:bg-white/[0.02] dark:border-white/10;
   display: block;
   overflow-x: auto;
   white-space: nowrap;
 }
-
 .question-content :deep(th) {
-  @apply bg-slate-100 p-3 text-left font-black dark:bg-white/5;
+  @apply bg-slate-100 p-3 text-left font-black dark:bg-white/5 dark:text-slate-300;
 }
-
 .question-content :deep(td) {
-  @apply border-t border-slate-100 p-3 dark:border-white/5;
+  @apply border-t border-slate-100 p-3 dark:border-white/10 dark:text-slate-300;
 }
 
 .question-content :deep(ul) {
