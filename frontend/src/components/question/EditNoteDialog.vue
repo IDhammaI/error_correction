@@ -1,14 +1,10 @@
 <script setup>
-/**
- * EditNoteDialog.vue
- * 题目/笔记编辑弹窗（Markdown 编辑）
- */
 import { ref, watch, nextTick } from 'vue'
 import { typesetMath } from '@/utils.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  field: { type: String, default: 'answer' }, // 'answer' | 'user_answer' | 'question'
+  field: { type: String, default: 'answer' },
   question: { type: Object, default: null },
   value: { type: String, default: '' },
   valueAnswer: { type: String, default: '' },
@@ -71,13 +67,18 @@ const config = () => {
 
 <template>
   <Teleport to="body">
-    <Transition name="dialog-fade">
-      <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64" @click.self="emit('close')">
-        <div class="absolute inset-0 bg-black/40"></div>
+    <Transition name="dialog-overlay" appear>
+      <div
+        v-if="open"
+        class="dialog-backdrop fixed inset-0 z-[100] bg-black/40 md:left-64"
+        @click="emit('close')"
+      ></div>
+    </Transition>
 
+    <Transition name="dialog-content" appear>
+      <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64" @click.self="emit('close')">
         <div class="relative w-full rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f0f17]"
              :class="field === 'question' ? 'max-w-2xl' : 'max-w-xl'">
-          <!-- 头部 -->
           <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-white/5">
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 items-center justify-center rounded-xl" :class="config().iconBg">
@@ -90,9 +91,7 @@ const config = () => {
             </button>
           </div>
 
-          <!-- 编辑区：编辑题目 -->
           <div v-if="field === 'question'" class="max-h-[72vh] overflow-y-auto px-6 py-4 space-y-4">
-            <!-- 题目内容只读渲染 -->
             <div>
               <p class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">题目内容</p>
               <div ref="questionContentRef" class="rounded-xl border border-slate-200/60 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
@@ -111,7 +110,6 @@ const config = () => {
                 </div>
               </div>
             </div>
-            <!-- 答案编辑 -->
             <div>
               <p class="mb-2 text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">正确答案</p>
               <textarea
@@ -123,7 +121,6 @@ const config = () => {
             </div>
           </div>
 
-          <!-- 编辑区：答案 / 笔记 -->
           <div v-else class="px-6 py-4">
             <textarea
               v-model="draft"
@@ -133,7 +130,6 @@ const config = () => {
             ></textarea>
           </div>
 
-          <!-- 底部按钮 -->
           <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
             <button @click="emit('close')" class="inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-bold text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300">
               取消
@@ -145,7 +141,7 @@ const config = () => {
               :class="config().btnCls"
             >
               <i v-if="saving" class="fa-solid fa-spinner animate-spin"></i>
-              {{ saving ? '保存中…' : '保存' }}
+              {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>
         </div>
@@ -155,12 +151,34 @@ const config = () => {
 </template>
 
 <style scoped>
-.dialog-fade-enter-active,
-.dialog-fade-leave-active {
-  transition: opacity 0.2s ease;
+.dialog-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
+
+.dialog-overlay-enter-active,
+.dialog-overlay-leave-active {
+  transition:
+    opacity 0.22s ease,
+    backdrop-filter 0.22s ease,
+    -webkit-backdrop-filter 0.22s ease;
+}
+
+.dialog-overlay-enter-from,
+.dialog-overlay-leave-to {
   opacity: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+.dialog-content-enter-active,
+.dialog-content-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-content-enter-from,
+.dialog-content-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
 }
 </style>

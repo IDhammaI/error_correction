@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  variant: { type: String, default: 'primary' },   // primary | secondary | cta
+  variant: { type: String, default: 'primary' },   // primary | secondary | cta | ghost
   size: { type: String, default: 'md' },            // sm | md
   to: { type: String, default: '' },                // RouterLink 目标
   href: { type: String, default: '' },              // 普通链接
@@ -38,11 +38,12 @@ const bindProps = computed(() => {
         'home-btn--primary': variant === 'primary',
         'home-btn--secondary': variant === 'secondary',
         'home-btn--cta': variant === 'cta',
+        'home-btn--ghost': variant === 'ghost',
       },
     ]"
   >
     <!-- 内部网格纹理 -->
-    <span v-if="variant !== 'secondary'" class="btn-grid" aria-hidden="true"></span>
+    <span v-if="variant === 'primary' || variant === 'cta'" class="btn-grid" aria-hidden="true"></span>
     <slot />
   </component>
 </template>
@@ -110,6 +111,26 @@ const bindProps = computed(() => {
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
     0 0 24px 0 rgba(109, 92, 214, 0.3);
+}
+
+/* ── Ghost: 幽灵按钮，用于无背景仅边框/字体的操作 ── */
+.home-btn--ghost {
+  background: transparent;
+  color: rgba(107, 114, 128, 1); /* text-gray-500 */
+  border: 1px solid rgba(229, 231, 235, 1); /* border-gray-200 */
+}
+:root.dark .home-btn--ghost {
+  color: rgba(138, 143, 152, 1); /* text-[#8a8f98] */
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+.home-btn--ghost:hover {
+  background: rgba(249, 250, 251, 1); /* hover:bg-gray-50 */
+  color: rgba(55, 65, 81, 1); /* hover:text-gray-700 */
+}
+:root.dark .home-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(208, 214, 224, 1); /* hover:text-[#d0d6e0] */
 }
 
 /* ── 按钮内网格纹理 ── */

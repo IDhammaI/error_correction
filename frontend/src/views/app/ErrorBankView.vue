@@ -7,6 +7,7 @@ import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import ErrorBankFilterPanel from '@/components/workspace/ErrorBankFilterPanel.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 import SearchInput from '@/components/base/SearchInput.vue'
 import QuestionItem from '@/components/question/QuestionItem.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
@@ -399,9 +400,9 @@ onBeforeUnmount(() => {
           title="暂无匹配记录"
           description="调整筛选条件，或者开始新的录入"
         >
-          <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors bg-[rgb(129,115,223)] hover:bg-[rgb(145,132,235)] shadow-sm dark:brand-btn">
+          <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
             <i class="fa-solid fa-plus"></i> 录入新题目
-          </button>
+          </BaseButton>
         </EmptyState>
 
         <!-- 列表（有旧数据时保留，遮罩覆盖） -->

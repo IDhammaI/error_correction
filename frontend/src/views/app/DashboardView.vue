@@ -202,9 +202,6 @@ onBeforeUnmount(() => {
   <ContentPanel title="数据面板">
     <template #toolbar>
       <BaseSelect v-if="subjects.length" v-model="selectedSubject" :options="subjects" placeholder="全部学科" width-class="min-w-[140px]" />
-      <button @click="currentView = 'workspace'" class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-white transition-colors bg-[rgb(129,115,223)] hover:bg-[rgb(145,132,235)] shadow-sm dark:brand-btn">
-        <i class="fa-solid fa-plus-circle text-[10px]"></i> 录入新题目
-      </button>
     </template>
   <div class="relative h-full overflow-y-auto custom-scrollbar">
     <div class="container relative z-10 mx-auto">

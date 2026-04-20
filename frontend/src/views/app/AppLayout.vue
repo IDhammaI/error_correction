@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
     />
 
     <!-- ================== 右侧整体区域 ================== -->
-    <div class="relative z-10 flex-1 flex flex-col overflow-hidden pb-20 md:pb-2 md:pt-3 md:pr-3">
+    <div class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">

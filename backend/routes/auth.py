@@ -173,13 +173,16 @@ def auth_register():
 
 @bp.route("/send-code", methods=["POST"])
 def send_code():
-    """发送验证码（支持注册和找回密码两种场景）。
+    """发送验证码（支持注册、找回密码、修改邮箱三种场景）。
 
-    请求体：{ email, type: 'register' | 'reset' }
+    请求体：{ email, type: 'register' | 'reset' | 'change_email' }
     """
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     code_type = (data.get("type") or "register").strip().lower()
+
+    if code_type not in ("register", "reset", "change_email"):
+        return jsonify({"success": False, "error": "无效的验证码类型"}), 400
 
     if not email or "@" not in email:
         return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
@@ -201,13 +204,17 @@ def send_code():
                 ), 429
 
         user = crud.get_user_by_email(db, email)
-        if (code_type == "register" and user) or (code_type == "reset" and not user):
+        if (code_type == "register" and user) or (code_type == "reset" and not user) or (code_type == "change_email" and not user):
             crud.upsert_registration_code(db, email, "anti-enum-dummy", now + timedelta(minutes=1), now)
             return jsonify({"success": True, "message": "验证码已发送"})
 
         crud.upsert_registration_code(db, email, code_hash, expires_at, now)
 
-    subject_text = "找回密码" if code_type == "reset" else "注册"
+    subject_text = "注册"
+    if code_type == "reset":
+        subject_text = "找回密码"
+    elif code_type == "change_email":
+        subject_text = "修改邮箱身份验证"
     smtp_ok = bool(settings.smtp_host and settings.smtp_from)
     if smtp_ok:
         try:
@@ -334,6 +341,27 @@ def auth_me():
         return jsonify({"user": _serialize_user(user, db)})
 
 
+@bp.route("/check-email", methods=["POST"])
+def check_email():
+    """检查邮箱是否被其他账号占用"""
+    user_id = _current_user_id()
+    if not user_id:
+        return jsonify({"success": False, "error": "未登录"}), 401
+
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email or "@" not in email:
+        return jsonify({"success": False, "error": "邮箱格式不正确"}), 400
+
+    with SessionLocal() as db:
+        existing = crud.get_user_by_email(db, email)
+        if existing and existing.id != user_id:
+            return jsonify({"success": False, "error": "该邮箱已被其他账号使用"}), 400
+
+    return jsonify({"success": True})
+
+
 @bp.route("/profile", methods=["PATCH"])
 def update_profile():
     """更新当前用户资料"""
@@ -342,18 +370,64 @@ def update_profile():
         return jsonify({"success": False, "error": "未登录"}), 401
 
     data = request.get_json() or {}
+    update_data = {}
     try:
-        display_name = _normalize_profile_text(data.get("display_name"), 50)
-        nickname = _normalize_profile_text(data.get("nickname"), 50)
+        if "display_name" in data:
+            update_data["display_name"] = _normalize_profile_text(data["display_name"], 50)
+        if "nickname" in data:
+            update_data["nickname"] = _normalize_profile_text(data["nickname"], 50)
+        if "email" in data:
+            new_email = data["email"]
+            if new_email is not None:
+                new_email = new_email.strip().lower()
+                if not new_email or "@" not in new_email:
+                    raise ValueError("邮箱格式不正确")
+            update_data["email"] = new_email
     except ValueError as exc:
         return jsonify({"success": False, "error": str(exc)}), 400
 
     with SessionLocal() as db:
+        if "email" in update_data and update_data["email"]:
+            # 校验原邮箱验证码
+            user = crud.get_user_by_id(db, user_id)
+            if not user:
+                return jsonify({"success": False, "error": "用户不存在"}), 404
+            
+            code = (data.get("code") or "").strip()
+            if not code or not code.isdigit() or len(code) != 6:
+                return jsonify({"success": False, "error": "请输入 6 位原邮箱验证码"}), 400
+
+            current_email = user.email
+            pepper = (current_app.secret_key or "dev-secret-change-in-production")[:64]
+            submitted_hash = _hash_registration_code(current_email, code, pepper)
+            now = datetime.utcnow()
+
+            row = crud.get_verification_by_email(db, current_email)
+            if not row:
+                return jsonify({"success": False, "error": "请先获取验证码"}), 400
+            if row.expires_at < now:
+                crud.delete_verification_by_email(db, current_email)
+                return jsonify({"success": False, "error": "验证码已过期，请重新获取"}), 400
+            if (row.attempts or 0) >= settings.registration_max_attempts:
+                crud.delete_verification_by_email(db, current_email)
+                return jsonify({"success": False, "error": "验证失败次数过多，请重新获取验证码"}), 400
+
+            if not hmac.compare_digest(row.code_hash, submitted_hash):
+                crud.increment_verification_attempts(db, current_email)
+                return jsonify({"success": False, "error": "验证码错误"}), 400
+
+            # 验证成功，删除验证码记录
+            crud.delete_verification_by_email(db, current_email)
+
+            # 校验新邮箱是否被占用
+            existing = crud.get_user_by_email(db, update_data["email"])
+            if existing and existing.id != user_id:
+                return jsonify({"success": False, "error": "该邮箱已被其他账号使用"}), 400
+
         user = crud.update_user_profile(
             db,
             user_id,
-            display_name=display_name,
-            nickname=nickname,
+            **update_data
         )
         if not user:
             session.clear()

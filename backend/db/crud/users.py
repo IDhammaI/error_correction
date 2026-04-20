@@ -45,13 +45,14 @@ def get_user_by_login(db, identifier):
     ).first()
 
 
-def update_user_profile(db, user_id: int, *, display_name=None, nickname=None):
+def update_user_profile(db, user_id: int, **kwargs):
     """更新用户资料"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return None
-    user.display_name = display_name
-    user.nickname = nickname
+    for key, value in kwargs.items():
+        if hasattr(user, key):
+            setattr(user, key, value)
     try:
         db.commit()
         db.refresh(user)
