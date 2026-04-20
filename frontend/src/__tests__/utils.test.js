@@ -63,7 +63,7 @@ describe('isHtml', () => {
     expect(isHtml('这是一道数学题')).toBe(false)
   })
 
-  it('包含非表格 HTML 返回 false', () => {
+  it('包含非富文本 HTML 返回 false', () => {
     expect(isHtml('<div>内容</div>')).toBe(false)
   })
 
@@ -89,6 +89,16 @@ describe('sanitizeHtml', () => {
     expect(sanitizeHtml(input)).toBe(input)
   })
 
+  it('保留列表标签 (ul, ol, li)', () => {
+    const input = '<ul><li>列表项</li></ul><ol><li>列表项</li></ol>'
+    expect(sanitizeHtml(input)).toBe(input)
+  })
+
+  it('保留超链接标签 (a) 及合法属性', () => {
+    const input = '<a href="https://example.com" target="_blank">链接</a>'
+    expect(sanitizeHtml(input)).toBe(input)
+  })
+
   it('保留上下标标签 (sub, sup)', () => {
     const input = 'H<sub>2</sub>O 和 x<sup>2</sup>'
     expect(sanitizeHtml(input)).toBe(input)
@@ -102,10 +112,10 @@ describe('sanitizeHtml', () => {
   })
 
   it('过滤 img 标签的 onerror 属性', () => {
-    const input = '<img src=x onerror=alert(1)>'
+    const input = '<img src="x" onerror="alert(1)">'
     const result = sanitizeHtml(input)
     expect(result).not.toContain('onerror')
-    expect(result).not.toContain('<img')
+    expect(result).toContain('<img src="x">')
   })
 
   it('过滤 div 标签（不在白名单中）', () => {

@@ -16,20 +16,28 @@ export const genId = () => {
 /** 格式化选项文本 */
 export const formatOption = (s) => String(s || '')
 
-/** 判断内容是否包含 HTML 表格标签 */
-export const isHtml = (s) => /<\/?(?:table|tr|td|th|thead|tbody)\b/i.test(s || '')
+/** 判断内容是否包含 HTML 表格或列表等富文本标签 */
+export const isHtml = (s) => /<\/?(?:table|tr|td|th|thead|tbody|ul|ol|li|img|a|strong|em)\b/i.test(s || '')
 
 /** 允许渲染的 HTML 标签白名单 */
 export const ALLOWED_HTML_TAGS = [
   'table', 'tr', 'td', 'th', 'thead', 'tbody',
+  'ul', 'ol', 'li',
   'p', 'br', 'span', 'b', 'i', 'em', 'strong', 'sub', 'sup',
-  'img',
+  'img', 'a',
 ]
 
-/** 使用 DOMPurify 过滤 HTML，仅保留白名单标签 */
+/** 使用 DOMPurify 过滤 HTML，仅保留白名单标签和属性，防止 XSS */
 export const sanitizeHtml = (html) => {
-  const fixed = html.replace(/src="imgs\//g, 'src="/images/')
-  return DOMPurify.sanitize(fixed, { ALLOWED_TAGS: ALLOWED_HTML_TAGS, ALLOWED_ATTR: ['src', 'alt'] })
+  if (!html) return ''
+  // 兼容旧数据的图片路径，修复转义
+  let fixed = html.replace(/src="imgs\//g, 'src="/images/')
+  fixed = fixed.replace(/\\n/g, '\n').replace(/\\"/g, '"')
+  return DOMPurify.sanitize(fixed, {
+    ALLOWED_TAGS: ALLOWED_HTML_TAGS,
+    ALLOWED_ATTR: ['src', 'alt', 'href', 'target', 'rel', 'title', 'class', 'style'],
+    ALLOW_DATA_ATTR: false
+  })
 }
 
 /** 从题目的 content_json 中提取纯文本摘要 */
@@ -87,7 +95,7 @@ export const typesetMath = async (el) => {
     } else {
       await mj.typesetPromise()
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 /** 计算滚轮缩放后的 scale 值 */

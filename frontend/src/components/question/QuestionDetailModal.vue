@@ -333,11 +333,22 @@ const reviewStatusOptions = [
 
 .question-text :deep(table) {
   @apply my-6 w-full rounded-xl border border-slate-200 bg-white/50 text-sm overflow-hidden;
+  display: block;
+  overflow-x: auto;
 }
 .question-text :deep(th) {
   @apply bg-slate-100 p-3 text-left font-black dark:bg-white/5;
 }
 .question-text :deep(td) {
   @apply border-t border-slate-100 p-3 dark:border-white/5;
+}
+.question-text :deep(ul) {
+  @apply list-disc pl-5 my-2;
+}
+.question-text :deep(ol) {
+  @apply list-decimal pl-5 my-2;
+}
+.question-text :deep(a) {
+  @apply text-blue-600 hover:underline dark:text-blue-400;
 }
 </style>
