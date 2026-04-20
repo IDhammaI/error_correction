@@ -70,15 +70,13 @@ async function loadNotes() {
 // 加载筛选选项
 async function loadFilterOptions() {
   try {
-    const subjectData = await api.fetchSubjects()
-    subjects.value = subjectData || []
+    subjects.value = await api.fetchNoteSubjects()
   } catch (_) { }
 }
 
 async function loadTags() {
   try {
-    const tags = await api.fetchTagNames(filterSubject.value || undefined)
-    tagNames.value = tags || []
+    tagNames.value = await api.fetchNoteTagNames(filterSubject.value || undefined)
   } catch (_) { }
 }
 

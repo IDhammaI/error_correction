@@ -409,6 +409,26 @@ export async function deleteNote(noteId) {
   return true
 }
 
+/**
+ * 获取笔记库科目列表
+ */
+export async function fetchNoteSubjects() {
+  const resp = await fetch('/api/notes/subjects')
+  const data = await _assertJsonSuccess(resp, '获取科目列表失败')
+  return data.subjects
+}
+
+/**
+ * 获取笔记库知识点标签列表
+ */
+export async function fetchNoteTagNames(subject) {
+  const qs = new URLSearchParams()
+  if (subject) qs.set('subject', subject)
+  const resp = await fetch(`/api/notes/tags?${qs}`)
+  const data = await _assertJsonSuccess(resp, '获取标签列表失败')
+  return data.tags
+}
+
 // ── 独立对话 ─────────────────────────────────────────────
 
 /** 创建独立对话 */

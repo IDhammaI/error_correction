@@ -94,6 +94,13 @@ export const getNotePreviewText = (text, maxLen = 120) => {
       math = math.replace(new RegExp(`\\\\${key}`, 'g'), val)
     })
 
+    // 处理矩阵/方程组环境
+    math = math.replace(/\\begin\s*\{([bpvBpv]?matrix|cases|aligned|array)\}([\s\S]*?)\\end\s*\{\1\}/g, (match, env, content) => {
+      let matrix = content.replace(/\\\\/g, '; ') // 换行替换为分号
+      matrix = matrix.replace(/&/g, ', ') // 列分隔符替换为逗号
+      return `[${matrix.trim()}]`
+    })
+
     // 清理多余指令和格式
     math = math.replace(/\\left|\\right/g, '')
     math = math.replace(/\\[a-zA-Z]+/g, '')

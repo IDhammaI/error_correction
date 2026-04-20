@@ -11,6 +11,7 @@ from db.models import UploadBatch, Question
 
 # ── 共享过滤辅助函数 ──────────────────────────────────────────
 
+
 def _filter_by_subject(query, subject: Optional[str]):
     """如有学科筛选，为 Question 查询追加 JOIN UploadBatch 过滤"""
     if subject:
@@ -116,6 +117,8 @@ from db.crud.notes import (
     get_note_by_id,
     update_note,
     delete_note,
+    get_note_subjects,
+    get_note_tag_names,
 )
 
 __all__ = [
@@ -196,4 +199,6 @@ __all__ = [
     "get_note_by_id",
     "update_note",
     "delete_note",
+    "get_note_subjects",
+    "get_note_tag_names",
 ]
