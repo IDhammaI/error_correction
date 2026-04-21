@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, nextTick, onMounted } from 'vue'
+import { ref, reactive, watch, computed, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as api from '@/api.js'
 import { renderMarkdown, typesetMath, getNotePreviewText } from '@/utils.js'
@@ -13,6 +13,7 @@ import EmptyState from '@/components/base/EmptyState.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useAuth } from '@/composables/useAuth.js'
+import BaseViewSettingsPopover from '@/components/base/BaseViewSettingsPopover.vue'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
@@ -35,13 +36,33 @@ const creating = ref(false)
 const createProgress = ref(0)
 
 // 筛选
-const filterSubject = ref('')
-const filterTag = ref('')
-const filterKeyword = ref('')
+const filters = reactive({
+  subject: '',
+  tag: '',
+  keyword: '',
+})
 const subjects = ref([])
 const tagNames = ref([])
+const selectedTags = computed(() => {
+  const s = new Set()
+  if (filters.tag) s.add(filters.tag)
+  return s
+})
 
-// 详情/编辑
+const filterPanelOpen = ref(false)
+function toggleFilterPanel() { filterPanelOpen.value = !filterPanelOpen.value }
+
+function toggleTagSelect(tag) {
+  filters.tag = filters.tag === tag ? '' : tag
+}
+
+function resetFilters() {
+  filters.subject = ''
+  filters.tag = ''
+  filters.keyword = ''
+  page.value = 1
+  loadNotes()
+}
 const selectedNote = ref(null)
 const editing = ref(false)
 const editTitle = ref('')
@@ -54,9 +75,9 @@ async function loadNotes() {
     const data = await api.fetchNotes({
       page: page.value,
       limit: pageSize.value,
-      subject: filterSubject.value || undefined,
-      knowledge_tag: filterTag.value || undefined,
-      keyword: filterKeyword.value || undefined,
+      subject: filters.subject || undefined,
+      knowledge_tag: filters.tag || undefined,
+      keyword: filters.keyword || undefined,
     })
     notes.value = data.items
     total.value = data.total
@@ -76,7 +97,7 @@ async function loadFilterOptions() {
 
 async function loadTags() {
   try {
-    tagNames.value = await api.fetchNoteTagNames(filterSubject.value || undefined)
+    tagNames.value = await api.fetchNoteTagNames(filters.subject || undefined)
   } catch (_) { }
 }
 
@@ -85,14 +106,14 @@ onMounted(() => {
   loadFilterOptions()
   loadTags()
 })
-watch([page, filterSubject, filterTag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
-watch(filterSubject, () => {
-  filterTag.value = ''
+watch([page, () => filters.subject, () => filters.tag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
+watch(() => filters.subject, () => {
+  filters.tag = ''
   loadTags()
 })
 
 let keywordTimer = null
-watch(filterKeyword, () => {
+watch(() => filters.keyword, () => {
   clearTimeout(keywordTimer)
   keywordTimer = setTimeout(() => { page.value = 1; loadNotes() }, 500)
 })
@@ -256,18 +277,26 @@ async function doDelete(noteId) {
             <div class="relative">
               <i
                 class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
-              <input v-model="filterKeyword" type="text" placeholder="搜索笔记..."
+              <input v-model="filters.keyword" type="text" placeholder="搜索笔记..."
                 class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]" />
             </div>
 
-            <BaseSelect v-model="filterSubject" :options="subjects" placeholder="全部学科" class="h-8 w-32" />
-            <BaseSelect v-model="filterTag" :options="tagNames" placeholder="全部知识点" class="h-8 w-32" />
+            <!-- 操作按钮 -->
+            <div class="ml-auto flex items-center gap-1 relative">
+              <button @click.stop="toggleFilterPanel"
+                class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+                :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+                title="筛选设置">
+                <i class="fa-solid fa-sliders text-xs"></i>
+              </button>
 
-            <button v-if="filterSubject || filterTag" @click="filterSubject = ''; filterTag = ''"
-              class="text-xs text-gray-500 dark:text-[#62666d] hover:text-rose-500 dark:hover:text-rose-400 transition-colors ml-2">清除筛选</button>
+              <BaseViewSettingsPopover v-model="filterPanelOpen" :filters="filters" :subjects="subjects"
+                :tag-names="tagNames" :selected-tags="selectedTags" :show-review-status="false"
+                :show-question-type="false" @toggle-tag="toggleTagSelect" @reset="resetFilters" />
 
-            <div class="ml-auto flex items-center text-xs text-gray-500 dark:text-[#8a8f98]">
-              共 {{ total }} 条笔记
+              <div class="ml-2 flex items-center text-xs text-gray-500 dark:text-[#8a8f98]">
+                共 {{ total }} 条笔记
+              </div>
             </div>
           </div>
           <!-- 进度条 -->
@@ -304,7 +333,7 @@ async function doDelete(noteId) {
                     class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{
                       tag }}</span>
                   <span class="ml-auto text-xs text-gray-400 dark:text-[#62666d]">{{ note.updated_at?.slice(0, 10)
-                  }}</span>
+                    }}</span>
                 </div>
               </BaseCard>
             </div>

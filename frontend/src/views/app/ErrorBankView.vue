@@ -4,7 +4,7 @@ import * as api from '@/api.js'
 import { typesetMath as _typesetMath } from '@/utils.js'
 import { useSelectableList } from '@/composables/useSelectableList.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import ErrorBankFilterPanel from '@/components/workspace/ErrorBankFilterPanel.vue'
+import BaseViewSettingsPopover from '@/components/base/BaseViewSettingsPopover.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -325,222 +325,193 @@ onBeforeUnmount(() => {
 <template>
   <ContentPanel title="错题库">
     <template #toolbar>
-      <button @click="currentView = 'workspace'" class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors" title="录入新题目">
+      <button @click="currentView = 'workspace'"
+        class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors"
+        title="录入新题目">
         <i class="fa-solid fa-plus text-[10px]"></i> 录入
       </button>
     </template>
-    <template v-if="filterPanelOpen" #sidebar>
-      <ErrorBankFilterPanel
-        :filters="filters"
-        :subjects="subjects"
-        :question-types="questionTypes"
-        :tag-names="tagNames"
-        :selected-tags="selectedTags"
-        @close="filterPanelOpen = false"
-        @toggle-tag="toggleTagSelect"
-      />
-    </template>
-  <div ref="scrollContainerRef" @scroll="handleScroll" class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
-    <div class="relative z-10 flex-1 flex flex-col">
-      <!-- 搜索 + 操作按钮 + 已激活筛选 pills -->
-      <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
-        <!-- 搜索框 -->
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
-          <input
-            v-model="filters.keyword"
-            type="text"
-            placeholder="搜索题目..."
-            class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]"
-          />
-        </div>
-
-        <!-- 操作按钮（推到右侧） -->
-        <div class="ml-auto flex items-center gap-1">
-          <button @click="toggleFilterPanel" class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors" :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'" title="筛选设置">
-            <i class="fa-solid fa-sliders text-xs"></i>
-          </button>
-          <button @click="toggleSelectMode" class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors" :class="selectMode ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'" title="导出题目">
-            <i class="fa-solid fa-file-export text-xs"></i>
-          </button>
-        </div>
-
-        <!-- 已激活的筛选 pills（换行显示） -->
-        <button v-if="filters.subject" @click="filters.subject = ''" class="filter-pill filter-pill--active">
-          {{ filters.subject }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
-        </button>
-        <button v-if="filters.question_type" @click="filters.question_type = ''" class="filter-pill filter-pill--active">
-          {{ filters.question_type }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
-        </button>
-        <button v-if="filters.review_status" @click="filters.review_status = ''" class="filter-pill filter-pill--active">
-          {{ filters.review_status }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
-        </button>
-        <template v-for="tag in selectedTags" :key="tag">
-          <button @click="toggleTagSelect(tag)" class="filter-pill filter-pill--active">
-            {{ tag }} <i class="fa-solid fa-xmark text-[8px] ml-1"></i>
-          </button>
-        </template>
-        <button
-          v-if="filters.subject || filters.question_type || filters.review_status || selectedTags.size"
-          @click="filters.subject = ''; filters.question_type = ''; filters.review_status = ''; clearTagSelection()"
-          class="text-xs text-gray-500 dark:text-[#62666d] hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
-        >清除筛选</button>
-      </div>
-
-
-      <!-- 列表区 -->
-      <div class="relative flex-1 flex flex-col">
-        <!-- 首次加载：无旧数据时显示骨架 -->
-        <QuestionItemSkeleton v-if="loading && !items.length" />
-
-        <!-- 空状态 -->
-        <EmptyState
-          v-else-if="!loading && !items.length"
-          icon="fa-solid fa-layer-group"
-          title="暂无匹配记录"
-          description="调整筛选条件，或者开始新的录入"
-        >
-          <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
-            <i class="fa-solid fa-plus"></i> 录入新题目
-          </BaseButton>
-        </EmptyState>
-
-        <!-- 列表（有旧数据时保留，遮罩覆盖） -->
-        <div v-else class="space-y-4">
-        <QuestionItem
-          v-for="q in items" :key="q.id"
-          :question="q"
-          :selectable="selectMode"
-          :selected="selectedIds.has(q.id)"
-          :show-status="true"
-          @toggle-select="toggleSelect"
-        >
-          <template #actions="{ question }">
-            <button
-              @mouseenter="onMenuEnter(question.id, $event.currentTarget)"
-              @mouseleave="onMenuLeave"
-              class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
-              <i class="fa-solid fa-ellipsis text-sm"></i>
-            </button>
-            <Teleport to="body">
-              <Transition
-                enter-active-class="transition duration-150 ease-out"
-                enter-from-class="opacity-0 scale-95 -translate-y-1"
-                enter-to-class="opacity-100 scale-100 translate-y-0"
-                leave-active-class="transition duration-100 ease-in"
-                leave-from-class="opacity-100 scale-100 translate-y-0"
-                leave-to-class="opacity-0 scale-95 -translate-y-1"
-              >
-                <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle"
-                  @mouseenter="onMenuContentEnter" @mouseleave="onMenuContentLeave"
-                  class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
-                  <div class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">复习状态</div>
-                  <button @click.stop="quickMarkStatus(question, '待复习')"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                    :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'">
-                    <i class="fa-solid fa-clock text-xs"></i>待复习
-                    <i v-if="!question.review_status || question.review_status === '待复习'" class="fa-solid fa-check ml-auto text-[10px]"></i>
-                  </button>
-                  <button @click.stop="quickMarkStatus(question, '复习中')"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                    :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-400'">
-                    <i class="fa-solid fa-spinner text-xs"></i>复习中
-                    <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
-                  </button>
-                  <button @click.stop="quickMarkStatus(question, '已掌握')"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                    :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400'">
-                    <i class="fa-solid fa-circle-check text-xs"></i>已掌握
-                    <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
-                  </button>
-                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
-                  <div class="px-3 pb-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">操作</div>
-                  <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
-                    <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
-                  </button>
-                  <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
-                    <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
-                  </button>
-                  <button @click.stop="openChat(question); hoverMenuId = null"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
-                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
-                  </button>
-                  <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
-                  <button @click.stop="doDelete(question); hoverMenuId = null"
-                    class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
-                    <i class="fa-solid fa-trash-can text-xs"></i>删除题目
-                  </button>
-                </div>
-              </Transition>
-            </Teleport>
-          </template>
-
-        </QuestionItem>
-        </div>
-
-        <!-- 遮罩：筛选/翻页时覆盖旧列表，布局不跳动 -->
-        <Transition enter-active-class="transition-opacity duration-150" leave-active-class="transition-opacity duration-150" enter-from-class="opacity-0" leave-to-class="opacity-0">
-          <div v-if="loading && items.length"
-            class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-black/30">
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-white/20 dark:border-t-white/60"></div>
+    <div ref="scrollContainerRef" @scroll="handleScroll"
+      class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
+      <div class="relative z-10 flex-1 flex flex-col">
+        <!-- 搜索 + 操作按钮 + 已激活筛选 pills -->
+        <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
+          <!-- 搜索框 -->
+          <div class="relative">
+            <i
+              class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
+            <input v-model="filters.keyword" type="text" placeholder="搜索题目..."
+              class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]" />
           </div>
-        </Transition>
-      </div>
 
-      <!-- 分页控制：浮动微拟物风格 -->
-      <div v-if="totalPages > 1" class="mt-12 flex items-center justify-center gap-4">
-        <button @click="goPage(page - 1)" :disabled="page <= 1" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-          <i class="fa-solid fa-chevron-left text-sm"></i>
-        </button>
-        <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm dark:bg-white/5">
-          <template v-for="(p, i) in pageButtons" :key="i">
-            <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
-            <button v-else @click="goPage(p)" 
-              class="h-9 min-w-[36px] rounded-xl text-sm font-bold transition-all"
-              :class="p === page ? 'bg-blue-600 text-white shadow-sm dark:bg-indigo-600' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
-              {{ p }}
+          <!-- 操作按钮（推到右侧） -->
+          <div class="ml-auto flex items-center gap-1 relative">
+            <button @click.stop="toggleFilterPanel"
+              class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+              :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+              title="筛选设置">
+              <i class="fa-solid fa-sliders text-xs"></i>
             </button>
-          </template>
+
+            <BaseViewSettingsPopover v-model="filterPanelOpen" :filters="filters" :subjects="subjects"
+              :question-types="questionTypes" :tag-names="tagNames" :selected-tags="selectedTags"
+              @toggle-tag="toggleTagSelect" @reset="resetFilters" />
+
+            <button @click="toggleSelectMode"
+              class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+              :class="selectMode ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+              title="导出题目">
+              <i class="fa-solid fa-file-export text-xs"></i>
+            </button>
+          </div>
         </div>
-        <button @click="goPage(page + 1)" :disabled="page >= totalPages" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-          <i class="fa-solid fa-chevron-right text-sm"></i>
-        </button>
+
+
+        <!-- 列表区 -->
+        <div class="relative flex-1 flex flex-col">
+          <!-- 首次加载：无旧数据时显示骨架 -->
+          <QuestionItemSkeleton v-if="loading && !items.length" />
+
+          <!-- 空状态 -->
+          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group" title="暂无匹配记录"
+            description="调整筛选条件，或者开始新的录入">
+            <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
+              <i class="fa-solid fa-plus"></i> 录入新题目
+            </BaseButton>
+          </EmptyState>
+
+          <!-- 列表（有旧数据时保留，遮罩覆盖） -->
+          <div v-else class="space-y-4">
+            <QuestionItem v-for="q in items" :key="q.id" :question="q" :selectable="selectMode"
+              :selected="selectedIds.has(q.id)" :show-status="true" @toggle-select="toggleSelect">
+              <template #actions="{ question }">
+                <button @mouseenter="onMenuEnter(question.id, $event.currentTarget)" @mouseleave="onMenuLeave"
+                  class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
+                  <i class="fa-solid fa-ellipsis text-sm"></i>
+                </button>
+                <Teleport to="body">
+                  <Transition enter-active-class="transition duration-150 ease-out"
+                    enter-from-class="opacity-0 scale-95 -translate-y-1"
+                    enter-to-class="opacity-100 scale-100 translate-y-0"
+                    leave-active-class="transition duration-100 ease-in"
+                    leave-from-class="opacity-100 scale-100 translate-y-0"
+                    leave-to-class="opacity-0 scale-95 -translate-y-1">
+                    <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle" @mouseenter="onMenuContentEnter"
+                      @mouseleave="onMenuContentLeave"
+                      class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                      <div
+                        class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        复习状态</div>
+                      <button @click.stop="quickMarkStatus(question, '待复习')"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                        :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'">
+                        <i class="fa-solid fa-clock text-xs"></i>待复习
+                        <i v-if="!question.review_status || question.review_status === '待复习'"
+                          class="fa-solid fa-check ml-auto text-[10px]"></i>
+                      </button>
+                      <button @click.stop="quickMarkStatus(question, '复习中')"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                        :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-400'">
+                        <i class="fa-solid fa-spinner text-xs"></i>复习中
+                        <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                      </button>
+                      <button @click.stop="quickMarkStatus(question, '已掌握')"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
+                        :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400'">
+                        <i class="fa-solid fa-circle-check text-xs"></i>已掌握
+                        <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
+                      </button>
+                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                      <div
+                        class="px-3 pb-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        操作</div>
+                      <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
+                      </button>
+                      <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                        <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
+                      </button>
+                      <button @click.stop="openChat(question); hoverMenuId = null"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
+                        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
+                      </button>
+                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                      <button @click.stop="doDelete(question); hoverMenuId = null"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                        <i class="fa-solid fa-trash-can text-xs"></i>删除题目
+                      </button>
+                    </div>
+                  </Transition>
+                </Teleport>
+              </template>
+
+            </QuestionItem>
+          </div>
+
+          <!-- 遮罩：筛选/翻页时覆盖旧列表，布局不跳动 -->
+          <Transition enter-active-class="transition-opacity duration-150"
+            leave-active-class="transition-opacity duration-150" enter-from-class="opacity-0"
+            leave-to-class="opacity-0">
+            <div v-if="loading && items.length"
+              class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-black/30">
+              <div
+                class="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-white/20 dark:border-t-white/60">
+              </div>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- 分页控制：浮动微拟物风格 -->
+        <div v-if="totalPages > 1" class="mt-12 flex items-center justify-center gap-4">
+          <button @click="goPage(page - 1)" :disabled="page <= 1"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            <i class="fa-solid fa-chevron-left text-sm"></i>
+          </button>
+          <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm dark:bg-white/5">
+            <template v-for="(p, i) in pageButtons" :key="i">
+              <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
+              <button v-else @click="goPage(p)" class="h-9 min-w-[36px] rounded-xl text-sm font-bold transition-all"
+                :class="p === page ? 'bg-blue-600 text-white shadow-sm dark:bg-indigo-600' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
+                {{ p }}
+              </button>
+            </template>
+          </div>
+          <button @click="goPage(page + 1)" :disabled="page >= totalPages"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            <i class="fa-solid fa-chevron-right text-sm"></i>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- 选择模式浮动面板 -->
-    <SelectionPanel
-      :visible="selectMode"
-      :count="selectedIds.size"
-      @export="doExport"
-      @clear="clearSelection"
-    />
+      <!-- 选择模式浮动面板 -->
+      <SelectionPanel :visible="selectMode" :count="selectedIds.size" @export="doExport" @clear="clearSelection" />
 
 
 
-    <EditNoteDialog
-      :open="dialogOpen"
-      :field="dialogField"
-      :question="dialogQuestion"
-      :value="dialogField === 'question'
+      <EditNoteDialog :open="dialogOpen" :field="dialogField" :question="dialogQuestion" :value="dialogField === 'question'
         ? (dialogQuestion?.content_json?.filter(b => b.block_type === 'text').map(b => b.content).join('\n') || '')
         : (dialogQuestion?.[dialogField] || '')"
-      :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''"
-      :saving="dialogSaving"
-      @close="dialogOpen = false"
-      @save="onDialogSave"
-    />
-  </div>
+        :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''" :saving="dialogSaving"
+        @close="dialogOpen = false" @save="onDialogSave" />
+    </div>
   </ContentPanel>
 </template>
 
 <style scoped>
 @keyframes tagFadeIn {
-  from { opacity: 0; transform: translateY(4px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 .tag-fade-in {
   animation: tagFadeIn 0.2s ease-out both;
 }
