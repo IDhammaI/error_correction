@@ -43,7 +43,7 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     fakeProgressTimer = window.setInterval(tick, 360)
   }
 
-  const handleUpload = (files) => {
+  const handleUpload = (files, { resetSession = false } = {}) => {
     const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
     if (!uploadFiles.length) return
     uploadBusy.value = true
@@ -53,6 +53,7 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     startFakeProgress(keys)
 
     const formData = new FormData()
+    if (resetSession) formData.append('reset_session', '1')
     for (const f of uploadFiles) {
       formData.append('files', f)
       formData.append('file_key', fileKey(f))
@@ -102,6 +103,7 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     const list = Array.from(files || [])
     if (!list.length) return
     if (splitCompleted.value || splitting.value) { pushToast('error', '已分割完成，请先重新开始'); return }
+    const isFreshStart = pendingFiles.length === 0
     for (const f of list) {
       const k = fileKey(f)
       if (pendingFiles.some(x => x.key === k)) continue
@@ -113,7 +115,7 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
       uploadQueue.push(list)
       return
     }
-    handleUpload(list)
+    handleUpload(list, { resetSession: isFreshStart })
   }
 
   const doCancelFile = async (key, step) => {

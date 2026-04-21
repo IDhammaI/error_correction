@@ -77,6 +77,15 @@ const {
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
+const hasReviewContent = computed(() => {
+  if (eraseLoading.value) return true
+  if (eraseDone.value) return true
+  if (ocrLoading.value) return true
+  if (ocrDone.value) return true
+  if (splitting.value) return true
+  if (splitCompleted.value && questions.value.length > 0) return true
+  return false
+})
 
 const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
@@ -103,10 +112,16 @@ const onKeydown = (e) => {
 // ── 视图切换 ────────────────────────────────────────────
 watch(currentView, async (v) => {
   if (v === 'workspace_review') {
+    // 兜底：避免导航恢复到 review 路由但没有任何可展示数据，出现空白页。
+    if (!hasReviewContent.value) {
+      currentView.value = 'workspace'
+      step.value = S.value.UPLOAD
+      return
+    }
     await nextTick()
     setTimeout(() => { reviewStageRef.value?.triggerTypeset?.() }, 650)
   }
-})
+}, { immediate: true })
 
 // ── 生命周期 ────────────────────────────────────────────
 import { onMounted } from 'vue'

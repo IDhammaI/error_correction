@@ -196,6 +196,7 @@ def upload_file():
             }), 400
 
     try:
+        should_reset_session = str(request.form.get('reset_session', '')).strip().lower() in ('1', 'true', 'yes', 'on')
         file_keys = request.form.getlist('file_key')
         if not file_keys:
             file_keys = request.form.getlist('file_keys')
@@ -212,6 +213,8 @@ def upload_file():
 
         results_out = []
         uid = session.get('user_id')
+        if should_reset_session:
+            _clear_upload_runtime_state(uid)
         for fk, file in prepared:
             file_key = fk or f"{uuid.uuid4().hex}"
 
