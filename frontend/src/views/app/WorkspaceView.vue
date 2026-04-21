@@ -64,8 +64,8 @@ const {
 
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 
-const doReset = () => {
-  _doReset(providerOptions, selectedModel, step)
+const doReset = async () => {
+  await _doReset(providerOptions, selectedModel, step)
   step.value = S.value.UPLOAD
 }
 
@@ -86,8 +86,8 @@ const handleLoadRecord = (qs, record) => {
   nextTick(() => typesetMath())
 }
 
-const handleBack = () => {
-  doReset()
+const handleBack = async () => {
+  await doReset()
   eraseImages.value = []; eraseDone.value = false
   ocrPages.value = []; ocrDone.value = false
   currentView.value = 'workspace'

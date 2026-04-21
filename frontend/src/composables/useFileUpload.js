@@ -151,7 +151,17 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     }
   }
 
-  const doReset = (providerOptions, selectedModel, step) => {
+  const doReset = async (providerOptions, selectedModel, step) => {
+    if (activeXhr) {
+      try { activeXhr.abort() } catch (_) {}
+      activeXhr = null
+    }
+    stopFakeProgress()
+    try {
+      await api.resetUploadSession()
+    } catch (_) {
+      // 后端清理失败不阻断前端重置，避免页面卡死
+    }
     uploadBusy.value = false
     uploadReady.value = false
     splitting.value = false
