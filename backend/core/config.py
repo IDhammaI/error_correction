@@ -12,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 _CONNECTION_CACHE_TTL = 60  # 连通性检测缓存有效期（秒）
 _providers_lock = threading.Lock()  # 保护 llm_providers 并发读写
-_request_provider_context: ContextVar[dict[str, "LLMProviderConfig"] | None] = ContextVar(
-    "request_provider_context",
-    default=None,
+_request_provider_context: ContextVar[dict[str, "LLMProviderConfig"] | None] = (
+    ContextVar(
+        "request_provider_context",
+        default=None,
+    )
 )
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent  # backend/core/ → backend/
@@ -26,12 +28,14 @@ _ENV_FILE = _PROJECT_ROOT / ".env"
 # LLM Provider 配置（每个供应商一个 Config 子类，含工厂方法）
 # ---------------------------------------------------------------------------
 
+
 class LLMProviderConfig(BaseSettings):
     """单个 LLM 供应商配置基类
 
     凭据通过 load_providers_from_db() 从数据库注入。
     子类实现 create_llm() 工厂方法以创建对应的 LangChain Chat 模型。
     """
+
     model_config = SettingsConfigDict(extra="ignore")
 
     # 连接参数（从环境变量读取）
@@ -39,8 +43,8 @@ class LLMProviderConfig(BaseSettings):
     base_url: str = ""
 
     # 模型名称
-    model_name: str                         # 默认模型
-    light_model_name: str | None = None     # 轻量模型（科目识别等），未配置时回退默认
+    model_name: str  # 默认模型
+    light_model_name: str | None = None  # 轻量模型（科目识别等），未配置时回退默认
 
     # 供应商能力
     supports_function_calling: bool = True
@@ -116,6 +120,7 @@ class LLMProviderConfig(BaseSettings):
 # 按接口协议分类的供应商基类（含 create_llm 工厂方法）
 # ---------------------------------------------------------------------------
 
+
 class OpenAICompatibleConfig(LLMProviderConfig):
     """OpenAI 兼容接口供应商（DeepSeek、Qwen、Moonshot 等均可通过 base_url 接入）"""
     model_config = SettingsConfigDict(extra="ignore")
@@ -123,11 +128,22 @@ class OpenAICompatibleConfig(LLMProviderConfig):
 
     def _create_raw_client(self, timeout: int = 10):
         from openai import OpenAI
-        return OpenAI(**self._build_client_kwargs(timeout))
+        import httpx
+        from core.config import settings
+        http_client = httpx.Client(trust_env=settings.trust_env)
+        return OpenAI(**self._build_client_kwargs(timeout), http_client=http_client)
 
     def create_llm(self, *, model: str, temperature: float):
         from langchain_openai import ChatOpenAI
-        kwargs = dict(model=model, api_key=self.api_key, temperature=temperature)
+        import httpx
+        from core.config import settings
+        http_client = httpx.Client(trust_env=settings.trust_env)
+        kwargs = dict(
+            model=model, 
+            api_key=self.api_key, 
+            temperature=temperature,
+            http_client=http_client
+        )
         if self.base_url:
             kwargs["base_url"] = self.base_url
         return ChatOpenAI(**kwargs)
@@ -140,19 +156,27 @@ class AnthropicCompatibleConfig(LLMProviderConfig):
 
     def _create_raw_client(self, timeout: int = 10):
         from anthropic import Anthropic
-        return Anthropic(**self._build_client_kwargs(timeout))
+        import httpx
+        from core.config import settings
+        http_client = httpx.Client(trust_env=settings.trust_env)
+        return Anthropic(**self._build_client_kwargs(timeout), http_client=http_client)
 
     def create_llm(self, *, model: str, temperature: float):
         from langchain_anthropic import ChatAnthropic
+        import httpx
+        from core.config import settings
+        http_client = httpx.Client(trust_env=settings.trust_env)
         return ChatAnthropic(
             model=model, api_key=self.api_key,
             base_url=self.base_url or None, temperature=temperature,
+            http_client=http_client
         )
 
 
 # ---------------------------------------------------------------------------
 # 应用全局配置
 # ---------------------------------------------------------------------------
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -184,6 +208,10 @@ class Settings(BaseSettings):
     # 上传 & 请求限制
     max_file_size_mb: int = 50
     allowed_extensions: set[str] = {"pdf", "png", "jpg", "jpeg", "bmp", "tiff", "webp"}
+    daily_free_quota: int = 5
+    trust_env: bool = (
+        True  # 是否信任系统代理环境变量，Windows 下设为 False 可解 WinError 10054
+    )
 
     # 注册验证码邮件（SMTP，环境变量前缀仍为 APP_，如 APP_SMTP_HOST）
     smtp_host: str = ""
@@ -244,12 +272,20 @@ class Settings(BaseSettings):
 
         # 初始化当前生效的 LLM 供应商注册表
         if self.llm_providers is None:
-            self.llm_providers = self._clone_provider_registry(self.managed_llm_providers)
+            self.llm_providers = self._clone_provider_registry(
+                self.managed_llm_providers
+            )
         return self
 
     def ensure_dirs(self):
         """确保必要目录存在（应在应用启动入口显式调用）"""
-        for d in [self.upload_dir, self.pages_dir, self.struct_dir, self.results_dir, self.erased_dir]:
+        for d in [
+            self.upload_dir,
+            self.pages_dir,
+            self.struct_dir,
+            self.results_dir,
+            self.erased_dir,
+        ]:
             d.mkdir(parents=True, exist_ok=True)
 
     # ----- LLM 供应商查询方法 -----
@@ -271,14 +307,15 @@ class Settings(BaseSettings):
         key = self._normalize_provider(name)
 
         # 处理可能包含多个模型的字符串（取第一个作为默认）
-        if model_name and ',' in model_name:
-            model_name = [m.strip() for m in model_name.split(',') if m.strip()][0]
+        if model_name and "," in model_name:
+            model_name = [m.strip() for m in model_name.split(",") if m.strip()][0]
 
         if key == "openai":
             return OpenAICompatibleConfig(
                 api_key=api_key,
                 base_url=base_url,
-                model_name=model_name or OpenAICompatibleConfig.model_fields["model_name"].default,
+                model_name=model_name
+                or OpenAICompatibleConfig.model_fields["model_name"].default,
                 light_model_name=light_model_name or None,
                 supports_function_calling=supports_function_calling,
             )
@@ -286,7 +323,8 @@ class Settings(BaseSettings):
             return AnthropicCompatibleConfig(
                 api_key=api_key,
                 base_url=base_url,
-                model_name=model_name or AnthropicCompatibleConfig.model_fields["model_name"].default,
+                model_name=model_name
+                or AnthropicCompatibleConfig.model_fields["model_name"].default,
             )
         raise ValueError(f"不支持的模型供应商: {key}")
 
@@ -351,7 +389,9 @@ class Settings(BaseSettings):
                 base_url=cfg.base_url,
                 model_name=cfg.model_name,
                 light_model_name=cfg.light_model_name,
-                supports_function_calling=getattr(cfg, "supports_function_calling", True),
+                supports_function_calling=getattr(
+                    cfg, "supports_function_calling", True
+                ),
             )
         return cloned
 
@@ -367,8 +407,12 @@ class Settings(BaseSettings):
 
         with _providers_lock:
             self.managed_llm_providers = llm_providers
-            self.managed_ocr_config = managed_ocr_config or self._build_env_managed_ocr_config()
-            self.llm_providers = self._clone_provider_registry(self.managed_llm_providers)
+            self.managed_ocr_config = (
+                managed_ocr_config or self._build_env_managed_ocr_config()
+            )
+            self.llm_providers = self._clone_provider_registry(
+                self.managed_llm_providers
+            )
         self._clear_agent_cache()
 
     def _current_provider_registry(self) -> dict[str, LLMProviderConfig]:
@@ -376,7 +420,9 @@ class Settings(BaseSettings):
         if request_registry is not None:
             return request_registry
         with _providers_lock:
-            return self.llm_providers or self._clone_provider_registry(self.managed_llm_providers)
+            return self.llm_providers or self._clone_provider_registry(
+                self.managed_llm_providers
+            )
 
     def activate_request_providers(
         self,
@@ -393,7 +439,9 @@ class Settings(BaseSettings):
     def get_managed_provider(self, name: str) -> LLMProviderConfig:
         key = self._normalize_provider(name)
         with _providers_lock:
-            providers = self.managed_llm_providers or self._build_env_managed_llm_providers()
+            providers = (
+                self.managed_llm_providers or self._build_env_managed_llm_providers()
+            )
         if key not in providers:
             raise ValueError(f"不支持的模型供应商: {key}")
         return providers[key]
@@ -459,7 +507,11 @@ class Settings(BaseSettings):
                         base_url=provider.base_url or "",
                         model_name=provider.model_name or None,
                         light_model_name=provider.light_model_name or None,
-                        supports_function_calling=provider.supports_function_calling if hasattr(provider, 'supports_function_calling') else True,
+                        supports_function_calling=(
+                            provider.supports_function_calling
+                            if hasattr(provider, "supports_function_calling")
+                            else True
+                        ),
                     )
                     request_registry[category] = cfg
         finally:
@@ -473,11 +525,11 @@ class Settings(BaseSettings):
         """清除 agent 缓存"""
         try:
             from agents.error_correction.agent import _agent_cache, _agent_cache_lock
+
             with _agent_cache_lock:
                 _agent_cache.clear()
         except ImportError:
             pass
-
 
 
 settings = Settings()

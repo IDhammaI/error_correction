@@ -54,6 +54,14 @@ class PaddleOCRClient:
             "useChartRecognition": self.use_chart_recognition,
         }
 
+    @property
+    def _request_kwargs(self) -> Dict[str, Any]:
+        from core.config import settings
+        kwargs = {"headers": self._headers}
+        if not settings.trust_env:
+            kwargs["proxies"] = {"http": None, "https": None}
+        return kwargs
+
     # ── 同步方法 ──────────────────────────────────────────────
 
     def _submit_job(self, file_path: str) -> str:
@@ -64,7 +72,7 @@ class PaddleOCRClient:
         }
         with open(file_path, "rb") as f:
             files = {"file": f}
-            resp = requests.post(self.api_url, headers=self._headers, data=data, files=files)
+            resp = requests.post(self.api_url, data=data, files=files, **self._request_kwargs)
 
         if resp.status_code != 200:
             raise Exception(f"提交 OCR 任务失败: HTTP {resp.status_code}, {resp.text}")
@@ -82,7 +90,7 @@ class PaddleOCRClient:
             if elapsed > POLL_TIMEOUT:
                 raise TimeoutError(f"OCR 任务轮询超时（已等待 {int(elapsed)}s，上限 {POLL_TIMEOUT}s）")
 
-            resp = requests.get(url, headers=self._headers)
+            resp = requests.get(url, **self._request_kwargs)
             if resp.status_code != 200:
                 raise Exception(f"查询任务状态失败: HTTP {resp.status_code}")
 
@@ -102,7 +110,7 @@ class PaddleOCRClient:
 
     def _download_result(self, jsonl_url: str) -> List[Dict[str, Any]]:
         """下载 JSONL 结果并解析为结果列表"""
-        resp = requests.get(jsonl_url)
+        resp = requests.get(jsonl_url, **self._request_kwargs)
         resp.raise_for_status()
 
         results = []
