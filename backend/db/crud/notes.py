@@ -51,6 +51,7 @@ def save_note(
     # 创建知识点标签关联
     if knowledge_tags:
         from db.crud.tags import get_or_create_tag
+
         for tag_name in knowledge_tags:
             tag_name = tag_name.strip()
             if not tag_name:
@@ -88,12 +89,14 @@ def get_notes(
         query = query.filter(Note.subject == subject)
     if keyword:
         query = query.filter(
-            Note.title.ilike(f"%{keyword}%") |
-            Note.content_markdown.ilike(f"%{keyword}%")
+            Note.title.ilike(f"%{keyword}%")
+            | Note.content_markdown.ilike(f"%{keyword}%")
         )
     if knowledge_tag:
-        query = query.join(NoteTagMapping).join(KnowledgeTag).filter(
-            KnowledgeTag.tag_name == knowledge_tag
+        query = (
+            query.join(NoteTagMapping)
+            .join(KnowledgeTag)
+            .filter(KnowledgeTag.tag_name == knowledge_tag)
         )
 
     total = query.count()
@@ -108,9 +111,13 @@ def get_notes(
 
 def get_note_by_id(db: Session, note_id: int, user_id=None) -> Optional[Note]:
     """根据 ID 获取单条笔记"""
-    query = db.query(Note).options(
-        selectinload(Note.tags).selectinload(NoteTagMapping.tag),
-    ).filter(Note.id == note_id)
+    query = (
+        db.query(Note)
+        .options(
+            selectinload(Note.tags).selectinload(NoteTagMapping.tag),
+        )
+        .filter(Note.id == note_id)
+    )
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
     return query.first()
@@ -155,6 +162,7 @@ def update_note(
     if knowledge_tags is not None:
         db.query(NoteTagMapping).filter(NoteTagMapping.note_id == note_id).delete()
         from db.crud.tags import get_or_create_tag
+
         for tag_name in knowledge_tags:
             tag_name = tag_name.strip()
             if not tag_name:
@@ -177,4 +185,27 @@ def delete_note(db: Session, note_id: int, user_id=None) -> bool:
         return False
     db.delete(note)
     db.commit()
-    return True
+
+
+def get_note_subjects(db: Session, user_id=None) -> List[str]:
+    """获取笔记库中已有的科目列表"""
+    query = db.query(Note.subject).filter(Note.subject.isnot(None))
+    if user_id is not None:
+        query = query.filter(Note.user_id == user_id)
+    rows = query.distinct().order_by(Note.subject).all()
+    return [r[0] for r in rows]
+
+
+def get_note_tag_names(db: Session, subject: str = None, user_id=None) -> List[str]:
+    """获取笔记库中已有的知识点标签名称列表"""
+    query = (
+        db.query(KnowledgeTag.tag_name)
+        .join(NoteTagMapping)
+        .join(Note)
+        .filter(
+            Note.subject == subject if subject else True,
+            Note.user_id == user_id if user_id is not None else True,
+        )
+    )
+    rows = query.distinct().order_by(KnowledgeTag.tag_name).all()
+    return [r[0] for r in rows]

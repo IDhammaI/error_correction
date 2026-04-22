@@ -68,6 +68,21 @@ export async function updateAppConfig(config) {
   return _assertJsonSuccess(resp, '更新配置失败')
 }
 
+export async function fetchAdminSystemConfig() {
+  const resp = await fetch('/api/admin/system-config')
+  const data = await _assertJsonSuccess(resp, '获取系统配置失败')
+  return data.config
+}
+
+export async function updateAdminSystemConfig(config) {
+  const resp = await fetch('/api/admin/system-config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  return _assertJsonSuccess(resp, '更新系统配置失败')
+}
+
 export async function updateProfile(profile) {
   const resp = await fetch('/api/auth/profile', {
     method: 'PATCH',
@@ -87,7 +102,7 @@ export function uploadProfileAvatar(file, { onSuccess, onError, onAbort } = {}) 
 
   xhr.addEventListener('load', () => {
     let data = null
-    try { data = JSON.parse(xhr.responseText) } catch (_) {}
+    try { data = JSON.parse(xhr.responseText) } catch (_) { }
     _handleXhrJsonResult(
       xhr,
       data,
@@ -146,7 +161,7 @@ export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort 
 
   xhr.addEventListener('load', () => {
     let data = null
-    try { data = JSON.parse(xhr.responseText) } catch (_) {}
+    try { data = JSON.parse(xhr.responseText) } catch (_) { }
     _handleXhrJsonResult(xhr, data, '文件处理失败', onSuccess, onError)
   })
 
@@ -362,7 +377,7 @@ export function createNote(formData, { onProgress, onSuccess, onError } = {}) {
   }
   xhr.onload = () => {
     let data = null
-    try { data = JSON.parse(xhr.responseText) } catch (_) {}
+    try { data = JSON.parse(xhr.responseText) } catch (_) { }
     _handleXhrJsonResult(xhr, data, '笔记创建失败', onSuccess, onError)
   }
   xhr.onerror = () => onError?.(_createApiError('网络错误'))
@@ -414,6 +429,26 @@ export async function deleteNote(noteId) {
   const resp = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' })
   await _assertJsonSuccess(resp, '删除笔记失败')
   return true
+}
+
+/**
+ * 获取笔记库科目列表
+ */
+export async function fetchNoteSubjects() {
+  const resp = await fetch('/api/notes/subjects')
+  const data = await _assertJsonSuccess(resp, '获取科目列表失败')
+  return data.subjects
+}
+
+/**
+ * 获取笔记库知识点标签列表
+ */
+export async function fetchNoteTagNames(subject) {
+  const qs = new URLSearchParams()
+  if (subject) qs.set('subject', subject)
+  const resp = await fetch(`/api/notes/tags?${qs}`)
+  const data = await _assertJsonSuccess(resp, '获取标签列表失败')
+  return data.tags
 }
 
 // ── 独立对话 ─────────────────────────────────────────────
