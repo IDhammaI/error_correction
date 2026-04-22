@@ -17,6 +17,8 @@ import UploadStage from '@/components/workspace/UploadStage.vue'
 import ReviewStage from '@/components/workspace/ReviewStage.vue'
 import SplitHistory from '@/views/app/SplitHistoryView.vue'
 
+const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
+
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
@@ -64,8 +66,53 @@ const {
 
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 
-const doReset = () => {
-  _doReset(providerOptions, selectedModel, step)
+const clearPersistedWorkspaceState = () => {
+  try { localStorage.removeItem(WORKSPACE_STATE_KEY) } catch (_) {}
+}
+
+const savePersistedWorkspaceState = () => {
+  const shouldPersist = splitCompleted.value && questions.value.length > 0
+  if (!shouldPersist) {
+    clearPersistedWorkspaceState()
+    return
+  }
+  const payload = {
+    step: step.value,
+    splitCompleted: splitCompleted.value,
+    questions: questions.value,
+    selectedIds: Array.from(selectedIds),
+    currentView: currentView.value,
+    uploadMode: uploadMode.value,
+    savedAt: Date.now(),
+  }
+  try {
+    localStorage.setItem(WORKSPACE_STATE_KEY, JSON.stringify(payload))
+  } catch (_) {}
+}
+
+const restorePersistedWorkspaceState = async () => {
+  let raw = ''
+  try { raw = localStorage.getItem(WORKSPACE_STATE_KEY) || '' } catch (_) {}
+  if (!raw) return
+
+  let state = null
+  try { state = JSON.parse(raw) } catch (_) {}
+  if (!state || !Array.isArray(state.questions) || state.questions.length === 0) return
+
+  questions.value = state.questions
+  selectedIds.clear()
+  for (const id of (state.selectedIds || [])) selectedIds.add(id)
+  splitCompleted.value = Boolean(state.splitCompleted)
+  uploadMode.value = state.uploadMode === 'note' ? 'note' : 'exam'
+  step.value = Number(state.step) || S.value.EXPORT
+  currentView.value = 'workspace_review'
+  await nextTick()
+  setTimeout(() => { reviewStageRef.value?.triggerTypeset?.() }, 400)
+}
+
+const doReset = async () => {
+  await _doReset(providerOptions, selectedModel, step)
+  clearPersistedWorkspaceState()
   step.value = S.value.UPLOAD
 }
 
@@ -77,6 +124,16 @@ const {
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
+const restoringWorkspaceState = ref(true)
+const hasReviewContent = computed(() => {
+  if (eraseLoading.value) return true
+  if (eraseDone.value) return true
+  if (ocrLoading.value) return true
+  if (ocrDone.value) return true
+  if (splitting.value) return true
+  if (splitCompleted.value && questions.value.length > 0) return true
+  return false
+})
 
 const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
@@ -86,8 +143,8 @@ const handleLoadRecord = (qs, record) => {
   nextTick(() => typesetMath())
 }
 
-const handleBack = () => {
-  doReset()
+const handleBack = async () => {
+  await doReset()
   eraseImages.value = []; eraseDone.value = false
   ocrPages.value = []; ocrDone.value = false
   currentView.value = 'workspace'
@@ -103,14 +160,39 @@ const onKeydown = (e) => {
 // ── 视图切换 ────────────────────────────────────────────
 watch(currentView, async (v) => {
   if (v === 'workspace_review') {
+    // 首次挂载恢复期间先不做空态回退，避免 refresh 时路由在 review/workspace 间抖动。
+    if (restoringWorkspaceState.value) return
+    // 兜底：避免导航恢复到 review 路由但没有任何可展示数据，出现空白页。
+    if (!hasReviewContent.value) {
+      currentView.value = 'workspace'
+      step.value = S.value.UPLOAD
+      return
+    }
     await nextTick()
     setTimeout(() => { reviewStageRef.value?.triggerTypeset?.() }, 650)
   }
-})
+}, { immediate: true })
+
+watch(
+  [questions, splitCompleted, step, currentView, uploadMode],
+  () => savePersistedWorkspaceState(),
+  { deep: true },
+)
 
 // ── 生命周期 ────────────────────────────────────────────
 import { onMounted } from 'vue'
-onMounted(() => document.addEventListener('keydown', onKeydown))
+onMounted(async () => {
+  document.addEventListener('keydown', onKeydown)
+  try {
+    await restorePersistedWorkspaceState()
+  } finally {
+    restoringWorkspaceState.value = false
+  }
+  if (currentView.value === 'workspace_review' && !hasReviewContent.value) {
+    currentView.value = 'workspace'
+    step.value = S.value.UPLOAD
+  }
+})
 onBeforeUnmount(() => {
   stopFakeProgress()
   document.removeEventListener('keydown', onKeydown)

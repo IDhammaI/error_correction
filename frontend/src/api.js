@@ -127,6 +127,13 @@ export async function cancelFile(fileKey) {
   return _assertJsonSuccess(resp, '撤销失败')
 }
 
+export async function resetUploadSession() {
+  const resp = await fetch('/api/upload/reset', {
+    method: 'POST',
+  })
+  return _assertJsonSuccess(resp, '重置上传会话失败')
+}
+
 export function uploadFiles(formData, { onProgress, onSuccess, onError, onAbort }) {
   const xhr = new XMLHttpRequest()
   xhr.open('POST', '/api/upload', true)

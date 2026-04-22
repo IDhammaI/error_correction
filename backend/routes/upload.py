@@ -116,6 +116,39 @@ def _has_server_ocr_cache(user_id: Optional[int]) -> bool:
     return cached and os.path.exists(_ocr_cache_path(user_id))
 
 
+def _clear_upload_runtime_state(user_id: Optional[int]) -> None:
+    """清理当前用户上传链路的会话态与临时文件。"""
+    with session_lock:
+        us = get_user_session(user_id)
+        session_files = list(us.get("session_files", {}).values())
+        erased_files = list(us.get("erased_file_paths") or [])
+        us["current_thread_id"] = None
+        us["session_files"].clear()
+        us["session_file_order"].clear()
+        us["cancelled_file_keys"].clear()
+        us["erased_file_paths"] = None
+        us["ocr_cache_uses_server_ocr"] = False
+
+    for item in session_files:
+        fp = (item or {}).get("filepath")
+        if not fp:
+            continue
+        try:
+            os.remove(fp)
+        except FileNotFoundError:
+            pass
+
+    for fp in erased_files:
+        if not fp:
+            continue
+        try:
+            os.remove(fp)
+        except FileNotFoundError:
+            pass
+
+    _clear_ocr_cache(user_id)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -163,6 +196,7 @@ def upload_file():
             }), 400
 
     try:
+        should_reset_session = str(request.form.get('reset_session', '')).strip().lower() in ('1', 'true', 'yes', 'on')
         file_keys = request.form.getlist('file_key')
         if not file_keys:
             file_keys = request.form.getlist('file_keys')
@@ -179,6 +213,8 @@ def upload_file():
 
         results_out = []
         uid = session.get('user_id')
+        if should_reset_session:
+            _clear_upload_runtime_state(uid)
         for fk, file in prepared:
             file_key = fk or f"{uuid.uuid4().hex}"
 
@@ -296,6 +332,24 @@ def cancel_file():
         return jsonify({
             'success': False,
             'error': '撤销失败，请稍后重试'
+        }), 500
+
+
+@bp.route('/upload/reset', methods=['POST'])
+def reset_upload_session():
+    """重置上传流程会话状态，避免历史文件串入下一次上传。"""
+    try:
+        uid = session.get('user_id')
+        _clear_upload_runtime_state(uid)
+        return jsonify({
+            'success': True,
+            'message': '上传会话已重置',
+        })
+    except Exception:
+        logger.exception("重置上传会话失败")
+        return jsonify({
+            'success': False,
+            'error': '重置失败，请稍后重试'
         }), 500
 
 
@@ -466,10 +520,16 @@ def run_ocr():
         _mark_server_ocr_cache(user_id, False)
 
         # 构建前端预览数据：每页的图片 + bbox 标注
+        from pathlib import Path
+
         preview_pages = []
         page_idx = 0
-        for result in raw_ocr_results:
-            for layout_page in result.get("layoutParsingResults", []):
+        source_inputs = [*pdf_paths, *image_only]
+        for source_idx, result in enumerate(raw_ocr_results):
+            source_path = source_inputs[source_idx] if source_idx < len(source_inputs) else None
+            source_name = Path(source_path).stem if source_path else None
+            is_pdf_source = bool(source_path and str(source_path).lower().endswith(".pdf"))
+            for layout_idx, layout_page in enumerate(result.get("layoutParsingResults", [])):
                 pruned = layout_page.get("prunedResult", {})
                 page_w = pruned.get("width", 1)
                 page_h = pruned.get("height", 1)
@@ -486,8 +546,24 @@ def run_ocr():
                         "bbox": bbox,
                     })
 
-                image_path = all_image_paths[page_idx] if page_idx < len(all_image_paths) else None
-                image_url = f"/api/image/{os.path.basename(image_path)}" if image_path else None
+                image_url = None
+                # 图片输入优先显示原图；PDF 优先尝试 OCR 产出的页面图（_save_images 保存到 struct_dir）。
+                if source_path and not is_pdf_source and layout_idx == 0:
+                    image_url = f"/api/image/{os.path.basename(source_path)}"
+                else:
+                    output_images = layout_page.get("outputImages", {}) or {}
+                    if source_name and output_images:
+                        first_key = next(iter(output_images.keys()), None)
+                        if first_key:
+                            rendered_name = f"{first_key}_{source_name}_{layout_idx}.jpg"
+                            rendered_path = os.path.join(str(settings.struct_dir), rendered_name)
+                            if os.path.exists(rendered_path):
+                                image_url = f"/api/image/{rendered_name}"
+
+                if not image_url and page_idx < len(all_image_paths):
+                    fallback_path = all_image_paths[page_idx]
+                    if not str(fallback_path).lower().endswith(".pdf"):
+                        image_url = f"/api/image/{os.path.basename(fallback_path)}"
 
                 preview_pages.append({
                     "page_index": page_idx,
