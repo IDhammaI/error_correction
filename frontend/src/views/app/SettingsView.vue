@@ -400,7 +400,7 @@ const loadConfig = async () => {
     } else {
       openaiProviders.value = []
     }
-    activeOpenaiId.value = cfg.active_openai_id || openaiProviders.value[0]?.id || null
+    activeOpenaiId.value = cfg.active_openai_id ?? null
 
     if (cfg.anthropic_providers && cfg.anthropic_providers.length > 0) {
       anthropicProviders.value = cfg.anthropic_providers.map(p => makeAnthropicProvider(p))
@@ -409,7 +409,7 @@ const loadConfig = async () => {
     } else {
       anthropicProviders.value = []
     }
-    activeAnthropicId.value = cfg.active_anthropic_id || anthropicProviders.value[0]?.id || null
+    activeAnthropicId.value = cfg.active_anthropic_id ?? null
 
     if (cfg.paddleocr_providers && cfg.paddleocr_providers.length > 0) {
       paddleocrProviders.value = cfg.paddleocr_providers.map(p => makePaddleOCRProvider(p))
@@ -418,7 +418,7 @@ const loadConfig = async () => {
     } else {
       paddleocrProviders.value = []
     }
-    activePaddleocrId.value = cfg.active_paddleocr_id || paddleocrProviders.value[0]?.id || null
+    activePaddleocrId.value = cfg.active_paddleocr_id ?? null
   } catch (e) {
     pushToast('error', '加载配置失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -472,9 +472,9 @@ const loadSystemConfig = async () => {
     systemOpenaiProviders.value = (cfg.openai_providers || []).map(p => makeOpenAIProvider(p))
     systemAnthropicProviders.value = (cfg.anthropic_providers || []).map(p => makeAnthropicProvider(p))
     systemPaddleocrProviders.value = (cfg.paddleocr_providers || []).map(p => makePaddleOCRProvider(p))
-    systemActiveOpenaiId.value = cfg.active_openai_id || systemOpenaiProviders.value[0]?.id || null
-    systemActiveAnthropicId.value = cfg.active_anthropic_id || systemAnthropicProviders.value[0]?.id || null
-    systemActivePaddleocrId.value = cfg.active_paddleocr_id || systemPaddleocrProviders.value[0]?.id || null
+    systemActiveOpenaiId.value = cfg.active_openai_id ?? null
+    systemActiveAnthropicId.value = cfg.active_anthropic_id ?? null
+    systemActivePaddleocrId.value = cfg.active_paddleocr_id ?? null
     systemConfigLoaded.value = true
   } catch (e) {
     pushToast('error', '加载系统托管配置失败: ' + (e instanceof Error ? e.message : String(e)))
