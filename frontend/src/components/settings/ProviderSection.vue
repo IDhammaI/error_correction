@@ -70,7 +70,7 @@ const emit = defineEmits(['add', 'toggle-active', 'edit', 'remove'])
         </template>
 
         <template #right>
-          <div class="flex items-center gap-4 px-3 py-1.5">
+          <div class="ml-auto flex items-center justify-end gap-4 px-3 py-1.5">
             <!-- 状态标签 -->
             <div class="flex items-center gap-2">
               <span v-if="activeId === provider.id" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 ring-1 ring-inset ring-gray-500/10 dark:bg-white/10 dark:text-[#f7f8f8] dark:ring-white/20">
