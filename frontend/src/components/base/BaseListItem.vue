@@ -62,8 +62,10 @@ defineProps({
         </span>
         
         <!-- 当存在默认插槽（如 input）时，让其占据合理的宽度并靠右对齐 -->
-        <div v-if="$slots.default" class="w-44 max-w-full">
-          <slot />
+        <div v-if="$slots.right || $slots.default" class="w-44 max-w-full">
+          <slot name="right">
+            <slot />
+          </slot>
         </div>
 
         <i v-if="showArrow" class="fa-solid fa-chevron-right text-[10px] text-gray-400 dark:text-[#62666d] ml-1 shrink-0"></i>
