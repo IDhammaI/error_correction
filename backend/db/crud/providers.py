@@ -172,6 +172,17 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
                 "use_chart_recognition": item.get("use_chart_recognition", False),
             })
 
+    valid_ids_by_category = {
+        category: {item["id"] for item in items_to_save if item["category"] == category}
+        for category in active_ids
+    }
+    for category, active_id in list(active_ids.items()):
+        if active_id not in valid_ids_by_category.get(category, set()):
+            active_ids[category] = None
+
+    for item in items_to_save:
+        item["is_active"] = item["id"] == active_ids.get(item["category"])
+
     # 删除已移除的 provider
     for pid in set(existing.keys()) - submitted_ids:
         db.delete(existing[pid])
@@ -231,6 +242,17 @@ def save_system_providers(db: Session, data: dict) -> None:
                 "use_doc_unwarping": item.get("use_doc_unwarping", False),
                 "use_chart_recognition": item.get("use_chart_recognition", False),
             })
+
+    valid_ids_by_category = {
+        category: {item["id"] for item in items_to_save if item["category"] == category}
+        for category in active_ids
+    }
+    for category, active_id in list(active_ids.items()):
+        if active_id not in valid_ids_by_category.get(category, set()):
+            active_ids[category] = None
+
+    for item in items_to_save:
+        item["is_active"] = item["id"] == active_ids.get(item["category"])
 
     for pid in set(existing.keys()) - submitted_ids:
         db.delete(existing[pid])

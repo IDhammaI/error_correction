@@ -21,7 +21,9 @@ import pytest
 from tests.conftest import make_question
 from db.crud import (
     compute_content_hash,
+    get_active_provider,
     save_questions_to_db,
+    save_user_providers,
     get_existing_subjects,
     get_existing_tag_names,
     get_or_create_tag,
@@ -38,6 +40,7 @@ from db.crud import (
     get_review_status_stats,
     get_daily_counts,
 )
+from db.models import ProviderConfig, User
 
 
 # ═══════════════════════════════════════════════════════════
@@ -607,3 +610,71 @@ class TestGetDailyCounts:
         # 今天应该有 1 条
         total = sum(d['count'] for d in result)
         assert total == 1
+
+
+class TestProviderSelection:
+    def test_save_user_providers_allows_clearing_active_provider(self, db):
+        user = User(id=1, username="test", email="test@example.com", password_hash="x")
+        db.add(user)
+        db.add(ProviderConfig(
+            id="openai-1",
+            user_id=user.id,
+            category="openai",
+            name="OpenAI",
+            is_active=True,
+            api_key="sk-test",
+            base_url="https://example.com",
+            model_name="gpt-5.4",
+        ))
+        db.commit()
+
+        save_user_providers(db, user.id, {
+            "openai_providers": [{
+                "id": "openai-1",
+                "name": "OpenAI",
+                "base_url": "https://example.com",
+                "model_name": "gpt-5.4",
+            }],
+            "anthropic_providers": [],
+            "paddleocr_providers": [],
+            "active_openai_id": None,
+            "active_anthropic_id": None,
+            "active_paddleocr_id": None,
+        })
+
+        provider = db.query(ProviderConfig).filter(ProviderConfig.id == "openai-1").one()
+        assert provider.is_active is False
+        assert get_active_provider(db, user.id, "openai") is None
+
+    def test_save_user_providers_ignores_invalid_active_provider_id(self, db):
+        user = User(id=1, username="test", email="test@example.com", password_hash="x")
+        db.add(user)
+        db.add(ProviderConfig(
+            id="openai-1",
+            user_id=user.id,
+            category="openai",
+            name="OpenAI",
+            is_active=True,
+            api_key="sk-test",
+            base_url="https://example.com",
+            model_name="gpt-5.4",
+        ))
+        db.commit()
+
+        save_user_providers(db, user.id, {
+            "openai_providers": [{
+                "id": "openai-1",
+                "name": "OpenAI",
+                "base_url": "https://example.com",
+                "model_name": "gpt-5.4",
+            }],
+            "anthropic_providers": [],
+            "paddleocr_providers": [],
+            "active_openai_id": "missing-id",
+            "active_anthropic_id": None,
+            "active_paddleocr_id": None,
+        })
+
+        provider = db.query(ProviderConfig).filter(ProviderConfig.id == "openai-1").one()
+        assert provider.is_active is False
+        assert get_active_provider(db, user.id, "openai") is None
