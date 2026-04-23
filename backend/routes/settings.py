@@ -7,6 +7,7 @@ import requests as http_requests
 from flask import Blueprint, request, jsonify, session
 
 from core.config import settings
+from core.model_selection import build_managed_provider_context, list_model_options
 from db import SessionLocal
 from db import crud
 from db.models import ProviderConfig
@@ -22,39 +23,8 @@ def _require_admin():
     return None
 
 
-def _managed_llm_from_provider(category: str, provider):
-    return settings.build_provider_config(
-        category,
-        api_key=provider.api_key or "",
-        base_url=provider.base_url or "",
-        model_name=provider.model_name or None,
-        light_model_name=getattr(provider, "light_model_name", None) or None,
-        supports_function_calling=getattr(provider, "supports_function_calling", True),
-    )
-
-
-def _managed_ocr_from_provider(provider):
-    return settings.build_ocr_config(
-        api_url=provider.base_url or "",
-        token=provider.api_key or "",
-        model=provider.model_name or "PaddleOCR-VL-1.5",
-        use_doc_orientation=getattr(provider, "use_doc_orientation", False),
-        use_doc_unwarping=getattr(provider, "use_doc_unwarping", False),
-        use_chart_recognition=getattr(provider, "use_chart_recognition", False),
-    )
-
-
 def _apply_system_provider_context(db):
-    managed_llm = {}
-    for category in ("openai", "anthropic"):
-        provider = crud.get_active_system_provider(db, category)
-        if provider and provider.api_key:
-            managed_llm[category] = _managed_llm_from_provider(category, provider)
-
-    ocr_provider = crud.get_active_system_provider(db, "paddleocr")
-    managed_ocr = _managed_ocr_from_provider(ocr_provider) if ocr_provider else {}
-    settings.apply_managed_providers(managed_llm, managed_ocr)
-    return managed_llm, managed_ocr
+    return build_managed_provider_context(db)
 
 
 @bp.route("/models/erase", methods=["POST"])
@@ -204,6 +174,22 @@ def get_status():
     except Exception as e:
         logger.exception("获取系统状态失败")
         return jsonify({"success": False, "error": "获取系统状态失败，请稍后重试"}), 500
+
+
+@bp.route("/models/options", methods=["GET"])
+def get_model_options():
+    """获取工作台和对话页使用的模型下拉选项。"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "请先登录"}), 401
+
+    try:
+        with SessionLocal() as db:
+            payload = list_model_options(db, user_id)
+        return jsonify({"success": True, **payload})
+    except Exception:
+        logger.exception("获取模型选项失败")
+        return jsonify({"success": False, "error": "获取模型选项失败"}), 500
 
 
 @bp.route("/config", methods=["GET"])
