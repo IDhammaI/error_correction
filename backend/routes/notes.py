@@ -19,7 +19,9 @@ from core.quota import (
     quota_exceeded_response,
     uses_server_llm,
     uses_server_ocr,
+    uses_server_llm_selection,
 )
+from core.model_selection import LLMSelectionError, resolve_llm_selection
 from db import SessionLocal
 from db import crud
 
@@ -130,13 +132,34 @@ def create_note():
     user_id = session.get("user_id")
     model_provider = request.form.get("model_provider", "openai")
     model_name = request.form.get("model_name") or None
+    provider_source = request.form.get("provider_source") or None
+    provider_id = request.form.get("provider_id") or None
 
     try:
         should_consume_quota = False
         with SessionLocal() as db:
+            # 1. 解析模型选择
+            try:
+                llm_selection = resolve_llm_selection(
+                    db,
+                    user_id=user_id,
+                    category=model_provider,
+                    model_name=model_name,
+                    provider_source=provider_source,
+                    provider_id=provider_id,
+                )
+            except LLMSelectionError as e:
+                return (
+                    jsonify({"success": False, "code": e.code, "error": e.message}),
+                    e.status_code,
+                )
+
             if user_id:
                 uses_server_side_ocr = uses_server_ocr(db, user_id)
-                uses_server_side_llm = uses_server_llm(db, user_id, model_provider)
+                # 根据解析出的 source 决定是否扣减额度
+                uses_server_side_llm = uses_server_llm_selection(
+                    llm_selection["source"]
+                )
                 should_consume_quota = uses_server_side_ocr or uses_server_side_llm
                 if should_consume_quota:
                     quota_user = crud.get_user_by_id(db, user_id)
@@ -208,8 +231,11 @@ def create_note():
         # 3. LLM 整理
         from agents.note import invoke_note_organize
 
+        # 使用解析出的 credentials 调用代理
         result = invoke_note_organize(
-            ocr_text, provider=model_provider, model_name=model_name
+            ocr_text,
+            provider=llm_selection["category"],
+            model_name=llm_selection["model_name"],
         )
 
         # 4. 保存到数据库

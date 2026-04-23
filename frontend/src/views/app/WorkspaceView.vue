@@ -23,7 +23,7 @@ const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const {
-  statusLoading, statusError, selectedModel, selectedProvider,
+  statusLoading, statusError,
   providerOptions, hasConfiguredModel, statusPills,
   modelOptionsData, selectedLlmOptionId, selectedLlmOption, doFetchModelOptions
 } = useSystemStatus()
@@ -122,7 +122,7 @@ const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
   ocrLoading, ocrPages, ocrDone,
   startProcess, doErase, doOcr, doSplit, doExport, doSaveToDb,
-} = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath)
+} = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
 const restoringWorkspaceState = ref(true)

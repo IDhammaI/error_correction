@@ -20,7 +20,7 @@ const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 const route = useRoute()
 const router = useRouter()
 const { pushToast } = useToast()
-const { selectedProvider, selectedModel } = useSystemStatus()
+const { selectedLlmOption } = useSystemStatus()
 const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
 
 const noteContentRef = ref(null)
@@ -134,8 +134,16 @@ function handleFiles(e) {
 
   const formData = new FormData()
   for (const f of files) formData.append('files', f)
-  formData.append('model_provider', selectedProvider.value)
-  if (selectedModel.value) formData.append('model_name', selectedModel.value)
+  formData.append('model_provider', selectedLlmOption.value?.category || 'openai')
+  if (selectedLlmOption.value?.model_name) {
+    formData.append('model_name', selectedLlmOption.value.model_name)
+  }
+  if (selectedLlmOption.value?.source) {
+    formData.append('provider_source', selectedLlmOption.value.source)
+  }
+  if (selectedLlmOption.value?.provider_id) {
+    formData.append('provider_id', selectedLlmOption.value.provider_id)
+  }
 
   api.createNote(formData, {
     onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
@@ -333,7 +341,7 @@ async function doDelete(noteId) {
                     class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{
                       tag }}</span>
                   <span class="ml-auto text-xs text-gray-400 dark:text-[#62666d]">{{ note.updated_at?.slice(0, 10)
-                    }}</span>
+                  }}</span>
                 </div>
               </BaseCard>
             </div>

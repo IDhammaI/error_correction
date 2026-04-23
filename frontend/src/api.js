@@ -301,11 +301,17 @@ export async function fetchDashboardStats(subject) {
   return _assertJsonSuccess(resp, '获取统计数据失败')
 }
 
-export async function requestAiAnalysis(questionIds) {
+export async function requestAiAnalysis(questionIds, { providerSource, providerId, modelProvider, modelName } = {}) {
+  const body = { question_ids: questionIds }
+  if (modelProvider) body.model_provider = modelProvider
+  if (modelName) body.model_name = modelName
+  if (providerSource) body.provider_source = providerSource
+  if (providerId) body.provider_id = providerId
+  
   const resp = await fetch('/api/ai-analysis', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question_ids: questionIds }),
+    body: JSON.stringify(body),
   })
   return _assertJsonSuccess(resp, 'AI 分析请求失败')
 }

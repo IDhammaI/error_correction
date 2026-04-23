@@ -139,8 +139,16 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       for (const pf of pendingFiles) {
         if (pf.file) formData.append('files', pf.file)
       }
-      formData.append('model_provider', selectedProvider.value)
-      if (selectedModel.value) formData.append('model_name', selectedModel.value)
+      formData.append('model_provider', selectedLlmOption.value?.category || 'openai')
+      if (selectedLlmOption.value?.model_name) {
+        formData.append('model_name', selectedLlmOption.value.model_name)
+      }
+      if (selectedLlmOption.value?.source) {
+        formData.append('provider_source', selectedLlmOption.value.source)
+      }
+      if (selectedLlmOption.value?.provider_id) {
+        formData.append('provider_id', selectedLlmOption.value.provider_id)
+      }
 
       await new Promise((resolve, reject) => {
         api.createNote(formData, {
