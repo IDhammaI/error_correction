@@ -34,6 +34,7 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
 const loading = ref(false)
 const creating = ref(false)
 const createProgress = ref(0)
+const isDeleting = ref(false)
 
 // 筛选
 const filters = reactive({
@@ -184,6 +185,7 @@ async function openNote(note) {
 }
 
 async function loadNoteDetail(id) {
+  if (isDeleting.value) return // 正在删除时，不加载详情
   try {
     const full = await api.fetchNote(id)
     selectedNote.value = full
@@ -193,8 +195,11 @@ async function loadNoteDetail(id) {
       if (noteContentRef.value) typesetMath(noteContentRef.value)
     }, 100)
   } catch (e) {
-    pushToast('error', '无法加载笔记数据，请检查网络或笔记是否存在')
-    closeDetail()
+    // 只有在非删除状态下才报错，且报错后也确保回到列表
+    if (!isDeleting.value) {
+      pushToast('error', '无法加载笔记数据，请检查网络或笔记是否存在')
+      closeDetail()
+    }
   }
 }
 
@@ -252,13 +257,23 @@ async function saveEdit() {
 // ---- 删除 ----
 async function doDelete(noteId) {
   if (!confirm('确认删除这条笔记？')) return
+  isDeleting.value = true
   try {
     await api.deleteNote(noteId)
-    pushToast('success', '已删除')
-    if (selectedNote.value?.id === noteId) closeDetail()
+    pushToast('success', '笔记删除成功')
+    // 成功后立即跳转并重置状态，防止触发重复加载
+    closeDetail()
     loadNotes()
   } catch (e) {
-    pushToast('error', e.message)
+    // 如果是 404，说明笔记已经不存在了，直接跳转回列表即可
+    if (e.status === 404 || e.message?.includes('不存在')) {
+      closeDetail()
+      loadNotes()
+    } else {
+      pushToast('error', e.message)
+    }
+  } finally {
+    isDeleting.value = false
   }
 }
 </script>
