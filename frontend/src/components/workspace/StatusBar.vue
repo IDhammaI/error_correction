@@ -234,17 +234,19 @@ const modelStatusError = computed(() => {
                     active ? 'bg-gray-100 dark:bg-white/[0.05]' : '',
                     optDisabled ? 'opacity-40 cursor-not-allowed' : ''
                   ]">
-                    <span class="block truncate text-sm transition-colors min-w-0"
-                      :class="[selected ? 'font-medium text-indigo-600 dark:text-white' : 'font-medium text-gray-700 dark:text-[#d0d6e0]']"
+                    <div class="flex items-center justify-between gap-2 min-w-0"
                       @mouseenter="showTooltip($event, item.label)" @mouseleave="hideTooltip">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 min-w-0">
                         <img v-if="modelLogos[item.provider]" :src="modelLogos[item.provider]"
-                          class="h-3 w-3 object-contain opacity-60" alt="" />
-                        {{ item.label }}
+                          class="h-3.5 w-3.5 object-contain opacity-60 shrink-0" alt="" />
+                        <span class="truncate text-sm transition-colors"
+                          :class="[selected ? 'font-medium text-indigo-600 dark:text-white' : 'font-medium text-gray-700 dark:text-[#d0d6e0]']">
+                          {{ item.label }}
+                        </span>
                       </div>
                       <span v-if="item.isDefault"
-                        class="ml-1 text-[10px] text-gray-400 dark:text-[#62666d] transition-colors">默认</span>
-                    </span>
+                        class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[9px] font-bold text-gray-400 dark:bg-white/5 dark:text-[#62666d] transition-colors">默认</span>
+                    </div>
                     <span v-if="selected"
                       class="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 dark:text-white transition-colors">
                       <i class="fa-solid fa-check text-sm"></i>

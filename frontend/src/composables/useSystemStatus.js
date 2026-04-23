@@ -80,6 +80,11 @@ const doFetchModelOptions = async () => {
         localStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
       }
     }
+
+    // 确保 selectedModel 也被初始化同步
+    if (selectedLlmOption.value) {
+      selectedModel.value = selectedLlmOption.value.model_name
+    }
   } catch (e) {
     console.error('获取模型选项失败', e)
   } finally {
@@ -90,6 +95,11 @@ const doFetchModelOptions = async () => {
 watch(selectedLlmOptionId, (newId) => {
   if (newId) {
     localStorage.setItem('selected_llm_option_id', newId)
+
+    // 同步更新旧的 selectedModel 状态，以兼容设置页等旧逻辑
+    if (selectedLlmOption.value) {
+      selectedModel.value = selectedLlmOption.value.model_name
+    }
   }
 })
 
