@@ -232,11 +232,32 @@ def create_note():
         from agents.note import invoke_note_organize
 
         # 使用解析出的 credentials 调用代理
-        result = invoke_note_organize(
-            ocr_text,
-            provider=llm_selection["category"],
-            model_name=llm_selection["model_name"],
-        )
+        try:
+            result = invoke_note_organize(
+                ocr_text,
+                provider=llm_selection["category"],
+                model_name=llm_selection["model_name"],
+                api_key=llm_selection["api_key"],
+                base_url=llm_selection["base_url"],
+                supports_function_calling=llm_selection["supports_function_calling"],
+            )
+        except Exception as e:
+            msg = str(e)
+            if "暂不支持该模型" in msg or "errorCode" in msg and "40405" in msg:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "code": "MODEL_NOT_SUPPORTED",
+                            "error": (
+                                "所选模型在当前 API 提供方不受支持。请检查该配置的 Base URL 与模型名称是否匹配，"
+                                "或在设置中更换为可用模型后重试。"
+                            ),
+                        }
+                    ),
+                    400,
+                )
+            raise
 
         # 4. 保存到数据库
         with SessionLocal() as db:

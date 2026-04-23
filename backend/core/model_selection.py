@@ -286,6 +286,9 @@ def resolve_llm_selection(
         "provider_id": provider.id,
         "provider_name": provider.name or category.upper(),
         "model_name": selected_model_name,
+        "api_key": provider.api_key or "",
+        "base_url": provider.base_url or "",
+        "supports_function_calling": getattr(provider, "supports_function_calling", True),
         "managed_llm": managed_llm,
         "managed_ocr": managed_ocr,
     }
