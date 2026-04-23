@@ -7,6 +7,10 @@ const systemStatus = ref(null)
 const statusError = ref('')
 const selectedModel = ref('')
 
+const modelOptionsLoading = ref(false)
+const modelOptionsData = ref(null)
+const selectedLlmOptionId = ref(localStorage.getItem('selected_llm_option_id') || '')
+
 const providerOptions = computed(() => {
   const s = systemStatus.value
   return s && s.available_models ? s.available_models : []
@@ -61,6 +65,39 @@ const doFetchStatus = async () => {
   }
 }
 
+const doFetchModelOptions = async () => {
+  modelOptionsLoading.value = true
+  try {
+    const data = await api.fetchModelOptions()
+    modelOptionsData.value = data
+
+    // 如果没有选中项，或者选中项不在当前可用列表中，则使用默认选项
+    const options = data.options || []
+    const isValidSelection = selectedLlmOptionId.value && options.some(o => o.option_id === selectedLlmOptionId.value && o.available)
+    if (!isValidSelection) {
+      selectedLlmOptionId.value = data.default_option_id || (options[0]?.option_id || '')
+      if (selectedLlmOptionId.value) {
+        localStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
+      }
+    }
+  } catch (e) {
+    console.error('获取模型选项失败', e)
+  } finally {
+    modelOptionsLoading.value = false
+  }
+}
+
+watch(selectedLlmOptionId, (newId) => {
+  if (newId) {
+    localStorage.setItem('selected_llm_option_id', newId)
+  }
+})
+
+const selectedLlmOption = computed(() => {
+  if (!modelOptionsData.value || !modelOptionsData.value.options) return null
+  return modelOptionsData.value.options.find(o => o.option_id === selectedLlmOptionId.value) || null
+})
+
 /**
  * useSystemStatus — 系统状态单例 composable
  * 任何组件调用都返回同一份响应式状态
@@ -69,6 +106,7 @@ export function useSystemStatus() {
   return {
     statusLoading, systemStatus, statusError, selectedModel,
     providerOptions, hasConfiguredModel, selectedProvider, statusPills,
-    doFetchStatus,
+    modelOptionsLoading, modelOptionsData, selectedLlmOptionId, selectedLlmOption,
+    doFetchStatus, doFetchModelOptions,
   }
 }

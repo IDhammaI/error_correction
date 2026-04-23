@@ -12,14 +12,16 @@ import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 const { pushToast } = useToast()
-const { selectedProvider, selectedModel } = useSystemStatus()
+const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
 const { currentView } = useWorkspaceNav()
 
 const sessionId = computed(() => activeAiChatId.value)
-const modelProvider = computed(() => selectedProvider.value)
-const modelName = computed(() => selectedModel.value)
+const modelProvider = computed(() => selectedLlmOption.value?.category || 'openai')
+const modelName = computed(() => selectedLlmOption.value?.model_name || '')
+const providerSource = computed(() => selectedLlmOption.value?.source || '')
+const providerId = computed(() => selectedLlmOption.value?.provider_id || '')
 const username = computed(() => currentUser.value?.username || '')
 
 // ---- 对话消息 ----
@@ -77,7 +79,7 @@ async function sendMessage() {
       modelProvider.value,
       null,
       modelName.value,
-      { deepThink: useDeepThink },
+      { deepThink: useDeepThink, providerSource: providerSource.value, providerId: providerId.value },
     )
 
     if (!resp.ok) {
@@ -127,7 +129,7 @@ async function sendMessage() {
           if (payload.error) {
             lastMsg().content += `\n\n⚠️ ${payload.error}`
           }
-        } catch (_) {}
+        } catch (_) { }
       }
     }
 
@@ -167,138 +169,118 @@ function autoResize() {
 
 <template>
   <ContentPanel title="AI 对话">
-  <div class="flex flex-col h-full">
-    <!-- 消息区域（含空状态） -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
-      <div class="mx-auto max-w-5xl px-4 sm:px-8">
+    <div class="flex flex-col h-full">
+      <!-- 消息区域（含空状态） -->
+      <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
+        <div class="mx-auto max-w-5xl px-4 sm:px-8">
 
-        <!-- 空状态：居中问候 -->
-        <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center" style="min-height: calc(100vh - 200px)">
-          <p class="text-2xl font-bold text-gray-900 dark:text-[#f7f8f8]">
-            Hi，{{ username || '同学' }}
-          </p>
-          <p class="mt-2 text-sm text-gray-500 dark:text-[#62666d]">有问题，尽管问</p>
+          <!-- 空状态：居中问候 -->
+          <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center"
+            style="min-height: calc(100vh - 200px)">
+            <p class="text-2xl font-bold text-gray-900 dark:text-[#f7f8f8]">
+              Hi，{{ username || '同学' }}
+            </p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-[#62666d]">有问题，尽管问</p>
+          </div>
+
+          <!-- 消息列表 -->
+          <div v-else class="space-y-6 py-6">
+            <div v-for="(msg, i) in messages" :key="i" class="flex"
+              :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
+                :class="msg.role === 'user'
+                  ? 'bg-indigo-500 text-white rounded-br-lg shadow-sm dark:bg-[rgb(129,115,223)] dark:text-white dark:border-none'
+                  : 'bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'">
+                <!-- 思考过程折叠面板 -->
+                <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
+                  <button @click="msg.reasoningOpen = !msg.reasoningOpen"
+                    class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
+                    <i class="fa-solid fa-brain text-indigo-500 dark:text-[rgb(129,115,223)]"></i>
+                    <span>{{ streaming && i === messages.length - 1 && !msg.content ? '思考中...' : '已深度思考' }}</span>
+                    <i class="fa-solid text-[10px] transition-transform"
+                      :class="msg.reasoningOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </button>
+                  <Transition enter-active-class="transition-all duration-200 ease-out"
+                    enter-from-class="opacity-0 max-h-0" enter-to-class="opacity-100 max-h-[400px]"
+                    leave-active-class="transition-all duration-150 ease-in"
+                    leave-from-class="opacity-100 max-h-[400px]" leave-to-class="opacity-0 max-h-0">
+                    <div v-if="msg.reasoningOpen"
+                      class="mt-2 overflow-auto max-h-[400px] rounded-xl bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 leading-relaxed custom-scrollbar whitespace-pre-wrap dark:bg-white/[0.03] dark:border-none dark:text-[#8a8f98]">
+                      {{ msg.reasoning }}</div>
+                  </Transition>
+                </div>
+                <!-- 正文内容 -->
+                <div v-if="msg.role === 'assistant' && !(streaming && i === messages.length - 1 && !msg.content)"
+                  v-html="renderMarkdown(msg.content)" class="prose prose-sm max-w-none dark:prose-invert"></div>
+                <div v-else-if="msg.role === 'assistant' && streaming && i === messages.length - 1 && !msg.content"
+                  class="flex gap-1">
+                  <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce"
+                    style="animation-delay: 0ms"></span>
+                  <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce"
+                    style="animation-delay: 150ms"></span>
+                  <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce"
+                    style="animation-delay: 300ms"></span>
+                </div>
+                <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
+              </div>
+            </div>
+          </div>
+
         </div>
+      </div>
 
-        <!-- 消息列表 -->
-        <div v-else class="space-y-6 py-6">
-          <div v-for="(msg, i) in messages" :key="i" class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-            <div
-              class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
-              :class="msg.role === 'user'
-                ? 'bg-indigo-500 text-white rounded-br-lg shadow-sm dark:bg-[rgb(129,115,223)] dark:text-white dark:border-none'
-                : 'bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'"
-            >
-              <!-- 思考过程折叠面板 -->
-              <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
-                <button
-                  @click="msg.reasoningOpen = !msg.reasoningOpen"
-                  class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors"
-                >
-                  <i class="fa-solid fa-brain text-indigo-500 dark:text-[rgb(129,115,223)]"></i>
-                  <span>{{ streaming && i === messages.length - 1 && !msg.content ? '思考中...' : '已深度思考' }}</span>
-                  <i class="fa-solid text-[10px] transition-transform" :class="msg.reasoningOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+      <!-- 底部输入区域 -->
+      <div class="shrink-0 px-4 pb-4 pt-2 sm:px-8">
+        <div class="mx-auto max-w-5xl">
+          <div
+            class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-white/[0.08] dark:bg-white/[0.03]">
+            <!-- 文本输入 -->
+            <textarea ref="textareaRef" v-model="inputText" @keydown="handleKeydown" @input="autoResize"
+              :disabled="streaming || !sessionId" rows="1"
+              :placeholder="sessionId ? '有问题，尽管问，shift+enter 换行' : '请先新建或选择一个对话'"
+              class="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none text-gray-900 placeholder-gray-400 dark:text-[#f7f8f8] dark:placeholder-[#62666d]"
+              style="min-height: 24px; max-height: 200px;"></textarea>
+
+            <!-- 底部工具栏 -->
+            <div class="flex items-center justify-between px-3 pb-2.5 pt-1">
+              <!-- 左侧功能按钮 -->
+              <div class="flex items-center gap-0.5">
+                <button @click="deepThink = !deepThink"
+                  class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  :class="deepThink
+                    ? 'bg-indigo-50 text-indigo-600 dark:bg-[rgb(129,115,223)]/15 dark:text-[rgb(145,132,235)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'" title="深度思考">
+                  <i class="fa-solid fa-brain text-sm"></i>
+                  <span class="hidden sm:inline">深度思考</span>
                 </button>
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out"
-                  enter-from-class="opacity-0 max-h-0"
-                  enter-to-class="opacity-100 max-h-[400px]"
-                  leave-active-class="transition-all duration-150 ease-in"
-                  leave-from-class="opacity-100 max-h-[400px]"
-                  leave-to-class="opacity-0 max-h-0"
-                >
-                  <div v-if="msg.reasoningOpen" class="mt-2 overflow-auto max-h-[400px] rounded-xl bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 leading-relaxed custom-scrollbar whitespace-pre-wrap dark:bg-white/[0.03] dark:border-none dark:text-[#8a8f98]">{{ msg.reasoning }}</div>
-                </Transition>
+                <button disabled
+                  class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-gray-400 dark:text-[#62666d] cursor-not-allowed"
+                  title="联网搜索（敬请期待）">
+                  <i class="fa-solid fa-globe text-sm"></i>
+                  <span class="hidden sm:inline">联网搜索</span>
+                </button>
               </div>
-              <!-- 正文内容 -->
-              <div
-                v-if="msg.role === 'assistant' && !(streaming && i === messages.length - 1 && !msg.content)"
-                v-html="renderMarkdown(msg.content)"
-                class="prose prose-sm max-w-none dark:prose-invert"
-              ></div>
-              <div
-                v-else-if="msg.role === 'assistant' && streaming && i === messages.length - 1 && !msg.content"
-                class="flex gap-1"
-              >
-                <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce" style="animation-delay: 0ms"></span>
-                <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce" style="animation-delay: 150ms"></span>
-                <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce" style="animation-delay: 300ms"></span>
+
+              <!-- 右侧操作按钮 -->
+              <div class="flex items-center gap-1.5">
+                <button disabled
+                  class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:text-[#62666d] dark:hover:bg-white/[0.04] transition-colors cursor-not-allowed"
+                  title="附件（敬请期待）">
+                  <i class="fa-solid fa-plus text-sm"></i>
+                </button>
+                <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
+                  :disabled="sessionId ? (!inputText.trim() || streaming) : false"
+                  class="h-8 w-8 rounded-full flex items-center justify-center transition-all" :class="inputText.trim() && sessionId
+                    ? 'bg-indigo-500 text-white shadow-sm dark:bg-[rgb(129,115,223)]'
+                    : 'bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-[#62666d]'">
+                  <i class="fa-solid fa-arrow-up text-xs"></i>
+                </button>
               </div>
-              <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
             </div>
           </div>
+          <p class="mt-2 text-center text-xs text-gray-400 dark:text-[#62666d]">内容由 AI 生成，仅供参考</p>
         </div>
-
       </div>
     </div>
-
-    <!-- 底部输入区域 -->
-    <div class="shrink-0 px-4 pb-4 pt-2 sm:px-8">
-      <div class="mx-auto max-w-5xl">
-        <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-white/[0.08] dark:bg-white/[0.03]">
-          <!-- 文本输入 -->
-          <textarea
-            ref="textareaRef"
-            v-model="inputText"
-            @keydown="handleKeydown"
-            @input="autoResize"
-            :disabled="streaming || !sessionId"
-            rows="1"
-            :placeholder="sessionId ? '有问题，尽管问，shift+enter 换行' : '请先新建或选择一个对话'"
-            class="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none text-gray-900 placeholder-gray-400 dark:text-[#f7f8f8] dark:placeholder-[#62666d]"
-            style="min-height: 24px; max-height: 200px;"
-          ></textarea>
-
-          <!-- 底部工具栏 -->
-          <div class="flex items-center justify-between px-3 pb-2.5 pt-1">
-            <!-- 左侧功能按钮 -->
-            <div class="flex items-center gap-0.5">
-              <button
-                @click="deepThink = !deepThink"
-                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
-                :class="deepThink
-                  ? 'bg-indigo-50 text-indigo-600 dark:bg-[rgb(129,115,223)]/15 dark:text-[rgb(145,132,235)]'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'"
-                title="深度思考"
-              >
-                <i class="fa-solid fa-brain text-sm"></i>
-                <span class="hidden sm:inline">深度思考</span>
-              </button>
-              <button
-                disabled
-                class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-gray-400 dark:text-[#62666d] cursor-not-allowed"
-                title="联网搜索（敬请期待）"
-              >
-                <i class="fa-solid fa-globe text-sm"></i>
-                <span class="hidden sm:inline">联网搜索</span>
-              </button>
-            </div>
-
-            <!-- 右侧操作按钮 -->
-            <div class="flex items-center gap-1.5">
-              <button
-                disabled
-                class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:text-[#62666d] dark:hover:bg-white/[0.04] transition-colors cursor-not-allowed"
-                title="附件（敬请期待）"
-              >
-                <i class="fa-solid fa-plus text-sm"></i>
-              </button>
-              <button
-                @click="sessionId ? sendMessage() : createAiChat(currentView)"
-                :disabled="sessionId ? (!inputText.trim() || streaming) : false"
-                class="h-8 w-8 rounded-full flex items-center justify-center transition-all"
-                :class="inputText.trim() && sessionId
-                  ? 'bg-indigo-500 text-white shadow-sm dark:bg-[rgb(129,115,223)]'
-                  : 'bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-[#62666d]'"
-              >
-                <i class="fa-solid fa-arrow-up text-xs"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <p class="mt-2 text-center text-xs text-gray-400 dark:text-[#62666d]">内容由 AI 生成，仅供参考</p>
-      </div>
-    </div>
-  </div>
   </ContentPanel>
 </template>

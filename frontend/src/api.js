@@ -2,9 +2,11 @@
  * API 调用层 — 集中管理所有 fetch 请求
  */
 
-function _buildModelBody(modelProvider, modelName, extra = {}) {
+function _buildModelBody(modelProvider, modelName, providerSource, providerId, extra = {}) {
   const body = { model_provider: modelProvider, ...extra }
   if (modelName) body.model_name = modelName
+  if (providerSource) body.provider_source = providerSource
+  if (providerId) body.provider_id = providerId
   return body
 }
 
@@ -51,6 +53,11 @@ function _handleXhrJsonResult(xhr, data, fallbackMessage, onSuccess, onError) {
     code: data?.code,
     quota: data?.quota,
   }))
+}
+
+export async function fetchModelOptions() {
+  const resp = await fetch('/api/models/options')
+  return _assertJsonSuccess(resp, '获取模型选项失败')
 }
 
 export async function fetchAppConfig() {
@@ -182,11 +189,11 @@ export async function runOcr() {
   return _assertJsonSuccess(resp, 'OCR 执行失败')
 }
 
-export async function splitQuestions(modelProvider, modelName) {
+export async function splitQuestions(modelProvider, modelName, providerSource, providerId) {
   const resp = await fetch('/api/split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName)),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, providerSource, providerId)),
   })
   return _assertJsonSuccess(resp, '题目分割失败')
 }
@@ -347,11 +354,11 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   return { messages: data.messages, hasMore: data.hasMore }
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false } = {}) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false, providerSource, providerId } = {}) {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName, { message, deep_think: deepThink })),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, providerSource, providerId, { message, deep_think: deepThink })),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)

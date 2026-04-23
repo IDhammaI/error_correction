@@ -4,7 +4,7 @@ import { useAuth } from '@/composables/useAuth.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
-export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath) {
+export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
   const eraseLoading = ref(false)
   const eraseImages = ref([])
@@ -22,7 +22,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const refreshQuotaSnapshot = async () => {
     try {
       await refreshCurrentUser()
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const startProcess = () => {
@@ -94,7 +94,12 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     step.value = S.value.SPLIT
     pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
     try {
-      const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
+      const data = await api.splitQuestions(
+        selectedLlmOption.value?.category || 'openai',
+        selectedLlmOption.value?.model_name || '',
+        selectedLlmOption.value?.source || '',
+        selectedLlmOption.value?.provider_id || ''
+      )
       questions.value = data.questions || []
       selectedIds.clear()
       if (data.warnings && data.warnings.length) {
