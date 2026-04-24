@@ -4,6 +4,7 @@
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useImageModal } from '@/composables/useImageModal.js'
@@ -19,6 +20,7 @@ import SplitHistory from '@/views/app/SplitHistoryView.vue'
 
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
+const route = useRoute()
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
@@ -184,6 +186,11 @@ watch(
 import { onMounted } from 'vue'
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
+  // 检查 URL 参数，设置上传模式
+  const mode = route.query.mode
+  if (mode === 'note') {
+    uploadMode.value = 'note'
+  }
   try {
     await restorePersistedWorkspaceState()
   } finally {

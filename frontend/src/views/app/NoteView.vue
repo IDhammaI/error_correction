@@ -119,66 +119,6 @@ watch(() => filters.keyword, () => {
   keywordTimer = setTimeout(() => { page.value = 1; loadNotes() }, 500)
 })
 
-// ---- 上传笔记 ----
-const fileInput = ref(null)
-
-function triggerUpload() {
-  fileInput.value?.click()
-}
-
-function handleFiles(e) {
-  const files = e.target.files
-  if (!files?.length) return
-
-  creating.value = true
-  createProgress.value = 0
-
-  const formData = new FormData()
-  for (const f of files) formData.append('files', f)
-  formData.append('model_provider', selectedLlmOption.value?.category || 'openai')
-  if (selectedLlmOption.value?.model_name) {
-    formData.append('model_name', selectedLlmOption.value.model_name)
-  }
-  if (selectedLlmOption.value?.source) {
-    formData.append('provider_source', selectedLlmOption.value.source)
-  }
-  if (selectedLlmOption.value?.provider_id) {
-    formData.append('provider_id', selectedLlmOption.value.provider_id)
-  }
-
-  api.createNote(formData, {
-    onProgress: (ratio) => { createProgress.value = Math.round(ratio * 50) },
-    onSuccess: async (data) => {
-      creating.value = false
-      createProgress.value = 100
-      await refreshCurrentUser().catch(() => { })
-      pushToast('success', '笔记整理完成')
-      loadNotes()
-      if (data.note) router.push(`/app/notes/${data.note.id}`)
-    },
-    onError: (error) => {
-      creating.value = false
-      createProgress.value = 0
-      if (error?.quota) setQuotaSnapshot(error.quota)
-      if (error?.code === QUOTA_EXCEEDED_CODE) {
-        pushToast('error', error.message || '今日免费体验次数已用完')
-        return
-      }
-      pushToast('error', error instanceof Error ? error.message : String(error))
-    },
-  })
-
-  let fakeProgress = 50
-  const timer = setInterval(() => {
-    if (!creating.value) { clearInterval(timer); return }
-    fakeProgress = Math.min(fakeProgress + 2, 95)
-    createProgress.value = fakeProgress
-  }, 500)
-
-  e.target.value = ''
-}
-
-
 // ---- 详情 ----
 async function openNote(note) {
   router.push(`/app/notes/${note.id}`)
@@ -276,12 +216,17 @@ async function doDelete(noteId) {
     isDeleting.value = false
   }
 }
+
+// ---- 跳转到工作台录入 ----
+function goToWorkspace() {
+  router.push('/app/workspace?mode=note')
+}
 </script>
 
 <template>
   <ContentPanel title="笔记库">
     <template #toolbar>
-      <button @click="triggerUpload"
+      <button @click="goToWorkspace"
         class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors"
         title="录入新笔记">
         <i class="fa-solid fa-plus text-[10px]"></i> 录入
@@ -292,8 +237,6 @@ async function doDelete(noteId) {
 
         <!-- List View -->
         <div v-if="!selectedNote" class="relative flex-1 flex flex-col">
-          <input ref="fileInput" type="file" multiple accept="image/*" class="hidden" @change="handleFiles" />
-
           <!-- 筛选栏（对齐错题库风格） -->
           <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
             <!-- 搜索框 -->
@@ -335,7 +278,7 @@ async function doDelete(noteId) {
           <div class="relative flex-1 flex flex-col">
             <EmptyState v-if="!loading && notes.length === 0" icon="fa-solid fa-book-open" title="还没有笔记"
               description="上传手写笔记或板书照片，AI 自动整理为结构化知识点">
-              <BaseButton @click="triggerUpload" variant="primary" size="sm">
+              <BaseButton @click="goToWorkspace" variant="primary" size="sm">
                 <i class="fa-solid fa-plus"></i> 录入新笔记
               </BaseButton>
             </EmptyState>
