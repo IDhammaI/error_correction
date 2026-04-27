@@ -1,19 +1,11 @@
 <script setup>
-/**
- * ToastContainer.vue
- * Toast 通知容器（成功/错误/信息）
- */
 defineProps({
   toasts: { type: Array, default: () => [] },
+  sidebarOffset: { type: Number, default: 256 },
 })
 
-/**
- * 核心修复逻辑：在元素离开时通过 JS 获取其当前位置，并将其设为 absolute。
- * 这样既能脱离文档流让其他元素平滑移动，又能保持在原位不发生“瞬移”或重叠。
- */
 const onLeave = (el) => {
   const { left, top, width, height } = el.getBoundingClientRect()
-  // 保持原有宽度，并设为绝对定位，位置相对于 fixed 容器
   el.style.left = `${left}px`
   el.style.top = `${top}px`
   el.style.width = `${width}px`
@@ -23,7 +15,10 @@ const onLeave = (el) => {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed left-0 right-0 top-6 z-[200] flex flex-col items-center gap-3 px-4 md:left-64">
+  <div 
+    class="pointer-events-none fixed left-0 right-0 top-6 z-[200] flex flex-col items-center gap-3 px-4 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+    :style="{ left: `${sidebarOffset}px` }"
+  >
     <TransitionGroup
       enter-active-class="transition duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)"
       enter-from-class="opacity-0 -translate-y-8 scale-90"

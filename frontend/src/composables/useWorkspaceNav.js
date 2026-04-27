@@ -57,7 +57,22 @@ const NAV_GROUPS = [
 const collapsedGroups = ref({})
 const chatCollapsed = ref(false)
 const lastWorkspaceView = ref('workspace')
+const sidebarCollapsed = ref(false)
 let initialized = false
+
+// 初始化侧边栏状态（从 localStorage 恢复）
+if (typeof window !== 'undefined') {
+  const saved = localStorage.getItem('sidebar-collapsed')
+  if (saved !== null) {
+    sidebarCollapsed.value = saved === 'true'
+  }
+}
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed.value))
+}
 
 export function useWorkspaceNav() {
   const router = useRouter()
@@ -120,6 +135,7 @@ export function useWorkspaceNav() {
   return {
     currentView, currentSettingsSubView, setSettingsSubView,
     lastWorkspaceView, collapsedGroups, chatCollapsed,
+    sidebarCollapsed, toggleSidebar,
     NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS,
     navigateToHome,
   }

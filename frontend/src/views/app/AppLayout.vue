@@ -52,6 +52,7 @@ const {
 const {
   currentView, currentSettingsSubView, setSettingsSubView,
   lastWorkspaceView, collapsedGroups, chatCollapsed,
+  sidebarCollapsed, toggleSidebar,
   NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
 const {
@@ -64,7 +65,7 @@ const theme = computed(() => isDark.value ? 'dark' : 'light')
 const userMenuOpen = ref(false)
 
 const handleLogout = async () => {
-  try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) {}
+  try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) { }
   clearCurrentUser()
   pushToast('success', '已退出登录')
   router.push('/auth')
@@ -141,63 +142,39 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-[#0c0c0e] font-sans text-slate-900 dark:text-slate-300 relative transition-colors duration-200">
+  <div
+    class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-[#0c0c0e] font-sans text-slate-900 dark:text-slate-300 relative transition-colors duration-200">
 
     <WorkspaceBackground />
 
     <!-- 侧边栏导航 -->
-    <SidebarNav
-      :current-view="currentView"
-      :current-settings-sub-view="currentSettingsSubView"
-      :settings-nav-items="SETTINGS_NAV_ITEMS"
-      :last-workspace-view="lastWorkspaceView"
-      :current-user="currentUser"
-      :is-dark="isDark"
-      :theme="theme"
-      :nav-groups="NAV_GROUPS"
-      :workspace-views="WORKSPACE_VIEWS"
-      :collapsed-groups="collapsedGroups"
-      :nav-btn-refs="navBtnRefs"
-      :indicator-style="indicatorStyle"
-      :indicator-transition="indicatorTransition"
-      :chat-collapsed="chatCollapsed"
-      :ai-chat-sessions="aiChatSessions"
-      :active-ai-chat-id="activeAiChatId"
-      :chat-list-ref="chatListRef"
-      :chat-btn-refs="chatBtnRefs"
-      :chat-indicator-style="chatIndicatorStyle"
-      :chat-indicator-transition="chatIndicatorTransition"
-      :chat-menu-open-id="chatMenuOpenId"
-      :renaming-chat-id="renamingChatId"
-      :rename-text="renameText"
-      :user-menu-open="userMenuOpen"
-      @update:current-view="updateCurrentView"
-      @update:current-settings-sub-view="updateCurrentSettingsSubView"
-      @update:collapsed-groups="updateCollapsedGroups"
-      @update:chat-collapsed="updateChatCollapsed"
-      @update:user-menu-open="updateUserMenuOpen"
-      @update:chat-menu-open-id="updateChatMenuOpenId"
-      @update:rename-text="updateRenameText"
-      @update:renaming-chat-id="updateRenamingChatId"
-      @update:nav-ref="updateNavRef"
-      @update:chat-list-ref="updateChatListRef"
-      @navigate-home="navigateToHome"
-      @logout="handleLogout"
-      @toggle-theme="toggleTheme"
-      @create-ai-chat="createAiChat"
-      @select-ai-chat="selectAiChat"
-      @start-rename-chat="startRenameChat"
-      @confirm-rename-chat="confirmRenameChat"
-      @delete-ai-chat="deleteAiChat"
-      @toggle-chat-menu="toggleChatMenu"
-    />
+    <SidebarNav :current-view="currentView" :current-settings-sub-view="currentSettingsSubView"
+      :settings-nav-items="SETTINGS_NAV_ITEMS" :last-workspace-view="lastWorkspaceView" :current-user="currentUser"
+      :is-dark="isDark" :theme="theme" :nav-groups="NAV_GROUPS" :workspace-views="WORKSPACE_VIEWS"
+      :collapsed-groups="collapsedGroups" :nav-btn-refs="navBtnRefs" :indicator-style="indicatorStyle"
+      :indicator-transition="indicatorTransition" :chat-collapsed="chatCollapsed" :ai-chat-sessions="aiChatSessions"
+      :active-ai-chat-id="activeAiChatId" :chat-list-ref="chatListRef" :chat-btn-refs="chatBtnRefs"
+      :chat-indicator-style="chatIndicatorStyle" :chat-indicator-transition="chatIndicatorTransition"
+      :chat-menu-open-id="chatMenuOpenId" :renaming-chat-id="renamingChatId" :rename-text="renameText"
+      :user-menu-open="userMenuOpen" :sidebar-collapsed="sidebarCollapsed" @update:current-view="updateCurrentView"
+      @update:current-settings-sub-view="updateCurrentSettingsSubView" @update:collapsed-groups="updateCollapsedGroups"
+      @update:chat-collapsed="updateChatCollapsed" @update:user-menu-open="updateUserMenuOpen"
+      @update:chat-menu-open-id="updateChatMenuOpenId" @update:rename-text="updateRenameText"
+      @update:renaming-chat-id="updateRenamingChatId" @update:nav-ref="updateNavRef"
+      @update:chat-list-ref="updateChatListRef" @navigate-home="navigateToHome" @logout="handleLogout"
+      @toggle-theme="toggleTheme" @create-ai-chat="createAiChat" @select-ai-chat="selectAiChat"
+      @start-rename-chat="startRenameChat" @confirm-rename-chat="confirmRenameChat" @delete-ai-chat="deleteAiChat"
+      @toggle-chat-menu="toggleChatMenu" @toggle-sidebar="toggleSidebar" />
 
     <!-- ================== 右侧整体区域 ================== -->
-    <div class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3">
+    <div
+      class="relative z-10 flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      :class="sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">
-          <WorkspaceView v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace" :theme="theme" />
+          <WorkspaceView v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace"
+            :theme="theme" />
           <ReviewView v-else-if="currentView === 'review'" key="review" />
           <Dashboard v-else-if="currentView === 'dashboard'" key="dashboard" />
           <ErrorBank v-else-if="currentView === 'error-bank'" key="error-bank" />
@@ -210,13 +187,14 @@ onBeforeUnmount(() => {
 
       <!-- GitHub Issue 链接 (非浮动，作为底部同级元素正常占位) -->
       <div class="flex-shrink-0 flex justify-end py-2 pr-4 md:pr-2 text-xs text-slate-500/70 z-20">
-        <a
-          href="https://github.com/xiaozhejiya/error_correction/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+        <a href="https://github.com/xiaozhejiya/error_correction/issues" target="_blank" rel="noopener noreferrer"
+          class="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+            <path d="M9 18c-4.51 2-5-2-7-2" />
+          </svg>
           反馈问题 / GitHub Issues
         </a>
       </div>
@@ -224,21 +202,11 @@ onBeforeUnmount(() => {
 
     <!-- 全局弹窗 -->
     <Teleport to="body">
-      <ImageModal
-        :open="modalOpen"
-        :src="modalSrc"
-        :scale="modalScale"
-        @close="closeModal"
-        @update:scale="(s) => modalScale = s"
-      />
-      <AnswerInputModal
-        :open="answerModalOpen"
-        :text="answerModalText"
-        :saving="answerModalSaving"
-        @update:open="(v) => answerModalOpen = v"
-        @update:text="(v) => answerModalText = v"
-        @confirm="saveAnswerAndChat"
-      />
+      <ImageModal :open="modalOpen" :src="modalSrc" :scale="modalScale" @close="closeModal"
+        @update:scale="(s) => modalScale = s" />
+      <AnswerInputModal :open="answerModalOpen" :text="answerModalText" :saving="answerModalSaving"
+        @update:open="(v) => answerModalOpen = v" @update:text="(v) => answerModalText = v"
+        @confirm="saveAnswerAndChat" />
     </Teleport>
   </div>
 </template>
@@ -255,6 +223,7 @@ onBeforeUnmount(() => {
 .view-fade-leave-active {
   transition: opacity 0.15s ease-out;
 }
+
 .view-fade-enter-from,
 .view-fade-leave-to {
   opacity: 0;
