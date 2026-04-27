@@ -379,8 +379,8 @@ const toggleActive = (type, id) => {
   // 同步到工作台的选择 (仅限 AI 模型)
   if (isActivating && (type === 'openai' || type === 'anthropic')) {
     const options = modelOptionsData.value?.options || []
-    // 找到该 provider 下的第一个可用模型
-    const firstModel = options.find(o => o.provider_id === id && o.category === type && o.available)
+    // 找到该 provider 下的第一个可用模型（仅限个人配置）
+    const firstModel = options.find(o => o.provider_id === id && o.category === type && o.source === 'personal' && o.available)
     if (firstModel) {
       selectedLlmOptionId.value = firstModel.option_id
     }
