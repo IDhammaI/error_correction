@@ -52,9 +52,18 @@ const {
 const {
   currentView, currentSettingsSubView, setSettingsSubView,
   lastWorkspaceView, collapsedGroups, chatCollapsed,
-  sidebarCollapsed, toggleSidebar,
+  sidebarMode, isMobile, mobileDrawerOpen, toggleSidebar, closeDrawer,
   NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
+
+// ── 锁定滚动 ──────────────────────────────────────────
+watch(mobileDrawerOpen, (val) => {
+  if (val) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+})
 const {
   answerModalOpen, answerModalText, answerModalSaving,
   saveAnswerAndChat,
@@ -147,6 +156,15 @@ onBeforeUnmount(() => {
 
     <WorkspaceBackground />
 
+    <!-- 移动端遮罩 -->
+    <Transition enter-active-class="transition duration-[var(--mask-transition-duration)] ease-out"
+      enter-from-class="opacity-0" enter-to-class="opacity-100"
+      leave-active-class="transition duration-[var(--mask-transition-duration)] ease-out" leave-from-class="opacity-100"
+      leave-to-class="opacity-0">
+      <div v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-0 z-[15] bg-black/40 dark:bg-black/60 backdrop-blur-[2px]" @click="closeDrawer"></div>
+    </Transition>
+
     <!-- 侧边栏导航 -->
     <SidebarNav :current-view="currentView" :current-settings-sub-view="currentSettingsSubView"
       :settings-nav-items="SETTINGS_NAV_ITEMS" :last-workspace-view="lastWorkspaceView" :current-user="currentUser"
@@ -156,7 +174,8 @@ onBeforeUnmount(() => {
       :active-ai-chat-id="activeAiChatId" :chat-list-ref="chatListRef" :chat-btn-refs="chatBtnRefs"
       :chat-indicator-style="chatIndicatorStyle" :chat-indicator-transition="chatIndicatorTransition"
       :chat-menu-open-id="chatMenuOpenId" :renaming-chat-id="renamingChatId" :rename-text="renameText"
-      :user-menu-open="userMenuOpen" :sidebar-collapsed="sidebarCollapsed" @update:current-view="updateCurrentView"
+      :user-menu-open="userMenuOpen" :sidebar-mode="sidebarMode" :is-mobile="isMobile"
+      :mobile-drawer-open="mobileDrawerOpen" @update:current-view="updateCurrentView"
       @update:current-settings-sub-view="updateCurrentSettingsSubView" @update:collapsed-groups="updateCollapsedGroups"
       @update:chat-collapsed="updateChatCollapsed" @update:user-menu-open="updateUserMenuOpen"
       @update:chat-menu-open-id="updateChatMenuOpenId" @update:rename-text="updateRenameText"
@@ -168,8 +187,10 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-      :class="sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'">
+      class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)]"
+      :class="[
+        isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'md:ml-16' : 'md:ml-64')
+      ]">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">

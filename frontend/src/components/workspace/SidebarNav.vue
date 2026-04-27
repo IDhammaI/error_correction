@@ -1,11 +1,13 @@
 <script setup>
 /**
  * SidebarNav.vue
- * 工作台左侧边栏导航（PC 端）+ 底部 Tab 导航（移动端）
+ * 工作台左侧边栏导航（PC 端双模式 + 移动端抽屉）+ 底部 Tab 导航（移动端）
  */
 import { computed } from 'vue'
+import { PanelLeft } from 'lucide-vue-next'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 import BaseDropdown from '@/components/base/BaseDropdown.vue'
+import BaseTooltip from '@/components/base/BaseTooltip.vue'
 
 const props = defineProps({
   currentView: { type: String, required: true },
@@ -37,7 +39,10 @@ const props = defineProps({
   renameText: { type: String, default: '' },
   // 用户菜单
   userMenuOpen: { type: Boolean, default: false },
-  sidebarCollapsed: { type: Boolean, default: false },
+  // 响应式状态
+  sidebarMode: { type: String, default: 'expanded' }, // 'expanded' | 'collapsed-icon'
+  isMobile: { type: Boolean, default: false },
+  mobileDrawerOpen: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -51,6 +56,7 @@ const emit = defineEmits([
 ])
 
 const isSettingsView = computed(() => props.currentView === 'settings')
+const isNarrow = computed(() => !props.isMobile && props.sidebarMode === 'collapsed-icon')
 
 const setView = (view) => emit('update:currentView', view)
 const setSettingsEntry = (subview) => emit('update:currentSettingsSubView', subview)
@@ -67,6 +73,7 @@ const returnToApp = () => {
 }
 
 const toggleGroup = (gi) => {
+  if (isNarrow.value) return // 窄栏模式下不允许折叠分组
   const next = { ...props.collapsedGroups }
   next[gi] = !next[gi]
   emit('update:collapsedGroups', next)
@@ -92,75 +99,91 @@ const userQuotaSummary = computed(() => {
 </script>
 
 <template>
-  <!-- ================== PC端：左侧边栏导航 ================== -->
-  <aside class="hidden min-h-0 flex-col md:flex z-20 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:fixed md:left-0 md:top-0 md:bottom-0"
-    :class="sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-64'">
+  <!-- ================== 侧边栏容器 ================== -->
+  <aside
+    class="min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05]"
+    :class="[
+      isMobile
+        ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
+        : 'hidden md:flex md:fixed md:left-0 md:top-0 md:bottom-0 ' + (isNarrow ? 'w-16' : 'w-64')
+    ]">
+
+    <!-- 设置视图 -->
     <template v-if="isSettingsView">
-      <div class="flex min-h-0 flex-1 flex-col px-4 py-4">
+      <div class="flex min-h-0 flex-1 flex-col px-4 py-4 overflow-hidden">
         <button @click="returnToApp"
-          class="mb-4 inline-flex items-center gap-2 px-3 pt-2 text-sm font-medium text-gray-500 dark:text-[#8a8f98] transition-colors hover:text-gray-700 dark:hover:text-white">
+          class="mb-4 inline-flex items-center gap-2 px-3 pt-2 text-sm font-medium text-gray-500 dark:text-[#8a8f98] transition-colors hover:text-gray-700 dark:hover:text-white"
+          :class="isNarrow ? 'justify-center px-0' : ''">
           <i class="fa-solid fa-arrow-left text-xs"></i>
-          <span>返回应用</span>
+          <span v-if="!isNarrow">返回应用</span>
         </button>
 
         <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative">
-          <div class="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 dark:text-[#62666d]">
+          <div v-if="!isNarrow"
+            class="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 dark:text-[#62666d]">
             设置
           </div>
           <div class="flex flex-col gap-1">
-            <button v-for="item in settingsNavItems" :key="item.id" @click="setSettingsEntry(item.id)"
-              class="group relative z-10 flex items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors duration-200"
-              :class="currentSettingsSubView === item.id
-                ? 'brand-gradient-bg text-white shadow-sm border-transparent'
-                : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]'">
-              <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-              <span>{{ item.label }}</span>
-            </button>
+            <template v-for="item in settingsNavItems" :key="item.id">
+              <BaseTooltip :text="item.label" :placement="isNarrow ? 'right' : 'bottom'" :disabled="!isNarrow">
+                <button @click="setSettingsEntry(item.id)"
+                  class="group relative z-10 flex items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors duration-200 w-full"
+                  :class="[
+                    currentSettingsSubView === item.id
+                      ? 'brand-gradient-bg text-white shadow-sm border-transparent'
+                      : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
+                    isNarrow ? 'justify-center px-0' : ''
+                  ]">
+                  <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
+                  <span v-if="!isNarrow">{{ item.label }}</span>
+                </button>
+              </BaseTooltip>
+            </template>
           </div>
         </nav>
       </div>
     </template>
 
+    <!-- 主视图 -->
     <template v-else>
-      <div class="flex min-h-0 flex-1 flex-col">
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div>
           <!-- Logo 标题区 -->
-          <div class="flex h-20 items-center justify-between px-4 py-6">
-            <button @click="sidebarCollapsed ? emit('toggle-sidebar') : emit('navigate-home')"
+          <div class="flex h-20 items-center justify-between px-4 py-6" :class="isNarrow ? 'px-0 justify-center' : ''">
+            <button @click="emit('navigate-home')"
               class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
-              :title="sidebarCollapsed ? '展开侧边栏' : '返回首页'">
+              :class="isNarrow ? 'w-10 h-10 justify-center px-0' : ''" :title="isNarrow ? '展开侧边栏' : '返回首页'">
               <BaseLogo size="sm" />
-              <span
-                class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] transition-all duration-200 overflow-hidden whitespace-nowrap"
-                :class="sidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'">
+              <span v-if="!isNarrow"
+                class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] transition-all duration-200 overflow-hidden whitespace-nowrap">
                 智卷错题本
               </span>
             </button>
-            <div class="flex items-center gap-1 transition-all duration-200"
-              :class="sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'">
+            <div v-if="!isNarrow" class="flex items-center gap-1 transition-all duration-200">
               <button @click="openSettings('profile')"
                 class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
                 title="系统设置">
                 <i class="fa-solid fa-gear text-xs"></i>
               </button>
-              <button @click="emit('logout')"
+              <button @click="emit('toggle-sidebar')"
                 class="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 dark:border-white/[0.08] text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
-                title="退出登录">
-                <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                :title="isNarrow ? '展开侧边栏' : '收起侧边栏'">
+                <PanelLeft class="w-4 h-4 transition-transform duration-300" :class="isNarrow ? '' : 'rotate-180'" />
               </button>
             </div>
           </div>
 
           <!-- 视图切换菜单 -->
-          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 px-4 relative">
+          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 px-4 relative"
+            :class="isNarrow ? 'px-2' : ''">
             <!-- 滑动指示器 -->
-            <div v-if="!sidebarCollapsed"
-              class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-gradient-bg" :style="indicatorStyle">
+            <div v-if="!isNarrow" class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-gradient-bg"
+              :style="indicatorStyle">
             </div>
 
             <template v-for="(group, gi) in navGroups" :key="gi">
               <!-- 分组标题（可折叠） -->
-              <button v-if="group.label" @click="group.collapsible && toggleGroup(gi)"
+              <button v-if="group.label && !isNarrow" @click="group.collapsible && toggleGroup(gi)"
                 class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors"
                 :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'">
                 <span>{{ group.label }}</span>
@@ -171,30 +194,36 @@ const userQuotaSummary = computed(() => {
 
               <!-- 分组内容（grid 折叠动画） -->
               <div class="grid transition-[grid-template-rows] duration-200 ease-out"
-                :class="collapsedGroups[gi] ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+                :class="isNarrow || !collapsedGroups[gi] ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
                 <div class="overflow-hidden">
                   <div class="flex flex-col gap-1">
                     <template v-for="item in group.items" :key="item.id">
                       <!-- 禁用项 -->
-                      <button v-if="item.disabled" disabled
-                        class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-gray-400 dark:text-[#62666d]">
-                        <div class="flex items-center gap-3">
-                          <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                          <span>{{ item.label }}</span>
-                        </div>
-                        <span
-                          class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-[#62666d]">敬请期待</span>
-                      </button>
-                      <!-- 普通项 -->
-                      <button v-else :ref="el => navBtnRefs[item.id] = el"
-                        @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
-                        class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
-                        :class="item.match(currentView)
-                          ? 'text-white'
-                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]'">
-                        <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                        <span>{{ item.label }}</span>
-                      </button>
+                      <BaseTooltip :text="item.label" placement="right" :disabled="!isNarrow">
+                        <button v-if="item.disabled" disabled
+                          class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-gray-400 dark:text-[#62666d]"
+                          :class="isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''">
+                          <div class="flex items-center gap-3">
+                            <i class="fa-solid w-4 shrink-0 text-center text-sm" :class="item.icon"></i>
+                            <span v-if="!isNarrow">{{ item.label }}</span>
+                          </div>
+                          <span v-if="!isNarrow"
+                            class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-[#62666d]">敬请期待</span>
+                        </button>
+                        <!-- 普通项 -->
+                        <button v-else :ref="el => navBtnRefs[item.id] = el"
+                          @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
+                          class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
+                          :class="[
+                            item.match(currentView)
+                              ? (isNarrow ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10' : 'text-white')
+                              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
+                            isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''
+                          ]">
+                          <i class="fa-solid w-4 shrink-0 text-center text-sm" :class="item.icon"></i>
+                          <span v-if="!isNarrow">{{ item.label }}</span>
+                        </button>
+                      </BaseTooltip>
                     </template>
                   </div>
                 </div>
@@ -204,32 +233,37 @@ const userQuotaSummary = computed(() => {
         </div>
 
         <!-- AI 对话历史列表 -->
-        <div class="mt-4 flex min-h-0 flex-1 flex-col px-4">
-          <div class="flex items-center justify-between px-3 pt-4 pb-2">
-            <button @click="emit('update:chatCollapsed', !chatCollapsed)"
+        <div class="mt-4 flex min-h-0 flex-1 flex-col px-4" :class="isNarrow ? 'px-2' : ''">
+          <div class="flex items-center justify-between px-3 pt-4 pb-2" :class="isNarrow ? 'px-0 justify-center' : ''">
+            <button v-if="!isNarrow" @click="emit('update:chatCollapsed', !chatCollapsed)"
               class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors cursor-pointer">
               <span>对话</span>
               <i class="fa-solid fa-play text-[8px] text-gray-400 dark:text-[#62666d] transition-transform duration-200"
                 :class="chatCollapsed ? '' : 'rotate-90'"></i>
             </button>
-            <button @click="emit('create-ai-chat')"
+            <BaseTooltip v-else text="新对话" placement="right">
+              <button @click="emit('create-ai-chat')"
+                class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+              </button>
+            </BaseTooltip>
+            <button v-if="!isNarrow" @click="emit('create-ai-chat')"
               class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
               <i class="fa-solid fa-plus text-[10px]"></i>
             </button>
           </div>
           <!-- 折叠动画 -->
           <div class="grid min-h-0 flex-1 transition-[grid-template-rows] duration-200 ease-out"
-            :class="chatCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'">
+            :class="isNarrow || !chatCollapsed ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
             <div class="flex min-h-0 flex-col overflow-hidden">
               <div :ref="(el) => $emit('update:chatListRef', el)"
                 class="relative h-full overflow-y-auto pb-2 custom-scrollbar"
                 @click="emit('update:chatMenuOpenId', null)">
                 <!-- 对话区滑动指示器 -->
-                <div v-if="!sidebarCollapsed"
-                  class="absolute left-0 right-0 z-0 rounded-lg overflow-hidden brand-gradient-bg"
+                <div v-if="!isNarrow" class="absolute left-0 right-0 z-0 rounded-lg overflow-hidden brand-gradient-bg"
                   :style="chatIndicatorStyle"></div>
 
-                <div v-if="aiChatSessions.length === 0"
+                <div v-if="aiChatSessions.length === 0 && !isNarrow"
                   class="px-3 py-4 text-center text-xs text-gray-400 dark:text-[#62666d]">
                   暂无对话
                 </div>
@@ -238,43 +272,49 @@ const userQuotaSummary = computed(() => {
                   :class="[
                     chatMenuOpenId === s.id ? 'z-20' : 'z-10',
                     activeAiChatId === s.id && currentView === 'ai-chat'
-                      ? 'text-white'
+                      ? (isNarrow ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10' : 'text-white')
                       : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
+                    isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''
                   ]" @click="renamingChatId !== s.id && emit('select-ai-chat', s)">
-                  <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm transition-colors"></i>
+                  <BaseTooltip :text="s.title" placement="right" :disabled="!isNarrow">
+                    <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm transition-colors"></i>
+                  </BaseTooltip>
 
-                  <!-- 重命名输入框 -->
-                  <input v-if="renamingChatId === s.id" :value="renameText"
-                    @input="emit('update:renameText', $event.target.value)" data-rename-input @click.stop
-                    @keydown.enter="emit('confirm-rename-chat', s)"
-                    @keydown.escape="$emit('update:renamingChatId', null)" @blur="emit('confirm-rename-chat', s)"
-                    class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-gray-300 py-0.5 text-gray-900 dark:border-white/[0.12] dark:text-[#f7f8f8]" />
-                  <span v-else class="relative z-10 flex-1 truncate">{{ s.title }}</span>
+                  <template v-if="!isNarrow">
+                    <!-- 重命名输入框 -->
+                    <input v-if="renamingChatId === s.id" :value="renameText"
+                      @input="emit('update:renameText', $event.target.value)" data-rename-input @click.stop
+                      @keydown.enter="emit('confirm-rename-chat', s)"
+                      @keydown.escape="$emit('update:renamingChatId', null)" @blur="emit('confirm-rename-chat', s)"
+                      class="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-gray-300 py-0.5 text-gray-900 dark:border-white/[0.12] dark:text-[#f7f8f8]" />
+                    <span v-else class="relative z-10 flex-1 truncate">{{ s.title }}</span>
 
-                  <!-- 三个点按钮 -->
-                  <button @click.stop="emit('toggle-chat-menu', s.id)"
-                    class="shrink-0 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#d0d6e0] transition-all ">
-                    <i class="fa-solid fa-ellipsis text-[10px]"></i>
-                  </button>
+                    <!-- 三个点按钮 -->
+                    <button @click.stop="emit('toggle-chat-menu', s.id)"
+                      class="shrink-0 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#d0d6e0] transition-all ">
+                      <i class="fa-solid fa-ellipsis text-[10px]"></i>
+                    </button>
 
-                  <!-- Dropdown 菜单 -->
-                  <Transition enter-active-class="transition duration-100 ease-out"
-                    enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100"
-                    leave-active-class="transition duration-75 ease-in" leave-from-class="opacity-100 scale-100"
-                    leave-to-class="opacity-0 scale-95">
-                    <div v-if="chatMenuOpenId === s.id"
-                      class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden" @click.stop>
-                      <button @click="emit('start-rename-chat', s)"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors">
-                        <i class="fa-solid fa-pen text-[10px] w-3 text-center text-gray-400 dark:text-[#62666d]"></i>
-                        重命名
-                      </button>
-                      <button @click="emit('update:chatMenuOpenId', null); emit('delete-ai-chat', s.id)"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 transition-colors">
-                        <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
-                      </button>
-                    </div>
-                  </Transition>
+                    <!-- Dropdown 菜单 -->
+                    <Transition enter-active-class="transition duration-100 ease-out"
+                      enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100"
+                      leave-active-class="transition duration-75 ease-in" leave-from-class="opacity-100 scale-100"
+                      leave-to-class="opacity-0 scale-95">
+                      <div v-if="chatMenuOpenId === s.id"
+                        class="absolute right-2 top-full mt-1 z-50 w-32 rounded-md brand-btn overflow-hidden"
+                        @click.stop>
+                        <button @click="emit('start-rename-chat', s)"
+                          class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-[#d0d6e0] dark:hover:bg-white/[0.05] transition-colors">
+                          <i class="fa-solid fa-pen text-[10px] w-3 text-center text-gray-400 dark:text-[#62666d]"></i>
+                          重命名
+                        </button>
+                        <button @click="emit('update:chatMenuOpenId', null); emit('delete-ai-chat', s.id)"
+                          class="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 transition-colors">
+                          <i class="fa-solid fa-trash text-[10px] w-4 text-center"></i> 删除
+                        </button>
+                      </div>
+                    </Transition>
+                  </template>
                 </div>
               </div>
             </div>
@@ -283,10 +323,12 @@ const userQuotaSummary = computed(() => {
       </div>
 
       <!-- 底部用户区 -->
-      <div class="relative p-2">
+      <div class="relative p-2" :class="isNarrow ? 'p-1' : ''">
         <BaseDropdown :modelValue="userMenuOpen" @update:modelValue="(val) => emit('update:userMenuOpen', val)"
-          position="top" align="center" width="w-full" offset="mb-1"
-          panelClass="rounded-md brand-btn dark:bg-[#1b1b1d] backdrop-blur-md" wrapperClass="block w-full">
+          :position="isNarrow ? 'right' : 'top'" :align="isNarrow ? 'end' : 'center'"
+          :width="isNarrow ? 'w-48' : 'w-full'" :offset="isNarrow ? 'ml-4' : 'mb-1'"
+          panelClass="rounded-md brand-btn dark:bg-[#1b1b1d] backdrop-blur-md"
+          :wrapperClass="isNarrow ? 'inline-block' : 'block w-full'">
           <!-- 背景噪点 -->
           <template #background>
             <div class="ws-bg-noise hidden dark:block"></div>
@@ -295,7 +337,8 @@ const userQuotaSummary = computed(() => {
           <template #trigger="{ toggle }">
             <!-- 用户信息 -->
             <button @click.stop="toggle"
-              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors">
+              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+              :class="isNarrow ? 'justify-center px-0' : ''">
               <div
                 class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium"
                 style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
@@ -307,7 +350,7 @@ const userQuotaSummary = computed(() => {
                   <span class="relative z-10">{{ userInitial }}</span>
                 </template>
               </div>
-              <div class="flex-1 min-w-0 text-left">
+              <div v-if="!isNarrow" class="flex-1 min-w-0 text-left">
                 <p class="text-sm text-gray-900 dark:text-[#f7f8f8] truncate leading-tight transition-colors">{{
                   userDisplayName }}
                 </p>
@@ -318,7 +361,8 @@ const userQuotaSummary = computed(() => {
                 <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{
                   currentUser?.username || 'guest' }}</p>
               </div>
-              <i class="fa-solid fa-chevron-up text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
+              <i v-if="!isNarrow"
+                class="fa-solid fa-chevron-up text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
             </button>
           </template>
 
@@ -349,19 +393,19 @@ const userQuotaSummary = computed(() => {
 
   <!-- ================== 侧边栏切换按钮（PC端） ================== -->
   <Transition name="fade">
-    <button v-if="sidebarCollapsed" @click="emit('toggle-sidebar')"
-      class="fixed left-0 top-1/2 -translate-y-1/2 z-[25] hidden h-16 w-6 items-center justify-center rounded-r-xl bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:scale-105 transition-all duration-150 md:flex"
-      aria-label="展开侧边栏">
-      <i class="fa-solid fa-chevron-right text-xs text-gray-500 dark:text-[#8a8f98]"></i>
+    <button @click="emit('toggle-sidebar')"
+      class="fixed top-1/2 -translate-y-1/2 z-[25] hidden h-10 w-6 items-center justify-center rounded-r-lg bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:scale-105 transition-all duration-150 md:flex"
+      :style="{ left: isNarrow ? '60px' : '248px' }" :aria-label="isNarrow ? '展开侧边栏' : '收起侧边栏'">
+      <PanelLeft class="w-4 h-4 text-gray-500 dark:text-[#8a8f98] transition-transform duration-300"
+        :class="isNarrow ? '' : 'rotate-180'" />
     </button>
   </Transition>
-  <Transition name="fade">
-    <button v-if="!sidebarCollapsed" @click="emit('toggle-sidebar')"
-      class="fixed top-1/2 -translate-y-1/2 z-[25] hidden h-10 w-6 items-center justify-center rounded-l-lg bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:scale-105 transition-all duration-150 md:flex"
-      style="left: 248px;" aria-label="收起侧边栏">
-      <i class="fa-solid fa-chevron-left text-xs text-gray-500 dark:text-[#8a8f98]"></i>
-    </button>
-  </Transition>
+
+  <!-- ================== 移动端：悬浮展开按钮 ================== -->
+  <button v-if="isMobile && !mobileDrawerOpen" @click="emit('toggle-sidebar')"
+    class="fixed left-4 top-4 z-[25] flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 md:hidden">
+    <i class="fa-solid fa-bars text-gray-500 dark:text-[#8a8f98]"></i>
+  </button>
 
   <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
   <nav
@@ -397,25 +441,31 @@ const userQuotaSummary = computed(() => {
         <i class="fa-solid fa-sliders text-lg"></i>
         <span class="mt-1 text-[10px] font-bold">设置</span>
       </button>
-      <button @click="(e) => emit('toggle-theme', e.currentTarget)"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors">
-        <i class="fa-solid text-lg" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
-        <span class="mt-1 text-[10px] font-bold">主题</span>
-      </button>
     </div>
   </nav>
 </template>
 
 <style scoped>
-.brand-gradient-bg {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-  border: none;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 150ms ease;
+  transition: opacity 0.15s ease;
 }
 
 .fade-enter-from,

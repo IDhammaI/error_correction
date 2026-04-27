@@ -13,9 +13,12 @@ import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 const { loading, notifyEnterCompleted } = usePageTransition()
 const { initTheme } = useTheme()
 const { toasts, pushToast } = useWorkspaceToast()
-const { sidebarCollapsed } = useWorkspaceNav()
+const { sidebarMode, isMobile } = useWorkspaceNav()
 
-const sidebarOffset = computed(() => sidebarCollapsed.value ? 64 : 256)
+const sidebarOffset = computed(() => {
+  if (isMobile.value) return 0
+  return sidebarMode.value === 'collapsed-icon' ? 64 : 256
+})
 
 provide(TOAST_INJECTION_KEY, pushToast)
 

@@ -54,24 +54,56 @@ const NAV_GROUPS = [
 ]
 
 // ── 模块级单例状态 ──────────────────────────────────────
+let initialized = false
 const collapsedGroups = ref({})
 const chatCollapsed = ref(false)
 const lastWorkspaceView = ref('workspace')
-const sidebarCollapsed = ref(false)
-let initialized = false
 
-// 初始化侧边栏状态（从 localStorage 恢复）
-if (typeof window !== 'undefined') {
-  const saved = localStorage.getItem('sidebar-collapsed')
-  if (saved !== null) {
-    sidebarCollapsed.value = saved === 'true'
+// 响应式状态
+const isMobile = ref(false)
+const sidebarMode = ref('expanded') // 'expanded' | 'collapsed-icon' (仅大屏)
+const mobileDrawerOpen = ref(false) // (仅小屏)
+
+const checkMobile = () => {
+  if (typeof window !== 'undefined') {
+    const mobile = window.innerWidth < 1024
+    if (mobile !== isMobile.value) {
+      isMobile.value = mobile
+      // 从大屏切换到小屏时，强制关闭抽屉
+      if (mobile) {
+        mobileDrawerOpen.value = false
+      }
+    }
   }
 }
 
-// 切换侧边栏
+// 初始化状态
+if (typeof window !== 'undefined') {
+  // 1. 初始检测移动端
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+
+  // 2. 从 localStorage 恢复大屏模式
+  const savedMode = localStorage.getItem('sidebar-mode')
+  if (savedMode === 'expanded' || savedMode === 'collapsed-icon') {
+    sidebarMode.value = savedMode
+  }
+}
+
+// 切换逻辑
 const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-  localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed.value))
+  if (isMobile.value) {
+    mobileDrawerOpen.value = !mobileDrawerOpen.value
+  } else {
+    sidebarMode.value = sidebarMode.value === 'expanded' ? 'collapsed-icon' : 'expanded'
+    localStorage.setItem('sidebar-mode', sidebarMode.value)
+  }
+}
+
+const closeDrawer = () => {
+  if (isMobile.value) {
+    mobileDrawerOpen.value = false
+  }
 }
 
 export function useWorkspaceNav() {
@@ -135,8 +167,7 @@ export function useWorkspaceNav() {
   return {
     currentView, currentSettingsSubView, setSettingsSubView,
     lastWorkspaceView, collapsedGroups, chatCollapsed,
-    sidebarCollapsed, toggleSidebar,
-    NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS,
-    navigateToHome,
+    sidebarMode, isMobile, mobileDrawerOpen, toggleSidebar, closeDrawer,
+    NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
   }
 }

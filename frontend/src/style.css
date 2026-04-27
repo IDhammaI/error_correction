@@ -1,3 +1,10 @@
+:root {
+  --sidebar-transition-duration: 150ms;
+  --sidebar-transition-timing: cubic-bezier(0.2, 0, 0, 1);
+  --mask-transition-duration: 150ms;
+  --mask-transition-timing: ease-out;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
