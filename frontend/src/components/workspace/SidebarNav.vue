@@ -93,7 +93,7 @@ const userQuotaSummary = computed(() => {
 
 <template>
   <!-- ================== PC端：左侧边栏导航 ================== -->
-  <aside class="hidden min-h-0 flex-col md:flex z-20 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+  <aside class="hidden min-h-0 flex-col md:flex z-20 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:fixed md:left-0 md:top-0 md:bottom-0"
     :class="sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-64'">
     <template v-if="isSettingsView">
       <div class="flex min-h-0 flex-1 flex-col px-4 py-4">

@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
       :class="sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
