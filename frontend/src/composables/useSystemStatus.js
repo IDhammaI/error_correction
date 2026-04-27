@@ -1,6 +1,24 @@
 import { ref, computed, watch } from 'vue'
 import * as api from '@/api.js'
 
+// ── 安全的 localStorage 访问 ─────────────────────────────
+const safeLocalStorage = {
+  getItem(key, fallback = '') {
+    try {
+      return localStorage.getItem(key) || fallback
+    } catch {
+      return fallback
+    }
+  },
+  setItem(key, value) {
+    try {
+      localStorage.setItem(key, value)
+    } catch (e) {
+      console.warn(`[useSystemStatus] localStorage.setItem failed for "${key}":`, e)
+    }
+  },
+}
+
 // ── 模块级单例状态 ──────────────────────────────────────
 const statusLoading = ref(true)
 const systemStatus = ref(null)
@@ -9,7 +27,7 @@ const selectedModel = ref('')
 
 const modelOptionsLoading = ref(false)
 const modelOptionsData = ref(null)
-const selectedLlmOptionId = ref(localStorage.getItem('selected_llm_option_id') || '')
+const selectedLlmOptionId = ref(safeLocalStorage.getItem('selected_llm_option_id', ''))
 
 const providerOptions = computed(() => {
   const s = systemStatus.value
@@ -77,7 +95,7 @@ const doFetchModelOptions = async () => {
     if (!isValidSelection) {
       selectedLlmOptionId.value = data.default_option_id || (options[0]?.option_id || '')
       if (selectedLlmOptionId.value) {
-        localStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
+        safeLocalStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
       }
     }
 
@@ -94,7 +112,7 @@ const doFetchModelOptions = async () => {
 
 watch(selectedLlmOptionId, (newId) => {
   if (newId) {
-    localStorage.setItem('selected_llm_option_id', newId)
+    safeLocalStorage.setItem('selected_llm_option_id', newId)
 
     // 同步更新旧的 selectedModel 状态，以兼容设置页等旧逻辑
     if (selectedLlmOption.value) {
