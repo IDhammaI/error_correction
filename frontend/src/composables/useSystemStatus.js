@@ -95,7 +95,11 @@ const doFetchModelOptions = async () => {
     if (!isValidSelection) {
       selectedLlmOptionId.value = data.default_option_id || (options[0]?.option_id || '')
       if (selectedLlmOptionId.value) {
-        safeLocalStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
+        try {
+          safeLocalStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
+        } catch (e) {
+          console.warn('[useSystemStatus] 保存选中模型失败:', e)
+        }
       }
     }
 
@@ -112,7 +116,11 @@ const doFetchModelOptions = async () => {
 
 watch(selectedLlmOptionId, (newId) => {
   if (newId) {
-    safeLocalStorage.setItem('selected_llm_option_id', newId)
+    try {
+      safeLocalStorage.setItem('selected_llm_option_id', newId)
+    } catch (e) {
+      console.warn('[useSystemStatus] 保存选中模型失败:', e)
+    }
 
     // 同步更新旧的 selectedModel 状态，以兼容设置页等旧逻辑
     if (selectedLlmOption.value) {
