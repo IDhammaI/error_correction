@@ -20,17 +20,17 @@ const { sidebarMode, isMobile, toggleSidebar } = useWorkspaceNav()
 
 <template>
   <div
-    class="h-full flex flex-col rounded-none md:rounded-lg brand-btn overflow-hidden dark:!bg-white/[0.04] transition-colors duration-200">
+    class="h-full flex flex-col rounded-none lg:rounded-lg brand-btn overflow-hidden dark:!bg-white/[0.04] transition-colors duration-200">
     <!-- 顶部栏 -->
     <header
       class="flex items-center h-14 px-4 border-b border-gray-200 dark:border-white/[0.08] shrink-0 gap-4 transition-colors">
-      <!-- 模仿图片风格的操作按钮组 (仅在 PC 端显示) -->
-      <div v-if="!isMobile"
-        class="flex items-center bg-gray-100/50 dark:bg-white/[0.04] rounded-full p-1 gap-0.5 -ml-1">
-        <BaseTooltip :text="sidebarMode === 'collapsed-icon' ? '展开侧边栏' : '收起侧边栏'" placement="bottom">
+      <!-- 操作按钮组 -->
+      <div class="flex items-center bg-gray-100/50 dark:bg-white/[0.04] rounded-full p-1 gap-0.5 -ml-1">
+        <BaseTooltip :text="isMobile ? '打开菜单' : (sidebarMode === 'collapsed-icon' ? '展开侧边栏' : '收起侧边栏')"
+          placement="bottom">
           <button @click="toggleSidebar"
             class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all">
-            <PanelLeft class="w-4 h-4" :class="sidebarMode === 'collapsed-icon' ? '' : 'rotate-180'" />
+            <PanelLeft class="w-4 h-4" :class="!isMobile && sidebarMode === 'expanded' ? 'rotate-180' : ''" />
           </button>
         </BaseTooltip>
 

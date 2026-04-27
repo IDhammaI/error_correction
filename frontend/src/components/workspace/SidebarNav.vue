@@ -101,11 +101,11 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05] overflow-hidden"
+    class="flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05] overflow-hidden"
     :class="[
       isMobile
         ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
-        : 'hidden md:flex md:fixed md:left-0 md:top-0 md:bottom-0 ' + (isNarrow ? 'w-16' : 'w-64')
+        : 'hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:bottom-0 ' + (isNarrow ? 'w-16' : 'w-64')
     ]">
 
     <!-- 设置视图 -->
@@ -378,15 +378,9 @@ const userQuotaSummary = computed(() => {
     </template>
   </aside>
 
-  <!-- 移动端展开按钮 -->
-  <button v-if="isMobile" @click="emit('toggle-sidebar')"
-    class="fixed left-4 top-4 z-[25] flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 md:hidden">
-    <i class="fa-solid fa-bars text-gray-500 dark:text-[#8a8f98]"></i>
-  </button>
-
   <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
   <nav
-    class="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/90 dark:border-white/[0.06] dark:bg-[#0A0A0F]/90 pb-2 pt-2 md:hidden transition-colors duration-200">
+    class="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/90 dark:border-white/[0.06] dark:bg-[#0A0A0F]/90 pb-2 pt-2 lg:hidden transition-colors duration-200">
     <div class="flex justify-around">
       <button @click="setView(lastWorkspaceView)"
         class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"

@@ -51,7 +51,8 @@ const FEATURES = [
 </script>
 
 <template>
-  <section id="features" class="relative py-24 overflow-hidden bg-slate-50 dark:bg-transparent transition-colors duration-200">
+  <section id="features"
+    class="relative py-24 overflow-hidden bg-slate-50 dark:bg-transparent transition-colors duration-200">
 
     <!-- 背景装饰：复杂流体拓扑波纹 (Fluid Topography) -->
     <div class="absolute inset-0 pointer-events-none z-0 opacity-[0.8] dark:opacity-20 dark:invert-0 invert" style="
@@ -63,37 +64,39 @@ const FEATURES = [
     "></div>
 
     <!-- 背景装饰：模糊环境光 (Ambient Glow) -->
-    <div class="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 dark:bg-indigo-600/5 blur-[150px] pointer-events-none z-0"></div>
-    <div class="absolute bottom-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-violet-600/10 dark:bg-violet-600/5 blur-[120px] pointer-events-none z-0"></div>
+    <div
+      class="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 dark:bg-indigo-600/5 blur-[150px] pointer-events-none z-0">
+    </div>
+    <div
+      class="absolute bottom-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-violet-600/10 dark:bg-violet-600/5 blur-[120px] pointer-events-none z-0">
+    </div>
 
     <!-- 顶部分割线 -->
-    <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-white/[0.06] to-transparent transition-colors duration-200"></div>
+    <div
+      class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-white/[0.06] to-transparent transition-colors duration-200">
+    </div>
 
     <div class="relative mx-auto max-w-6xl px-4 sm:px-6">
 
       <!-- 标题区 -->
       <div class="mb-16 text-center">
-        <h2 class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(79,70,229)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)] dark:bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(255,255,255)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)]" style="
+        <h2
+          class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(79,70,229)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)] dark:bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(255,255,255)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)]"
+          style="
             background-size: 200% auto;
           ">
           驱动学习效率的核心引擎
         </h2>
-        <p class="reveal mx-auto max-w-xl text-sm text-gray-600 dark:text-white/35 leading-relaxed transition-colors duration-200">
+        <p
+          class="reveal mx-auto max-w-xl text-sm text-gray-600 dark:text-white/35 leading-relaxed transition-colors duration-200">
           不仅是简单的图像识别，而是真正理解学科内在逻辑的 AI 智能体系统。
         </p>
       </div>
 
       <!-- 特性网格 -->
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 relative z-10 max-w-5xl mx-auto">
-        <FeatureCard
-          v-for="(f, i) in FEATURES"
-          :key="f.title"
-          :icon="f.icon"
-          :title="f.title"
-          :desc="f.desc"
-          :spanClass="f.span"
-          :delay="`${i * 80}ms`"
-        />
+        <FeatureCard v-for="(f, i) in FEATURES" :key="f.title" :icon="f.icon" :title="f.title" :desc="f.desc"
+          :spanClass="f.span" :delay="`${i * 80}ms`" />
       </div>
 
     </div>
@@ -103,8 +106,13 @@ const FEATURES = [
 <style scoped>
 /* 移除旧的 hover translateY 浮动效果，保留纯粹的光效反馈 */
 @keyframes gradient-sweep {
-  0% { background-position: -100% center; }
-  100% { background-position: 100% center; }
+  0% {
+    background-position: -100% center;
+  }
+
+  100% {
+    background-position: 100% center;
+  }
 }
 
 .animate-gradient-sweep {

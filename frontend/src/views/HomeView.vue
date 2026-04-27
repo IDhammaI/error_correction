@@ -13,11 +13,11 @@ import HomeDemo from '@/views/home/HomeDemo.vue'
 import HomeFooter from '@/components/home/HomeFooter.vue'
 
 const SECTIONS = [
-  { id: 'hero',     label: '首页' },
+  { id: 'hero', label: '首页' },
   { id: 'features', label: '核心功能' },
   { id: 'workflow', label: '工作流' },
-  { id: 'demo',     label: '效果演示' },
-  { id: 'cta',      label: '立即开始' },
+  { id: 'demo', label: '效果演示' },
+  { id: 'cta', label: '立即开始' },
 ]
 
 // Refs
@@ -236,23 +236,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 page-enter">
+  <div
+    class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 page-enter">
 
     <!-- 🌟 真正的全局绝对底层固定背景 🌟 -->
     <!-- 将背景移出任何可能带有 transform / overflow-hidden 的包裹层，确保 fixed 完美生效 -->
-    <HomeHeader
-      :navScrolled="navScrolled"
-      :activeSection="activeSection"
-      :sections="SECTIONS"
-      @scrollToSection="scrollToSectionSnap"
-    />
-    <HomeSideNav
-      :activeSection="activeSection"
-      :sections="SECTIONS"
-      :showBackToTop="backToTopVisible"
-      @scrollToSection="scrollToSectionSnap"
-      @back-to-top="scrollToY(0, 1000)"
-    />
+    <HomeHeader :navScrolled="navScrolled" :activeSection="activeSection" :sections="SECTIONS"
+      @scrollToSection="scrollToSectionSnap" />
+    <HomeSideNav :activeSection="activeSection" :sections="SECTIONS" :showBackToTop="backToTopVisible"
+      @scrollToSection="scrollToSectionSnap" @back-to-top="scrollToY(0, 1000)" />
 
     <!-- 主内容包裹层 -->
     <div class="relative">
@@ -276,8 +268,10 @@ onUnmounted(() => {
         <HomeFooter />
 
         <!-- 全局 Footer -->
-        <div class="border-t border-gray-200 dark:border-white/[0.06] py-4 relative z-10 bg-white/50 dark:bg-[#0A0A0F]/50 w-full mt-auto transition-colors duration-200">
-          <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500 dark:text-white/30 px-4 transition-colors duration-200">
+        <div
+          class="border-t border-gray-200 dark:border-white/[0.06] py-4 relative z-10 bg-white/50 dark:bg-[#0A0A0F]/50 w-full mt-auto transition-colors duration-200">
+          <div
+            class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500 dark:text-white/30 px-4 transition-colors duration-200">
             <div class="flex items-center gap-2">
               <div class="footer-logo relative overflow-hidden p-1.5 rounded-lg flex items-center justify-center">
                 <span class="footer-logo__grid absolute inset-0 pointer-events-none"></span>
@@ -303,8 +297,13 @@ onUnmounted(() => {
 
 <style>
 @keyframes pageEnter {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .page-enter {
@@ -312,26 +311,64 @@ onUnmounted(() => {
 }
 
 @keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
 }
-.animate-blob { animation: blob 10s infinite alternate; }
-.animation-delay-2000 { animation-delay: 2s; }
-.animation-delay-4000 { animation-delay: 4s; }
+
+.animate-blob {
+  animation: blob 10s infinite alternate;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
 }
-.animate-float { animation: float 6s ease-in-out infinite; }
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
 
 @keyframes scan {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
 }
-.animate-scan { animation: scan 3s ease-in-out infinite; }
+
+.animate-scan {
+  animation: scan 3s ease-in-out infinite;
+}
 
 /* 动态玻璃态面板 — 统一为 brand-btn 风格 */
 .glass-panel {
@@ -342,7 +379,9 @@ onUnmounted(() => {
 }
 
 /* 平滑滚动时补偿固定导航栏高度 */
-html { scroll-padding-top: 80px; }
+html {
+  scroll-padding-top: 80px;
+}
 
 /* 禁用浏览器默认 View Transitions 淡出 */
 ::view-transition-old(root),
@@ -357,6 +396,7 @@ html { scroll-padding-top: 80px; }
   transform: translateY(40px);
   transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
 .hero-anim.is-visible {
   opacity: 1;
   transform: translateY(0);
@@ -368,6 +408,7 @@ html { scroll-padding-top: 80px; }
   transform: translateY(30px);
   transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .reveal.active {
   opacity: 1;
   transform: translateY(0);
@@ -397,5 +438,4 @@ html { scroll-padding-top: 80px; }
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
 }
-
 </style>
