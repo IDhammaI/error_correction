@@ -94,6 +94,8 @@ watch(collapsedGroups, () => {
 // ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
+
+// ── 视图切换包装 ──────────────────────────────────────
 const updateCurrentView = (v) => {
   currentView.value = v
 }

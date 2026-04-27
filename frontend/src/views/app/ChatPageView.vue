@@ -169,7 +169,7 @@ function autoResize() {
 <template>
   <ContentPanel title="AI 对话">
     <template #header-actions>
-      <button @click="createAiChat(currentView)"
+      <button @click="createAiChat()"
         class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
         title="新对话">
         <MessageSquarePlus class="w-4 h-4" />
@@ -274,7 +274,7 @@ function autoResize() {
                   title="附件（敬请期待）">
                   <i class="fa-solid fa-plus text-sm"></i>
                 </button>
-                <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
+                <button @click="sessionId ? sendMessage() : createAiChat()"
                   :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                   class="h-8 w-8 rounded-full flex items-center justify-center transition-all" :class="inputText.trim() && sessionId
                     ? 'bg-indigo-500 text-white shadow-sm dark:bg-[rgb(129,115,223)]'

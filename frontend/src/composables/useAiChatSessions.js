@@ -56,20 +56,24 @@ export function useAiChatSessions(pushToast) {
     } catch (_) {}
   }
 
-  async function createAiChat(currentView) {
+  async function createAiChat(currentViewRef) {
     try {
       const session = await api.createIndependentChat('新对话')
       aiChatSessions.value.unshift(session)
       activeAiChatId.value = session.id
-      if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
+      if (currentViewRef && currentViewRef.value !== 'ai-chat') {
+        currentViewRef.value = 'ai-chat'
+      }
     } catch (e) {
       toast('error', e.message)
     }
   }
 
-  function selectAiChat(s, currentView) {
+  function selectAiChat(s, currentViewRef) {
     activeAiChatId.value = s.id
-    if (currentView.value !== 'ai-chat') currentView.value = 'ai-chat'
+    if (currentViewRef && currentViewRef.value !== 'ai-chat') {
+      currentViewRef.value = 'ai-chat'
+    }
   }
 
   async function onAiChatTitleUpdated(sessionId, title) {
