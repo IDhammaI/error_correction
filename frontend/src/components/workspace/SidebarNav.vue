@@ -4,7 +4,7 @@
  * 工作台左侧边栏导航（PC 端双模式 + 移动端抽屉）+ 底部 Tab 导航（移动端）
  */
 import { computed } from 'vue'
-import { PanelLeft } from 'lucide-vue-next'
+import { PanelLeft, MessageSquarePlus } from 'lucide-vue-next'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 import BaseDropdown from '@/components/base/BaseDropdown.vue'
 import BaseTooltip from '@/components/base/BaseTooltip.vue'
@@ -149,10 +149,10 @@ const userQuotaSummary = computed(() => {
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div>
           <!-- Logo 标题区 -->
-          <div class="flex h-20 items-center justify-between px-4 py-6" :class="isNarrow ? 'px-0 justify-center' : ''">
+          <div class="flex h-14 items-center justify-between px-4" :class="isNarrow ? 'px-0 justify-center' : ''">
             <button @click="emit('navigate-home')"
               class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
-              :class="isNarrow ? 'w-10 h-10 justify-center px-0' : ''" :title="isNarrow ? '展开侧边栏' : '返回首页'">
+              :class="isNarrow ? 'w-10 h-10 justify-center px-0' : ''" title="返回首页">
               <BaseLogo size="sm" />
               <span v-if="!isNarrow"
                 class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] transition-all duration-200 overflow-hidden whitespace-nowrap">
@@ -164,11 +164,6 @@ const userQuotaSummary = computed(() => {
                 class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
                 title="系统设置">
                 <i class="fa-solid fa-gear text-xs"></i>
-              </button>
-              <button @click="emit('toggle-sidebar')"
-                class="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 dark:border-white/[0.08] text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
-                :title="isNarrow ? '展开侧边栏' : '收起侧边栏'">
-                <PanelLeft class="w-4 h-4 transition-transform duration-300" :class="isNarrow ? '' : 'rotate-180'" />
               </button>
             </div>
           </div>
@@ -241,14 +236,9 @@ const userQuotaSummary = computed(() => {
               <i class="fa-solid fa-play text-[8px] text-gray-400 dark:text-[#62666d] transition-transform duration-200"
                 :class="chatCollapsed ? '' : 'rotate-90'"></i>
             </button>
-            <BaseTooltip v-else text="新对话" placement="right">
-              <button @click="emit('create-ai-chat')"
-                class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
-                <i class="fa-solid fa-plus text-[10px]"></i>
-              </button>
-            </BaseTooltip>
             <button v-if="!isNarrow" @click="emit('create-ai-chat')"
-              class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
+              class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors"
+              title="新对话">
               <i class="fa-solid fa-plus text-[10px]"></i>
             </button>
           </div>
@@ -391,18 +381,8 @@ const userQuotaSummary = computed(() => {
     </template>
   </aside>
 
-  <!-- ================== 侧边栏切换按钮（PC端） ================== -->
-  <Transition name="fade">
-    <button @click="emit('toggle-sidebar')"
-      class="fixed top-1/2 -translate-y-1/2 z-[25] hidden h-10 w-6 items-center justify-center rounded-r-lg bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:scale-105 transition-all duration-150 md:flex"
-      :style="{ left: isNarrow ? '60px' : '248px' }" :aria-label="isNarrow ? '展开侧边栏' : '收起侧边栏'">
-      <PanelLeft class="w-4 h-4 text-gray-500 dark:text-[#8a8f98] transition-transform duration-300"
-        :class="isNarrow ? '' : 'rotate-180'" />
-    </button>
-  </Transition>
-
-  <!-- ================== 移动端：悬浮展开按钮 ================== -->
-  <button v-if="isMobile && !mobileDrawerOpen" @click="emit('toggle-sidebar')"
+  <!-- 移动端展开按钮 -->
+  <button v-if="isMobile" @click="emit('toggle-sidebar')"
     class="fixed left-4 top-4 z-[25] flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#1b1b1d] shadow-lg border border-gray-200 dark:border-white/10 md:hidden">
     <i class="fa-solid fa-bars text-gray-500 dark:text-[#8a8f98]"></i>
   </button>
