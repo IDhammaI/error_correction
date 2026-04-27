@@ -1,8 +1,8 @@
 :root {
-  --sidebar-transition-duration: 150ms;
-  --sidebar-transition-timing: cubic-bezier(0.2, 0, 0, 1);
-  --mask-transition-duration: 150ms;
-  --mask-transition-timing: ease-out;
+  --sidebar-transition-duration: 300ms;
+  --sidebar-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  --mask-transition-duration: 300ms;
+  --mask-transition-timing: ease-in-out;
 }
 
 @tailwind base;
@@ -90,6 +90,50 @@
   background: #fcfcfd;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out 0.15s forwards;
+}
+
+.brand-gradient-bg {
+  background: linear-gradient(to bottom, #5e6ad2, #4a55c2) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  border: none !important;
+}
+
+/* Linear 风格的基础文本颜色 */
+.dark body {
+  color: #d0d6e0;
+}
+
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark .text-primary {
+  color: #f7f8f8;
+}
+
+/* Linear 风格的细边框 */
+.dark .border-subtle {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark .border-standard {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 html,

@@ -90,10 +90,4 @@ const { sidebarMode, isMobile, toggleSidebar } = useWorkspaceNav()
   </div>
 </template>
 
-<style scoped>
-.brand-gradient-bg {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-  border: none;
-}
-</style>
+<style scoped></style>

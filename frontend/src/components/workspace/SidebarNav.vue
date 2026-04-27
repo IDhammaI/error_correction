@@ -101,7 +101,7 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05]"
+    class="min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05] overflow-hidden"
     :class="[
       isMobile
         ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
@@ -149,13 +149,14 @@ const userQuotaSummary = computed(() => {
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div>
           <!-- Logo 标题区 -->
-          <div class="flex h-14 items-center justify-between px-4" :class="isNarrow ? 'px-0 justify-center' : ''">
-            <button @click="emit('navigate-home')"
-              class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
-              :class="isNarrow ? 'w-10 h-10 justify-center px-0' : ''" title="返回首页">
-              <BaseLogo size="sm" />
+          <div class="flex h-14 items-center justify-between transition-all"
+            :class="isNarrow ? 'px-3 justify-center' : 'px-4'">
+            <button @click="emit('navigate-home')" class="flex min-w-0 items-center gap-2 rounded-md transition-all"
+              :class="isNarrow ? 'w-10 h-10 justify-center' : 'px-1 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.04]'"
+              title="返回首页">
+              <BaseLogo size="sm" class="shrink-0" />
               <span v-if="!isNarrow"
-                class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] transition-all duration-200 overflow-hidden whitespace-nowrap">
+                class="text-sm font-semibold text-gray-900 dark:text-[#f7f8f8] transition-all duration-300 overflow-hidden whitespace-nowrap">
                 智卷错题本
               </span>
             </button>
@@ -169,17 +170,13 @@ const userQuotaSummary = computed(() => {
           </div>
 
           <!-- 视图切换菜单 -->
-          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 px-4 relative"
-            :class="isNarrow ? 'px-2' : ''">
-            <!-- 滑动指示器 -->
-            <div v-if="!isNarrow" class="absolute left-4 right-4 z-0 rounded-lg overflow-hidden brand-gradient-bg"
-              :style="indicatorStyle">
-            </div>
+          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative transition-all"
+            :class="isNarrow ? 'px-3' : 'px-4'">
 
             <template v-for="(group, gi) in navGroups" :key="gi">
               <!-- 分组标题（可折叠） -->
               <button v-if="group.label && !isNarrow" @click="group.collapsible && toggleGroup(gi)"
-                class="flex items-center gap-1 px-3 pt-4 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors"
+                class="flex items-center gap-1 px-3 mt-6 pb-2 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors"
                 :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'">
                 <span>{{ group.label }}</span>
                 <i v-if="group.collapsible"
@@ -208,15 +205,17 @@ const userQuotaSummary = computed(() => {
                         <!-- 普通项 -->
                         <button v-else :ref="el => navBtnRefs[item.id] = el"
                           @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
-                          class="group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200"
+                          class="group relative z-10 flex items-center gap-3 rounded-lg text-sm font-medium outline-none transition-[width,height,padding,margin] duration-300 ease-[var(--sidebar-transition-timing)]"
                           :class="[
                             item.match(currentView)
-                              ? (isNarrow ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10' : 'text-white')
-                              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
-                            isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''
+                              ? 'brand-gradient-bg text-white shadow-sm border-none transition-none'
+                              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors duration-150',
+                            isNarrow ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2'
                           ]">
                           <i class="fa-solid w-4 shrink-0 text-center text-sm" :class="item.icon"></i>
-                          <span v-if="!isNarrow">{{ item.label }}</span>
+                          <span v-if="!isNarrow" class="truncate opacity-0 animate-fadeIn">
+                            {{ item.label }}
+                          </span>
                         </button>
                       </BaseTooltip>
                     </template>
@@ -228,8 +227,9 @@ const userQuotaSummary = computed(() => {
         </div>
 
         <!-- AI 对话历史列表 -->
-        <div class="mt-4 flex min-h-0 flex-1 flex-col px-4" :class="isNarrow ? 'px-2' : ''">
-          <div class="flex items-center justify-between px-3 pt-4 pb-2" :class="isNarrow ? 'px-0 justify-center' : ''">
+        <div class="mt-2 flex min-h-0 flex-1 flex-col transition-all" :class="isNarrow ? 'px-3' : 'px-4'">
+          <div class="flex items-center justify-between mt-6 pb-2 transition-all"
+            :class="isNarrow ? 'justify-center' : 'px-3'">
             <button v-if="!isNarrow" @click="emit('update:chatCollapsed', !chatCollapsed)"
               class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors cursor-pointer">
               <span>对话</span>
@@ -249,22 +249,19 @@ const userQuotaSummary = computed(() => {
               <div :ref="(el) => $emit('update:chatListRef', el)"
                 class="relative h-full overflow-y-auto pb-2 custom-scrollbar"
                 @click="emit('update:chatMenuOpenId', null)">
-                <!-- 对话区滑动指示器 -->
-                <div v-if="!isNarrow" class="absolute left-0 right-0 z-0 rounded-lg overflow-hidden brand-gradient-bg"
-                  :style="chatIndicatorStyle"></div>
 
                 <div v-if="aiChatSessions.length === 0 && !isNarrow"
                   class="px-3 py-4 text-center text-xs text-gray-400 dark:text-[#62666d]">
                   暂无对话
                 </div>
                 <div v-for="s in aiChatSessions" :key="s.id" :ref="el => chatBtnRefs[s.id] = el"
-                  class="group relative mb-px flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                  class="group relative mb-px flex cursor-pointer items-center rounded-lg text-sm font-medium outline-none transition-[width,height,padding,margin] duration-300"
                   :class="[
                     chatMenuOpenId === s.id ? 'z-20' : 'z-10',
                     activeAiChatId === s.id && currentView === 'ai-chat'
-                      ? (isNarrow ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/10' : 'text-white')
-                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
-                    isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''
+                      ? 'brand-gradient-bg text-white shadow-sm border-none transition-none'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors duration-150',
+                    isNarrow ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2 gap-3'
                   ]" @click="renamingChatId !== s.id && emit('select-ai-chat', s)">
                   <BaseTooltip :text="s.title" placement="right" :disabled="!isNarrow">
                     <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm transition-colors"></i>
@@ -327,8 +324,8 @@ const userQuotaSummary = computed(() => {
           <template #trigger="{ toggle }">
             <!-- 用户信息 -->
             <button @click.stop="toggle"
-              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
-              :class="isNarrow ? 'justify-center px-0' : ''">
+              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-all"
+              :class="isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''">
               <div
                 class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium"
                 style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
@@ -345,7 +342,7 @@ const userQuotaSummary = computed(() => {
                   userDisplayName }}
                 </p>
                 <p v-if="userQuotaSummary"
-                  class="mt-0.5 text-xs text-indigo-600 dark:text-[rgb(145,132,235)] truncate leading-tight transition-colors">
+                  class="mt-0.5 text-xs text-[#5e6ad2] dark:text-[#7170ff] truncate leading-tight transition-colors">
                   {{
                     userQuotaSummary }}</p>
                 <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{
