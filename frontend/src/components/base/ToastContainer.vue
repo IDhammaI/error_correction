@@ -1,7 +1,7 @@
 <script setup>
 defineProps({
   toasts: { type: Array, default: () => [] },
-  sidebarOffset: { type: Number, default: 256 },
+  sidebarOffset: { type: Number, default: 0 },
 })
 
 const onLeave = (el) => {

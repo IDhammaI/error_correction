@@ -16,8 +16,8 @@ const props = defineProps({
   statusLoading: Boolean,
   statusError: [String, null],
   statusPills: Array,
-  providerOptions: Array,
-  selectedModel: String,
+  modelOptionsData: Object,
+  selectedLlmOptionId: String,
   hasConfiguredModel: Boolean,
   splitting: Boolean,
   splitCompleted: Boolean,
@@ -34,7 +34,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:upload-mode',
   'update:erase-enabled',
-  'update:selected-model',
+  'update:selectedLlmOptionId',
   'upload',
   'remove-file',
   'split',
@@ -75,8 +75,9 @@ const emit = defineEmits([
     <!-- 引擎状态 -->
     <div class="ml-auto">
       <StatusBar :status-loading="statusLoading" :status-error="statusError" :status-pills="statusPills"
-        :provider-options="providerOptions" :selected-model="selectedModel" :disabled="splitting || splitCompleted"
-        :no-models="!hasConfiguredModel" @update:selected-model="(v) => emit('update:selected-model', v)" />
+        :model-options-data="modelOptionsData" :selected-llm-option-id="selectedLlmOptionId"
+        :disabled="splitting || splitCompleted" :no-models="!hasConfiguredModel"
+        @update:selected-llm-option-id="(v) => emit('update:selectedLlmOptionId', v)" />
     </div>
   </div>
 

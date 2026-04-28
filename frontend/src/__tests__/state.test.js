@@ -142,3 +142,25 @@ describe('文件上传区域', () => {
     wrapper.unmount()
   })
 })
+
+describe('safeLocalStorage 异常处理', () => {
+  it('getItem 异常时返回空字符串降级值', async () => {
+    localStorage.getItem.mockImplementation(() => {
+      throw new Error('Quota exceeded')
+    })
+    const wrapper = await mountApp()
+    // 确保组件仍能正常渲染
+    expect(wrapper.exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('setItem 异常时不抛出错误', async () => {
+    localStorage.setItem.mockImplementation(() => {
+      throw new Error('Quota exceeded')
+    })
+    const wrapper = await mountApp()
+    // 确保组件仍能正常渲染，不会因 setItem 异常崩溃
+    expect(wrapper.exists()).toBe(true)
+    wrapper.unmount()
+  })
+})

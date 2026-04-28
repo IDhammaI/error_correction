@@ -4,7 +4,7 @@ import { useAuth } from '@/composables/useAuth.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
-export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath) {
+export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
   const eraseLoading = ref(false)
   const eraseImages = ref([])
@@ -22,7 +22,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const refreshQuotaSnapshot = async () => {
     try {
       await refreshCurrentUser()
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const startProcess = () => {
@@ -94,7 +94,12 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     step.value = S.value.SPLIT
     pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
     try {
-      const data = await api.splitQuestions(selectedProvider.value, selectedModel.value)
+      const data = await api.splitQuestions(
+        selectedLlmOption.value?.category || 'openai',
+        selectedLlmOption.value?.model_name || '',
+        selectedLlmOption.value?.source || '',
+        selectedLlmOption.value?.provider_id || ''
+      )
       questions.value = data.questions || []
       selectedIds.clear()
       if (data.warnings && data.warnings.length) {
@@ -132,10 +137,23 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     try {
       const formData = new FormData()
       for (const pf of pendingFiles) {
-        if (pf.file) formData.append('files', pf.file)
+        if (pf.file) {
+          // 由于部分浏览器/上传库会锁定最初选中的 File 对象导致 ERR_UPLOAD_FILE_CHANGED 错误
+          // 在提交给笔记整理前，我们将其重新拷贝为一个新的 File 对象
+          const newFile = new File([pf.file], pf.file.name, { type: pf.file.type, lastModified: pf.file.lastModified })
+          formData.append('files', newFile)
+        }
       }
-      formData.append('model_provider', selectedProvider.value)
-      if (selectedModel.value) formData.append('model_name', selectedModel.value)
+      formData.append('model_provider', selectedLlmOption.value?.category || 'openai')
+      if (selectedLlmOption.value?.model_name) {
+        formData.append('model_name', selectedLlmOption.value.model_name)
+      }
+      if (selectedLlmOption.value?.source) {
+        formData.append('provider_source', selectedLlmOption.value.source)
+      }
+      if (selectedLlmOption.value?.provider_id) {
+        formData.append('provider_id', selectedLlmOption.value.provider_id)
+      }
 
       await new Promise((resolve, reject) => {
         api.createNote(formData, {

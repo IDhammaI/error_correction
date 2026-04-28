@@ -13,14 +13,16 @@ import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 const { pushToast } = useToast()
-const { selectedProvider, selectedModel } = useSystemStatus()
+const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
 const { currentView } = useWorkspaceNav()
 
 const sessionId = computed(() => activeAiChatId.value)
-const modelProvider = computed(() => selectedProvider.value)
-const modelName = computed(() => selectedModel.value)
+const modelProvider = computed(() => selectedLlmOption.value?.category || 'openai')
+const modelName = computed(() => selectedLlmOption.value?.model_name || '')
+const providerSource = computed(() => selectedLlmOption.value?.source || '')
+const providerId = computed(() => selectedLlmOption.value?.provider_id || '')
 const username = computed(() => currentUser.value?.username || '')
 
 // ---- 对话消息 ----
@@ -78,7 +80,7 @@ async function sendMessage() {
       modelProvider.value,
       null,
       modelName.value,
-      { deepThink: useDeepThink },
+      { deepThink: useDeepThink, providerSource: providerSource.value, providerId: providerId.value },
     )
 
     if (!resp.ok) {
@@ -169,7 +171,7 @@ function autoResize() {
 <template>
   <ContentPanel title="AI 对话">
     <template #header-actions>
-      <button @click="createAiChat()"
+      <button @click="createAiChat(currentView)"
         class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
         title="新对话">
         <MessageSquarePlus class="w-4 h-4" />
@@ -274,7 +276,7 @@ function autoResize() {
                   title="附件（敬请期待）">
                   <i class="fa-solid fa-plus text-sm"></i>
                 </button>
-                <button @click="sessionId ? sendMessage() : createAiChat()"
+                <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
                   :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                   class="h-8 w-8 rounded-full flex items-center justify-center transition-all" :class="inputText.trim() && sessionId
                     ? 'bg-indigo-500 text-white shadow-sm dark:bg-[rgb(129,115,223)]'

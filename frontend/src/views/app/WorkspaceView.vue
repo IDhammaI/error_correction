@@ -4,6 +4,7 @@
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useImageModal } from '@/composables/useImageModal.js'
@@ -19,12 +20,14 @@ import SplitHistory from '@/views/app/SplitHistoryView.vue'
 
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
+const route = useRoute()
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const {
-  statusLoading, statusError, selectedModel, selectedProvider,
+  statusLoading, statusError,
   providerOptions, hasConfiguredModel, statusPills,
+  modelOptionsData, selectedLlmOptionId, selectedLlmOption, doFetchModelOptions
 } = useSystemStatus()
 const {
   questions, selectedIds,
@@ -67,7 +70,7 @@ const {
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 
 const clearPersistedWorkspaceState = () => {
-  try { localStorage.removeItem(WORKSPACE_STATE_KEY) } catch (_) {}
+  try { localStorage.removeItem(WORKSPACE_STATE_KEY) } catch (_) { }
 }
 
 const savePersistedWorkspaceState = () => {
@@ -87,16 +90,16 @@ const savePersistedWorkspaceState = () => {
   }
   try {
     localStorage.setItem(WORKSPACE_STATE_KEY, JSON.stringify(payload))
-  } catch (_) {}
+  } catch (_) { }
 }
 
 const restorePersistedWorkspaceState = async () => {
   let raw = ''
-  try { raw = localStorage.getItem(WORKSPACE_STATE_KEY) || '' } catch (_) {}
+  try { raw = localStorage.getItem(WORKSPACE_STATE_KEY) || '' } catch (_) { }
   if (!raw) return
 
   let state = null
-  try { state = JSON.parse(raw) } catch (_) {}
+  try { state = JSON.parse(raw) } catch (_) { }
   if (!state || !Array.isArray(state.questions) || state.questions.length === 0) return
 
   questions.value = state.questions
@@ -111,7 +114,7 @@ const restorePersistedWorkspaceState = async () => {
 }
 
 const doReset = async () => {
-  await _doReset(providerOptions, selectedModel, step)
+  await _doReset(modelOptionsData, selectedLlmOptionId, step)
   clearPersistedWorkspaceState()
   step.value = S.value.UPLOAD
 }
@@ -121,7 +124,7 @@ const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
   ocrLoading, ocrPages, ocrDone,
   startProcess, doErase, doOcr, doSplit, doExport, doSaveToDb,
-} = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedProvider, selectedModel, questions, selectedIds, pendingFiles, typesetMath)
+} = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
 const restoringWorkspaceState = ref(true)
@@ -183,6 +186,11 @@ watch(
 import { onMounted } from 'vue'
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
+  // 检查 URL 参数，设置上传模式
+  const mode = route.query.mode
+  if (mode === 'note') {
+    uploadMode.value = 'note'
+  }
   try {
     await restorePersistedWorkspaceState()
   } finally {
@@ -203,122 +211,78 @@ onBeforeUnmount(() => {
   <div class="h-full">
     <Transition name="flip" mode="out-in">
       <!-- 第一页：上传与分析 -->
-      <ContentPanel v-if="currentView === 'workspace'" key="upload" title="智能录入与分析" :steps="workspaceSteps" :current-step="step - 1">
+      <ContentPanel v-if="currentView === 'workspace'" key="upload" title="智能录入与分析" :steps="workspaceSteps"
+        :current-step="step - 1">
         <template #toolbar>
-          <button
-            @click="showSplitHistory = !showSplitHistory"
+          <button @click="showSplitHistory = !showSplitHistory"
             class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
             :class="showSplitHistory
               ? 'bg-gray-200 dark:bg-white/[0.06] text-gray-900 dark:text-[#f7f8f8] border border-gray-300 dark:border-white/[0.12]'
-              : 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12]'"
-          >
+              : 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12]'">
             <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
             分割历史
           </button>
         </template>
 
         <template v-if="showSplitHistory" #sidebar>
-          <SplitHistory
-            :theme="theme"
-            :visible="showSplitHistory"
-            @push-toast="pushToast"
-            @open-image="openModal"
+          <SplitHistory :theme="theme" :visible="showSplitHistory" @push-toast="pushToast" @open-image="openModal"
             @load-record="(r) => { handleLoadRecord(r); showSplitHistory = false }"
-            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'"
-          />
+            @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'" />
         </template>
 
-        <UploadStage
-          :upload-mode="uploadMode"
-          :erase-enabled="eraseEnabled"
-          :status-loading="statusLoading"
-          :status-error="statusError"
-          :status-pills="statusPills"
-          :provider-options="providerOptions"
-          :selected-model="selectedModel"
-          :has-configured-model="hasConfiguredModel"
-          :splitting="splitting"
-          :split-completed="splitCompleted"
-          :pending-files="pendingFiles"
-          :file-progress="fileProgress"
-          :waiting-keys="waitingKeys"
-          :upload-busy="uploadBusy"
-          :upload-ready="uploadReady"
-          :split-enabled="splitEnabled"
-          @update:upload-mode="(v) => uploadMode = v"
+        <UploadStage :upload-mode="uploadMode" :erase-enabled="eraseEnabled" :status-loading="statusLoading"
+          :status-error="statusError" :status-pills="statusPills" :model-options-data="modelOptionsData"
+          :selected-llm-option-id="selectedLlmOptionId" :has-configured-model="hasConfiguredModel"
+          :splitting="splitting" :split-completed="splitCompleted" :pending-files="pendingFiles"
+          :file-progress="fileProgress" :waiting-keys="waitingKeys" :upload-busy="uploadBusy"
+          :upload-ready="uploadReady" :split-enabled="splitEnabled" @update:upload-mode="(v) => uploadMode = v"
           @update:erase-enabled="(v) => eraseEnabled = v"
-          @update:selected-model="(v) => selectedModel = v"
-          @upload="enqueueUpload"
-          @remove-file="removePendingFile"
-          @split="startProcess"
-        />
+          @update:selected-llm-option-id="(v) => selectedLlmOptionId = v" @upload="enqueueUpload"
+          @remove-file="removePendingFile" @split="startProcess" />
       </ContentPanel>
 
       <!-- 第二页：解析结果核对 -->
-      <ContentPanel
-        v-else-if="currentView === 'workspace_review'"
-        key="review"
+      <ContentPanel v-else-if="currentView === 'workspace_review'" key="review"
         :title="eraseLoading ? '正在擦除...' : eraseDone && !ocrLoading && !ocrDone ? '擦除预览' : splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
-        :steps="workspaceSteps"
-        :current-step="step - 1"
-      >
+        :steps="workspaceSteps" :current-step="step - 1">
         <template #toolbar>
-          <button
-            @click="handleBack"
-            class="group inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12] transition-colors"
-          >
+          <button @click="handleBack"
+            class="group inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12] transition-colors">
             <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
             返回
           </button>
           <template v-if="eraseDone && !ocrLoading && !ocrDone">
-            <button @click="doErase" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
+            <button @click="doErase"
+              class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
             </button>
-            <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+            <button @click="doOcr"
+              class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
               <i class="fa-solid fa-check text-[10px]"></i> 确认，开始 OCR
             </button>
           </template>
           <template v-else-if="ocrDone && !splitCompleted && !splitting">
-            <button @click="doOcr" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
+            <button @click="doOcr"
+              class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
             </button>
-            <button @click="doSplit" class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+            <button @click="doSplit"
+              class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
               <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
             </button>
           </template>
         </template>
 
-        <ReviewStage
-          ref="reviewStageRef"
-          :erase-loading="eraseLoading"
-          :erase-done="eraseDone"
-          :erase-images="eraseImages"
-          :ocr-loading="ocrLoading"
-          :ocr-done="ocrDone"
-          :ocr-pages="ocrPages"
-          :splitting="splitting"
-          :split-completed="splitCompleted"
-          :questions="questions"
-          :selected-ids="selectedIds"
-          :preview-url="pendingPreviewUrls[0]"
-          @toggle-select="toggleQuestion"
-          @select-all="selectAll"
-          @deselect-all="deselectAll"
-          @open-image="openModal"
-          @reorder="reorderQuestions"
-        />
+        <ReviewStage ref="reviewStageRef" :erase-loading="eraseLoading" :erase-done="eraseDone"
+          :erase-images="eraseImages" :ocr-loading="ocrLoading" :ocr-done="ocrDone" :ocr-pages="ocrPages"
+          :splitting="splitting" :split-completed="splitCompleted" :questions="questions" :selected-ids="selectedIds"
+          :preview-url="pendingPreviewUrls[0]" @toggle-select="toggleQuestion" @select-all="selectAll"
+          @deselect-all="deselectAll" @open-image="openModal" @reorder="reorderQuestions" />
       </ContentPanel>
     </Transition>
 
     <!-- 浮动选择面板 -->
-    <SelectionPanel
-      :visible="currentView === 'workspace_review'"
-      :count="selectedIds.size"
-      export-label="导出错题本"
-      :show-save="true"
-      @export="doExport"
-      @save="doSaveToDb"
-      @clear="deselectAll"
-    />
+    <SelectionPanel :visible="currentView === 'workspace_review'" :count="selectedIds.size" export-label="导出错题本"
+      :show-save="true" @export="doExport" @save="doSaveToDb" @clear="deselectAll" />
   </div>
 </template>

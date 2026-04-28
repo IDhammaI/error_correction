@@ -36,7 +36,7 @@ const { loading: globalLoading } = usePageTransition()
 const { isDark, toggleTheme, initTheme } = useTheme()
 const { pushToast } = useToast()
 const { modalOpen, modalSrc, modalScale, closeModal } = useImageModal()
-const { doFetchStatus } = useSystemStatus()
+const { doFetchStatus, doFetchModelOptions } = useSystemStatus()
 const {
   navRef, navBtnRefs, indicatorStyle, indicatorTransition,
   chatListRef, chatBtnRefs, chatIndicatorStyle, chatIndicatorTransition,
@@ -139,9 +139,10 @@ onMounted(() => {
 
   if (!globalLoading.value) {
     doFetchStatus()
+    doFetchModelOptions()
   } else {
     const unwatch = watch(globalLoading, (val) => {
-      if (!val) { doFetchStatus(); unwatch() }
+      if (!val) { doFetchStatus(); doFetchModelOptions(); unwatch() }
     })
   }
 })

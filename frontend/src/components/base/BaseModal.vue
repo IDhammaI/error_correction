@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useRoute } from 'vue-router'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -10,18 +12,32 @@ const props = defineProps({
   maxWidth: { type: String, default: 'max-w-md' },
   bodyClass: { type: String, default: 'px-6 py-5' },
   blurBackdrop: { type: Boolean, default: true },
-  sidebarOffset: { type: Number, default: 256 },
+  sidebarOffset: { type: Number, default: null },
 })
 
 const emit = defineEmits(['close'])
 
+const route = useRoute()
+const { sidebarMode, isMobile } = useWorkspaceNav()
+
+const computedSidebarOffset = computed(() => {
+  if (props.sidebarOffset !== null) return props.sidebarOffset
+  if (isMobile.value) return 0
+  
+  // 仅在应用内路径显示侧边栏偏移
+  const isInApp = route?.path?.startsWith('/app')
+  if (!isInApp) return 0
+  
+  return sidebarMode.value === 'collapsed-icon' ? 64 : 256
+})
+
 const backdropStyle = computed(() => ({
-  left: `${props.sidebarOffset}px`,
+  left: `${computedSidebarOffset.value}px`,
   '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px',
 }))
 
 const contentStyle = computed(() => ({
-  left: `${props.sidebarOffset}px`,
+  left: `${computedSidebarOffset.value}px`,
 }))
 </script>
 

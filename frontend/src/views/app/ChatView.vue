@@ -14,14 +14,16 @@ const PAGE_SIZE = 30
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 const { pushToast } = useToast()
-const { selectedProvider, selectedModel } = useSystemStatus()
+const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { chatSessionId, chatQuestion, backToErrorBank } = useChatSession()
 
 const sessionId = computed(() => chatSessionId.value)
 const question = computed(() => chatQuestion.value)
-const modelProvider = computed(() => selectedProvider.value)
-const modelName = computed(() => selectedModel.value)
+const modelProvider = computed(() => selectedLlmOption.value?.category || 'openai')
+const modelName = computed(() => selectedLlmOption.value?.model_name || '')
+const providerSource = computed(() => selectedLlmOption.value?.source || '')
+const providerId = computed(() => selectedLlmOption.value?.provider_id || '')
 const username = computed(() => currentUser.value?.username || '')
 
 const toMsg = (m) => ({ id: m.id, role: m.role, content: m.content })
@@ -122,7 +124,14 @@ const sendMessage = async () => {
 
   abortCtrl = new AbortController()
   try {
-    const resp = await streamChat(sessionId.value, text, modelProvider.value, abortCtrl.signal, modelName.value)
+    const resp = await streamChat(
+      sessionId.value,
+      text,
+      modelProvider.value,
+      abortCtrl.signal,
+      modelName.value,
+      { providerSource: providerSource.value, providerId: providerId.value }
+    )
     if (!resp.ok) {
       const err = await resp.json().catch(() => null)
       const error = new Error((err && err.error) || `HTTP ${resp.status}`)
