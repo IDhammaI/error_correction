@@ -29,24 +29,27 @@ const updatePosition = async () => {
   let left, top
 
   if (props.placement === 'top' || props.placement === 'bottom') {
-    left = triggerRect.left + triggerRect.width / 2
     top = props.placement === 'top'
       ? triggerRect.top - props.offset
       : triggerRect.bottom + props.offset
 
     const viewportPadding = 8
+
     if (props.align === 'center') {
+      left = triggerRect.left + triggerRect.width / 2
       const halfWidth = tooltipRect.width / 2
       left = Math.min(
         Math.max(left, viewportPadding + halfWidth),
         window.innerWidth - viewportPadding - halfWidth,
       )
     } else if (props.align === 'right') {
+      left = triggerRect.right
       left = Math.min(
         Math.max(left, viewportPadding + tooltipRect.width),
         window.innerWidth - viewportPadding,
       )
     } else {
+      left = triggerRect.left
       left = Math.min(
         Math.max(left, viewportPadding),
         window.innerWidth - viewportPadding - tooltipRect.width,

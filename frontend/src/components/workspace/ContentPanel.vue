@@ -6,6 +6,7 @@
  */
 import { PanelLeft } from 'lucide-vue-next'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import BaseTooltip from '@/components/base/BaseTooltip.vue'
 
 defineProps({
   title: { type: String, required: true },
