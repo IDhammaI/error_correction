@@ -4,7 +4,6 @@
  * 工作台左侧边栏导航（PC 端双模式 + 移动端抽屉）+ 底部 Tab 导航（移动端）
  */
 import { computed } from 'vue'
-import { PanelLeft, MessageSquarePlus } from 'lucide-vue-next'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 import BaseDropdown from '@/components/base/BaseDropdown.vue'
 import BaseTooltip from '@/components/base/BaseTooltip.vue'

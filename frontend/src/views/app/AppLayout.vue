@@ -63,7 +63,7 @@ watch(mobileDrawerOpen, (val) => {
   } else {
     document.body.style.overflow = ''
   }
-})
+}, { immediate: true })
 const {
   answerModalOpen, answerModalText, answerModalSaving,
   saveAnswerAndChat,
@@ -148,6 +148,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.body.style.overflow = ''
   document.removeEventListener('keydown', onKeydown)
   document.removeEventListener('click', closeChatMenu)
 })

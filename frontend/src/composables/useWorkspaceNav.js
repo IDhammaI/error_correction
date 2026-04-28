@@ -77,26 +77,15 @@ const checkMobile = () => {
   }
 }
 
-// 初始化状态
-if (typeof window !== 'undefined') {
-  // 1. 初始检测移动端
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-
-  // 2. 从 localStorage 恢复大屏模式
-  const savedMode = localStorage.getItem('sidebar-mode')
-  if (savedMode === 'expanded' || savedMode === 'collapsed-icon') {
-    sidebarMode.value = savedMode
-  }
-}
-
 // 切换逻辑
 const toggleSidebar = () => {
   if (isMobile.value) {
     mobileDrawerOpen.value = !mobileDrawerOpen.value
   } else {
     sidebarMode.value = sidebarMode.value === 'expanded' ? 'collapsed-icon' : 'expanded'
-    localStorage.setItem('sidebar-mode', sidebarMode.value)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar-mode', sidebarMode.value)
+    }
   }
 }
 
@@ -142,6 +131,17 @@ export function useWorkspaceNav() {
 
   if (!initialized) {
     initialized = true
+
+    if (typeof window !== 'undefined') {
+      checkMobile()
+      window.addEventListener('resize', checkMobile)
+
+      const savedMode = localStorage.getItem('sidebar-mode')
+      if (savedMode === 'expanded' || savedMode === 'collapsed-icon') {
+        sidebarMode.value = savedMode
+      }
+    }
+
     watch(currentView, (v) => {
       if (WORKSPACE_VIEWS.has(v)) lastWorkspaceView.value = v
     }, { immediate: true })

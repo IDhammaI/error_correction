@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
-import { MessageSquarePlus } from 'lucide-vue-next'
 import { fetchMessages, streamChat } from '@/api.js'
 import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils.js'
 import { useToast } from '@/composables/useToast.js'
