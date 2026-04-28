@@ -349,6 +349,85 @@ class TestStreamChat:
         user = test_db.query(User).filter(User.id == 1).first()
         assert user.daily_free_used == 0
 
+    def test_explicit_personal_provider_selection_uses_requested_provider(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.daily_free_quota = 5
+        user.daily_free_used = 0
+        user.daily_free_quota_date = datetime.utcnow().date().isoformat()
+
+        inactive_provider = ProviderConfig(
+            id=str(uuid.uuid4()),
+            user_id=1,
+            category="openai",
+            name="旧配置",
+            is_active=False,
+            api_key="sk-requested",
+            base_url="https://requested.example.com",
+            model_name="deepseek-chat",
+        )
+        active_provider = ProviderConfig(
+            id=str(uuid.uuid4()),
+            user_id=1,
+            category="openai",
+            name="当前激活",
+            is_active=True,
+            api_key="sk-active",
+            base_url="https://active.example.com",
+            model_name="gpt-4o-mini",
+        )
+        test_db.add(inactive_provider)
+        test_db.add(active_provider)
+        test_db.commit()
+
+        q = _seed_question(test_db)
+        session = crud.create_chat_session(test_db, q.id, user_id=1)
+
+        captured = {}
+
+        def fake_stream_teach(**kwargs):
+            captured["provider"] = kwargs["provider"]
+            captured["model_name"] = kwargs["model_name"]
+            yield {"type": "content", "content": "命中显式选择"}
+
+        with patch("agents.teach.stream_teach", side_effect=fake_stream_teach):
+            resp = client.post(
+                f"/api/chat/{session.public_id}/stream",
+                json={
+                    "message": "你好",
+                    "model_provider": "openai",
+                    "model_name": "deepseek-chat",
+                    "provider_source": "personal",
+                    "provider_id": inactive_provider.id,
+                },
+            )
+
+        assert resp.status_code == 200
+        assert captured["provider"] == "openai"
+        assert captured["model_name"] == "deepseek-chat"
+
+        user = test_db.query(User).filter(User.id == 1).first()
+        assert user.daily_free_used == 0
+
+    def test_missing_personal_provider_returns_clear_error(self, client, test_db):
+        q = _seed_question(test_db)
+        session = crud.create_chat_session(test_db, q.id, user_id=1)
+
+        resp = client.post(
+            f"/api/chat/{session.public_id}/stream",
+            json={
+                "message": "你好",
+                "model_provider": "openai",
+                "model_name": "gpt-4o-mini",
+                "provider_source": "personal",
+                "provider_id": str(uuid.uuid4()),
+            },
+        )
+
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["code"] == "MODEL_OPTION_NOT_FOUND"
+        assert "个人模型不可用" in data["error"]
+
     def test_quota_exhausted_chat_returns_429_and_does_not_save_user_message(self, client, test_db):
         user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
         user.daily_free_quota = 5

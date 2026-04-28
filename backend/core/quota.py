@@ -97,5 +97,21 @@ def uses_server_llm(db, user_id: int | None, provider: str) -> bool:
     return uses_server_provider(db, user_id, provider)
 
 
+def uses_server_llm_selection(
+    provider_source: str | None,
+    *,
+    db=None,
+    user_id: int | None = None,
+    provider: str | None = None,
+) -> bool:
+    if provider_source == "system":
+        return True
+    if provider_source == "personal":
+        return False
+    if db is None or provider is None:
+        return True
+    return uses_server_llm(db, user_id, provider)
+
+
 def uses_server_ocr(db, user_id: int | None) -> bool:
     return uses_server_provider(db, user_id, "paddleocr")

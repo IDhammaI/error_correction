@@ -23,21 +23,61 @@ BATCH_CHAR_LIMIT = 6000
 MAX_RETRIES = 3
 
 
-def _invoke_once(model, ocr_text: str) -> OrganizedNote:
+def _invoke_once(
+    model,
+    ocr_text: str,
+    provider: str = "openai",
+    supports_function_calling: bool = True,
+) -> OrganizedNote:
     """单次 LLM 调用，返回结构化笔记"""
-    structured_model = model.with_structured_output(OrganizedNote, method="function_calling")
-    return structured_model.invoke([
-        SystemMessage(content=NOTE_ORGANIZE_PROMPT),
-        HumanMessage(content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"),
-    ])
+    from core.config import settings
+
+    # 百度千帆等特殊平台/模型，即使 supports_function_calling=False
+    # 如果直接用 with_structured_output 仍可能报错 "暂不支持该模型"（如果 Langchain 默认使用了 JSON Schema mode）
+    # 为保证最大兼容性，我们通过 prompt 要求输出 JSON，并手动解析
+    if not supports_function_calling:
+        from langchain_core.output_parsers import PydanticOutputParser
+
+        parser = PydanticOutputParser(pydantic_object=OrganizedNote)
+        format_instructions = parser.get_format_instructions()
+
+        response = model.invoke(
+            [
+                SystemMessage(
+                    content=NOTE_ORGANIZE_PROMPT
+                    + f"\n\n你必须以 JSON 格式输出，且遵循以下结构：\n{format_instructions}"
+                ),
+                HumanMessage(
+                    content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"
+                ),
+            ]
+        )
+        return parser.parse(response.content)
+    else:
+        structured_model = model.with_structured_output(
+            OrganizedNote, method="function_calling"
+        )
+        return structured_model.invoke(
+            [
+                SystemMessage(content=NOTE_ORGANIZE_PROMPT),
+                HumanMessage(
+                    content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"
+                ),
+            ]
+        )
 
 
-def _invoke_with_retry(model, ocr_text: str) -> OrganizedNote:
+def _invoke_with_retry(
+    model,
+    ocr_text: str,
+    provider: str = "openai",
+    supports_function_calling: bool = True,
+) -> OrganizedNote:
     """带指数退避的重试调用"""
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            result = _invoke_once(model, ocr_text)
+            result = _invoke_once(model, ocr_text, provider, supports_function_calling)
             if result:
                 return result
             last_error = "LLM 未返回有效结果"
@@ -46,7 +86,7 @@ def _invoke_with_retry(model, ocr_text: str) -> OrganizedNote:
             logger.warning(f"笔记整理: 第 {attempt}/{MAX_RETRIES} 次失败: {last_error}")
 
         if attempt < MAX_RETRIES:
-            wait = 2 ** attempt  # 2s, 4s
+            wait = 2**attempt  # 2s, 4s
             logger.info(f"笔记整理: {wait}s 后重试...")
             time.sleep(wait)
 
@@ -55,21 +95,21 @@ def _invoke_with_retry(model, ocr_text: str) -> OrganizedNote:
 
 def _split_text_into_batches(text: str) -> list:
     """按行将文本拆分为多个批次，每批不超过 BATCH_CHAR_LIMIT 字符"""
-    lines = text.split('\n')
+    lines = text.split("\n")
     batches = []
     current = []
     current_len = 0
 
     for line in lines:
         if current_len + len(line) + 1 > BATCH_CHAR_LIMIT and current:
-            batches.append('\n'.join(current))
+            batches.append("\n".join(current))
             current = []
             current_len = 0
         current.append(line)
         current_len += len(line) + 1
 
     if current:
-        batches.append('\n'.join(current))
+        batches.append("\n".join(current))
     return batches
 
 
@@ -80,7 +120,7 @@ def _merge_notes(notes: list) -> OrganizedNote:
     subject = notes[0].subject
 
     # 合并 Markdown 内容
-    all_markdown = '\n\n'.join(n.content_markdown for n in notes)
+    all_markdown = "\n\n".join(n.content_markdown for n in notes)
 
     # 合并去重标签
     all_tags = []
@@ -103,6 +143,10 @@ def invoke_note_organize(
     ocr_text: str,
     provider: str = "openai",
     model_name: str = None,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    supports_function_calling: bool | None = None,
 ) -> OrganizedNote:
     """调用 LLM 将 OCR 文本整理为结构化笔记
 
@@ -113,15 +157,25 @@ def invoke_note_organize(
         ocr_text: OCR 识别出的原始文本
         provider: 模型供应商
         model_name: 指定模型名称，None 使用默认
+        api_key: 动态传入 API Key
+        base_url: 动态传入 Base URL
+        supports_function_calling: 是否支持结构化输出
 
     Returns:
         OrganizedNote 结构化结果
     """
-    model = init_model(temperature=0.3, provider=provider, model_name=model_name)
+    model = init_model(
+        temperature=0.3,
+        provider=provider,
+        model_name=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        supports_function_calling=supports_function_calling,
+    )
 
     # 短文本：直接整理
     if len(ocr_text) <= BATCH_CHAR_LIMIT:
-        return _invoke_with_retry(model, ocr_text)
+        return _invoke_with_retry(model, ocr_text, provider, supports_function_calling)
 
     # 长文本：分批处理
     batches = _split_text_into_batches(ocr_text)
@@ -130,7 +184,7 @@ def invoke_note_organize(
     results = []
     for i, batch in enumerate(batches):
         logger.info(f"处理第 {i + 1}/{len(batches)} 批（{len(batch)} 字符）")
-        result = _invoke_with_retry(model, batch)
+        result = _invoke_with_retry(model, batch, provider, supports_function_calling)
         results.append(result)
 
     return _merge_notes(results)

@@ -29,6 +29,7 @@ const extraImages = computed(() => {
 })
 
 const emit = defineEmits(['close', 'open-image', 'deleted', 'answer-saved', 'review-status-changed', 'push-toast', 'start-chat'])
+const { selectedLlmOption } = useSystemStatus()
 
 const activeTab = ref('content') // 'content' | 'analysis'
 const userAnswer = ref('')
@@ -95,7 +96,12 @@ const triggerAiAnalysis = async () => {
   aiReport.value = null
   typedText.value = ''
   try {
-    const data = await api.requestAiAnalysis([props.question.id])
+    const data = await api.requestAiAnalysis([props.question.id], {
+      modelProvider: selectedLlmOption.value?.category,
+      modelName: selectedLlmOption.value?.model_name,
+      providerSource: selectedLlmOption.value?.source,
+      providerId: selectedLlmOption.value?.provider_id,
+    })
     const a = data.analysis || {}
     const pq = (a.per_question || []).find(function (p) { return p.question_id === props.question.id })
     aiReport.value = {

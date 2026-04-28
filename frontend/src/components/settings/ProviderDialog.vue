@@ -114,7 +114,14 @@ const fetchModels = async () => {
       throw new Error(err.error || `HTTP ${res.status}`)
     }
     const data = await res.json()
-    modelList.value = data.models || []
+    const apiModels = data.models || []
+    const modelSet = new Set(apiModels)
+    // 将当前表单中的模型名也加入列表（兼容废弃模型如 deepseek-chat / deepseek-reasoner）
+    const currentModels = (form.value.model_name || '').split(',').map(s => s.trim()).filter(Boolean)
+    const currentLightModel = form.value.light_model_name || ''
+    for (const m of currentModels) { if (!modelSet.has(m)) { modelSet.add(m); apiModels.push(m) } }
+    if (currentLightModel && !modelSet.has(currentLightModel)) { modelSet.add(currentLightModel); apiModels.push(currentLightModel) }
+    modelList.value = apiModels
     if (modelList.value.length === 0) {
       pushToast('error', '未获取到可用模型')
     } else {
@@ -220,256 +227,201 @@ const selectOption = (field, value) => {
 </script>
 
 <template>
-  <BaseModal
-    :open="open"
-    :title="typeConfig.title"
-    :iconBg="typeConfig.iconBg"
-    maxWidth="max-w-lg sm:w-[32rem]"
-    :blurBackdrop="false"
-    @close="emit('close')"
-  >
+  <BaseModal :open="open" :title="typeConfig.title" :iconBg="typeConfig.iconBg" maxWidth="max-w-lg sm:w-[32rem]"
+    :blurBackdrop="false" @close="emit('close')">
     <template #icon>
-      <img v-if="typeConfig.imgIcon" :src="typeConfig.imgIcon" class="h-5 w-5 object-contain" :class="{'dark:invert': typeConfig.imgIcon.includes('provider-openai.svg')}" alt="icon" />
+      <img v-if="typeConfig.imgIcon" :src="typeConfig.imgIcon" class="h-5 w-5 object-contain"
+        :class="{ 'dark:invert': typeConfig.imgIcon.includes('provider-openai.svg') }" alt="icon" />
       <i v-else class="fa-solid text-base" :class="typeConfig.iconCls"></i>
     </template>
 
     <form autocomplete="off" class="space-y-4" @submit.prevent="confirm" @click="openDropdown = null">
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ? '服务名称' : '供应商名称' }}</label>
-              <BaseInput
-                v-model="form.name"
-                type="text"
-                autocomplete="one-time-code"
-                :placeholder="typeConfig.namePlaceholder"
-                inputClass="h-10"
-                autofocus
-              />
-            </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ?
+          '服务名称' :
+          '供应商名称' }}</label>
+        <BaseInput v-model="form.name" type="text" autocomplete="one-time-code"
+          :placeholder="typeConfig.namePlaceholder" inputClass="h-10" autofocus />
+      </div>
 
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.secretLabel }}</label>
-              <BaseInput
-                v-model="form.api_key"
-                type="password"
-                autocomplete="new-password"
-                :placeholder="isEdit && editData?.api_key_set ? `已设置 (${editData.api_key_hint})，留空则不修改` : typeConfig.secretPlaceholder"
-                inputClass="h-10"
-              />
-            </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.secretLabel
+          }}</label>
+        <BaseInput v-model="form.api_key" type="password" autocomplete="new-password"
+          :placeholder="isEdit && editData?.api_key_set ? `已设置 (${editData.api_key_hint})，留空则不修改` : typeConfig.secretPlaceholder"
+          inputClass="h-10" />
+      </div>
 
-            <div>
-              <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.urlLabel }}</label>
-              <BaseInput
-                v-model="form.base_url"
-                type="text"
-                autocomplete="one-time-code"
-                :placeholder="typeConfig.urlPlaceholder"
-                inputClass="h-10"
-              />
-            </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.urlLabel
+          }}</label>
+        <BaseInput v-model="form.base_url" type="text" autocomplete="one-time-code"
+          :placeholder="typeConfig.urlPlaceholder" inputClass="h-10" />
+      </div>
 
-            <!-- 获取模型列表按钮（仅 OpenAI / Anthropic） -->
-            <div v-if="type !== 'paddleocr'" class="flex items-center gap-3">
-              <BaseButton
-                variant="secondary"
-                @click="fetchModels"
-                :disabled="!canFetchModels || fetchingModels"
-                class="!h-8 !px-3 !text-[11px] !rounded-lg"
-              >
-                <i class="fa-solid text-[10px]" :class="fetchingModels ? 'fa-circle-notch fa-spin' : 'fa-arrows-rotate'"></i>
-                <span class="inline-block w-[4.5rem] text-center">{{ fetchingModels ? '获取中...' : '获取模型列表' }}</span>
-              </BaseButton>
-              <span v-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
-            </div>
+      <!-- 获取模型列表按钮（仅 OpenAI / Anthropic） -->
+      <div v-if="type !== 'paddleocr'" class="flex items-center gap-3">
+        <BaseButton variant="secondary" @click="fetchModels" :disabled="!canFetchModels || fetchingModels"
+          class="!h-8 !px-3 !text-[11px] !rounded-lg">
+          <i class="fa-solid text-[10px]" :class="fetchingModels ? 'fa-circle-notch fa-spin' : 'fa-arrows-rotate'"></i>
+          <span class="inline-block w-[4.5rem] text-center">{{ fetchingModels ? '获取中...' : '获取模型列表' }}</span>
+        </BaseButton>
+        <span v-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
+      </div>
 
-            <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
-              <div>
-                <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-                  {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}
-                  <span v-if="type !== 'paddleocr'" class="group relative">
-                    <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
-                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
-                      用于题目分割、纠错等核心任务
-                    </span>
-                  </span>
-                </label>
-                <!-- 有模型列表时用自定义下拉 -->
-                <div v-if="modelList.length > 0 && type !== 'paddleocr'" class="relative">
-                  <button
-                    type="button"
-                    @click.stop="toggleDropdown('model_name')"
-                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
-                    :class="form.model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
-                  >
-                    <span class="truncate">{{ form.model_name || '请选择模型' }}</span>
-                    <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'model_name' ? 'rotate-180' : ''"></i>
-                  </button>
-                  <Transition name="dropdown">
-                    <div v-if="openDropdown === 'model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
-                      <button
-                        v-for="m in modelList" :key="m"
-                        type="button"
-                        @click.stop="selectOption('model_name', m)"
-                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-                        :class="(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m) ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'"
-                      >
-                        <i v-if="(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m)" class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                        <span :class="!(form.model_name ? form.model_name.split(',').map(s=>s.trim()) : []).includes(m) ? 'pl-[18px]' : ''">{{ m }}</span>
-                      </button>
-                    </div>
-                  </Transition>
-                </div>
-                <!-- 无模型列表时用 input -->
-                <BaseInput
-                  v-else
-                  v-model="form.model_name"
-                  type="text"
-                  :placeholder="type === 'paddleocr' ? 'e.g. PaddleOCR-VL-1.5' : 'e.g. gpt-4o, deepseek-chat'"
-                  inputClass="h-10"
-                />
-              </div>
-              <div v-if="type === 'openai'">
-                <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-                  辅助模型
-                  <span class="font-normal text-slate-400">（可选）</span>
-                  <span class="group relative">
-                    <i class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
-                    <span class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
-                      用于科目识别等简单任务，更快更省 Token
-                    </span>
-                  </span>
-                </label>
-                <div v-if="modelList.length > 0" class="relative">
-                  <button
-                    type="button"
-                    @click.stop="toggleDropdown('light_model_name')"
-                    class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
-                    :class="form.light_model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'"
-                  >
-                    <span class="truncate">{{ form.light_model_name || '不使用' }}</span>
-                    <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform" :class="openDropdown === 'light_model_name' ? 'rotate-180' : ''"></i>
-                  </button>
-                  <Transition name="dropdown">
-                    <div v-if="openDropdown === 'light_model_name'" class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
-                      <button
-                        type="button"
-                        @click.stop="selectOption('light_model_name', '')"
-                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-                        :class="!form.light_model_name ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'"
-                      >
-                        <i v-if="!form.light_model_name" class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                        <span :class="form.light_model_name ? 'pl-[18px]' : ''">不使用</span>
-                      </button>
-                      <button
-                        v-for="m in modelList" :key="m"
-                        type="button"
-                        @click.stop="selectOption('light_model_name', m)"
-                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-                        :class="form.light_model_name === m ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'"
-                      >
-                        <i v-if="form.light_model_name === m" class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                        <span :class="form.light_model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
-                      </button>
-                    </div>
-                  </Transition>
-                </div>
-                <BaseInput
-                  v-else
-                  v-model="form.light_model_name"
-                  type="text"
-                  placeholder="科目识别等轻量任务使用"
-                  inputClass="h-10"
-                />
-              </div>
-            </div>
-
-            <!-- Function Calling 开关（仅 OpenAI） -->
-            <div v-if="type === 'openai'" class="border-t border-slate-100 pt-4 dark:border-white/5">
-              <label class="flex cursor-pointer items-center justify-between">
-                <div>
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">支持 Function Calling</span>
-                  <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">文心一言、通义千问等不支持时需关闭</p>
-                </div>
-                <button
-                  type="button"
-                  @click="form.supports_function_calling = !form.supports_function_calling"
-                  class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                  :class="form.supports_function_calling ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'"
-                >
+      <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
+        <div>
+          <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+            {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}
+            <span v-if="type !== 'paddleocr'" class="group relative">
+              <i
+                class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
+              <span
+                class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                用于题目分割、纠错等核心任务
+              </span>
+            </span>
+          </label>
+          <!-- 有模型列表时用自定义下拉 -->
+          <div v-if="modelList.length > 0 && type !== 'paddleocr'" class="relative">
+            <button type="button" @click.stop="toggleDropdown('model_name')"
+              class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
+              :class="form.model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'">
+              <span class="truncate">{{ form.model_name || '请选择模型' }}</span>
+              <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform"
+                :class="openDropdown === 'model_name' ? 'rotate-180' : ''"></i>
+            </button>
+            <Transition name="dropdown">
+              <div v-if="openDropdown === 'model_name'"
+                class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
+                <button v-for="m in modelList" :key="m" type="button" @click.stop="selectOption('model_name', m)"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                  :class="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
+                  <i v-if="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m)"
+                    class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
                   <span
-                    class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
-                    :class="form.supports_function_calling ? 'translate-x-5' : 'translate-x-0'"
-                  ></span>
+                    :class="!(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'pl-[18px]' : ''">{{
+                    m }}</span>
                 </button>
-              </label>
-            </div>
-
-            <!-- PaddleOCR 测试连接 -->
-            <div v-if="type === 'paddleocr'" class="flex items-center gap-3">
-              <BaseButton
-                variant="secondary"
-                @click="testConnection"
-                :disabled="!canTestConnection || testingConnection"
-                class="!h-8 !px-3 !text-[11px] !rounded-lg"
-              >
-                <i class="fa-solid text-[10px]" :class="testingConnection ? 'fa-circle-notch fa-spin' : 'fa-plug-circle-check'"></i>
-                {{ testingConnection ? '检测中...' : '测试连接' }}
-              </BaseButton>
-              <span v-if="testResult?.success" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <i class="fa-solid fa-circle-check mr-1"></i>{{ testResult.message }}
-              </span>
-              <span v-else-if="testResult && !testResult.success" class="text-xs font-medium text-rose-500 dark:text-rose-400">
-                <i class="fa-solid fa-circle-xmark mr-1"></i>{{ testResult.message }}
-              </span>
-              <span v-else-if="!canTestConnection" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Token 和 URL</span>
-            </div>
-
-            <!-- PaddleOCR 功能开关 -->
-            <div v-if="type === 'paddleocr'" class="border-t border-slate-100 pt-4 dark:border-white/5">
-              <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">功能开关</p>
-              <div class="space-y-3">
-                <label
-                  v-for="toggle in [
-                    { key: 'use_doc_orientation', label: '文档方向检测' },
-                    { key: 'use_doc_unwarping', label: '文档去畸变' },
-                    { key: 'use_chart_recognition', label: '图表识别' },
-                  ]"
-                  :key="toggle.key"
-                  class="flex cursor-pointer items-center justify-between"
-                >
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
-                  <button
-                    type="button"
-                    @click="form[toggle.key] = !form[toggle.key]"
-                    class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                    :class="form[toggle.key] ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'"
-                  >
-                    <span
-                      class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
-                      :class="form[toggle.key] ? 'translate-x-5' : 'translate-x-0'"
-                    ></span>
-                  </button>
-                </label>
               </div>
-            </div>
-          </form>
+            </Transition>
+          </div>
+          <!-- 无模型列表时用 input -->
+          <BaseInput v-else v-model="form.model_name" type="text"
+            :placeholder="type === 'paddleocr' ? 'e.g. PaddleOCR-VL-1.5' : 'e.g. gpt-4o, deepseek-chat'"
+            inputClass="h-10" />
+        </div>
+        <div v-if="type === 'openai'">
+          <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+            辅助模型
+            <span class="font-normal text-slate-400">（可选）</span>
+            <span class="group relative">
+              <i
+                class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
+              <span
+                class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/60 bg-white/90 px-3 py-1.5 text-xs font-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-white/10 dark:bg-[#0A0A0F]/90 dark:text-slate-300">
+                用于科目识别等简单任务，更快更省 Token
+              </span>
+            </span>
+          </label>
+          <div v-if="modelList.length > 0" class="relative">
+            <button type="button" @click.stop="toggleDropdown('light_model_name')"
+              class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
+              :class="form.light_model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'">
+              <span class="truncate">{{ form.light_model_name || '不使用' }}</span>
+              <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform"
+                :class="openDropdown === 'light_model_name' ? 'rotate-180' : ''"></i>
+            </button>
+            <Transition name="dropdown">
+              <div v-if="openDropdown === 'light_model_name'"
+                class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
+                <button type="button" @click.stop="selectOption('light_model_name', '')"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                  :class="!form.light_model_name ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
+                  <i v-if="!form.light_model_name"
+                    class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
+                  <span :class="form.light_model_name ? 'pl-[18px]' : ''">不使用</span>
+                </button>
+                <button v-for="m in modelList" :key="m" type="button" @click.stop="selectOption('light_model_name', m)"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+                  :class="form.light_model_name === m ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
+                  <i v-if="form.light_model_name === m"
+                    class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
+                  <span :class="form.light_model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
+                </button>
+              </div>
+            </Transition>
+          </div>
+          <BaseInput v-else v-model="form.light_model_name" type="text" placeholder="科目识别等轻量任务使用" inputClass="h-10" />
+        </div>
+      </div>
 
-      <template #footer>
-        <BaseButton
-          variant="secondary"
-          @click="emit('close')"
-          class="!h-9 !px-4 !text-[13px] !font-bold !rounded-lg"
-        >
-          取消
+      <!-- Function Calling 开关（仅 OpenAI） -->
+      <div v-if="type === 'openai'" class="border-t border-slate-100 pt-4 dark:border-white/5">
+        <label class="flex cursor-pointer items-center justify-between">
+          <div>
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">支持 Function Calling</span>
+            <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">文心一言、通义千问等不支持时需关闭</p>
+          </div>
+          <button type="button" @click="form.supports_function_calling = !form.supports_function_calling"
+            class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+            :class="form.supports_function_calling ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'">
+            <span
+              class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
+              :class="form.supports_function_calling ? 'translate-x-5' : 'translate-x-0'"></span>
+          </button>
+        </label>
+      </div>
+
+      <!-- PaddleOCR 测试连接 -->
+      <div v-if="type === 'paddleocr'" class="flex items-center gap-3">
+        <BaseButton variant="secondary" @click="testConnection" :disabled="!canTestConnection || testingConnection"
+          class="!h-8 !px-3 !text-[11px] !rounded-lg">
+          <i class="fa-solid text-[10px]"
+            :class="testingConnection ? 'fa-circle-notch fa-spin' : 'fa-plug-circle-check'"></i>
+          {{ testingConnection ? '检测中...' : '测试连接' }}
         </BaseButton>
-        <BaseButton
-          variant="primary"
-          @click="confirm"
-          class="!h-9 !px-4 !text-[13px] !font-bold !rounded-lg"
-        >
-          确认保存
-        </BaseButton>
-      </template>
+        <span v-if="testResult?.success" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <i class="fa-solid fa-circle-check mr-1"></i>{{ testResult.message }}
+        </span>
+        <span v-else-if="testResult && !testResult.success"
+          class="text-xs font-medium text-rose-500 dark:text-rose-400">
+          <i class="fa-solid fa-circle-xmark mr-1"></i>{{ testResult.message }}
+        </span>
+        <span v-else-if="!canTestConnection" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Token 和
+          URL</span>
+      </div>
+
+      <!-- PaddleOCR 功能开关 -->
+      <div v-if="type === 'paddleocr'" class="border-t border-slate-100 pt-4 dark:border-white/5">
+        <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">功能开关</p>
+        <div class="space-y-3">
+          <label v-for="toggle in [
+            { key: 'use_doc_orientation', label: '文档方向检测' },
+            { key: 'use_doc_unwarping', label: '文档去畸变' },
+            { key: 'use_chart_recognition', label: '图表识别' },
+          ]" :key="toggle.key" class="flex cursor-pointer items-center justify-between">
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
+            <button type="button" @click="form[toggle.key] = !form[toggle.key]"
+              class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+              :class="form[toggle.key] ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'">
+              <span
+                class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
+                :class="form[toggle.key] ? 'translate-x-5' : 'translate-x-0'"></span>
+            </button>
+          </label>
+        </div>
+      </div>
+    </form>
+
+    <template #footer>
+      <BaseButton variant="secondary" @click="emit('close')" class="!h-9 !px-4 !text-[13px] !font-bold !rounded-lg">
+        取消
+      </BaseButton>
+      <BaseButton variant="primary" @click="confirm" class="!h-9 !px-4 !text-[13px] !font-bold !rounded-lg">
+        确认保存
+      </BaseButton>
+    </template>
   </BaseModal>
 </template>
 
@@ -477,20 +429,25 @@ const selectOption = (field, value) => {
 .dialog-fade-enter-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+
 .dialog-fade-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
+
 .dialog-fade-enter-from,
 .dialog-fade-leave-to {
   opacity: 0;
   transform: scale(0.96);
 }
+
 .dropdown-enter-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
+
 .dropdown-leave-active {
   transition: opacity 0.1s ease, transform 0.1s ease;
 }
+
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;

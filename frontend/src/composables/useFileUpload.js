@@ -153,7 +153,7 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     }
   }
 
-  const doReset = async (providerOptions, selectedModel, step) => {
+  const doReset = async (modelOptionsData, selectedLlmOptionId, step) => {
     if (activeXhr) {
       try { activeXhr.abort() } catch (_) {}
       activeXhr = null
@@ -174,8 +174,10 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     uploadQueue.splice(0, uploadQueue.length)
     questions.value = []
     selectedIds.clear()
-    const configured = providerOptions.value.find(m => m.configured)
-    selectedModel.value = configured ? configured.default_model : ''
+    
+    if (modelOptionsData && modelOptionsData.value && modelOptionsData.value.default_option_id) {
+      selectedLlmOptionId.value = modelOptionsData.value.default_option_id
+    }
     pushToast('success', '已重置')
   }
 

@@ -20,7 +20,18 @@ const props = defineProps({
 
 const { currentUser, quota, setCurrentUser } = useAuth()
 const { pushToast } = useToast()
-const { doFetchStatus } = useSystemStatus()
+const { doFetchStatus, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
+
+// 计算当前设置页各分类应显示的“使用中” ID
+const currentActivePersonalLlmProviderId = computed(() => {
+  if (!selectedLlmOption.value || selectedLlmOption.value.source !== 'personal') return null
+  return selectedLlmOption.value.provider_id
+})
+
+const currentActiveSystemLlmProviderId = computed(() => {
+  if (!selectedLlmOption.value || selectedLlmOption.value.source !== 'system') return null
+  return selectedLlmOption.value.provider_id
+})
 
 const quotaResetText = computed(() => {
   const resetAt = quota.value?.reset_at
@@ -362,7 +373,18 @@ const activePaddleocrId = ref(null)
 const toggleActive = (type, id) => {
   const refMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
   const target = refMap[type]
-  target.value = target.value === id ? null : id
+  const isActivating = target.value !== id
+  target.value = isActivating ? id : null
+
+  // 同步到工作台的选择 (仅限 AI 模型)
+  if (isActivating && (type === 'openai' || type === 'anthropic')) {
+    const options = modelOptionsData.value?.options || []
+    // 找到该 provider 下的第一个可用模型（仅限个人配置）
+    const firstModel = options.find(o => o.provider_id === id && o.category === type && o.source === 'personal' && o.available)
+    if (firstModel) {
+      selectedLlmOptionId.value = firstModel.option_id
+    }
+  }
 }
 
 const systemOpenaiProviders = ref([])
@@ -378,7 +400,19 @@ const systemConfigLoaded = ref(false)
 const toggleSystemActive = async (type, id) => {
   const refMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId }
   const target = refMap[type]
-  target.value = target.value === id ? null : id
+  const isActivating = target.value !== id
+  target.value = isActivating ? id : null
+
+  // 同步到工作台的选择 (仅限 AI 模型)
+  if (isActivating && (type === 'openai' || type === 'anthropic')) {
+    const options = modelOptionsData.value?.options || []
+    // 找到该 provider 下的第一个可用模型
+    const firstModel = options.find(o => o.provider_id === id && o.category === type && o.source === 'system' && o.available)
+    if (firstModel) {
+      selectedLlmOptionId.value = firstModel.option_id
+    }
+  }
+
   try {
     await saveSystemConfig()
     pushToast('success', '平台托管使用配置已更新')
@@ -801,14 +835,15 @@ watch(
             <div v-else class="space-y-6">
               <ProviderSection imgIcon="/src/assets/provider-openai.svg" title="平台托管 OpenAI 兼容 API"
                 subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等" :providers="systemOpenaiProviders"
-                :active-id="systemActiveOpenaiId" @add="openSystemAddDialog('openai')"
+                :active-id="currentActiveSystemLlmProviderId" @add="openSystemAddDialog('openai')"
                 @toggle-active="(id) => toggleSystemActive('openai', id)"
                 @edit="(p, idx) => openSystemEditDialog('openai', p, idx)"
                 @remove="(idx) => removeSystemProvider('openai', idx)" />
 
               <ProviderSection imgIcon="/src/assets/provider-anthropic.svg" title="平台托管 Anthropic API"
-                subtitle="Claude 系列模型" :providers="systemAnthropicProviders" :active-id="systemActiveAnthropicId"
-                @add="openSystemAddDialog('anthropic')" @toggle-active="(id) => toggleSystemActive('anthropic', id)"
+                subtitle="Claude 系列模型" :providers="systemAnthropicProviders"
+                :active-id="currentActiveSystemLlmProviderId" @add="openSystemAddDialog('anthropic')"
+                @toggle-active="(id) => toggleSystemActive('anthropic', id)"
                 @edit="(p, idx) => openSystemEditDialog('anthropic', p, idx)"
                 @remove="(idx) => removeSystemProvider('anthropic', idx)" />
 
@@ -935,13 +970,14 @@ watch(
 
         <div v-else class="space-y-6">
           <ProviderSection imgIcon="/src/assets/provider-openai.svg" title="OpenAI 兼容 API"
-            subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等" :providers="openaiProviders" :active-id="activeOpenaiId"
-            @add="openAddDialog('openai')" @toggle-active="(id) => toggleActive('openai', id)"
-            @edit="(p, idx) => openEditDialog('openai', p, idx)" @remove="(idx) => removeProvider('openai', idx)" />
+            subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等" :providers="openaiProviders"
+            :active-id="currentActivePersonalLlmProviderId" @add="openAddDialog('openai')"
+            @toggle-active="(id) => toggleActive('openai', id)" @edit="(p, idx) => openEditDialog('openai', p, idx)"
+            @remove="(idx) => removeProvider('openai', idx)" />
 
           <ProviderSection imgIcon="/src/assets/provider-anthropic.svg" title="Anthropic API" subtitle="Claude 系列模型"
-            :providers="anthropicProviders" :active-id="activeAnthropicId" @add="openAddDialog('anthropic')"
-            @toggle-active="(id) => toggleActive('anthropic', id)"
+            :providers="anthropicProviders" :active-id="currentActivePersonalLlmProviderId"
+            @add="openAddDialog('anthropic')" @toggle-active="(id) => toggleActive('anthropic', id)"
             @edit="(p, idx) => openEditDialog('anthropic', p, idx)"
             @remove="(idx) => removeProvider('anthropic', idx)" />
 

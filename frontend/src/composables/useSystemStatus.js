@@ -1,11 +1,33 @@
 import { ref, computed, watch } from 'vue'
 import * as api from '@/api.js'
 
+// ── 安全的 localStorage 访问 ─────────────────────────────
+const safeLocalStorage = {
+  getItem(key, fallback = '') {
+    try {
+      return localStorage.getItem(key) || fallback
+    } catch {
+      return fallback
+    }
+  },
+  setItem(key, value) {
+    try {
+      localStorage.setItem(key, value)
+    } catch (e) {
+      console.warn(`[useSystemStatus] localStorage.setItem failed for "${key}":`, e)
+    }
+  },
+}
+
 // ── 模块级单例状态 ──────────────────────────────────────
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
 const selectedModel = ref('')
+
+const modelOptionsLoading = ref(false)
+const modelOptionsData = ref(null)
+const selectedLlmOptionId = ref(safeLocalStorage.getItem('selected_llm_option_id', ''))
 
 const providerOptions = computed(() => {
   const s = systemStatus.value
@@ -61,6 +83,57 @@ const doFetchStatus = async () => {
   }
 }
 
+const doFetchModelOptions = async () => {
+  modelOptionsLoading.value = true
+  try {
+    const data = await api.fetchModelOptions()
+    modelOptionsData.value = data
+
+    // 如果没有选中项，或者选中项不在当前可用列表中，则使用默认选项
+    const options = data.options || []
+    const isValidSelection = selectedLlmOptionId.value && options.some(o => o.option_id === selectedLlmOptionId.value && o.available)
+    if (!isValidSelection) {
+      selectedLlmOptionId.value = data.default_option_id || (options[0]?.option_id || '')
+      if (selectedLlmOptionId.value) {
+        try {
+          safeLocalStorage.setItem('selected_llm_option_id', selectedLlmOptionId.value)
+        } catch (e) {
+          console.warn('[useSystemStatus] 保存选中模型失败:', e)
+        }
+      }
+    }
+
+    // 确保 selectedModel 也被初始化同步
+    if (selectedLlmOption.value) {
+      selectedModel.value = selectedLlmOption.value.model_name
+    }
+  } catch (e) {
+    console.error('获取模型选项失败', e)
+  } finally {
+    modelOptionsLoading.value = false
+  }
+}
+
+watch(selectedLlmOptionId, (newId) => {
+  if (newId) {
+    try {
+      safeLocalStorage.setItem('selected_llm_option_id', newId)
+    } catch (e) {
+      console.warn('[useSystemStatus] 保存选中模型失败:', e)
+    }
+
+    // 同步更新旧的 selectedModel 状态，以兼容设置页等旧逻辑
+    if (selectedLlmOption.value) {
+      selectedModel.value = selectedLlmOption.value.model_name
+    }
+  }
+})
+
+const selectedLlmOption = computed(() => {
+  if (!modelOptionsData.value || !modelOptionsData.value.options) return null
+  return modelOptionsData.value.options.find(o => o.option_id === selectedLlmOptionId.value) || null
+})
+
 /**
  * useSystemStatus — 系统状态单例 composable
  * 任何组件调用都返回同一份响应式状态
@@ -69,6 +142,7 @@ export function useSystemStatus() {
   return {
     statusLoading, systemStatus, statusError, selectedModel,
     providerOptions, hasConfiguredModel, selectedProvider, statusPills,
-    doFetchStatus,
+    modelOptionsLoading, modelOptionsData, selectedLlmOptionId, selectedLlmOption,
+    doFetchStatus, doFetchModelOptions,
   }
 }
