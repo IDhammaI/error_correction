@@ -58,18 +58,46 @@ const emit = defineEmits([
 const isSettingsView = computed(() => props.currentView === 'settings')
 const isNarrow = computed(() => !props.isMobile && props.sidebarMode === 'collapsed-icon')
 
-const setView = (view) => emit('update:currentView', view)
-const setSettingsEntry = (subview) => emit('update:currentSettingsSubView', subview)
+const setView = (view) => {
+  emit('update:currentView', view)
+  if (props.isMobile && props.mobileDrawerOpen) {
+    emit('toggle-sidebar')
+  }
+}
+
+const setSettingsEntry = (subview) => {
+  emit('update:currentSettingsSubView', subview)
+  if (props.isMobile && props.mobileDrawerOpen) {
+    emit('toggle-sidebar')
+  }
+}
+
 const openSettings = (subview = 'profile') => {
   if (props.currentView !== 'settings') {
     emit('update:currentView', 'settings')
-    return
   }
   setSettingsEntry(subview)
 }
 
 const returnToApp = () => {
   emit('update:currentView', props.lastWorkspaceView || 'workspace')
+  if (props.isMobile && props.mobileDrawerOpen) {
+    emit('toggle-sidebar')
+  }
+}
+
+const selectChat = (s) => {
+  emit('select-ai-chat', s)
+  if (props.isMobile && props.mobileDrawerOpen) {
+    emit('toggle-sidebar')
+  }
+}
+
+const createChat = () => {
+  emit('create-ai-chat')
+  if (props.isMobile && props.mobileDrawerOpen) {
+    emit('toggle-sidebar')
+  }
 }
 
 const toggleGroup = (gi) => {
@@ -236,7 +264,7 @@ const userQuotaSummary = computed(() => {
               <i class="fa-solid fa-play text-[8px] text-gray-400 dark:text-[#62666d] transition-transform duration-200"
                 :class="chatCollapsed ? '' : 'rotate-90'"></i>
             </button>
-            <button v-if="!isNarrow" @click="emit('create-ai-chat')"
+            <button v-if="!isNarrow" @click="createChat"
               class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors"
               title="新对话">
               <i class="fa-solid fa-plus text-[10px]"></i>
@@ -262,7 +290,7 @@ const userQuotaSummary = computed(() => {
                       ? 'brand-gradient-bg text-white shadow-sm border-none transition-none'
                       : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors duration-150',
                     isNarrow ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2 gap-3'
-                  ]" @click="renamingChatId !== s.id && emit('select-ai-chat', s)">
+                  ]" @click="renamingChatId !== s.id && selectChat(s)">
                   <BaseTooltip :text="s.title" placement="right" :disabled="!isNarrow">
                     <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm transition-colors"></i>
                   </BaseTooltip>
@@ -377,43 +405,6 @@ const userQuotaSummary = computed(() => {
       </div>
     </template>
   </aside>
-
-  <!-- ================== 移动端：底部 Tab 导航栏 ================== -->
-  <nav
-    class="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/90 dark:border-white/[0.06] dark:bg-[#0A0A0F]/90 pb-2 pt-2 lg:hidden transition-colors duration-200">
-    <div class="flex justify-around">
-      <button @click="setView(lastWorkspaceView)"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"
-        :class="workspaceViews.has(currentView) ? 'brand-gradient-bg text-white' : 'text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70'">
-        <i class="fa-solid fa-file-arrow-up text-lg"></i>
-        <span class="mt-1 text-[10px] font-bold">录入</span>
-      </button>
-      <button @click="setView('notes')"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"
-        :class="currentView === 'notes' ? 'brand-gradient-bg text-white' : 'text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70'">
-        <i class="fa-solid fa-book-open text-lg"></i>
-        <span class="mt-1 text-[10px] font-bold">笔记库</span>
-      </button>
-      <button @click="setView('dashboard')"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"
-        :class="currentView === 'dashboard' ? 'brand-gradient-bg text-white' : 'text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70'">
-        <i class="fa-solid fa-chart-pie text-lg"></i>
-        <span class="mt-1 text-[10px] font-bold">数据面板</span>
-      </button>
-      <button @click="setView('error-bank')"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"
-        :class="currentView === 'error-bank' ? 'brand-gradient-bg text-white' : 'text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70'">
-        <i class="fa-solid fa-layer-group text-lg"></i>
-        <span class="mt-1 text-[10px] font-bold">错题本</span>
-      </button>
-      <button @click="openSettings('profile')"
-        class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-colors"
-        :class="currentView === 'settings' ? 'brand-gradient-bg text-white' : 'text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70'">
-        <i class="fa-solid fa-sliders text-lg"></i>
-        <span class="mt-1 text-[10px] font-bold">设置</span>
-      </button>
-    </div>
-  </nav>
 </template>
 
 <style scoped>
