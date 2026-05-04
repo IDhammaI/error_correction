@@ -1,4 +1,8 @@
 <script setup>
+import { computed } from 'vue'
+import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useRoute } from 'vue-router'
+
 const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, required: true },
@@ -8,9 +12,33 @@ const props = defineProps({
   maxWidth: { type: String, default: 'max-w-md' },
   bodyClass: { type: String, default: 'px-6 py-5' },
   blurBackdrop: { type: Boolean, default: true },
+  sidebarOffset: { type: Number, default: null },
 })
 
 const emit = defineEmits(['close'])
+
+const route = useRoute()
+const { sidebarMode, isMobile } = useWorkspaceNav()
+
+const computedSidebarOffset = computed(() => {
+  if (props.sidebarOffset !== null) return props.sidebarOffset
+  if (isMobile.value) return 0
+  
+  // 仅在应用内路径显示侧边栏偏移
+  const isInApp = route?.path?.startsWith('/app')
+  if (!isInApp) return 0
+  
+  return sidebarMode.value === 'collapsed-icon' ? 64 : 256
+})
+
+const backdropStyle = computed(() => ({
+  left: `${computedSidebarOffset.value}px`,
+  '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px',
+}))
+
+const contentStyle = computed(() => ({
+  left: `${computedSidebarOffset.value}px`,
+}))
 </script>
 
 <template>
@@ -18,8 +46,8 @@ const emit = defineEmits(['close'])
     <Transition name="dialog-overlay" appear>
       <div
         v-if="open"
-        class="dialog-backdrop fixed inset-0 z-[100] bg-black/40 md:left-64"
-        :style="{ '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px' }"
+        class="dialog-backdrop fixed inset-0 z-[100] bg-black/40 transition-all duration-300"
+        :style="backdropStyle"
         @click="emit('close')"
       ></div>
     </Transition>
@@ -27,7 +55,8 @@ const emit = defineEmits(['close'])
     <Transition name="dialog-content" appear>
       <div
         v-if="open"
-        class="fixed inset-0 z-[101] flex items-center justify-center p-4 md:left-64"
+        class="fixed inset-0 z-[101] flex items-center justify-center p-4 transition-all duration-300"
+        :style="contentStyle"
         @click.self="emit('close')"
       >
         <div

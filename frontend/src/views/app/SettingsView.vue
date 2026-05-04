@@ -794,13 +794,13 @@ watch(
                 class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400">每日额度</p>
                 <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_quota ?? '--'
-                }}</p>
+                  }}</p>
               </div>
               <div
                 class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400">今日已用</p>
                 <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_used ?? '--'
-                }}</p>
+                  }}</p>
               </div>
               <div class="rounded-xl border border-slate-900 bg-slate-900 p-4 dark:border-[#f7f8f8] dark:bg-[#f7f8f8]">
                 <p class="text-xs font-medium text-white/70 dark:text-black/50">今日剩余</p>
@@ -1038,7 +1038,7 @@ watch(
             <p>我们没有找到与 <strong class="font-medium text-slate-900 dark:text-[#f7f8f8]">{{ emailForm.newEmail }}</strong>
               关联的现有账号。您可以安全地继续修改邮箱。</p>
             <p>为了验证您的身份，我们需要向您当前的邮箱 <strong class="font-medium text-slate-900 dark:text-[#f7f8f8]">{{ currentUser?.email
-            }}</strong> 发送验证码。</p>
+                }}</strong> 发送验证码。</p>
           </div>
 
           <div>

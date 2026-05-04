@@ -216,6 +216,14 @@ onBeforeUnmount(() => {
 
 <template>
   <ContentPanel title="AI 辅导">
+    <template #header-actions>
+      <!-- 这里的 createAiChat 需要从 useAiChatSessions 引入，或者调用现有逻辑 -->
+      <button @click="backToErrorBank()"
+        class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
+        title="返回错题本">
+        <i class="fa-solid fa-arrow-left text-xs"></i>
+      </button>
+    </template>
     <div class="flex h-full flex-col">
       <!-- 顶栏 -->
       <div
@@ -276,8 +284,8 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm" :class="msg.role === 'user'
-                ? 'bg-blue-600 text-white dark:bg-indigo-500'
-                : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
+              ? 'bg-blue-600 text-white dark:bg-indigo-500'
+              : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
               ">
               <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap"
                 v-html="cachedRenderMarkdown(msg.content)"></div>

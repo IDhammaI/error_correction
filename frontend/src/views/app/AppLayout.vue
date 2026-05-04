@@ -52,8 +52,18 @@ const {
 const {
   currentView, currentSettingsSubView, setSettingsSubView,
   lastWorkspaceView, collapsedGroups, chatCollapsed,
+  sidebarMode, isMobile, mobileDrawerOpen, toggleSidebar, closeDrawer,
   NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
+
+// ── 锁定滚动 ──────────────────────────────────────────
+watch(mobileDrawerOpen, (val) => {
+  if (val) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}, { immediate: true })
 const {
   answerModalOpen, answerModalText, answerModalSaving,
   saveAnswerAndChat,
@@ -84,6 +94,8 @@ watch(collapsedGroups, () => {
 // ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
+
+// ── 视图切换包装 ──────────────────────────────────────
 const updateCurrentView = (v) => {
   currentView.value = v
 }
@@ -136,6 +148,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.body.style.overflow = ''
   document.removeEventListener('keydown', onKeydown)
   document.removeEventListener('click', closeChatMenu)
 })
@@ -147,6 +160,15 @@ onBeforeUnmount(() => {
 
     <WorkspaceBackground />
 
+    <!-- 移动端遮罩 -->
+    <Transition enter-active-class="transition duration-[var(--mask-transition-duration)] ease-out"
+      enter-from-class="opacity-0" enter-to-class="opacity-100"
+      leave-active-class="transition duration-[var(--mask-transition-duration)] ease-out" leave-from-class="opacity-100"
+      leave-to-class="opacity-0">
+      <div v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-0 z-[15] bg-black/40 dark:bg-black/60 backdrop-blur-[2px]" @click="closeDrawer"></div>
+    </Transition>
+
     <!-- 侧边栏导航 -->
     <SidebarNav :current-view="currentView" :current-settings-sub-view="currentSettingsSubView"
       :settings-nav-items="SETTINGS_NAV_ITEMS" :last-workspace-view="lastWorkspaceView" :current-user="currentUser"
@@ -156,7 +178,8 @@ onBeforeUnmount(() => {
       :active-ai-chat-id="activeAiChatId" :chat-list-ref="chatListRef" :chat-btn-refs="chatBtnRefs"
       :chat-indicator-style="chatIndicatorStyle" :chat-indicator-transition="chatIndicatorTransition"
       :chat-menu-open-id="chatMenuOpenId" :renaming-chat-id="renamingChatId" :rename-text="renameText"
-      :user-menu-open="userMenuOpen" @update:current-view="updateCurrentView"
+      :user-menu-open="userMenuOpen" :sidebar-mode="sidebarMode" :is-mobile="isMobile"
+      :mobile-drawer-open="mobileDrawerOpen" @update:current-view="updateCurrentView"
       @update:current-settings-sub-view="updateCurrentSettingsSubView" @update:collapsed-groups="updateCollapsedGroups"
       @update:chat-collapsed="updateChatCollapsed" @update:user-menu-open="updateUserMenuOpen"
       @update:chat-menu-open-id="updateChatMenuOpenId" @update:rename-text="updateRenameText"
@@ -164,10 +187,14 @@ onBeforeUnmount(() => {
       @update:chat-list-ref="updateChatListRef" @navigate-home="navigateToHome" @logout="handleLogout"
       @toggle-theme="toggleTheme" @create-ai-chat="createAiChat" @select-ai-chat="selectAiChat"
       @start-rename-chat="startRenameChat" @confirm-rename-chat="confirmRenameChat" @delete-ai-chat="deleteAiChat"
-      @toggle-chat-menu="toggleChatMenu" />
+      @toggle-chat-menu="toggleChatMenu" @toggle-sidebar="toggleSidebar" />
 
     <!-- ================== 右侧整体区域 ================== -->
-    <div class="relative z-10 flex-1 flex flex-col overflow-hidden md:pt-3 md:pr-3">
+    <div
+      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:pt-3 lg:pr-3 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)]"
+      :class="[
+        isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'lg:ml-16' : 'lg:ml-64')
+      ]">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">

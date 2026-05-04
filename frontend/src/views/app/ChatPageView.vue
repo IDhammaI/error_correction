@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue'
+import { MessageSquarePlus } from 'lucide-vue-next'
 import * as api from '@/api.js'
 import { renderMarkdown, typesetMath } from '@/utils.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
@@ -169,6 +170,13 @@ function autoResize() {
 
 <template>
   <ContentPanel title="AI 对话">
+    <template #header-actions>
+      <button @click="createAiChat(currentView)"
+        class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
+        title="新对话">
+        <MessageSquarePlus class="w-4 h-4" />
+      </button>
+    </template>
     <div class="flex flex-col h-full">
       <!-- 消息区域（含空状态） -->
       <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
