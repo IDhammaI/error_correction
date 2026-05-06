@@ -56,13 +56,13 @@ const statusIcon = (status) => {
   <BaseCard
     @click="selectable ? emit('toggle-select', question.id) : emit('click', question)"
     class="group cursor-pointer"
-    :class="{ '!border-indigo-400 !bg-indigo-50 dark:!border-[rgb(129,115,223)]/40 dark:!bg-[rgb(129,115,223)]/[0.06]': selected }"
+    :class="{ 'accent-border accent-bg-muted': selected }"
   >
     <div class="flex items-start gap-4">
       <!-- 选择复选框 -->
       <div v-if="selectable" class="flex shrink-0 items-center pt-1" @click.stop="emit('toggle-select', question.id)">
         <div class="flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-all"
-          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white' : 'border-gray-200 dark:border-white/[0.15] bg-white dark:bg-transparent'">
+          :class="selected ? 'accent-border accent-bg text-white' : 'border-gray-200 dark:border-white/[0.15] bg-white dark:bg-transparent'">
           <i v-if="selected" class="fa-solid fa-check text-xs"></i>
         </div>
       </div>
@@ -73,7 +73,7 @@ const statusIcon = (status) => {
           <!-- 复习状态图标 -->
           <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
           <span class="rounded-full bg-gray-100 dark:bg-white/[0.04] px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] transition-colors">{{ question.question_type }}</span>
-          <span v-if="question.subject" class="rounded-full bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)] transition-colors">{{ question.subject }}</span>
+          <span v-if="question.subject" class="rounded-full accent-bg-soft px-2 py-0.5 text-xs font-medium accent-text transition-colors">{{ question.subject }}</span>
           <span v-for="tag in tags()" :key="tag" class="rounded-full border border-gray-200 dark:border-white/[0.06] px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] transition-colors">{{ tag }}</span>
         </div>
 

@@ -5,6 +5,7 @@ import { genId } from '@/utils.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useTheme } from '@/composables/useTheme.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import ProviderDialog from '@/components/settings/ProviderDialog.vue'
 import ProviderSection from '@/components/settings/ProviderSection.vue'
@@ -21,6 +22,7 @@ const props = defineProps({
 const { currentUser, quota, setCurrentUser } = useAuth()
 const { pushToast } = useToast()
 const { doFetchStatus, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
+const { isDark, setTheme, themeColors, accentColorId, setAccentColor } = useTheme()
 
 // 计算当前设置页各分类应显示的“使用中” ID
 const currentActivePersonalLlmProviderId = computed(() => {
@@ -44,14 +46,17 @@ const quotaResetText = computed(() => {
 const isProfileSection = computed(() => props.section === 'profile')
 const isQuotaSection = computed(() => props.section === 'quota')
 const isApiSection = computed(() => props.section === 'api')
+const isAppearanceSection = computed(() => props.section === 'appearance')
 const settingsPageTitle = computed(() => {
   if (isApiSection.value) return 'API 设置'
   if (isQuotaSection.value) return '免费额度'
+  if (isAppearanceSection.value) return '外观设置'
   return '用户资料设置'
 })
 const settingsPageDescription = computed(() => {
   if (isApiSection.value) return '集中管理 AI 与 OCR provider 的接口配置。'
   if (isQuotaSection.value) return '查看系统托管 AI / OCR 服务的免费体验额度与每日重置时间。'
+  if (isAppearanceSection.value) return '切换明暗模式和主题强调色，界面会立即应用。'
   return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
 })
 const pageTitle = computed(() => isApiSection.value ? 'API 设置' : '用户资料设置')
@@ -75,6 +80,22 @@ const avatarInputRef = ref(null)
 const selectedAvatarFile = ref(null)
 const avatarPreviewUrl = ref('')
 const avatarUploadXhr = ref(null)
+
+const appearanceModeOptions = [
+  { id: 'dark', label: '深色', icon: 'fa-moon' },
+  { id: 'light', label: '浅色', icon: 'fa-sun' },
+]
+
+const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
+
+const setAppearanceMode = (mode) => {
+  setTheme(mode === 'dark')
+}
+
+const selectAccentColor = (colorId) => {
+  setAccentColor(colorId)
+  pushToast('success', '主题颜色已更新')
+}
 
 // ---------- 修改邮箱弹窗逻辑 ----------
 const isEmailDialogOpen = ref(false)
@@ -773,6 +794,72 @@ watch(
           <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
         </div>
 
+        <div v-else-if="isAppearanceSection" class="mx-auto max-w-2xl pb-12">
+          <BaseListGroup title="界面主题" description="外观偏好保存在当前浏览器中，刷新页面后仍会保持。">
+            <BaseListItem label="显示模式" description="选择浅色或深色界面">
+              <div class="grid grid-cols-2 gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-white/[0.08] dark:bg-white/[0.03]">
+                <button
+                  v-for="mode in appearanceModeOptions"
+                  :key="mode.id"
+                  type="button"
+                  class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors"
+                  :class="currentAppearanceMode === mode.id
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.1] dark:text-[#f7f8f8]'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]'"
+                  @click="setAppearanceMode(mode.id)"
+                >
+                  <i :class="['fa-solid', mode.icon, 'text-[11px]']"></i>
+                  <span>{{ mode.label }}</span>
+                </button>
+              </div>
+            </BaseListItem>
+          </BaseListGroup>
+
+          <BaseListGroup title="主题颜色" description="用于主按钮、选中状态和全局强调色。后续新增组件时可直接复用 CSS 变量。">
+            <li class="grid gap-3 p-4 sm:grid-cols-2">
+              <button
+                v-for="color in themeColors"
+                :key="color.id"
+                type="button"
+                class="group flex min-h-[68px] items-center justify-between rounded-lg border px-3 text-left transition-colors"
+                :class="accentColorId === color.id
+                  ? 'border-[rgb(var(--accent-rgb)/0.45)] bg-[rgb(var(--accent-rgb)/0.08)]'
+                  : 'border-gray-200 bg-white hover:bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.02] dark:hover:bg-white/[0.05]'"
+                @click="selectAccentColor(color.id)"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <span
+                    class="h-8 w-8 shrink-0 rounded-full shadow-sm ring-1 ring-black/10 dark:ring-white/10"
+                    :style="{ background: `linear-gradient(135deg, rgb(${color.hoverRgb.replaceAll(' ', ', ')}), rgb(${color.strongRgb.replaceAll(' ', ', ')}))` }"
+                  ></span>
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold text-gray-900 dark:text-[#f7f8f8]">{{ color.label }}</span>
+                    <span class="block truncate text-xs text-gray-500 dark:text-[#8a8f98]">{{ color.name }}</span>
+                  </span>
+                </span>
+                <i
+                  class="fa-solid fa-check text-sm transition-opacity"
+                  :class="accentColorId === color.id ? 'opacity-100 accent-text' : 'opacity-0'"
+                ></i>
+              </button>
+            </li>
+          </BaseListGroup>
+
+          <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-[#1b1b1d]">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/[0.04]">
+              <div>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-[#f7f8f8]">预览</h3>
+                <p class="mt-1 text-xs text-gray-500 dark:text-[#62666d]">当前强调色会驱动这些公共样式。</p>
+              </div>
+              <span class="rounded-full px-2.5 py-1 text-xs font-medium accent-soft">Accent</span>
+            </div>
+            <div class="grid gap-3 p-4 sm:grid-cols-2">
+              <BaseButton variant="primary" class="!h-10">主按钮</BaseButton>
+              <button type="button" class="filter-pill filter-pill--active justify-center">选中筛选</button>
+            </div>
+          </section>
+        </div>
+
         <div v-else-if="isProfileSection || isQuotaSection" class="space-y-6">
           <section v-if="isQuotaSection"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
@@ -864,7 +951,7 @@ watch(
                   class="h-full w-full object-cover transition-opacity group-hover:opacity-80" />
                 <div v-else
                   class="relative flex h-full w-full items-center justify-center text-3xl font-bold text-white transition-opacity group-hover:opacity-80"
-                  style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9));">
+                  style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));">
                   <span class="absolute inset-0 pointer-events-none"
                     style="background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 8px 8px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);"></span>
                   <span class="relative z-10">{{ userPreviewInitial }}</span>

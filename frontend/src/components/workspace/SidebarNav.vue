@@ -128,7 +128,7 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-white dark:bg-[#0c0c0e] border-r border-gray-200/50 dark:border-white/[0.05] overflow-hidden"
+    class="flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-transparent overflow-hidden"
     :class="[
       isMobile
         ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
@@ -145,7 +145,7 @@ const userQuotaSummary = computed(() => {
           <span v-if="!isNarrow">返回应用</span>
         </button>
 
-        <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative">
+        <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative pt-2">
           <div v-if="!isNarrow"
             class="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 dark:text-[#62666d]">
             设置
@@ -197,7 +197,7 @@ const userQuotaSummary = computed(() => {
           </div>
 
           <!-- 视图切换菜单 -->
-          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative transition-all"
+          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative pt-2 transition-all"
             :class="isNarrow ? 'px-3' : 'px-4'">
 
             <template v-for="(group, gi) in navGroups" :key="gi">
@@ -355,7 +355,7 @@ const userQuotaSummary = computed(() => {
               :class="isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''">
               <div
                 class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium"
-                style="background: linear-gradient(to bottom, rgba(129,115,223,0.9), rgba(99,87,199,0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
+                style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
                 <img v-if="currentUser?.avatar_url" :src="currentUser.avatar_url" alt="用户头像"
                   class="h-full w-full object-cover" />
                 <template v-else>
@@ -369,7 +369,7 @@ const userQuotaSummary = computed(() => {
                   userDisplayName }}
                 </p>
                 <p v-if="userQuotaSummary"
-                  class="mt-0.5 text-xs text-[#5e6ad2] dark:text-[#7170ff] truncate leading-tight transition-colors">
+                  class="mt-0.5 text-xs accent-text truncate leading-tight transition-colors">
                   {{
                     userQuotaSummary }}</p>
                 <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{

@@ -69,7 +69,7 @@ onUnmounted(() => {
       aspect-ratio: 1.3 / 1;
     ">
       <!-- 椭圆本体 -->
-      <div class="absolute inset-0 rounded-[50%] bg-gradient-to-b from-[#8173DF]/40 to-[#6357C7]/80 shadow-[inset_0_-20px_24px_0_rgba(99,87,199,0.6),0_24px_48px_0_rgba(99,87,199,0.8),0_0_32px_0_rgba(129,115,223,0.5),inset_0_-1px_0_0_rgba(255,255,255,1),inset_0_1px_0_0_rgba(255,255,255,1)] dark:from-[rgba(92,81,148,0.5)] dark:to-[rgba(47,40,91,0.95)] dark:shadow-[inset_0_-20px_24px_0_rgba(255,255,255,0.15),0_16px_32px_0_rgba(97,62,210,0.32),inset_0_-1px_0_0_rgba(129,115,223,0.6)] backdrop-blur-md"></div>
+      <div class="hero-orb absolute inset-0 rounded-[50%] backdrop-blur-md"></div>
 
       <!-- 土星光环: LaTeX 公式 -->
       <!-- 放大容器以远离"土星"本体，同时增加 Z 轴旋转(rotateX)和倾斜(rotateZ)产生悬浮交错的纵深感 -->
@@ -88,11 +88,11 @@ onUnmounted(() => {
             <path id="saturn-ring-path-1" d="M 500, 980 A 480,480 0 1,0 500,20 A 480,480 0 1,0 500,980" fill="none" />
             
             <!-- 轨道装饰线 -->
-            <path d="M 500, 500 m -488, 0 a 488,488 0 1,1 976,0 a 488,488 0 1,1 -976,0" fill="none" class="stroke-indigo-900/30 dark:stroke-indigo-400/20" stroke-width="1.5" />
-            <path d="M 500, 500 m -472, 0 a 472,472 0 1,1 944,0 a 472,472 0 1,1 -944,0" fill="none" class="stroke-indigo-900/30 dark:stroke-indigo-400/20" stroke-width="1.5" />
+            <path d="M 500, 500 m -488, 0 a 488,488 0 1,1 976,0 a 488,488 0 1,1 -976,0" fill="none" class="hero-ring-stroke" stroke-width="1.5" />
+            <path d="M 500, 500 m -472, 0 a 472,472 0 1,1 944,0 a 472,472 0 1,1 -944,0" fill="none" class="hero-ring-stroke" stroke-width="1.5" />
 
             <!-- 公式文本 -->
-            <text fill="currentColor" class="text-indigo-900/70 dark:text-indigo-200/80 font-bold" font-family="'Times New Roman', Times, serif" font-size="18" font-style="italic" letter-spacing="5">
+            <text fill="currentColor" class="hero-ring-text font-bold" font-family="'Times New Roman', Times, serif" font-size="18" font-style="italic" letter-spacing="5">
               <textPath href="#saturn-ring-path-1" startOffset="0%">
                 ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt &nbsp;&nbsp;&nbsp;&nbsp; ∇⋅E = ρ/ε₀ &nbsp;&nbsp;&nbsp;&nbsp; ∇×B = μ₀J + μ₀ε₀(∂E/∂t) &nbsp;&nbsp;&nbsp;&nbsp; R_μν - ½Rg_μν + Λg_μν = (8πG/c⁴)T_μν &nbsp;&nbsp;&nbsp;&nbsp; iℏ(∂Ψ/∂t) = ĤΨ &nbsp;&nbsp;&nbsp;&nbsp; (iγ^μ∂_μ - m)ψ = 0 &nbsp;&nbsp;&nbsp;&nbsp; e^(iπ) + 1 = 0 &nbsp;&nbsp;&nbsp;&nbsp; S = ∫ L dt
               </textPath>
@@ -105,11 +105,11 @@ onUnmounted(() => {
             <path id="saturn-ring-path-2" d="M 500, 1040 A 540,540 0 1,0 500,-40 A 540,540 0 1,0 500,1040" fill="none" />
             
             <!-- 轨道装饰线 -->
-            <path d="M 500, 500 m -546, 0 a 546,546 0 1,1 1092,0 a 546,546 0 1,1 -1092,0" fill="none" class="stroke-indigo-900/25 dark:stroke-indigo-400/15" stroke-width="1.5" />
-            <path d="M 500, 500 m -534, 0 a 534,534 0 1,1 1068,0 a 534,534 0 1,1 -1068,0" fill="none" class="stroke-indigo-900/25 dark:stroke-indigo-400/15" stroke-width="1.5" />
+            <path d="M 500, 500 m -546, 0 a 546,546 0 1,1 1092,0 a 546,546 0 1,1 -1092,0" fill="none" class="hero-ring-stroke-soft" stroke-width="1.5" />
+            <path d="M 500, 500 m -534, 0 a 534,534 0 1,1 1068,0 a 534,534 0 1,1 -1068,0" fill="none" class="hero-ring-stroke-soft" stroke-width="1.5" />
 
             <!-- 公式文本 (换成另一组数学公式：傅里叶变换、高斯-博内定理、薛定谔、贝叶斯等) -->
-            <text fill="currentColor" class="text-indigo-900/60 dark:text-indigo-200/70 font-bold" font-family="'Times New Roman', Times, serif" font-size="14" font-style="italic" letter-spacing="6">
+            <text fill="currentColor" class="hero-ring-text-soft font-bold" font-family="'Times New Roman', Times, serif" font-size="14" font-style="italic" letter-spacing="6">
               <textPath href="#saturn-ring-path-2" startOffset="0%">
                 F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2 &nbsp;&nbsp;&nbsp;&nbsp; F(ω) = ∫ f(t)e^(-iωt)dt &nbsp;&nbsp;&nbsp;&nbsp; ∫K dA + ∫k_g ds = 2πχ(M) &nbsp;&nbsp;&nbsp;&nbsp; P(A|B) = P(B|A)P(A)/P(B) &nbsp;&nbsp;&nbsp;&nbsp; dS ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp; E = mc² &nbsp;&nbsp;&nbsp;&nbsp; V - E + F = 2
               </textPath>
@@ -120,17 +120,17 @@ onUnmounted(() => {
     </div>
 
     <!-- 装饰: 光斑 -->
-    <div class="absolute pointer-events-none z-0 w-80 h-80 rounded-full blur-[120px] bg-indigo-600/[0.15] dark:bg-indigo-600/[0.07]"
+    <div class="absolute pointer-events-none z-0 w-80 h-80 rounded-full blur-[120px] bg-[rgb(var(--accent-rgb)/0.15)] dark:bg-[rgb(var(--accent-rgb)/0.07)]"
       style="top: 25%; left: 8%;"
     ></div>
-    <div class="absolute pointer-events-none z-0 w-64 h-64 rounded-full blur-[100px] bg-violet-500/[0.12] dark:bg-violet-500/[0.05]"
+    <div class="absolute pointer-events-none z-0 w-64 h-64 rounded-full blur-[100px] bg-[rgb(var(--accent-hover-rgb)/0.12)] dark:bg-[rgb(var(--accent-hover-rgb)/0.05)]"
       style="top: 55%; right: 10%;"
     ></div>
 
     <!-- 装饰: 底部简约的环境光晕 -->
     <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80vw] h-[30vh] pointer-events-none z-0">
-      <div class="absolute inset-0 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[100px] rounded-[100%] transform translate-y-1/2"></div>
-      <div class="absolute inset-0 bg-violet-500/10 dark:bg-violet-500/5 blur-[120px] rounded-[100%] transform translate-y-1/2 scale-150"></div>
+      <div class="absolute inset-0 bg-[rgb(var(--accent-rgb)/0.2)] dark:bg-[rgb(var(--accent-rgb)/0.1)] blur-[100px] rounded-[100%] transform translate-y-1/2"></div>
+      <div class="absolute inset-0 bg-[rgb(var(--accent-hover-rgb)/0.1)] dark:bg-[rgb(var(--accent-hover-rgb)/0.05)] blur-[120px] rounded-[100%] transform translate-y-1/2 scale-150"></div>
     </div>
 
     <!-- 首屏区块 — 居中布局 -->
@@ -141,7 +141,7 @@ onUnmounted(() => {
 
         <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6 text-gray-900 dark:text-white">
           重塑错题整理<br />
-          <span class="text-transparent bg-clip-text animate-gradient-sweep bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(79,70,229)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)] dark:bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(255,255,255)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)]" style="
+          <span class="home-title-accent text-transparent bg-clip-text animate-gradient-sweep" style="
             background-size: 200% auto;
           ">一键生成知识图谱</span>
         </h1>
@@ -168,7 +168,7 @@ onUnmounted(() => {
       <div
         v-for="(s, i) in stars"
         :key="i"
-        class="absolute rounded-full bg-indigo-400 dark:bg-white"
+        class="absolute rounded-full bg-[rgb(var(--accent-hover-rgb))] dark:bg-white"
         :style="{
           left: s.left + '%',
           top: s.top + '%',
@@ -214,6 +214,56 @@ onUnmounted(() => {
 .rings-paused .ring-spin-cw,
 .rings-paused .ring-spin-ccw {
   animation-play-state: paused;
+}
+
+.hero-orb {
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.4), rgb(var(--accent-strong-rgb) / 0.8));
+  box-shadow:
+    inset 0 -20px 24px 0 rgb(var(--accent-strong-rgb) / 0.6),
+    0 24px 48px 0 rgb(var(--accent-strong-rgb) / 0.8),
+    0 0 32px 0 rgb(var(--accent-rgb) / 0.5),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 1);
+}
+
+.dark .hero-orb {
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.25), rgb(var(--accent-strong-rgb) / 0.5));
+  box-shadow:
+    inset 0 -20px 24px 0 rgba(255, 255, 255, 0.15),
+    0 16px 32px 0 rgb(var(--accent-rgb) / 0.32),
+    inset 0 -1px 0 0 rgb(var(--accent-rgb) / 0.6);
+}
+
+.hero-ring-stroke {
+  stroke: rgb(var(--accent-strong-rgb) / 0.3);
+}
+
+.dark .hero-ring-stroke {
+  stroke: rgb(var(--accent-hover-rgb) / 0.2);
+}
+
+.hero-ring-stroke-soft {
+  stroke: rgb(var(--accent-strong-rgb) / 0.25);
+}
+
+.dark .hero-ring-stroke-soft {
+  stroke: rgb(var(--accent-hover-rgb) / 0.15);
+}
+
+.hero-ring-text {
+  color: rgb(var(--accent-strong-rgb) / 0.7);
+}
+
+.dark .hero-ring-text {
+  color: rgb(var(--accent-hover-rgb) / 0.8);
+}
+
+.hero-ring-text-soft {
+  color: rgb(var(--accent-strong-rgb) / 0.6);
+}
+
+.dark .hero-ring-text-soft {
+  color: rgb(var(--accent-hover-rgb) / 0.7);
 }
 
 @keyframes gradient-sweep {

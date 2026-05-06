@@ -85,7 +85,7 @@ defineProps({
   position: absolute;
   width: 120%;
   height: 120%;
-  background: radial-gradient(circle, rgba(129, 115, 223, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.15) 0%, transparent 70%);
   filter: blur(20px);
   animation: breathe 4s ease-in-out infinite;
 }
@@ -94,8 +94,8 @@ defineProps({
 .orbit {
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid rgba(129, 115, 223, 0.1);
-  border-top-color: rgba(129, 115, 223, 0.5);
+  border: 1.5px solid rgb(var(--accent-rgb) / 0.1);
+  border-top-color: rgb(var(--accent-rgb) / 0.5);
 }
 
 .orbit-1 {
@@ -108,14 +108,14 @@ defineProps({
   width: 75%;
   height: 75%;
   animation: rotate 5s linear infinite reverse;
-  border-top-color: rgba(145, 132, 235, 0.5);
+  border-top-color: rgb(var(--accent-hover-rgb) / 0.5);
 }
 
 .orbit-3 {
   width: 50%;
   height: 50%;
   animation: rotate 3s linear infinite;
-  border-top-color: rgba(129, 115, 223, 0.5);
+  border-top-color: rgb(var(--accent-rgb) / 0.5);
 }
 
 /* 核心图标 */
@@ -131,7 +131,7 @@ defineProps({
   position: absolute;
   inset: -4px;
   border-radius: 1.25rem;
-  background: rgba(129, 115, 223, 0.2);
+  background: rgb(var(--accent-rgb) / 0.2);
   animation: pulse 2s ease-out infinite;
 }
 
@@ -141,8 +141,8 @@ defineProps({
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(129, 115, 223, 0.8), transparent);
-  box-shadow: 0 0 15px rgba(129, 115, 223, 0.5);
+  background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb) / 0.8), transparent);
+  box-shadow: 0 0 15px rgb(var(--accent-rgb) / 0.5);
   z-index: 5;
   animation: scan 3s ease-in-out infinite;
 }
@@ -171,7 +171,7 @@ defineProps({
   margin-top: 1.5rem;
   width: 100%;
   height: 4px;
-  background: rgba(129, 115, 223, 0.05);
+  background: rgb(var(--accent-rgb) / 0.05);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -179,7 +179,7 @@ defineProps({
 .progress-bar {
   width: 40%;
   height: 100%;
-  background: linear-gradient(90deg, rgb(129,115,223), rgb(145,132,235));
+  background: linear-gradient(90deg, rgb(var(--accent-rgb)), rgb(var(--accent-hover-rgb)));
   border-radius: 10px;
   position: relative;
   animation: progress-move 2.5s ease-in-out infinite;

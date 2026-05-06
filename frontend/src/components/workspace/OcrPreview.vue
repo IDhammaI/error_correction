@@ -154,7 +154,7 @@ const hoveredBlock = ref(null)
           :key="i"
           @click="currentPage = i"
           class="h-2 rounded-full transition-all"
-          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
+          :class="i === currentPage ? 'w-6 accent-bg' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
         />
       </div>
     </template>

@@ -264,8 +264,8 @@ onBeforeUnmount(() => {
 
         <!-- 空状态 -->
         <div v-if="!messages.length && !streaming" class="flex h-full flex-col items-center justify-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-500/10">
-            <i class="fa-solid fa-chalkboard-user text-2xl text-blue-500 dark:text-blue-400"></i>
+          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl accent-bg-soft">
+            <i class="fa-solid fa-chalkboard-user text-2xl accent-text"></i>
           </div>
           <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">向 AI 老师提问吧</h3>
           <p class="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
@@ -279,12 +279,12 @@ onBeforeUnmount(() => {
             :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
             <!-- assistant 头像 -->
             <div v-if="msg.role === 'assistant'"
-              class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs text-white shadow-md">
+              class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full accent-gradient-bg text-xs text-white shadow-md">
               <i class="fa-solid fa-graduation-cap"></i>
             </div>
 
             <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm" :class="msg.role === 'user'
-              ? 'bg-blue-600 text-white dark:bg-indigo-500'
+              ? 'accent-bg text-white'
               : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
               ">
               <div v-if="msg.role === 'assistant'" class="chat-content whitespace-pre-wrap"
@@ -294,15 +294,15 @@ onBeforeUnmount(() => {
               <!-- 流式加载指示器 -->
               <span v-if="msg.role === 'assistant' && streaming && i === messages.length - 1 && !msg.content"
                 class="inline-flex items-center gap-1 text-slate-400">
-                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.3s]"></span>
-                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.15s]"></span>
-                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500"></span>
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full accent-bg [animation-delay:-0.3s]"></span>
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full accent-bg [animation-delay:-0.15s]"></span>
+                <span class="h-1.5 w-1.5 animate-bounce rounded-full accent-bg"></span>
               </span>
             </div>
 
             <!-- user 头像 -->
             <div v-if="msg.role === 'user'"
-              class="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-600 text-xs font-extrabold text-white shadow-sm">
+              class="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full accent-gradient-bg text-xs font-extrabold text-white shadow-sm">
               {{ username?.[0]?.toUpperCase() ?? '?' }}
             </div>
           </div>
@@ -315,9 +315,9 @@ onBeforeUnmount(() => {
         <div class="mx-auto flex max-w-3xl items-end gap-3">
           <textarea v-model="inputText" @keydown="onKeydown" :disabled="streaming" rows="1"
             placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
-            class="flex-1 resize-none rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 shadow-sm transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-indigo-500/50"></textarea>
+            class="flex-1 resize-none rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 shadow-sm transition-colors focus:border-[rgb(var(--accent-rgb)/0.4)] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb)/0.2)] disabled:opacity-50 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-[rgb(var(--accent-rgb)/0.4)]"></textarea>
           <button @click="sendMessage" :disabled="streaming || !inputText.trim()"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl accent-bg text-white shadow-md transition-all hover:bg-[rgb(var(--accent-hover-rgb))] disabled:cursor-not-allowed disabled:opacity-50">
             <i class="fa-solid" :class="streaming ? 'fa-circle-notch fa-spin' : 'fa-paper-plane'"></i>
           </button>
         </div>

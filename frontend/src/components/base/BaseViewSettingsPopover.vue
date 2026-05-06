@@ -75,7 +75,7 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
                         @click="filters.review_status = status.v"
                         class="flex-1 flex items-center justify-center py-1 rounded-[6px] text-[12px] font-medium transition-all duration-200"
                         :class="filters.review_status === status.v
-                            ? 'bg-white dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-none border border-gray-200/50 dark:border-white/[0.1]'
+                            ? 'bg-white dark:bg-white/[0.08] accent-text dark:text-[#f7f8f8] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-none border border-gray-200/50 dark:border-white/[0.1]'
                             : 'text-gray-500 dark:text-[#8a8f98] hover:text-gray-700 dark:hover:text-[#d0d6e0] border border-transparent'">
                         {{ status.l }}
                     </button>
@@ -113,7 +113,7 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
                     <button v-for="tag in tagNames" :key="tag" @click="emit('toggle-tag', tag)"
                         class="rounded-[5px] px-2 py-0.5 text-[12px] font-medium transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
                         :class="selectedTags?.has(tag)
-                            ? 'bg-[rgba(129,115,223,0.15)] text-[rgb(129,115,223)] border border-[rgba(129,115,223,0.3)] dark:bg-[rgba(129,115,223,0.2)] dark:text-[rgb(165,155,245)]'
+                            ? 'accent-bg-soft accent-text border accent-border'
                             : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 active:bg-gray-100 dark:bg-white/[0.02] dark:border-white/[0.06] dark:text-[#8a8f98] dark:hover:border-white/[0.12] dark:hover:bg-white/[0.04] dark:active:bg-white/[0.06]'">
                         {{ tag }}
                     </button>

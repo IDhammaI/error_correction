@@ -182,7 +182,7 @@ const reviewStatusOptions = [
             class="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/50 px-8 py-5 dark:border-white/5 dark:bg-white/5">
             <div class="flex items-center gap-4">
               <div
-                class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
+                class="flex h-10 w-10 items-center justify-center rounded-xl accent-bg text-white shadow-lg">
                 <i class="fa-solid fa-file-lines text-lg"></i>
               </div>
               <div>
@@ -256,10 +256,10 @@ const reviewStatusOptions = [
               <div class="flex shrink-0 border-b border-slate-100 dark:border-white/5">
                 <button @click="activeTab = 'content'"
                   class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all"
-                  :class="activeTab === 'content' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-indigo-400' : 'text-slate-400'">我的笔记</button>
+                  :class="activeTab === 'content' ? 'border-b-2 border-[rgb(var(--accent-rgb))] accent-text' : 'text-slate-400'">我的笔记</button>
                 <button @click="activeTab = 'analysis'"
                   class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all"
-                  :class="activeTab === 'analysis' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-indigo-400' : 'text-slate-400'">AI
+                  :class="activeTab === 'analysis' ? 'border-b-2 border-[rgb(var(--accent-rgb))] accent-text' : 'text-slate-400'">AI
                   深度解析</button>
               </div>
 
@@ -296,11 +296,11 @@ const reviewStatusOptions = [
                     {{ isSaving ? '同步中...' : '保存学习笔记' }}
                   </button>
                   <button @click="triggerAiAnalysis"
-                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/5 py-4 text-sm font-black text-blue-600 transition-all hover:bg-blue-500/10 dark:text-indigo-400">
+                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
                     <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i> 召唤 AI 助教分析
                   </button>
                   <button @click="emit('start-chat', question); emit('close')"
-                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 py-4 text-sm font-black text-indigo-600 transition-all hover:bg-indigo-500/10 dark:text-indigo-300">
+                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
                     <i class="fa-solid fa-comments"></i> AI 辅导对话
                   </button>
                 </div>
@@ -309,20 +309,20 @@ const reviewStatusOptions = [
                 <div v-else class="space-y-6">
                   <div v-if="isAnalyzing" class="flex flex-col items-center justify-center py-20">
                     <div
-                      class="mb-4 h-12 w-12 animate-bounce rounded-full bg-indigo-500/20 flex items-center justify-center">
-                      <i class="fa-solid fa-brain text-indigo-500"></i>
+                      class="mb-4 h-12 w-12 animate-bounce rounded-full accent-bg-soft flex items-center justify-center">
+                      <i class="fa-solid fa-brain accent-text"></i>
                     </div>
-                    <p class="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse">分析中...</p>
+                    <p class="text-xs font-black uppercase tracking-widest accent-text animate-pulse">分析中...</p>
                   </div>
                   <div v-else-if="aiReport" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                    <div class="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
+                    <div class="rounded-2xl border accent-border accent-bg-muted p-5">
                       <h4
-                        class="mb-3 flex items-center gap-2 text-xs font-black uppercase text-indigo-600 dark:text-indigo-400">
+                        class="mb-3 flex items-center gap-2 text-xs font-black uppercase accent-text">
                         <i class="fa-solid fa-microchip"></i> 认知诊断诊断报告
                       </h4>
                       <p class="text-sm font-medium leading-relaxed text-slate-700 dark:text-slate-300">
                         {{ typedText }}<span
-                          class="inline-block h-4 w-1 animate-blink bg-indigo-500 align-middle ml-1"></span>
+                          class="inline-block h-4 w-1 animate-blink accent-bg align-middle ml-1"></span>
                       </p>
                     </div>
 
@@ -331,7 +331,7 @@ const reviewStatusOptions = [
                       <div class="space-y-4 border-l-2 border-slate-200 pl-6 dark:border-white/10">
                         <div v-for="(step, idx) in aiReport.steps" :key="idx" class="relative">
                           <span
-                            class="absolute -left-[31px] flex h-[14px] w-[14px] items-center justify-center rounded-full bg-blue-600 text-[8px] font-black text-white outline outline-4 outline-white dark:outline-[#0F111A]">
+                            class="absolute -left-[31px] flex h-[14px] w-[14px] items-center justify-center rounded-full accent-bg text-[8px] font-black text-white outline outline-4 outline-white dark:outline-[#0F111A]">
                             {{ idx + 1 }}
                           </span>
                           <p class="text-sm font-bold text-slate-700 dark:text-slate-300">{{ step }}</p>

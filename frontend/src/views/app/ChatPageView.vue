@@ -197,13 +197,13 @@ function autoResize() {
               :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
               <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
                 :class="msg.role === 'user'
-                  ? 'bg-indigo-500 text-white rounded-br-lg shadow-sm dark:bg-[rgb(129,115,223)] dark:text-white dark:border-none'
+                  ? 'accent-bg text-white rounded-br-lg shadow-sm dark:text-white dark:border-none'
                   : 'bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'">
                 <!-- 思考过程折叠面板 -->
                 <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
                   <button @click="msg.reasoningOpen = !msg.reasoningOpen"
                     class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors">
-                    <i class="fa-solid fa-brain text-indigo-500 dark:text-[rgb(129,115,223)]"></i>
+                    <i class="fa-solid fa-brain accent-text"></i>
                     <span>{{ streaming && i === messages.length - 1 && !msg.content ? '思考中...' : '已深度思考' }}</span>
                     <i class="fa-solid text-[10px] transition-transform"
                       :class="msg.reasoningOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
@@ -256,7 +256,7 @@ function autoResize() {
                 <button @click="deepThink = !deepThink"
                   class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
                   :class="deepThink
-                    ? 'bg-indigo-50 text-indigo-600 dark:bg-[rgb(129,115,223)]/15 dark:text-[rgb(145,132,235)]'
+                    ? 'accent-bg-soft accent-text'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'" title="深度思考">
                   <i class="fa-solid fa-brain text-sm"></i>
                   <span class="hidden sm:inline">深度思考</span>
@@ -279,7 +279,7 @@ function autoResize() {
                 <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
                   :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                   class="h-8 w-8 rounded-full flex items-center justify-center transition-all" :class="inputText.trim() && sessionId
-                    ? 'bg-indigo-500 text-white shadow-sm dark:bg-[rgb(129,115,223)]'
+                    ? 'accent-bg text-white shadow-sm'
                     : 'bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-[#62666d]'">
                   <i class="fa-solid fa-arrow-up text-xs"></i>
                 </button>

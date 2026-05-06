@@ -78,28 +78,28 @@ onMounted(() => {
   <div class="min-h-screen flex bg-slate-50 dark:bg-[#0A0A0F] transition-colors duration-200">
 
     <!-- 左侧品牌区（大屏显示） -->
-    <div ref="brandRef" class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden p-12 bg-gradient-to-br from-indigo-50 to-white dark:from-[#12121a] dark:to-[#0A0A0F] transition-colors duration-200">
+    <div ref="brandRef" class="hidden lg:flex flex-col justify-between w-[52%] relative overflow-hidden p-12 bg-gradient-to-br from-[rgb(var(--accent-rgb)/0.08)] to-white dark:from-[#12121a] dark:to-[#0A0A0F] transition-colors duration-200">
       <!-- 底层：紫色曲线（暗态） -->
       <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 600 800" preserveAspectRatio="none" fill="none">
-        <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgba(129,115,223,0.12)" class="dark:stroke-indigo-400/10 stroke-indigo-600/10" stroke-width="2.5" />
-        <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgba(129,115,223,0.08)" class="dark:stroke-indigo-400/10 stroke-indigo-600/10" stroke-width="2" />
+        <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgb(var(--accent-rgb) / 0.12)" stroke-width="2.5" />
+        <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgb(var(--accent-rgb) / 0.08)" stroke-width="2" />
       </svg>
       <!-- 亮层：鼠标跟随发光的紫色曲线（通过 mask 只显示鼠标附近） -->
       <div class="auth-glow-layer absolute inset-0 pointer-events-none">
         <svg class="w-full h-full" viewBox="0 0 600 800" preserveAspectRatio="none" fill="none">
-          <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgba(151,137,222,0.9)" stroke-width="3" style="filter: drop-shadow(0 0 14px rgba(129,115,223,0.8)) drop-shadow(0 0 40px rgba(129,115,223,0.4));" />
-          <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgba(151,137,222,0.7)" stroke-width="2.5" style="filter: drop-shadow(0 0 12px rgba(129,115,223,0.7)) drop-shadow(0 0 30px rgba(129,115,223,0.3));" />
+          <path d="M-50,250 C120,400 280,100 420,280 C560,460 600,180 700,350" stroke="rgb(var(--accent-hover-rgb) / 0.9)" stroke-width="3" class="auth-line-glow-strong" />
+          <path d="M-80,500 C80,650 240,340 400,520 C560,700 620,400 720,580" stroke="rgb(var(--accent-hover-rgb) / 0.7)" stroke-width="2.5" class="auth-line-glow-soft" />
         </svg>
       </div>
       <!-- 底部紫色光晕 -->
-      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[200px] pointer-events-none rounded-full bg-indigo-500/10 dark:bg-indigo-500/[0.08] blur-[80px] transition-colors"></div>
+      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[200px] pointer-events-none rounded-full bg-[rgb(var(--accent-rgb)/0.1)] dark:bg-[rgb(var(--accent-rgb)/0.08)] blur-[80px] transition-colors"></div>
 
       <!-- 不规则星星 -->
       <div class="absolute inset-0 pointer-events-none">
         <div
           v-for="(s, i) in stars"
           :key="i"
-          class="absolute rounded-full bg-indigo-400 dark:bg-white star-twinkle transition-colors"
+          class="absolute rounded-full bg-[rgb(var(--accent-hover-rgb))] dark:bg-white star-twinkle transition-colors"
           :style="{
             left: s.left + '%',
             top: s.top + '%',
@@ -127,11 +127,11 @@ onMounted(() => {
         <h2 class="text-4xl font-semibold text-gray-900 dark:text-white leading-tight mb-4 tracking-tight transition-colors">
           重塑错题整理<br />
           <span class="text-transparent bg-clip-text animate-gradient-sweep dark:hidden" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(79, 70, 229) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-image: linear-gradient(to right, rgb(var(--accent-hover-rgb)) 0%, rgb(var(--accent-hover-rgb)) 20%, rgb(var(--accent-strong-rgb)) 50%, rgb(var(--accent-hover-rgb)) 80%, rgb(var(--accent-hover-rgb)) 100%);
             background-size: 200% auto;
           ">一键生成知识图谱</span>
           <span class="text-transparent bg-clip-text animate-gradient-sweep hidden dark:inline" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+            background-image: linear-gradient(to right, rgb(var(--accent-hover-rgb)) 0%, rgb(var(--accent-hover-rgb)) 20%, rgb(255, 255, 255) 50%, rgb(var(--accent-hover-rgb)) 80%, rgb(var(--accent-hover-rgb)) 100%);
             background-size: 200% auto;
           ">一键生成知识图谱</span>
         </h2>
@@ -148,7 +148,7 @@ onMounted(() => {
               <div class="absolute inset-0 bg-gray-200 dark:bg-white/[0.08] rounded-xl transition-colors"></div>
               <!-- 鼠标跟随边框高光 -->
               <div class="pointer-events-none absolute inset-0"
-                style="background: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), rgba(151,137,222,0.7), transparent 50%);"></div>
+                style="background: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), rgb(var(--accent-hover-rgb) / 0.7), transparent 50%);"></div>
               <!-- 图标内部 -->
               <div class="relative h-full w-full bg-white dark:bg-[#15151e] rounded-[11px] flex items-center justify-center transition-colors">
                 <!-- 白色底层图标 -->
@@ -157,7 +157,7 @@ onMounted(() => {
                 <div class="absolute inset-0 flex items-center justify-center"
                   style="mask-image: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), black 0%, transparent 100%);
                          -webkit-mask-image: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), black 0%, transparent 100%);">
-                  <i :class="`fas ${f.icon} text-xs text-[#9789de] drop-shadow-[0_0_8px_rgba(151,137,222,0.8)]`"></i>
+                  <i :class="`fas ${f.icon} text-xs accent-text auth-feature-icon-glow`"></i>
                 </div>
               </div>
             </div>
@@ -274,6 +274,22 @@ input:-webkit-autofill:focus {
 }
 
 /* 紫-白-紫渐变扫光 */
+.auth-line-glow-strong {
+  filter:
+    drop-shadow(0 0 14px rgb(var(--accent-rgb) / 0.8))
+    drop-shadow(0 0 40px rgb(var(--accent-rgb) / 0.4));
+}
+
+.auth-line-glow-soft {
+  filter:
+    drop-shadow(0 0 12px rgb(var(--accent-rgb) / 0.7))
+    drop-shadow(0 0 30px rgb(var(--accent-rgb) / 0.3));
+}
+
+.auth-feature-icon-glow {
+  filter: drop-shadow(0 0 8px rgb(var(--accent-hover-rgb) / 0.8));
+}
+
 @keyframes gradient-sweep {
   0% { background-position: -100% center; }
   100% { background-position: 100% center; }

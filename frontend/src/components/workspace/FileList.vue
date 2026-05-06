@@ -33,7 +33,7 @@ const emit = defineEmits(['remove-file'])
         >
           <!-- 进度条背景 -->
           <div
-            class="absolute inset-0 -z-10 bg-[rgba(129,115,223,0.12)] transition-[width] duration-500 ease-out"
+            class="absolute inset-0 -z-10 accent-bg-soft transition-[width] duration-500 ease-out"
             :style="{ width: `${fileProgress[item.key] ?? 0}%` }"
           ></div>
 
@@ -42,7 +42,7 @@ const emit = defineEmits(['remove-file'])
             :class="
               item.file.name.toLowerCase().endsWith('.pdf')
                 ? 'fa-file-pdf text-rose-500 dark:text-rose-400'
-                : 'fa-file-image text-[rgb(129,115,223)]'
+                : 'fa-file-image accent-text'
             "
           ></i>
           <div class="flex flex-col min-w-0 pr-4 text-left">

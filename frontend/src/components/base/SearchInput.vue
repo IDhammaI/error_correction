@@ -23,7 +23,7 @@ const emit = defineEmits(['update:modelValue'])
         @input="emit('update:modelValue', $event.target.value)"
         type="text"
         :placeholder="placeholder"
-        class="h-9 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm font-medium text-gray-900 placeholder-gray-400 outline-none transition-colors hover:border-gray-300 focus:border-indigo-500 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#f7f8f8] dark:placeholder-[#62666d] dark:hover:border-white/[0.12] dark:focus:border-white/[0.15] dark:border-t-white/[0.12]"
+        class="h-9 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm font-medium text-gray-900 placeholder-gray-400 outline-none transition-colors hover:border-gray-300 focus:border-[rgb(var(--accent-rgb)/0.4)] dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-[#f7f8f8] dark:placeholder-[#62666d] dark:hover:border-white/[0.12] dark:focus:border-[rgb(var(--accent-rgb)/0.4)] dark:border-t-white/[0.12]"
       />
     </div>
   </div>

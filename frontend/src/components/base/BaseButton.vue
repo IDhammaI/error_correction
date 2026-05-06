@@ -51,16 +51,16 @@ const bindProps = computed(() => {
 <style scoped>
 /* ── Primary: 品牌色渐变，微光 hover ── */
 .home-btn--primary {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));
   color: #fff;
   border: none;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 .home-btn--primary:hover {
-  background: linear-gradient(to bottom, rgba(145, 132, 235, 0.95), rgba(113, 100, 212, 0.95));
+  background: linear-gradient(to bottom, rgb(var(--accent-hover-rgb) / 0.95), rgb(var(--accent-rgb) / 0.95));
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-    0 0 20px 0 rgba(129, 115, 223, 0.25);
+    0 0 20px 0 rgb(var(--accent-rgb) / 0.25);
 }
 
 /* ── Secondary: 白玻璃按钮（与 brand-btn 一致） ── */
@@ -101,16 +101,16 @@ const bindProps = computed(() => {
 
 /* ── CTA: 更强的品牌色，用于转化区 ── */
 .home-btn--cta {
-  background: linear-gradient(to bottom, rgba(109, 92, 214, 1), rgba(88, 72, 194, 1));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb)), rgb(var(--accent-strong-rgb)));
   color: #fff;
   border: none;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 .home-btn--cta:hover {
-  background: linear-gradient(to bottom, rgba(125, 108, 228, 1), rgba(102, 86, 208, 1));
+  background: linear-gradient(to bottom, rgb(var(--accent-hover-rgb)), rgb(var(--accent-rgb)));
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-    0 0 24px 0 rgba(109, 92, 214, 0.3);
+    0 0 24px 0 rgb(var(--accent-rgb) / 0.3);
 }
 
 /* ── Ghost: 幽灵按钮，用于无背景仅边框/字体的操作 ── */

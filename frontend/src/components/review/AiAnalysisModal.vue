@@ -23,9 +23,9 @@ const emit = defineEmits(['close'])
         <div class="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl dark:bg-[#0F111A]">
 
           <!-- 头部 -->
-          <div class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-blue-50 px-8 py-5 dark:border-white/5 dark:from-indigo-500/5 dark:to-blue-500/5">
+          <div class="flex items-center justify-between border-b border-slate-100 bg-[rgb(var(--accent-rgb)/0.08)] px-8 py-5 dark:border-white/5 dark:bg-[rgb(var(--accent-rgb)/0.06)]">
             <div class="flex items-center gap-4">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/30">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl accent-gradient-bg text-white shadow-lg">
                 <i class="fa-solid fa-brain text-lg"></i>
               </div>
               <div>
@@ -43,8 +43,8 @@ const emit = defineEmits(['close'])
             <!-- 加载状态 -->
             <div v-if="loading" class="flex flex-col items-center justify-center py-20">
               <div class="relative mb-6">
-                <div class="h-16 w-16 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-500"></div>
-                <i class="fa-solid fa-brain absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl text-indigo-500 animate-pulse"></i>
+                <div class="h-16 w-16 animate-spin rounded-full border-4 border-[rgb(var(--accent-rgb)/0.18)] border-t-[rgb(var(--accent-rgb))]"></div>
+                <i class="fa-solid fa-brain absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl accent-text animate-pulse"></i>
               </div>
               <p class="text-sm font-black text-slate-600 dark:text-slate-300">AI 正在分析你的错题...</p>
               <p class="mt-1 text-xs text-slate-400">分析知识薄弱点、归纳错因模式</p>
@@ -52,8 +52,8 @@ const emit = defineEmits(['close'])
             <!-- 分析结果 -->
             <div v-else-if="analysis" class="space-y-8">
               <!-- 综合诊断 -->
-              <div class="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-blue-500/5 p-6">
-                <h4 class="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+              <div class="rounded-2xl border accent-border accent-bg-muted p-6">
+                <h4 class="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest accent-text">
                   <i class="fa-solid fa-stethoscope"></i> 综合诊断
                 </h4>
                 <p class="text-sm font-medium leading-relaxed text-slate-700 dark:text-slate-300">{{ analysis.summary }}</p>

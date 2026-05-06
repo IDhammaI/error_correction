@@ -60,7 +60,7 @@ async function handleLogin() {
 
     <div class="flex justify-end">
       <button type="button" @click="fpOpen = true"
-        class="text-xs text-gray-500 dark:text-white/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+        class="text-xs text-gray-500 dark:text-white/40 hover:accent-text transition-colors">
         忘记密码？
       </button>
     </div>

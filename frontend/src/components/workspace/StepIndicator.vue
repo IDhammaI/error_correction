@@ -46,9 +46,9 @@ const descs = computed(() => props.mode === 'note' ? noteDescs : examDescs)
           class="step-circle relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
           :class="
             n < step
-              ? 'border-transparent bg-gradient-to-br from-[rgb(129,115,223)] to-[rgb(145,132,235)] text-white/90'
+              ? 'border-transparent accent-gradient-bg text-white/90'
               : n === step
-                ? 'border-white/[0.12] bg-white/[0.08] text-[rgb(145,132,235)]'
+                ? 'border-white/[0.12] bg-white/[0.08] accent-text'
                 : 'border-white/[0.05] bg-white/[0.03] text-[#62666d]'
           "
         >
@@ -58,7 +58,7 @@ const descs = computed(() => props.mode === 'note' ? noteDescs : examDescs)
           </Transition>
 
           <!-- 当前步骤的光晕 -->
-          <div v-if="n === step" class="absolute -inset-1 animate-pulse rounded-lg bg-[rgb(129,115,223)]/20 blur-md"></div>
+          <div v-if="n === step" class="absolute -inset-1 animate-pulse rounded-lg accent-bg-soft blur-md"></div>
         </div>
 
         <!-- 文本描述 -->

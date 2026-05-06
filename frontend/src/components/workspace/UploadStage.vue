@@ -61,7 +61,7 @@ const emit = defineEmits([
     <!-- 擦除开关 -->
     <label class="flex cursor-pointer items-center gap-2" @click="emit('update:erase-enabled', !eraseEnabled)">
       <div class="relative h-4 w-7 rounded-full transition-colors"
-        :class="eraseEnabled ? 'bg-[rgb(129,115,223)]' : 'bg-gray-300 dark:bg-white/[0.08]'">
+        :class="eraseEnabled ? 'accent-bg' : 'bg-gray-300 dark:bg-white/[0.08]'">
         <div class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform"
           :class="eraseEnabled ? 'translate-x-3' : 'translate-x-0.5'"></div>
       </div>
@@ -100,26 +100,26 @@ const emit = defineEmits([
     <div class="grid w-full max-w-2xl grid-cols-4 gap-4 transition-colors">
       <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.04]">
-          <i class="fa-solid fa-cloud-arrow-up text-xl text-[rgb(129,115,223)]"></i>
+          <i class="fa-solid fa-cloud-arrow-up text-xl accent-text"></i>
         </div>
         <span class="text-sm text-gray-500 dark:text-[#8a8f98]">{{ uploadMode === 'note' ? '上传笔记' : '上传文件' }}</span>
       </div>
       <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.04]">
-          <i class="fa-solid fa-eye text-xl text-[rgb(129,115,223)]"></i>
+          <i class="fa-solid fa-eye text-xl accent-text"></i>
         </div>
         <span class="text-sm text-gray-500 dark:text-[#8a8f98]">AI 识别</span>
       </div>
       <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.04]">
-          <i class="fa-solid text-xl text-[rgb(129,115,223)]"
+          <i class="fa-solid text-xl accent-text"
             :class="uploadMode === 'note' ? 'fa-wand-magic-sparkles' : 'fa-scissors'"></i>
         </div>
         <span class="text-sm text-gray-500 dark:text-[#8a8f98]">{{ uploadMode === 'note' ? '智能整理' : '分割纠错' }}</span>
       </div>
       <div class="flex flex-col items-center gap-3 rounded-lg brand-btn p-4 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.04]">
-          <i class="fa-solid text-xl text-[rgb(129,115,223)]"
+          <i class="fa-solid text-xl accent-text"
             :class="uploadMode === 'note' ? 'fa-bookmark' : 'fa-file-export'"></i>
         </div>
         <span class="text-sm text-gray-500 dark:text-[#8a8f98]">{{ uploadMode === 'note' ? '保存笔记' : '导出归档' }}</span>
