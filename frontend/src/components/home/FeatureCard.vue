@@ -35,7 +35,7 @@ const props = defineProps({
     <div class="absolute inset-0 bg-transparent dark:bg-gradient-to-br dark:from-white/[0.12] dark:via-white/[0.04] dark:to-transparent transition-colors duration-300"></div>
 
     <!-- Hover 状态下的发光背景层 (浅色模式下增加主题色微光) -->
-    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-indigo-500/15 via-violet-500/5 to-transparent dark:from-indigo-500/10 dark:via-violet-500/5 dark:to-transparent z-0"></div>
+    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-[rgb(var(--accent-rgb)/0.15)] via-[rgb(var(--accent-hover-rgb)/0.05)] to-transparent dark:from-[rgb(var(--accent-rgb)/0.1)] dark:via-[rgb(var(--accent-hover-rgb)/0.05)] dark:to-transparent z-0"></div>
 
     <!-- 卡片主体背景层 — brand-btn 风格白玻璃 -->
     <div class="feature-card-inner relative h-full w-full rounded-[19px] p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden">
@@ -77,8 +77,8 @@ const props = defineProps({
 
 .feature-card:hover .feature-card-inner {
   background: rgba(255,255,255,0.9);
-  border-color: rgba(129, 115, 223, 0.4);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01), 0 0 0 1px rgba(129, 115, 223, 0.2);
+  border-color: rgb(var(--accent-rgb) / 0.4);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01), 0 0 0 1px rgb(var(--accent-rgb) / 0.2);
 }
 :root.dark .feature-card:hover .feature-card-inner {
   background: rgba(255,255,255,0.08);
@@ -89,7 +89,7 @@ const props = defineProps({
 }
 
 .feature-icon {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 

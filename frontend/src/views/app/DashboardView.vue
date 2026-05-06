@@ -9,7 +9,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 
-const { isDark } = useTheme()
+const { isDark, accentColorId } = useTheme()
 const { pushToast } = useToast()
 const { currentView } = useWorkspaceNav()
 const theme = computed(() => isDark.value ? 'dark' : 'light')
@@ -31,8 +31,19 @@ let barChart = null
 let stackedChart = null
 
 // ---- 颜色常量 ----
-const CHART_COLORS = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#e11d48']
+const CHART_COLORS = ['accent', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#e11d48', '#84cc16']
 const STATUS_COLORS = { '待复习': '#f97316', '复习中': '#eab308', '已掌握': '#10b981' }
+
+const getAccentRgb = () => {
+  if (typeof window === 'undefined') return '129 115 223'
+  const raw = window.getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
+  return (raw || '129 115 223').split(/\s+/).join(', ')
+}
+
+const accentColor = () => `rgb(${getAccentRgb()})`
+const accentRgba = (alpha) => `rgba(${getAccentRgb()}, ${alpha})`
+const chartColor = (color) => color === 'accent' ? accentColor() : color
+const chartColorWithAlpha = (color, alpha) => color === 'accent' ? accentRgba(alpha) : `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
 
 // ---- 数据加载 ----
 const loadStats = async () => {
@@ -75,10 +86,10 @@ const initTrendChart = (isDark, textColor, gridColor) => {
         {
           label: '每日新增',
           data: dc.map(d => d.count),
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
+          borderColor: accentColor(),
+          backgroundColor: accentRgba(0.1),
           borderWidth: 2, tension: 0.4, fill: true,
-          pointBackgroundColor: '#3b82f6',
+          pointBackgroundColor: accentColor(),
           pointRadius: 0, pointHoverRadius: 4,
         },
         {
@@ -119,8 +130,8 @@ const initBarChart = (isDark, textColor, gridColor) => {
       datasets: [{
         label: '错题数',
         data: reversed.map(t => t.count),
-        backgroundColor: colors.map(c => c + '99'),
-        borderColor: colors,
+        backgroundColor: colors.map(c => chartColorWithAlpha(c, 0.6)),
+        borderColor: colors.map(chartColor),
         borderWidth: 1,
         borderRadius: 2,
         barPercentage: 0.85,
@@ -178,16 +189,16 @@ const heatmapCellColor = (val) => {
   const ratio = val / heatmapMax.value
   if (theme.value === 'dark') {
     const alpha = 0.15 + ratio * 0.7
-    return `rgba(99, 102, 241, ${alpha})`
+    return accentRgba(alpha)
   }
   const alpha = 0.08 + ratio * 0.6
-  return `rgba(99, 102, 241, ${alpha})`
+  return accentRgba(alpha)
 }
 
 // ---- 生命周期 ----
 onMounted(() => loadStats())
 
-watch(() => [isDark.value, stats.value], () => {
+watch(() => [isDark.value, stats.value, accentColorId.value], () => {
   if (stats.value) nextTick(initCharts)
 })
 
@@ -254,7 +265,7 @@ onBeforeUnmount(() => {
       <template v-else>
         <!-- 统计卡片 -->
         <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
+          <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="accent" />
           <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_stats?.['待复习'] || 0" unit="道" color="blue" />
           <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="emerald" />
           <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.today_mastered || 0" unit="道" color="slate" />
@@ -270,7 +281,7 @@ onBeforeUnmount(() => {
           </BaseCard>
           <BaseCard>
             <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-300">
-              <i class="fa-solid fa-ranking-star text-indigo-500"></i> Top 10 易错知识点
+              <i class="fa-solid fa-ranking-star accent-text"></i> Top 10 易错知识点
             </h3>
             <div v-if="stats?.tag_stats?.length" class="relative h-[240px] w-full"><canvas ref="barCanvas"></canvas></div>
             <div v-else class="flex h-[240px] items-center justify-center text-sm text-slate-400">暂无标签数据</div>
@@ -305,7 +316,7 @@ onBeforeUnmount(() => {
                       <div
                         class="mx-auto flex h-8 w-full min-w-[40px] items-center justify-center rounded-lg font-bold"
                         :style="{ backgroundColor: heatmapCellColor(heatmapData.data[ri]?.[ci] || 0) }"
-                        :class="heatmapData.data[ri]?.[ci] ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-300 dark:text-slate-600'"
+                        :class="heatmapData.data[ri]?.[ci] ? 'accent-text' : 'text-slate-300 dark:text-slate-600'"
                       >{{ heatmapData.data[ri]?.[ci] || 0 }}</div>
                     </td>
                   </tr>

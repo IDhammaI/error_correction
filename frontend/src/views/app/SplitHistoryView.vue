@@ -167,7 +167,7 @@ defineExpose({ refresh: loadRecords })
 
         <!-- 加载状态 -->
         <div v-if="loading && !records.length" class="flex items-center justify-center py-10">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 dark:border-white/10 border-t-[rgb(129,115,223)] transition-colors"></div>
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 dark:border-white/10 border-t-[rgb(var(--accent-rgb))] transition-colors"></div>
         </div>
 
         <!-- 空状态 -->
@@ -188,7 +188,7 @@ defineExpose({ refresh: loadRecords })
             <!-- 一行：科目 + 时间 + 题数 -->
             <div class="flex items-center justify-between mb-1">
               <span class="text-sm font-medium text-gray-900 dark:text-[#f7f8f8] truncate transition-colors">{{ r.subject || '未识别' }}</span>
-              <span class="text-xs tabular-nums text-[rgb(129,115,223)]">{{ r.question_count }} 题</span>
+              <span class="text-xs tabular-nums accent-text">{{ r.question_count }} 题</span>
             </div>
             <!-- 二行：文件数 + 时间 -->
             <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-[#62666d] transition-colors">
@@ -209,7 +209,7 @@ defineExpose({ refresh: loadRecords })
               <div v-if="activeRecord?.id === r.id" class="overflow-hidden border-t border-slate-200/40 dark:border-white/5">
                 <!-- 加载中 -->
                 <div v-if="detailLoading" class="flex items-center justify-center py-10">
-                  <div class="h-7 w-7 animate-spin rounded-full border-[3px] border-slate-200 border-t-violet-500 dark:border-slate-700 dark:border-t-violet-400"></div>
+                  <div class="h-7 w-7 animate-spin rounded-full border-[3px] border-slate-200 border-t-[rgb(var(--accent-rgb))] dark:border-slate-700"></div>
                 </div>
 
                 <!-- 题目列表 -->
@@ -226,13 +226,13 @@ defineExpose({ refresh: loadRecords })
                         @click.stop="deselectAllQuestions"
                         class="rounded-lg border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10"
                       >取消选择</button>
-                      <span v-if="selectedIds.size > 0" class="ml-1 text-xs font-semibold text-violet-600 dark:text-violet-400">
+                      <span v-if="selectedIds.size > 0" class="ml-1 text-xs font-semibold accent-text">
                         已选 {{ selectedIds.size }} / {{ activeQuestions.length }}
                       </span>
                     </div>
                     <button
                       @click.stop="loadToWorkspace"
-                      class="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-violet-700 hover:shadow-md dark:bg-violet-500 dark:hover:bg-violet-600"
+                      class="inline-flex items-center gap-2 rounded-xl accent-bg px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md"
                     >
                       <i class="fa-solid fa-arrow-right-to-bracket"></i>
                       {{ selectedIds.size > 0 ? `加载选中 (${selectedIds.size})` : '全部加载到工作台' }}
@@ -247,15 +247,15 @@ defineExpose({ refresh: loadRecords })
                       @click.stop="toggleSelect(q.uid)"
                       class="cursor-pointer rounded-xl border p-3.5 transition-all duration-200"
                       :class="selectedIds.has(q.uid)
-                        ? 'border-violet-400/60 bg-violet-50/60 ring-1 ring-violet-400/30 dark:border-violet-500/40 dark:bg-violet-500/[0.08] dark:ring-violet-500/20'
-                        : 'border-slate-200/50 bg-white/50 hover:border-violet-300/40 hover:bg-white/80 dark:border-white/[0.05] dark:bg-white/[0.02] dark:hover:border-violet-500/20'"
+                        ? 'accent-border accent-bg-muted ring-1 ring-[rgb(var(--accent-rgb)/0.3)]'
+                        : 'border-slate-200/50 bg-white/50 hover:border-[rgb(var(--accent-rgb)/0.35)] hover:bg-white/80 dark:border-white/[0.05] dark:bg-white/[0.02] dark:hover:border-[rgb(var(--accent-rgb)/0.25)]'"
                     >
                       <div class="mb-2 flex items-center gap-2">
                         <!-- 选中指示 -->
                         <div
                           class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] transition-colors"
                           :class="selectedIds.has(q.uid)
-                            ? 'border-violet-500 bg-violet-500 text-white dark:border-violet-400 dark:bg-violet-500'
+                            ? 'border-[rgb(var(--accent-rgb))] accent-bg text-white'
                             : 'border-slate-300 dark:border-white/15'"
                         >
                           <i v-if="selectedIds.has(q.uid)" class="fa-solid fa-check"></i>
@@ -267,7 +267,7 @@ defineExpose({ refresh: loadRecords })
                           <i class="fa-solid mr-0.5 text-[8px]" :class="questionTypeIcon(q.question_type)"></i>
                           {{ q.question_type }}
                         </span>
-                        <span v-if="q.has_formula" class="rounded-md bg-purple-100/80 px-1.5 py-0.5 text-[10px] font-bold text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
+                        <span v-if="q.has_formula" class="rounded-md accent-bg-soft px-1.5 py-0.5 text-[10px] font-bold accent-text">
                           <i class="fa-solid fa-square-root-variable text-[8px]"></i>
                         </span>
                         <span v-if="q.has_image" class="rounded-md bg-cyan-100/80 px-1.5 py-0.5 text-[10px] font-bold text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-300">

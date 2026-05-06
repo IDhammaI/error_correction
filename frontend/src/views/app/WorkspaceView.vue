@@ -257,7 +257,7 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
             </button>
             <button @click="doOcr"
-              class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+              class="inline-flex items-center gap-1.5 rounded-md accent-bg px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(var(--accent-hover-rgb))] transition-colors">
               <i class="fa-solid fa-check text-[10px]"></i> 确认，开始 OCR
             </button>
           </template>
@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
             </button>
             <button @click="doSplit"
-              class="inline-flex items-center gap-1.5 rounded-md bg-[rgb(129,115,223)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(145,132,235)] transition-colors">
+              class="inline-flex items-center gap-1.5 rounded-md accent-bg px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(var(--accent-hover-rgb))] transition-colors">
               <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
             </button>
           </template>

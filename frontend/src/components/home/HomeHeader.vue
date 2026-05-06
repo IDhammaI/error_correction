@@ -34,7 +34,7 @@ const emit = defineEmits(['scrollToSection'])
         <div class="hidden md:flex items-center gap-1">
           <button v-for="s in sections" :key="s.id" @click="emit('scrollToSection', s.id)"
             class="px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors"
-            :class="activeSection === s.id ? 'text-gray-900 bg-gray-200 dark:text-white dark:bg-white/[0.06]' : 'text-gray-800 hover:text-black hover:bg-transparent dark:text-white/40 dark:hover:text-white/70 dark:hover:bg-transparent'">{{
+            :class="activeSection === s.id ? 'text-white accent-bg shadow-sm' : 'text-gray-800 hover:text-black hover:bg-transparent dark:text-white/40 dark:hover:text-white/70 dark:hover:bg-transparent'">{{
               s.label }}</button>
         </div>
 

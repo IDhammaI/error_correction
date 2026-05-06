@@ -65,10 +65,10 @@ const FEATURES = [
 
     <!-- 背景装饰：模糊环境光 (Ambient Glow) -->
     <div
-      class="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 dark:bg-indigo-600/5 blur-[150px] pointer-events-none z-0">
+      class="absolute top-[20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[rgb(var(--accent-rgb)/0.1)] dark:bg-[rgb(var(--accent-rgb)/0.05)] blur-[150px] pointer-events-none z-0">
     </div>
     <div
-      class="absolute bottom-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-violet-600/10 dark:bg-violet-600/5 blur-[120px] pointer-events-none z-0">
+      class="absolute bottom-[10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-[rgb(var(--accent-hover-rgb)/0.1)] dark:bg-[rgb(var(--accent-hover-rgb)/0.05)] blur-[120px] pointer-events-none z-0">
     </div>
 
     <!-- 顶部分割线 -->
@@ -81,7 +81,7 @@ const FEATURES = [
       <!-- 标题区 -->
       <div class="mb-16 text-center">
         <h2
-          class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(79,70,229)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)] dark:bg-[linear-gradient(to_right,rgb(151,137,222)_0%,rgb(151,137,222)_20%,rgb(255,255,255)_50%,rgb(151,137,222)_80%,rgb(151,137,222)_100%)]"
+          class="reveal text-3xl font-semibold tracking-tight mb-4 text-transparent bg-clip-text animate-gradient-sweep home-title-accent"
           style="
             background-size: 200% auto;
           ">

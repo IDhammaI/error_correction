@@ -96,9 +96,9 @@ const config = () => {
     return {
       title: '编辑题目',
       icon: 'fa-pen-to-square',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-500/10',
-      iconCls: 'text-indigo-600 dark:text-indigo-400',
-      btnCls: 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600',
+      iconBg: 'accent-bg-soft',
+      iconCls: 'accent-text',
+      btnCls: 'accent-bg hover:bg-[rgb(var(--accent-hover-rgb))]',
     }
   }
   return {
@@ -122,10 +122,10 @@ const config = () => {
           <p class="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">题目内容</p>
           <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-white/5">
             <button @click="previewMode = false"
-              :class="!previewMode ? 'bg-white text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+              :class="!previewMode ? 'bg-white accent-text shadow-sm dark:bg-white/[0.08]' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
               class="rounded-md px-3 py-1 text-[10px] font-black uppercase tracking-wider transition-all">编辑</button>
             <button @click="previewMode = true; onDraftChange()"
-              :class="previewMode ? 'bg-white text-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+              :class="previewMode ? 'bg-white accent-text shadow-sm dark:bg-white/[0.08]' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
               class="rounded-md px-3 py-1 text-[10px] font-black uppercase tracking-wider transition-all">预览</button>
           </div>
         </div>
@@ -133,7 +133,7 @@ const config = () => {
         <!-- 编辑区 -->
         <div v-show="!previewMode">
           <textarea v-model="draft" @input="onDraftChange" rows="6"
-            class="w-full resize-none rounded-xl border border-slate-200/60 bg-slate-50/60 px-4 py-3 text-sm font-mono leading-relaxed text-slate-700 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200/60 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200 dark:focus:border-white/20 dark:focus:ring-white/5"
+            class="w-full resize-none rounded-xl border border-slate-200/60 bg-slate-50/60 px-4 py-3 text-sm font-mono leading-relaxed text-slate-700 outline-none transition-all focus:border-[rgb(var(--accent-rgb)/0.4)] focus:ring-2 focus:ring-[rgb(var(--accent-rgb)/0.18)] dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200 dark:focus:border-[rgb(var(--accent-rgb)/0.4)] dark:focus:ring-[rgb(var(--accent-rgb)/0.18)]"
             placeholder="输入题目内容，支持富文本 HTML 标签..."></textarea>
           <p v-if="htmlError" class="mt-2 text-xs font-medium text-rose-500 flex items-center gap-1"><i
               class="fa-solid fa-triangle-exclamation"></i> {{ htmlError }}</p>

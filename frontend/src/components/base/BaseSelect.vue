@@ -49,7 +49,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             :class="modelValue === '' ? 'text-slate-900 dark:text-[#f7f8f8] bg-slate-50 dark:bg-white/[0.02]' : 'text-slate-600 dark:text-[#8a8f98]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ placeholder }}</span>
-            <i v-if="modelValue === ''" class="fa-solid fa-check shrink-0 text-[10px] text-[rgb(129,115,223)]"></i>
+            <i v-if="modelValue === ''" class="fa-solid fa-check shrink-0 text-[10px] accent-text"></i>
           </button>
           <button
             v-for="opt in options" :key="opt"
@@ -59,7 +59,7 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             :class="modelValue === opt ? 'text-slate-900 dark:text-[#f7f8f8] bg-slate-50 dark:bg-white/[0.02]' : 'text-slate-600 dark:text-[#8a8f98]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ opt }}</span>
-            <i v-if="modelValue === opt" class="fa-solid fa-check shrink-0 text-[10px] text-[rgb(129,115,223)]"></i>
+            <i v-if="modelValue === opt" class="fa-solid fa-check shrink-0 text-[10px] accent-text"></i>
           </button>
         </div>
       </div>

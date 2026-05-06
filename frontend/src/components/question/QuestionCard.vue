@@ -76,18 +76,18 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 <template>
   <BaseCard class="question-card group relative overflow-hidden transition-shadow hover:shadow-md cursor-pointer"
     padding="p-6" rounded="rounded-2xl" :class="selected
-      ? '!border-[rgb(129,115,223)]/50 !shadow-[rgb(129,115,223)]/10 dark:!border-[rgb(129,115,223)]/50 dark:!shadow-[rgb(129,115,223)]/20'
-      : 'hover:!border-[rgb(129,115,223)]/30 dark:hover:!border-white/15'
+      ? 'accent-border shadow-[rgb(var(--accent-rgb)/0.1)] dark:shadow-[rgb(var(--accent-rgb)/0.2)]'
+      : 'hover:border-[rgb(var(--accent-rgb)/0.4)] dark:hover:!border-white/15'
       " @click="emit('toggle', question.uid)">
     <!-- 选中态背景 -->
     <div v-if="selected"
-      class="absolute inset-0 -z-10 bg-gradient-to-br from-[rgb(129,115,223)]/[0.03] to-[rgb(99,87,199)]/[0.03] dark:from-[rgb(129,115,223)]/[0.05] dark:to-[rgb(99,87,199)]/[0.05]">
+      class="absolute inset-0 -z-10 bg-gradient-to-br from-[rgb(var(--accent-rgb)/0.03)] to-[rgb(var(--accent-strong-rgb)/0.03)] dark:from-[rgb(var(--accent-rgb)/0.05)] dark:to-[rgb(var(--accent-strong-rgb)/0.05)]">
     </div>
 
     <!-- 大题标签 -->
     <div v-if="question.section_title"
-      class="mb-4 flex items-center gap-2 border-l-2 border-[rgb(129,115,223)]/60 pl-3 dark:border-[rgb(129,115,223)]/50">
-      <i class="fa-solid fa-layer-group text-xs text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)]"></i>
+      class="mb-4 flex items-center gap-2 border-l-2 border-[rgb(var(--accent-rgb)/0.6)] pl-3 dark:border-[rgb(var(--accent-rgb)/0.5)]">
+      <i class="fa-solid fa-layer-group text-xs accent-text"></i>
       <span class="text-xs font-bold tracking-wide text-gray-500 dark:text-gray-400">{{ question.section_title }}</span>
     </div>
 
@@ -101,7 +101,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
           {{ question.question_type }}
         </span>
         <span v-for="tag in question.knowledge_tags" :key="tag"
-          class="rounded-full bg-[rgb(129,115,223)]/10 px-3 py-1 text-xs font-bold text-[rgb(129,115,223)] dark:bg-[rgb(129,115,223)]/20 dark:text-[rgb(145,132,235)]">
+          class="rounded-full accent-bg-soft px-3 py-1 text-xs font-bold accent-text">
           {{ tag }}
         </span>
       </div>
@@ -109,11 +109,11 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
       <!-- 右侧复选框 -->
       <div class="ml-auto flex items-center gap-4">
         <span class="text-xs font-bold uppercase tracking-widest text-gray-400"
-          :class="selected && 'text-[rgb(129,115,223)] dark:text-[rgb(145,132,235)]'">
+          :class="selected && 'accent-text'">
           {{ selected ? '已选择' : '未选择' }}
         </span>
         <div class="flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-all"
-          :class="selected ? 'border-[rgb(129,115,223)] bg-[rgb(129,115,223)] text-white shadow-sm' : 'border-gray-200 bg-white dark:border-white/5 dark:bg-[#15151e]'">
+          :class="selected ? 'accent-border accent-bg text-white shadow-sm' : 'border-gray-200 bg-white dark:border-white/5 dark:bg-[#15151e]'">
           <i v-if="selected" class="fa-solid fa-check text-[10px]"></i>
         </div>
       </div>

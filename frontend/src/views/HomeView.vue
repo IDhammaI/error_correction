@@ -237,7 +237,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 selection:bg-blue-200 dark:selection:bg-indigo-500/30 page-enter">
+    class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-slate-300 page-enter">
 
     <!-- 🌟 真正的全局绝对底层固定背景 🌟 -->
     <!-- 将背景移出任何可能带有 transform / overflow-hidden 的包裹层，确保 fixed 完美生效 -->
@@ -426,7 +426,7 @@ html {
 }
 
 .footer-logo {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 

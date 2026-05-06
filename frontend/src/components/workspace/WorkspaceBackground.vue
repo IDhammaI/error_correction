@@ -23,7 +23,7 @@ const bgStars = (() => {
     <div
       v-for="(s, i) in bgStars"
       :key="i"
-      class="absolute rounded-full bg-indigo-400 dark:bg-white ws-star transition-colors duration-200"
+      class="absolute rounded-full bg-[rgb(var(--accent-hover-rgb))] dark:bg-white ws-star transition-colors duration-200"
       :style="{
         left: s.left + '%',
         top: s.top + '%',
@@ -52,7 +52,7 @@ const bgStars = (() => {
   width: 600px;
   height: 600px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(129,115,223,0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.06) 0%, transparent 70%);
 }
 .ws-bg-noise {
   position: absolute;

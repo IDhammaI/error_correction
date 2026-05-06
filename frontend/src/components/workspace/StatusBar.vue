@@ -176,7 +176,7 @@ const modelStatusError = computed(() => {
             :disabled="disabled">
             <div class="flex items-center gap-2.5 min-w-0 flex-1">
               <div
-                class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.05] text-[rgb(145,132,235)] transition-colors">
+                class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/[0.05] accent-text transition-colors">
                 <Transition name="fade" mode="out-in">
                   <img v-if="currentOption && modelLogos[currentOption.category]" :key="currentOption.category"
                     :src="modelLogos[currentOption.category]" class="h-3.5 w-3.5 object-contain" alt="" />
@@ -240,7 +240,7 @@ const modelStatusError = computed(() => {
                         <img v-if="modelLogos[item.provider]" :src="modelLogos[item.provider]"
                           class="h-3.5 w-3.5 object-contain opacity-60 shrink-0" alt="" />
                         <span class="truncate text-sm transition-colors"
-                          :class="[selected ? 'font-medium text-indigo-600 dark:text-white' : 'font-medium text-gray-700 dark:text-[#d0d6e0]']">
+                          :class="[selected ? 'font-medium accent-text dark:text-white' : 'font-medium text-gray-700 dark:text-[#d0d6e0]']">
                           {{ item.label }}
                         </span>
                       </div>
@@ -248,7 +248,7 @@ const modelStatusError = computed(() => {
                         class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[9px] font-bold text-gray-400 dark:bg-white/5 dark:text-[#62666d] transition-colors">默认</span>
                     </div>
                     <span v-if="selected"
-                      class="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 dark:text-white transition-colors">
+                      class="absolute inset-y-0 left-0 flex items-center pl-3 accent-text dark:text-white transition-colors">
                       <i class="fa-solid fa-check text-sm"></i>
                     </span>
                   </li>

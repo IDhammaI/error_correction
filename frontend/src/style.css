@@ -3,6 +3,9 @@
   --sidebar-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
   --mask-transition-duration: 300ms;
   --mask-transition-timing: ease-in-out;
+  --accent-rgb: 129 115 223;
+  --accent-hover-rgb: 145 132 235;
+  --accent-strong-rgb: 99 87 199;
 }
 
 @tailwind base;
@@ -13,7 +16,15 @@
 
   /* 优化按钮：引入微妙的渐变、阴影，以及点击和悬浮的丝滑微动效 */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 transition-all duration-300 active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-blue-500/30 focus:ring-4 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-md dark:shadow-none dark:hover:shadow-blue-900/40;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-md transition-all duration-300 active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none text-white hover:shadow-lg focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-md dark:shadow-none;
+    background-image: linear-gradient(to right, rgb(var(--accent-strong-rgb)), rgb(var(--accent-rgb)));
+    box-shadow: 0 10px 15px -3px rgb(var(--accent-rgb) / 0.2), 0 4px 6px -4px rgb(var(--accent-rgb) / 0.2);
+    --tw-ring-color: rgb(var(--accent-rgb) / 0.3);
+  }
+
+  .btn-primary:hover {
+    background-image: linear-gradient(to right, rgb(var(--accent-rgb)), rgb(var(--accent-hover-rgb)));
+    box-shadow: 0 10px 15px -3px rgb(var(--accent-rgb) / 0.3), 0 4px 6px -4px rgb(var(--accent-rgb) / 0.3);
   }
 
   .btn-success {
@@ -47,13 +58,13 @@
 }
 
 .filter-pill--active {
-  background: rgba(129, 115, 223, 0.08);
-  border-color: rgba(129, 115, 223, 0.2);
-  color: rgb(129, 115, 223);
+  background: rgb(var(--accent-rgb) / 0.08);
+  border-color: rgb(var(--accent-rgb) / 0.2);
+  color: rgb(var(--accent-rgb));
 }
 
 .filter-pill--active:hover {
-  background: rgba(129, 115, 223, 0.12);
+  background: rgb(var(--accent-rgb) / 0.12);
 }
 
 .dark .filter-pill {
@@ -69,13 +80,13 @@
 }
 
 .dark .filter-pill--active {
-  background: rgba(129, 115, 223, 0.12);
-  border-color: rgba(129, 115, 223, 0.3);
-  color: rgb(145, 132, 235);
+  background: rgb(var(--accent-rgb) / 0.12);
+  border-color: rgb(var(--accent-rgb) / 0.3);
+  color: rgb(var(--accent-hover-rgb));
 }
 
 .dark .filter-pill--active:hover {
-  background: rgba(129, 115, 223, 0.18);
+  background: rgb(var(--accent-rgb) / 0.18);
 }
 
 /* ── 毛玻璃 active 按钮（Linear 风格，全局共用） ── */
@@ -107,9 +118,55 @@
 }
 
 .brand-gradient-bg {
-  background: linear-gradient(to bottom, #5e6ad2, #4a55c2) !important;
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb)), rgb(var(--accent-strong-rgb))) !important;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
   border: none !important;
+}
+
+.accent-gradient-bg {
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.95), rgb(var(--accent-strong-rgb) / 0.95));
+}
+
+.accent-bg {
+  background: rgb(var(--accent-rgb));
+}
+
+.accent-bg-soft {
+  background: rgb(var(--accent-rgb) / 0.12);
+}
+
+.accent-bg-muted {
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+.accent-border {
+  border-color: rgb(var(--accent-rgb) / 0.4);
+}
+
+.accent-text {
+  color: rgb(var(--accent-rgb));
+}
+
+.dark .accent-text {
+  color: rgb(var(--accent-hover-rgb));
+}
+
+.accent-soft {
+  background: rgb(var(--accent-rgb) / 0.1);
+  color: rgb(var(--accent-rgb));
+}
+
+.dark .accent-soft {
+  background: rgb(var(--accent-rgb) / 0.16);
+  color: rgb(var(--accent-hover-rgb));
+}
+
+.home-title-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-hover-rgb)) 0%, rgb(var(--accent-hover-rgb)) 20%, rgb(var(--accent-strong-rgb)) 50%, rgb(var(--accent-hover-rgb)) 80%, rgb(var(--accent-hover-rgb)) 100%);
+}
+
+.dark .home-title-accent {
+  background-image: linear-gradient(to right, rgb(var(--accent-hover-rgb)) 0%, rgb(var(--accent-hover-rgb)) 20%, rgb(255, 255, 255) 50%, rgb(var(--accent-hover-rgb)) 80%, rgb(var(--accent-hover-rgb)) 100%);
 }
 
 /* Linear 风格的基础文本颜色 */
@@ -144,8 +201,16 @@ body,
 
 body {
   margin: 0;
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 selection:bg-blue-200 selection:text-blue-900 dark:selection:bg-blue-900/50 dark:selection:text-blue-100;
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 selection:text-blue-900 dark:selection:text-blue-100;
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgb(var(--accent-rgb) / 0.22);
+}
+
+.dark ::selection {
+  background: rgb(var(--accent-rgb) / 0.35);
 }
 
 /* ============================================================

@@ -54,7 +54,7 @@ const props = defineProps({
 
 <style scoped>
 .wf-icon--active {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 

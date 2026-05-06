@@ -39,7 +39,7 @@ const onLeave = (el) => {
               ? 'border-rose-500/20 bg-rose-50/90 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300'
               : t.type === 'warning'
                 ? 'border-amber-500/20 bg-amber-50/90 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'
-                : 'border-blue-500/20 bg-blue-50/90 text-blue-900 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300'
+                : 'border-[rgb(var(--accent-rgb)/0.2)] bg-[rgb(var(--accent-rgb)/0.1)] text-[rgb(var(--accent-strong-rgb))] dark:border-[rgb(var(--accent-rgb)/0.2)] dark:bg-[rgb(var(--accent-rgb)/0.1)] dark:text-[rgb(var(--accent-hover-rgb))]'
         "
       >
         <!-- 背景流体装饰 -->
@@ -48,7 +48,7 @@ const onLeave = (el) => {
           :class="
             t.type === 'success' ? 'bg-emerald-500' : 
             t.type === 'error' ? 'bg-rose-500' : 
-            t.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+            t.type === 'warning' ? 'bg-amber-500' : 'accent-bg'
           "
         ></div>
 
@@ -59,7 +59,7 @@ const onLeave = (el) => {
             t.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 
             t.type === 'error' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 
             t.type === 'warning' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 
-            'bg-blue-500/10 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400'
+            'accent-bg-soft accent-text'
           "
         >
           <i 

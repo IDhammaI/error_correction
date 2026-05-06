@@ -15,12 +15,10 @@ import BaseButton from '@/components/base/BaseButton.vue'
     <div class="reveal max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
       <div class="text-center mb-12">
         <h2 class="reveal text-3xl font-semibold tracking-tight mb-4">
-          <span class="text-transparent bg-clip-text animate-gradient-sweep dark:hidden" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(79, 70, 229) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+          <span class="text-transparent bg-clip-text animate-gradient-sweep home-title-accent" style="
             background-size: 200% auto;
           ">眼见为实的转变</span>
-          <span class="text-transparent bg-clip-text animate-gradient-sweep hidden dark:inline" style="
-            background-image: linear-gradient(to right, rgb(151, 137, 222) 0%, rgb(151, 137, 222) 20%, rgb(255, 255, 255) 50%, rgb(151, 137, 222) 80%, rgb(151, 137, 222) 100%);
+          <span class="hidden" style="
             background-size: 200% auto;
           ">眼见为实的转变</span>
         </h2>
@@ -41,26 +39,26 @@ import BaseButton from '@/components/base/BaseButton.vue'
 
         <!-- 中间箭头 -->
         <div class="hidden lg:flex items-center justify-center w-12">
-          <ArrowRight class="w-5 h-5 text-indigo-500/70 dark:text-indigo-400/50 animate-pulse transition-colors duration-200" />
+          <ArrowRight class="w-5 h-5 accent-text animate-pulse transition-colors duration-200" />
         </div>
         <div class="lg:hidden flex justify-center py-2">
-          <ArrowRight class="w-5 h-5 text-indigo-500/70 dark:text-indigo-400/50 rotate-90 animate-pulse transition-colors duration-200" />
+          <ArrowRight class="w-5 h-5 accent-text rotate-90 animate-pulse transition-colors duration-200" />
         </div>
 
         <!-- 右侧：AI 结果 -->
-        <div class="reveal flex-1 w-full max-w-md bg-indigo-50/50 border border-indigo-100/50 dark:bg-transparent dark:border-none dark:brand-btn p-6 rounded-lg relative overflow-hidden text-left transition-colors duration-200" style="transition-delay: 200ms;">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none transition-colors duration-200"></div>
+        <div class="reveal flex-1 w-full max-w-md bg-[rgb(var(--accent-rgb)/0.08)] border accent-border dark:bg-transparent dark:border-none dark:brand-btn p-6 rounded-lg relative overflow-hidden text-left transition-colors duration-200" style="transition-delay: 200ms;">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-[rgb(var(--accent-rgb)/0.2)] dark:bg-[rgb(var(--accent-rgb)/0.1)] blur-[50px] rounded-full pointer-events-none transition-colors duration-200"></div>
           
-          <div class="text-xs font-medium tracking-wide text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1.5 mb-4 relative z-10 transition-colors duration-200">
+          <div class="text-xs font-medium tracking-wide accent-text uppercase flex items-center gap-1.5 mb-4 relative z-10 transition-colors duration-200">
             <Sparkles class="w-3 h-3" /> Output / 结构化数据
           </div>
 
-          <div class="bg-white border border-indigo-100/80 shadow-sm dark:bg-[#0A0A0F]/80 dark:border-white/[0.04] dark:shadow-inner p-4 rounded-xl text-gray-700 dark:text-white/70 font-mono text-sm leading-relaxed relative z-10 transition-colors duration-200">
+          <div class="bg-white border accent-border shadow-sm dark:bg-[#0A0A0F]/80 dark:border-white/[0.04] dark:shadow-inner p-4 rounded-xl text-gray-700 dark:text-white/70 font-mono text-sm leading-relaxed relative z-10 transition-colors duration-200">
             <div class="flex gap-2 mb-4">
-              <span class="bg-indigo-50/80 text-indigo-600/80 border border-indigo-100 dark:bg-white/[0.04] dark:text-white/50 px-2 py-0.5 rounded-full text-xs dark:border-white/[0.06] transition-colors duration-200">选择题</span>
-              <span class="bg-indigo-50/80 text-indigo-600/80 border border-indigo-100 dark:bg-white/[0.04] dark:text-white/50 px-2 py-0.5 rounded-full text-xs dark:border-white/[0.06] transition-colors duration-200">三角函数</span>
+              <span class="accent-bg-soft accent-text border accent-border px-2 py-0.5 rounded-full text-xs transition-colors duration-200">选择题</span>
+              <span class="accent-bg-soft accent-text border accent-border px-2 py-0.5 rounded-full text-xs transition-colors duration-200">三角函数</span>
             </div>
-            <p class="text-sm"><span class="text-indigo-600/80 dark:text-indigo-400/70 mr-1.5 transition-colors duration-200">## 3.</span> 已知函数 <span class="text-indigo-700/90 bg-indigo-100/50 dark:text-indigo-300/80 dark:bg-indigo-500/10 px-1 rounded transition-colors duration-200">$f(x) = 2\sin(\omega x + \varphi)$</span> <span class="text-indigo-700/90 bg-indigo-100/50 dark:text-indigo-300/80 dark:bg-indigo-500/10 px-1 rounded transition-colors duration-200">$(\omega &gt; 0, |\varphi| &lt; \frac{\pi}{2})$</span> 的图像...</p>
+            <p class="text-sm"><span class="accent-text mr-1.5 transition-colors duration-200">## 3.</span> 已知函数 <span class="accent-text accent-bg-soft px-1 rounded transition-colors duration-200">$f(x) = 2\sin(\omega x + \varphi)$</span> <span class="accent-text accent-bg-soft px-1 rounded transition-colors duration-200">$(\omega &gt; 0, |\varphi| &lt; \frac{\pi}{2})$</span> 的图像...</p>
             <div class="mt-4 pl-3 border-l border-gray-200 dark:border-white/[0.06] space-y-2 transition-colors duration-200">
               <p class="flex gap-2"><span class="text-gray-400 dark:text-white/25 transition-colors duration-200">A.</span> <span class="text-gray-700 dark:text-white/60 transition-colors duration-200">$\omega = 2, \varphi = \frac{\pi}{6}$</span></p>
               <p class="flex gap-2"><span class="text-gray-400 dark:text-white/25 transition-colors duration-200">B.</span> <span class="text-gray-700 dark:text-white/60 transition-colors duration-200">$\omega = 2, \varphi = -\frac{\pi}{6}$</span></p>

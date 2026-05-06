@@ -17,7 +17,7 @@ const emit = defineEmits(['after-enter'])
       <BaseLogo size="lg" breathe />
       <div class="w-48">
         <div class="h-0.5 w-full rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden transition-colors">
-          <div class="h-full rounded-full bg-gradient-to-r from-[rgba(129,115,223,0.8)] to-[rgba(99,87,199,0.8)] loading-bar"></div>
+          <div class="h-full rounded-full accent-gradient-bg loading-bar"></div>
         </div>
       </div>
     </div>

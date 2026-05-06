@@ -195,9 +195,9 @@ onMounted(() => { loadAll() })
         <!-- 操作栏 -->
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h3 class="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
-            <i class="fa-solid fa-list-check text-indigo-500"></i> 题目列表
+            <i class="fa-solid fa-list-check accent-text"></i> 题目列表
             <span v-if="reviewTotal"
-              class="ml-2 rounded-full bg-indigo-100 px-2 py-1 text-xs font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">{{
+              class="ml-2 rounded-full accent-bg-soft px-2 py-1 text-xs font-bold accent-text">{{
               reviewTotal }}</span>
           </h3>
           <div v-if="reviewItems.length" class="flex items-center gap-2">
@@ -212,7 +212,7 @@ onMounted(() => { loadAll() })
                 全选
               </button>
               <button @click="startAiAnalysis" :disabled="!selectedIds.size || aiAnalyzing"
-                class="rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                class="rounded-xl accent-gradient-bg px-4 py-2 text-xs font-bold text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa-solid fa-wand-magic-sparkles mr-1" :class="{ 'animate-spin': aiAnalyzing }"></i>
                 AI 错题分析 <span v-if="selectedIds.size">({{ selectedIds.size }})</span>
               </button>
@@ -266,7 +266,7 @@ onMounted(() => { loadAll() })
                     class="rounded-lg px-3 py-1 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400">取消</button>
                   <button @click="saveInlineEdit" :disabled="answerEditSaving"
                     class="rounded-lg px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
-                    :class="answerEditField === 'answer' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-500 hover:bg-blue-600'">
+                    :class="answerEditField === 'answer' ? 'bg-emerald-500 hover:bg-emerald-600' : 'accent-bg hover:bg-[rgb(var(--accent-hover-rgb))]'">
                     {{ answerEditSaving ? '保存中…' : '保存' }}
                   </button>
                 </div>
@@ -275,7 +275,7 @@ onMounted(() => { loadAll() })
             <template #actions>
               <div class="group/tip relative">
                 <button @click="quickMarkStatus(q, '复习中')"
-                  class="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-600 transition-all hover:bg-indigo-100 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  class="rounded-xl border accent-border accent-bg-soft px-4 py-2 text-xs font-bold accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.16)]">
                   <i class="fa-solid fa-spinner mr-1"></i>复习中
                 </button>
                 <span

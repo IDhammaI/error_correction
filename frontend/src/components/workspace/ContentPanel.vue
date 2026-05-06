@@ -51,7 +51,7 @@ const { sidebarMode, isMobile, toggleSidebar } = useWorkspaceNav()
               ? 'text-gray-500 dark:text-[#8a8f98] hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-700 dark:hover:text-[#d0d6e0]'
               : 'text-gray-400 dark:text-[#62666d] cursor-default'">
           <span class="flex h-4 w-4 items-center justify-center rounded text-[10px] transition-colors" :class="s.done
-            ? 'bg-[rgb(129,115,223)] text-white'
+            ? 'accent-bg text-white'
             : i === currentStep
               ? 'bg-white/20 text-white'
               : 'bg-gray-100 dark:bg-white/[0.04] text-gray-400 dark:text-[#62666d]'">

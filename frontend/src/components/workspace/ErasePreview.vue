@@ -70,12 +70,12 @@ function onPointerDown(event) {
         <!-- 滑块线 -->
         <div
           class="absolute top-0 bottom-0 w-0.5 z-10"
-          style="background: rgb(129,115,223);"
+          style="background: rgb(var(--accent-rgb));"
           :style="{ left: sliderPos + '%' }"
         >
           <div
             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex h-8 w-8 cursor-ew-resize items-center justify-center rounded-full shadow-lg"
-            style="background: rgb(129,115,223);"
+            style="background: rgb(var(--accent-rgb));"
             @pointerdown.prevent="onPointerDown"
           >
             <i class="fa-solid fa-arrows-left-right text-xs text-white"></i>
@@ -90,7 +90,7 @@ function onPointerDown(event) {
           :key="i"
           @click="currentPage = i; sliderPos = 50"
           class="h-2 rounded-full transition-all"
-          :class="i === currentPage ? 'w-6 bg-[rgb(129,115,223)]' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
+          :class="i === currentPage ? 'w-6 accent-bg' : 'w-2 bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/40'"
         />
       </div>
     </template>

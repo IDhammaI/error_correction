@@ -38,7 +38,7 @@ const emit = defineEmits(['update:open', 'update:text', 'confirm'])
         <button
           @click="emit('confirm')"
           :disabled="saving"
-          class="rounded-md bg-[#5e6ad2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#7170ff] disabled:opacity-50"
+          class="rounded-md accent-gradient-bg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
         >
           {{ saving ? '保存中...' : '保存并开始辅导' }}
         </button>

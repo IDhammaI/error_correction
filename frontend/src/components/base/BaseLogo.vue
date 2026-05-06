@@ -37,7 +37,7 @@ defineProps({
 
 <style scoped>
 .brand-logo {
-  background: linear-gradient(to bottom, rgba(129, 115, 223, 0.9), rgba(99, 87, 199, 0.9));
+  background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9));
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -55,14 +55,14 @@ defineProps({
   0%, 100% {
     box-shadow:
       inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-      0 0 12px rgba(129, 115, 223, 0.3),
-      0 0 24px rgba(129, 115, 223, 0.15);
+      0 0 12px rgb(var(--accent-rgb) / 0.3),
+      0 0 24px rgb(var(--accent-rgb) / 0.15);
   }
   50% {
     box-shadow:
       inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-      0 0 24px rgba(129, 115, 223, 0.5),
-      0 0 48px rgba(129, 115, 223, 0.25);
+      0 0 24px rgb(var(--accent-rgb) / 0.5),
+      0 0 48px rgb(var(--accent-rgb) / 0.25);
   }
 }
 

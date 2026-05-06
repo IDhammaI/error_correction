@@ -11,11 +11,11 @@ const props = defineProps({
   icon: { type: String, required: true },
   value: { type: [Number, String], default: 0 },
   unit: { type: String, default: '' },
-  color: { type: String, default: 'indigo' },
+  color: { type: String, default: 'accent' },
 })
 
 const colorMap = {
-  indigo: 'text-indigo-600 bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-500/10',
+  accent: 'accent-text accent-bg-soft',
   blue: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10',
   emerald: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10',
   slate: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-500/10',
@@ -59,7 +59,7 @@ watch(() => props.value, (v) => { animateTo(v) })
     <div class="flex items-center gap-4">
       <div
         class="flex size-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-500 group-hover:scale-110"
-        :class="colorMap[color] || colorMap.indigo"
+        :class="colorMap[color] || colorMap.accent"
       >
         <i :class="[icon, 'text-xl']"></i>
       </div>

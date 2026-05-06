@@ -244,14 +244,14 @@ function goToWorkspace() {
               <i
                 class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
               <input v-model="filters.keyword" type="text" placeholder="搜索笔记..."
-                class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]" />
+                class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-[rgb(var(--accent-rgb)/0.4)] dark:focus:border-[rgb(var(--accent-rgb)/0.4)]" />
             </div>
 
             <!-- 操作按钮 -->
             <div class="ml-auto flex items-center gap-1 relative">
               <button @click.stop="toggleFilterPanel"
                 class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-                :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+                :class="filterPanelOpen ? 'accent-bg-soft accent-text accent-border' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
                 title="筛选设置">
                 <i class="fa-solid fa-sliders text-xs"></i>
               </button>
@@ -268,7 +268,7 @@ function goToWorkspace() {
           <!-- 进度条 -->
           <div v-if="creating" class="mb-4">
             <div class="h-1 rounded-full bg-gray-200 dark:bg-white/[0.06]">
-              <div class="h-full rounded-full bg-indigo-500 dark:bg-[rgb(129,115,223)] transition-all duration-300"
+              <div class="h-full rounded-full accent-bg transition-all duration-300"
                 :style="{ width: createProgress + '%' }"></div>
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-[#62666d]">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
@@ -293,7 +293,7 @@ function goToWorkspace() {
                 </p>
                 <div class="flex flex-wrap items-center gap-2">
                   <span v-if="note.subject"
-                    class="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-[rgb(129,115,223)]/10 dark:text-[rgb(145,132,235)]">{{
+                    class="rounded-md accent-bg-soft px-2 py-0.5 text-xs font-medium accent-text">{{
                       note.subject }}</span>
                   <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag"
                     class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{
@@ -308,7 +308,7 @@ function goToWorkspace() {
             <div v-if="totalPages > 1" class="mt-8 flex justify-center gap-2">
               <button v-for="p in totalPages" :key="p" @click="page = p"
                 class="size-8 rounded-md text-xs font-medium transition-all"
-                :class="p === page ? 'bg-indigo-500 text-white shadow-sm dark:brand-btn dark:text-[#f7f8f8]' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-white/[0.06] dark:bg-transparent dark:text-[#8a8f98] dark:hover:bg-white/[0.04]'">
+                :class="p === page ? 'accent-bg text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-white/[0.06] dark:bg-transparent dark:text-[#8a8f98] dark:hover:bg-white/[0.04]'">
                 {{ p }}
               </button>
             </div>

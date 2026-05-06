@@ -341,14 +341,14 @@ onBeforeUnmount(() => {
             <i
               class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
             <input v-model="filters.keyword" type="text" placeholder="搜索题目..."
-              class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-indigo-500 dark:focus:border-white/[0.15]" />
+              class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-[rgb(var(--accent-rgb)/0.4)] dark:focus:border-[rgb(var(--accent-rgb)/0.4)]" />
           </div>
 
           <!-- 操作按钮（推到右侧） -->
           <div class="ml-auto flex items-center gap-1 relative">
             <button @click.stop="toggleFilterPanel"
               class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-              :class="filterPanelOpen ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+              :class="filterPanelOpen ? 'accent-bg-soft accent-text accent-border' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
               title="筛选设置">
               <i class="fa-solid fa-sliders text-xs"></i>
             </button>
@@ -359,7 +359,7 @@ onBeforeUnmount(() => {
 
             <button @click="toggleSelectMode"
               class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-              :class="selectMode ? 'bg-indigo-50 dark:bg-white/[0.08] text-indigo-600 dark:text-[#f7f8f8] border-indigo-200 dark:border-white/[0.12]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
+              :class="selectMode ? 'accent-bg-soft accent-text accent-border' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
               title="导出题目">
               <i class="fa-solid fa-file-export text-xs"></i>
             </button>
@@ -434,7 +434,7 @@ onBeforeUnmount(() => {
                         <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
                       </button>
                       <button @click.stop="openChat(question); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400">
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)] hover:text-[rgb(var(--accent-rgb))] dark:text-slate-300">
                         <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
                       </button>
                       <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
@@ -473,7 +473,7 @@ onBeforeUnmount(() => {
             <template v-for="(p, i) in pageButtons" :key="i">
               <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
               <button v-else @click="goPage(p)" class="h-9 min-w-[36px] rounded-xl text-sm font-bold transition-all"
-                :class="p === page ? 'bg-blue-600 text-white shadow-sm dark:bg-indigo-600' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
+                :class="p === page ? 'accent-bg text-white shadow-sm' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
                 {{ p }}
               </button>
             </template>
