@@ -139,30 +139,34 @@ const userQuotaSummary = computed(() => {
     <template v-if="isSettingsView">
       <div class="flex min-h-0 flex-1 flex-col px-4 py-4 overflow-hidden">
         <button @click="returnToApp"
-          class="mb-4 inline-flex items-center gap-2 px-3 pt-2 text-sm font-medium text-gray-500 dark:text-[#8a8f98] transition-colors hover:text-gray-700 dark:hover:text-white"
-          :class="isNarrow ? 'justify-center px-0' : ''">
+          class="mb-4 inline-flex w-full items-center gap-2 overflow-hidden px-3 pt-2 text-sm font-medium text-gray-500 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-white">
           <i class="fa-solid fa-arrow-left text-xs"></i>
-          <span v-if="!isNarrow">返回应用</span>
+          <span
+            class="overflow-hidden whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+            :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[72px] translate-x-0 opacity-100'">返回应用</span>
         </button>
 
         <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative pt-2">
-          <div v-if="!isNarrow"
-            class="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 dark:text-[#62666d]">
+          <div
+            class="overflow-hidden px-3 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#62666d]"
+            :class="isNarrow ? 'max-h-0 pt-0 pb-0 opacity-0' : 'max-h-8 pt-2 pb-1 opacity-100'">
             设置
           </div>
           <div class="flex flex-col gap-1">
             <template v-for="item in settingsNavItems" :key="item.id">
               <BaseTooltip :text="item.label" :placement="isNarrow ? 'right' : 'bottom'" :disabled="!isNarrow">
                 <button @click="setSettingsEntry(item.id)"
-                  class="group relative z-10 flex items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors duration-200 w-full"
+                  class="group relative z-10 flex items-center rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-300 ease-[var(--sidebar-transition-timing)] w-full"
                   :class="[
                     currentSettingsSubView === item.id
                       ? 'brand-gradient-bg text-white shadow-sm border-transparent'
                       : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
-                    isNarrow ? 'justify-center px-0' : ''
+                    'gap-3'
                   ]">
                   <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                  <span v-if="!isNarrow">{{ item.label }}</span>
+                  <span
+                    class="overflow-hidden whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                    :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[128px] translate-x-0 opacity-100'">{{ item.label }}</span>
                 </button>
               </BaseTooltip>
             </template>
@@ -176,18 +180,20 @@ const userQuotaSummary = computed(() => {
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div>
           <!-- Logo 标题区 -->
-          <div class="flex h-14 items-center justify-between transition-all"
-            :class="isNarrow ? 'px-3 justify-center' : 'px-4'">
-            <button @click="emit('navigate-home')" class="flex min-w-0 items-center gap-2 rounded-md transition-all"
-              :class="isNarrow ? 'w-10 h-10 justify-center' : 'px-1 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.04]'"
+          <div class="flex h-14 items-center justify-between gap-2 px-3 transition-all duration-300 ease-[var(--sidebar-transition-timing)]">
+            <button @click="emit('navigate-home')"
+              class="flex w-[156px] min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:bg-gray-100 dark:hover:bg-white/[0.04]"
               title="返回首页">
               <BaseLogo size="sm" class="shrink-0" />
-              <span v-if="!isNarrow"
-                class="text-sm font-semibold text-gray-900 dark:text-[#f7f8f8] transition-all duration-300 overflow-hidden whitespace-nowrap">
+              <span
+                class="overflow-hidden whitespace-nowrap text-sm font-semibold text-gray-900 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#f7f8f8]"
+                :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[96px] translate-x-0 opacity-100'">
                 智卷错题本
               </span>
             </button>
-            <div v-if="!isNarrow" class="flex items-center gap-1 transition-all duration-200">
+            <div
+              class="flex items-center justify-end overflow-hidden transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+              :class="isNarrow ? 'w-7 -translate-x-1 opacity-0' : 'w-7 translate-x-0 opacity-100'">
               <button @click="openSettings('profile')"
                 class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
                 title="系统设置">
@@ -197,14 +203,18 @@ const userQuotaSummary = computed(() => {
           </div>
 
           <!-- 视图切换菜单 -->
-          <nav :ref="(el) => $emit('update:navRef', el)" class="flex flex-col gap-1.5 relative pt-2 transition-all"
+          <nav :ref="(el) => $emit('update:navRef', el)"
+            class="relative flex flex-col gap-1.5 pt-2 transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
             :class="isNarrow ? 'px-3' : 'px-4'">
 
             <template v-for="(group, gi) in navGroups" :key="gi">
               <!-- 分组标题（可折叠） -->
-              <button v-if="group.label && !isNarrow" @click="group.collapsible && toggleGroup(gi)"
-                class="flex items-center gap-1 px-3 mt-6 pb-2 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors"
-                :class="group.collapsible ? 'cursor-pointer' : 'cursor-default'">
+              <button v-if="group.label" @click="group.collapsible && toggleGroup(gi)"
+                class="flex items-center gap-1 overflow-hidden text-xs font-medium uppercase tracking-[0.15em] text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98]"
+                :class="[
+                  isNarrow ? 'pointer-events-none mt-0 max-h-0 px-3 pb-0 opacity-0' : 'mt-6 max-h-8 px-3 pb-2 opacity-100',
+                  group.collapsible ? 'cursor-pointer' : 'cursor-default'
+                ]">
                 <span>{{ group.label }}</span>
                 <i v-if="group.collapsible"
                   class="fa-solid fa-play text-[8px] text-gray-400 dark:text-[#62666d] transition-transform duration-200"
@@ -220,27 +230,31 @@ const userQuotaSummary = computed(() => {
                       <!-- 禁用项 -->
                       <BaseTooltip :text="item.label" placement="right" :disabled="!isNarrow">
                         <button v-if="item.disabled" disabled
-                          class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-gray-400 dark:text-[#62666d]"
-                          :class="isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''">
-                          <div class="flex items-center gap-3">
+                          class="flex items-center justify-between rounded-lg px-3 py-3 text-sm cursor-not-allowed text-gray-400 dark:text-[#62666d]">
+                          <div class="flex items-center gap-3 transition-all duration-300 ease-[var(--sidebar-transition-timing)]">
                             <i class="fa-solid w-4 shrink-0 text-center text-sm" :class="item.icon"></i>
-                            <span v-if="!isNarrow">{{ item.label }}</span>
+                            <span
+                              class="overflow-hidden whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                              :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[96px] translate-x-0 opacity-100'">{{ item.label }}</span>
                           </div>
-                          <span v-if="!isNarrow"
-                            class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-[#62666d]">敬请期待</span>
+                          <span
+                            class="overflow-hidden whitespace-nowrap rounded-md bg-gray-100 text-[10px] font-medium text-gray-500 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:bg-white/[0.04] dark:text-[#62666d]"
+                            :class="isNarrow ? 'max-w-0 px-0 py-0 opacity-0' : 'max-w-[68px] px-2 py-0.5 opacity-100'">敬请期待</span>
                         </button>
                         <!-- 普通项 -->
                         <button v-else :ref="el => navBtnRefs[item.id] = el"
                           @click="setView(item.id === 'workspace' ? lastWorkspaceView : item.id)"
-                          class="group relative z-10 flex items-center gap-3 rounded-lg text-sm font-medium outline-none transition-[width,height,padding,margin] duration-300 ease-[var(--sidebar-transition-timing)]"
+                          class="group relative z-10 flex items-center rounded-lg text-sm font-medium outline-none transition-[width,height,padding,margin,gap] duration-300 ease-[var(--sidebar-transition-timing)]"
                           :class="[
                             item.match(currentView)
-                              ? 'brand-gradient-bg text-white shadow-sm border-none transition-none'
+                              ? 'brand-gradient-bg text-white shadow-sm border-none'
                               : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors duration-150',
-                            isNarrow ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2'
+                            'w-full gap-3 px-3 py-2'
                           ]">
                           <i class="fa-solid w-4 shrink-0 text-center text-sm" :class="item.icon"></i>
-                          <span v-if="!isNarrow" class="truncate opacity-0 animate-fadeIn">
+                          <span
+                            class="overflow-hidden truncate whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                            :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[128px] translate-x-0 opacity-100'">
                             {{ item.label }}
                           </span>
                         </button>
@@ -254,17 +268,19 @@ const userQuotaSummary = computed(() => {
         </div>
 
         <!-- AI 对话历史列表 -->
-        <div class="mt-2 flex min-h-0 flex-1 flex-col transition-all" :class="isNarrow ? 'px-3' : 'px-4'">
-          <div class="flex items-center justify-between mt-6 pb-2 transition-all"
-            :class="isNarrow ? 'justify-center' : 'px-3'">
-            <button v-if="!isNarrow" @click="emit('update:chatCollapsed', !chatCollapsed)"
-              class="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.15em] text-gray-400 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] transition-colors cursor-pointer">
+        <div class="mt-2 flex min-h-0 flex-1 flex-col transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+          :class="isNarrow ? 'px-3' : 'px-4'">
+          <div class="flex items-center justify-between mt-6 px-3 pb-2 transition-all duration-300 ease-[var(--sidebar-transition-timing)]">
+            <button @click="emit('update:chatCollapsed', !chatCollapsed)"
+              class="flex items-center gap-1 overflow-hidden text-xs font-medium uppercase tracking-[0.15em] text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98] cursor-pointer"
+              :class="isNarrow ? 'pointer-events-none max-w-0 -translate-x-1 opacity-0' : 'max-w-[80px] translate-x-0 opacity-100'">
               <span>对话</span>
               <i class="fa-solid fa-play text-[8px] text-gray-400 dark:text-[#62666d] transition-transform duration-200"
                 :class="chatCollapsed ? '' : 'rotate-90'"></i>
             </button>
-            <button v-if="!isNarrow" @click="createChat"
-              class="text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0] transition-colors"
+            <button @click="createChat"
+              class="overflow-hidden text-gray-500 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]"
+              :class="isNarrow ? 'pointer-events-none w-0 -translate-x-1 opacity-0' : 'w-4 translate-x-0 opacity-100'"
               title="新对话">
               <i class="fa-solid fa-plus text-[10px]"></i>
             </button>
@@ -277,8 +293,9 @@ const userQuotaSummary = computed(() => {
                 class="relative h-full overflow-y-auto pb-2 custom-scrollbar"
                 @click="emit('update:chatMenuOpenId', null)">
 
-                <div v-if="aiChatSessions.length === 0 && !isNarrow"
-                  class="px-3 py-4 text-center text-xs text-gray-400 dark:text-[#62666d]">
+                <div v-if="aiChatSessions.length === 0"
+                  class="overflow-hidden px-3 text-center text-xs text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#62666d]"
+                  :class="isNarrow ? 'max-h-0 py-0 opacity-0' : 'max-h-16 py-4 opacity-100'">
                   暂无对话
                 </div>
                 <div v-for="s in aiChatSessions" :key="s.id" :ref="el => chatBtnRefs[s.id] = el"
@@ -286,15 +303,17 @@ const userQuotaSummary = computed(() => {
                   :class="[
                     chatMenuOpenId === s.id ? 'z-20' : 'z-10',
                     activeAiChatId === s.id && currentView === 'ai-chat'
-                      ? 'brand-gradient-bg text-white shadow-sm border-none transition-none'
+                      ? 'brand-gradient-bg text-white shadow-sm border-none'
                       : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors duration-150',
-                    isNarrow ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2 gap-3'
+                    'w-full px-3 py-2 gap-3'
                   ]" @click="renamingChatId !== s.id && selectChat(s)">
                   <BaseTooltip :text="s.title" placement="right" :disabled="!isNarrow">
                     <i class="fa-solid fa-message w-4 shrink-0 text-center text-sm transition-colors"></i>
                   </BaseTooltip>
 
-                  <template v-if="!isNarrow">
+                  <div
+                    class="flex min-w-0 flex-1 items-center gap-2 overflow-visible transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                    :class="isNarrow ? 'pointer-events-none max-w-0 -translate-x-1 opacity-0' : 'max-w-[180px] translate-x-0 opacity-100'">
                     <!-- 重命名输入框 -->
                     <input v-if="renamingChatId === s.id" :value="renameText"
                       @input="emit('update:renameText', $event.target.value)" data-rename-input @click.stop
@@ -328,7 +347,7 @@ const userQuotaSummary = computed(() => {
                         </button>
                       </div>
                     </Transition>
-                  </template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -337,7 +356,7 @@ const userQuotaSummary = computed(() => {
       </div>
 
       <!-- 底部用户区 -->
-      <div class="relative p-2" :class="isNarrow ? 'p-1' : ''">
+      <div class="relative p-2">
         <BaseDropdown :modelValue="userMenuOpen" @update:modelValue="(val) => emit('update:userMenuOpen', val)"
           :position="isNarrow ? 'right' : 'top'" :align="isNarrow ? 'end' : 'center'"
           :width="isNarrow ? 'w-48' : 'w-full'" :offset="isNarrow ? 'ml-4' : 'mb-1'"
@@ -351,8 +370,7 @@ const userQuotaSummary = computed(() => {
           <template #trigger="{ toggle }">
             <!-- 用户信息 -->
             <button @click.stop="toggle"
-              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-all"
-              :class="isNarrow ? 'justify-center px-0 w-10 h-10 mx-auto' : ''">
+              class="flex w-full items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-all">
               <div
                 class="h-8 w-8 shrink-0 rounded-xl relative overflow-hidden flex items-center justify-center text-white text-sm font-medium"
                 style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
@@ -364,7 +382,9 @@ const userQuotaSummary = computed(() => {
                   <span class="relative z-10">{{ userInitial }}</span>
                 </template>
               </div>
-              <div v-if="!isNarrow" class="flex-1 min-w-0 text-left">
+              <div
+                class="min-w-0 flex-1 overflow-hidden text-left transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                :class="isNarrow ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[156px] translate-x-0 opacity-100'">
                 <p class="text-sm text-gray-900 dark:text-[#f7f8f8] truncate leading-tight transition-colors">{{
                   userDisplayName }}
                 </p>
@@ -375,8 +395,9 @@ const userQuotaSummary = computed(() => {
                 <p v-else class="text-xs text-gray-500 dark:text-[#62666d] truncate leading-tight transition-colors">@{{
                   currentUser?.username || 'guest' }}</p>
               </div>
-              <i v-if="!isNarrow"
-                class="fa-solid fa-chevron-up text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
+              <i
+                class="fa-solid fa-chevron-up overflow-hidden text-[10px] text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#62666d]"
+                :class="isNarrow ? 'w-0 -translate-x-1 opacity-0' : 'w-3 translate-x-0 opacity-100'"></i>
             </button>
           </template>
 
