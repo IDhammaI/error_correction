@@ -51,6 +51,7 @@ class WorkflowState(TypedDict, total=False):
     llm_credentials: Dict[str, Any]      # {api_key, base_url, light_model_name, supports_function_calling}
     ocr_credentials: Dict[str, Any]      # {api_url, token, model, use_doc_orientation, ...}
     ocr_cache_path: str                  # OCR 预览缓存文件路径（按用户隔离）
+    results_dir: str                     # 本次运行的结果目录（按 user/run 隔离）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -656,7 +657,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     console.print("[bold yellow]步骤 2: 并行 OCR + 分割题目[/bold yellow]")
     step_start = time.time()
 
-    results_dir = settings.results_dir
+    results_dir = state.get("results_dir") or settings.results_dir
     os.makedirs(results_dir, exist_ok=True)
 
     file_paths = state["image_paths"]
@@ -885,7 +886,8 @@ def correct_questions_node(state: WorkflowState) -> dict:
     # 加载 OCR 数据作为纠错上下文
     # agent_input.json 现在保存的是批次数据（[[page, ...], ...]），需要还原为扁平页面列表
     ocr_context = "{}"
-    agent_input_path = os.path.join(settings.results_dir, "agent_input.json")
+    results_dir = state.get("results_dir") or settings.results_dir
+    agent_input_path = os.path.join(results_dir, "agent_input.json")
     if os.path.exists(agent_input_path):
         with open(agent_input_path, 'r', encoding='utf-8') as f:
             raw = json.load(f)
@@ -949,7 +951,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
             merged.append(q)
 
     # 更新 questions.json
-    questions_file = os.path.join(settings.results_dir, "questions.json")
+    questions_file = os.path.join(results_dir, "questions.json")
     with open(questions_file, 'w', encoding='utf-8') as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 
@@ -963,7 +965,9 @@ def export_node(state: WorkflowState) -> dict:
     """节点: 导出错题本"""
     console.print("[bold yellow]步骤 3: 导出错题本[/bold yellow]")
     step_start = time.time()
-    output_path = export_wrongbook(state["questions"], state["selected_ids"])
+    results_dir = state.get("results_dir") or settings.results_dir
+    output_path = state.get("output_path") or os.path.join(results_dir, "wrongbook.md")
+    output_path = export_wrongbook(state["questions"], state["selected_ids"], output_path=output_path)
     logger.info(f"导出完成: {output_path}，耗时 {time.time() - step_start:.2f}s")
     return {"output_path": output_path}
 

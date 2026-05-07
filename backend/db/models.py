@@ -35,6 +35,7 @@ class User(Base):
     split_records = relationship("SplitRecord", back_populates="user")
     provider_configs = relationship("ProviderConfig", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user")
+    workflow_runs = relationship("WorkflowRun", back_populates="user")
 
 
 class ProviderConfig(Base):
@@ -174,6 +175,31 @@ class SplitRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     user = relationship("User", back_populates="split_records")
+
+
+class WorkflowRun(Base):
+    """一次可追踪的后端工作流运行记录。
+
+    当前由 SQLite 持久化，业务层通过 core.workflow_run_store 访问；
+    后续替换为 Redis/任务队列时，尽量只替换 store 层。
+    """
+    __tablename__ = "workflow_runs"
+
+    id = Column(Integer, primary_key=True)
+    public_id = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    run_type = Column(String(30), nullable=False, default="split", index=True)
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    subject = Column(String(50), nullable=True)
+    model_provider = Column(String(20), nullable=True)
+    file_names_json = Column(Text, nullable=True)
+    result_dir = Column(Text, nullable=False, default="")
+    question_count = Column(Integer, default=0, nullable=False)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="workflow_runs")
 
 
 class KnowledgeTag(Base):

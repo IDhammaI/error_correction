@@ -201,6 +201,7 @@ class Settings(BaseSettings):
     struct_dir: Path | None = None
     results_dir: Path | None = None
     erased_dir: Path | None = None
+    runs_dir: Path | None = None
 
     # 文字擦除模型权重路径，可通过 APP_MODEL_PATH 覆盖
     model_path: Path | None = None
@@ -261,6 +262,8 @@ class Settings(BaseSettings):
             self.results_dir = self.runtime_dir / "results"
         if self.erased_dir is None:
             self.erased_dir = self.runtime_dir / "erased"
+        if self.runs_dir is None:
+            self.runs_dir = self.runtime_dir / "runs"
         if self.model_path is None:
             self.model_path = _BACKEND_ROOT / "models" / "weight" / "best.pth"
 
@@ -285,6 +288,7 @@ class Settings(BaseSettings):
             self.struct_dir,
             self.results_dir,
             self.erased_dir,
+            self.runs_dir,
         ]:
             d.mkdir(parents=True, exist_ok=True)
 
