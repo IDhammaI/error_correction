@@ -198,20 +198,24 @@ export async function splitQuestions(modelProvider, modelName, providerSource, p
   return _assertJsonSuccess(resp, '题目分割失败')
 }
 
-export async function exportQuestions(selectedIds) {
+export async function exportQuestions(selectedIds, runId) {
+  const body = { selected_ids: selectedIds }
+  if (runId) body.run_id = runId
   const resp = await fetch('/api/export', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selected_ids: selectedIds }),
+    body: JSON.stringify(body),
   })
   return _assertJsonSuccess(resp, '导出失败')
 }
 
-export async function saveToDb(selectedIds, answers = []) {
+export async function saveToDb(selectedIds, answers = [], runId) {
+  const body = { selected_ids: selectedIds, answers }
+  if (runId) body.run_id = runId
   const resp = await fetch('/api/save-to-db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selected_ids: selectedIds, answers }),
+    body: JSON.stringify(body),
   })
   return _assertJsonSuccess(resp, '导入错题库失败')
 }

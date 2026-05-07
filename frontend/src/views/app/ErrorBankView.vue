@@ -158,8 +158,10 @@ const doExport = async () => {
       const parts = String(data.output_path).split(/[/\\]/)
       const last = parts[parts.length - 1]; if (last) filename = last
     }
+    let downloadHref = data.download_url || `/download/${encodeURIComponent(filename)}`
+    downloadHref += downloadHref.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`
     const a = document.createElement('a')
-    a.href = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
+    a.href = downloadHref
     a.download = filename
     document.body.appendChild(a); a.click(); a.remove()
   } catch (e) {
