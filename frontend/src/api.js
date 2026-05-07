@@ -140,6 +140,39 @@ export async function fetchStatus() {
   return data.status
 }
 
+export async function fetchProjects() {
+  const resp = await fetch('/api/projects')
+  const data = await _assertJsonSuccess(resp, '获取项目列表失败')
+  return data.projects || []
+}
+
+export async function createProject(payload) {
+  const resp = await fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await _assertJsonSuccess(resp, '创建项目失败')
+  return data.project
+}
+
+export async function updateProject(projectId, payload) {
+  const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await _assertJsonSuccess(resp, '更新项目失败')
+  return data.project
+}
+
+export async function deleteProject(projectId) {
+  const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: 'DELETE',
+  })
+  return _assertJsonSuccess(resp, '删除项目失败')
+}
+
 export async function cancelFile(fileKey) {
   const resp = await fetch('/api/cancel_file', {
     method: 'POST',
@@ -207,11 +240,13 @@ export async function exportQuestions(selectedIds) {
   return _assertJsonSuccess(resp, '导出失败')
 }
 
-export async function saveToDb(selectedIds, answers = []) {
+export async function saveToDb(selectedIds, answers = [], projectId) {
+  const body = { selected_ids: selectedIds, answers }
+  if (projectId) body.project_id = projectId
   const resp = await fetch('/api/save-to-db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selected_ids: selectedIds, answers }),
+    body: JSON.stringify(body),
   })
   return _assertJsonSuccess(resp, '导入错题库失败')
 }
@@ -242,21 +277,26 @@ export async function fetchErrorBank(params = {}) {
   return _assertJsonSuccess(resp, '查询错题库失败')
 }
 
-export async function fetchSubjects() {
-  const resp = await fetch('/api/subjects')
+export async function fetchSubjects(projectId) {
+  const qs = new URLSearchParams()
+  if (projectId) qs.set('project_id', projectId)
+  const resp = await fetch(`/api/subjects?${qs}`)
   const data = await _assertJsonSuccess(resp, '获取科目列表失败')
   return data.subjects
 }
 
-export async function fetchQuestionTypes() {
-  const resp = await fetch('/api/question-types')
+export async function fetchQuestionTypes(projectId) {
+  const qs = new URLSearchParams()
+  if (projectId) qs.set('project_id', projectId)
+  const resp = await fetch(`/api/question-types?${qs}`)
   const data = await _assertJsonSuccess(resp, '获取题型列表失败')
   return data.question_types
 }
 
-export async function fetchTagNames(subject) {
+export async function fetchTagNames(subject, projectId) {
   const qs = new URLSearchParams()
   if (subject) qs.set('subject', subject)
+  if (projectId) qs.set('project_id', projectId)
   const resp = await fetch(`/api/stats?${qs}`)
   const data = await _assertJsonSuccess(resp, '获取标签列表失败')
   return (data.stats || []).map(s => s.tag_name)
@@ -294,9 +334,10 @@ export async function updateReviewStatus(questionId, reviewStatus) {
   return _assertJsonSuccess(resp, '更新复习状态失败')
 }
 
-export async function fetchDashboardStats(subject) {
+export async function fetchDashboardStats(subject, projectId) {
   const qs = new URLSearchParams()
   if (subject) qs.set('subject', subject)
+  if (projectId) qs.set('project_id', projectId)
   const resp = await fetch(`/api/dashboard-stats?${qs}`)
   return _assertJsonSuccess(resp, '获取统计数据失败')
 }
@@ -408,6 +449,7 @@ export async function fetchNotes(params = {}) {
   if (params.subject) query.set('subject', params.subject)
   if (params.knowledge_tag) query.set('knowledge_tag', params.knowledge_tag)
   if (params.keyword) query.set('keyword', params.keyword)
+  if (params.project_id) query.set('project_id', params.project_id)
 
   const resp = await fetch(`/api/notes/?${query}`)
   return _assertJsonSuccess(resp, '获取笔记列表失败')
@@ -447,8 +489,10 @@ export async function deleteNote(noteId) {
 /**
  * 获取笔记库科目列表
  */
-export async function fetchNoteSubjects() {
-  const resp = await fetch('/api/notes/subjects')
+export async function fetchNoteSubjects(projectId) {
+  const qs = new URLSearchParams()
+  if (projectId) qs.set('project_id', projectId)
+  const resp = await fetch(`/api/notes/subjects?${qs}`)
   const data = await _assertJsonSuccess(resp, '获取科目列表失败')
   return data.subjects
 }
@@ -456,9 +500,10 @@ export async function fetchNoteSubjects() {
 /**
  * 获取笔记库知识点标签列表
  */
-export async function fetchNoteTagNames(subject) {
+export async function fetchNoteTagNames(subject, projectId) {
   const qs = new URLSearchParams()
   if (subject) qs.set('subject', subject)
+  if (projectId) qs.set('project_id', projectId)
   const resp = await fetch(`/api/notes/tags?${qs}`)
   const data = await _assertJsonSuccess(resp, '获取标签列表失败')
   return data.tags

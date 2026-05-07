@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import logging
+from datetime import timezone
 from pathlib import PurePath
 from typing import Optional
 
@@ -50,6 +51,16 @@ def _read_split_subject() -> Optional[str]:
     return None
 
 
+def _isoformat_utc(dt) -> Optional[str]:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
 def _serialize_split_record(r) -> dict:
     """将 SplitRecord ORM 对象序列化为前端 JSON 格式"""
     return {
@@ -58,7 +69,7 @@ def _serialize_split_record(r) -> dict:
         "model_provider": r.model_provider,
         "file_names": json.loads(r.file_names_json) if r.file_names_json else [],
         "question_count": r.question_count,
-        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "created_at": _isoformat_utc(r.created_at),
     }
 
 

@@ -23,6 +23,26 @@ def _effective_user_id():
     return session.get('user_id')
 
 
+def _project_id_arg():
+    value = request.args.get('project_id') or None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _project_id_body(data):
+    value = (data or {}).get('project_id')
+    if value in (None, ''):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _serialize_question(q: Question) -> dict:
     """将 Question ORM 对象序列化为前端 JSON 格式"""
     subject = None
@@ -268,6 +288,7 @@ def get_error_bank():
         question_type = request.args.get('question_type', type=str) or None
         keyword = request.args.get('keyword', type=str) or None
         review_status = request.args.get('review_status', type=str) or None
+        project_id = _project_id_arg()
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
 
@@ -291,6 +312,7 @@ def get_error_bank():
                 review_status=review_status,
                 page=page,
                 page_size=page_size,
+                project_id=project_id,
             )
 
             total_pages = (total + page_size - 1) // page_size
@@ -318,7 +340,7 @@ def get_subjects():
     """获取所有科目列表"""
     try:
         with SessionLocal() as db:
-            subjects = crud.get_existing_subjects(db, user_id=_effective_user_id())
+            subjects = crud.get_existing_subjects(db, user_id=_effective_user_id(), project_id=_project_id_arg())
             return jsonify({'success': True, 'subjects': subjects})
     except Exception as e:
         logger.exception("获取科目列表失败")
@@ -330,7 +352,7 @@ def get_question_types():
     """获取所有题型列表"""
     try:
         with SessionLocal() as db:
-            types = crud.get_existing_question_types(db, user_id=_effective_user_id())
+            types = crud.get_existing_question_types(db, user_id=_effective_user_id(), project_id=_project_id_arg())
             return jsonify({'success': True, 'question_types': types})
     except Exception as e:
         logger.exception("获取题型列表失败")
@@ -354,7 +376,7 @@ def update_question(question_id):
                     text = str(data['content'])[:20000]
                     blocks = [{'block_type': 'text', 'content': text}]
                     question.content_json = json.dumps(blocks, ensure_ascii=False)
-                    question.content_hash = crud.compute_content_hash(blocks)
+                    question.content_hash = crud.compute_project_content_hash(blocks, question.project_id)
                 if 'answer' in data:
                     question.answer = str(data['answer'])[:10000] if data['answer'] else None
                 question.updated_at = datetime.utcnow()
@@ -437,6 +459,7 @@ def save_to_db():
     try:
         data = request.get_json(silent=True) or {}
         selected_uids = data.get('selected_ids', [])
+        project_id = _project_id_body(data)
 
         if not isinstance(selected_uids, list) or not selected_uids:
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
@@ -481,7 +504,23 @@ def save_to_db():
             }
 
         with SessionLocal() as db:
-            result = crud.save_questions_to_db(db, selected_questions, batch_info, user_id=session.get('user_id'))
+            try:
+                project_id = (
+                    crud.require_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
+                    if project_id
+                    else crud.resolve_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
+                )
+            except ValueError as exc:
+                if str(exc) == "PROJECT_REQUIRED":
+                    return jsonify({'success': False, 'error': '请先创建并选择一个错题库'}), 400
+                return jsonify({'success': False, 'error': '项目不存在'}), 404
+            result = crud.save_questions_to_db(
+                db,
+                selected_questions,
+                batch_info,
+                user_id=session.get('user_id'),
+                project_id=project_id,
+            )
 
         return jsonify({
             'success': True,

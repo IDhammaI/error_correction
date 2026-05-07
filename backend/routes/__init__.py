@@ -9,6 +9,7 @@ from .chat import bp as chat_bp
 from .stats import bp as stats_bp
 from .settings import bp as settings_bp
 from .notes import bp as notes_bp
+from .projects import bp as projects_bp
 
 
 def register_routes(app):
@@ -20,3 +21,4 @@ def register_routes(app):
     app.register_blueprint(stats_bp, url_prefix='/api')
     app.register_blueprint(settings_bp, url_prefix='/api')
     app.register_blueprint(notes_bp, url_prefix='/api/notes')
+    app.register_blueprint(projects_bp, url_prefix='/api')

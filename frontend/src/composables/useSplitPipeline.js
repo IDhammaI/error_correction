@@ -1,11 +1,13 @@
 import { ref } from 'vue'
 import * as api from '@/api.js'
 import { useAuth } from '@/composables/useAuth.js'
+import { useProjects } from '@/composables/useProjects.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
 export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
+  const { activeQuestionProjectId, activeNoteProjectId, loadProjects } = useProjects()
   const eraseLoading = ref(false)
   const eraseImages = ref([])
   const eraseDone = ref(false)
@@ -131,6 +133,10 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   }
 
   const doNoteOrganize = async () => {
+    if (!activeNoteProjectId.value) {
+      pushToast('error', '请先创建并选择一个笔记本')
+      return
+    }
     splitting.value = true
     step.value = S.value.SPLIT
     pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
@@ -154,6 +160,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       if (selectedLlmOption.value?.provider_id) {
         formData.append('provider_id', selectedLlmOption.value.provider_id)
       }
+      formData.append('project_id', activeNoteProjectId.value)
 
       await new Promise((resolve, reject) => {
         api.createNote(formData, {
@@ -161,6 +168,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
           onError: (error) => reject(error),
         })
       })
+      await loadProjects()
 
       splitCompleted.value = true
       step.value = S.value.EXPORT
@@ -205,17 +213,22 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
-  const doSaveToDb = async (errorBankRef) => {
-    if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
+  const doSaveToDb = async (targetProjectId, errorBankRef) => {
+    if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return false }
     try {
+      const projectId = targetProjectId || activeQuestionProjectId.value
+      if (!projectId) { pushToast('error', '请先创建并选择一个错题库'); return false }
       const answers = questions.value
         .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
         .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
-      const data = await api.saveToDb(Array.from(selectedIds), answers)
+      const data = await api.saveToDb(Array.from(selectedIds), answers, projectId)
+      await loadProjects()
       pushToast('success', data.message || '已导入错题库')
       errorBankRef?.value?.refresh()
+      return true
     } catch (e) {
       pushToast('error', '导入失败: ' + (e instanceof Error ? e.message : String(e)))
+      return false
     }
   }
 

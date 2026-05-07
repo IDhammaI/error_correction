@@ -5,18 +5,69 @@
  * 支持：顶部栏（标题 + 步骤 tab + 工具栏）+ 主内容区 + 可选右侧属性栏
  */
 import { PanelLeft } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, useSlots } from 'vue'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import BaseTooltip from '@/components/base/BaseTooltip.vue'
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   steps: { type: Array, default: () => [] },  // [{ label, active, done }]
   currentStep: { type: Number, default: -1 }, // -1 = 不显示步骤
+  sidebarOpen: { type: Boolean, default: undefined },
+  sidebarOpen: { type: Boolean, default: undefined },
 })
 
 const emit = defineEmits(['step-click'])
+const slots = useSlots()
 
 const { sidebarMode, isMobile, toggleSidebar } = useWorkspaceNav()
+
+const SIDEBAR_WIDTH_KEY = 'content_panel_sidebar_width_v1'
+const SIDEBAR_MIN_WIDTH = 280
+const SIDEBAR_MAX_WIDTH = 520
+const sidebarWidth = ref(320)
+const resizingSidebar = ref(false)
+
+const sidebarWidthPx = computed(() => `${sidebarWidth.value}px`)
+const hasSidebar = computed(() => Boolean(slots.sidebar))
+const isSidebarOpen = computed(() => hasSidebar.value && (props.sidebarOpen ?? true))
+
+const clampSidebarWidth = (width) => Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width))
+
+const onSidebarResizeMove = (event) => {
+  if (!resizingSidebar.value) return
+  sidebarWidth.value = clampSidebarWidth(window.innerWidth - event.clientX)
+}
+
+const stopSidebarResize = () => {
+  if (!resizingSidebar.value) return
+  resizingSidebar.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth.value)) } catch (_) { }
+  window.removeEventListener('pointermove', onSidebarResizeMove)
+  window.removeEventListener('pointerup', stopSidebarResize)
+  window.removeEventListener('pointercancel', stopSidebarResize)
+}
+
+const startSidebarResize = (event) => {
+  if (isMobile.value) return
+  event.preventDefault()
+  resizingSidebar.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('pointermove', onSidebarResizeMove)
+  window.addEventListener('pointerup', stopSidebarResize)
+  window.addEventListener('pointercancel', stopSidebarResize)
+}
+
+onMounted(() => {
+  let saved = null
+  try { saved = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY)) } catch (_) { }
+  if (saved) sidebarWidth.value = clampSidebarWidth(saved)
+})
+
+onBeforeUnmount(stopSidebarResize)
 </script>
 
 <template>
@@ -83,9 +134,25 @@ const { sidebarMode, isMobile, toggleSidebar } = useWorkspaceNav()
       </div>
 
       <!-- 右侧属性栏（可选） -->
-      <aside v-if="$slots.sidebar"
-        class="hidden lg:flex w-80 shrink-0 flex-col border-l border-gray-200 dark:border-white/[0.05] overflow-y-auto transition-colors">
-        <slot name="sidebar"></slot>
+      <aside v-if="hasSidebar"
+        class="relative hidden shrink-0 overflow-hidden transition-[width,border-color] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] lg:flex"
+        :class="[
+          resizingSidebar ? '!transition-none' : '',
+          isSidebarOpen ? 'border-l border-gray-200 dark:border-white/[0.05]' : 'border-l border-transparent'
+        ]"
+        :style="{ width: isSidebarOpen ? sidebarWidthPx : '0px' }">
+          <button
+            v-show="isSidebarOpen"
+            class="absolute inset-y-0 left-0 z-20 w-2 -translate-x-1 cursor-col-resize outline-none transition-colors hover:bg-[rgb(var(--accent-rgb)/0.14)] focus-visible:bg-[rgb(var(--accent-rgb)/0.18)]"
+            title="拖动调整宽度"
+            @pointerdown="startSidebarResize"
+          ></button>
+          <div
+            class="flex h-full shrink-0 flex-col overflow-y-auto transition-[opacity,transform] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)]"
+            :class="isSidebarOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'"
+            :style="{ width: sidebarWidthPx }">
+            <slot name="sidebar"></slot>
+          </div>
       </aside>
     </div>
   </div>

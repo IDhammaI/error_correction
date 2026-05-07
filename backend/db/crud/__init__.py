@@ -53,6 +53,7 @@ from db.crud.tags import (
 
 from db.crud.questions import (
     compute_content_hash,
+    compute_project_content_hash,
     question_exists,
     save_questions_to_db,
     get_questions_by_subject,
@@ -111,6 +112,18 @@ from db.crud.providers import (
     get_active_system_provider,
 )
 
+from db.crud.projects import (
+    normalize_project_type,
+    serialize_project,
+    get_projects,
+    get_project,
+    create_project,
+    resolve_project_id,
+    require_project_id,
+    update_project,
+    delete_project,
+)
+
 from db.crud.notes import (
     save_note,
     get_notes,
@@ -145,6 +158,7 @@ __all__ = [
     "get_all_tags",
     # questions
     "compute_content_hash",
+    "compute_project_content_hash",
     "question_exists",
     "save_questions_to_db",
     "get_questions_by_subject",
@@ -193,6 +207,16 @@ __all__ = [
     "save_system_providers",
     "get_active_provider",
     "get_active_system_provider",
+    # projects
+    "normalize_project_type",
+    "serialize_project",
+    "get_projects",
+    "get_project",
+    "create_project",
+    "resolve_project_id",
+    "require_project_id",
+    "update_project",
+    "delete_project",
     # notes
     "save_note",
     "get_notes",

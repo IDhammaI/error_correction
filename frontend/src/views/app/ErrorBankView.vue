@@ -19,13 +19,16 @@ import { useImageModal } from '@/composables/useImageModal.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
 import { useTheme } from '@/composables/useTheme.js'
+import { useProjects } from '@/composables/useProjects.js'
 
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
 const { isDark } = useTheme()
+const { activeQuestionProjectId, questionProjects } = useProjects()
 const theme = computed(() => isDark.value ? 'dark' : 'light')
+const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 // ---- 筛选条件 ----
 const openFilter = ref('')
@@ -101,6 +104,14 @@ const totalText = computed(() => `共收录 ${grandTotal.value} 道题目`)
 // ---- 查询 ----
 let debounceTimer = null
 const doQuery = async () => {
+  if (!activeQuestionProjectId.value) {
+    items.value = []
+    total.value = 0
+    grandTotal.value = 0
+    totalPages.value = 0
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const params = { page: page.value, page_size: pageSize.value }
@@ -109,6 +120,7 @@ const doQuery = async () => {
     if (filters.question_type) params.question_type = filters.question_type
     if (filters.keyword) params.keyword = filters.keyword
     if (filters.review_status) params.review_status = filters.review_status
+    if (activeQuestionProjectId.value) params.project_id = activeQuestionProjectId.value
 
     const data = await api.fetchErrorBank(params)
     items.value = data.items || []
@@ -276,17 +288,27 @@ const pageButtons = computed(() => {
 })
 
 const refreshTags = async () => {
-  const raw = await api.fetchTagNames(filters.subject || undefined)
+  if (!activeQuestionProjectId.value) {
+    tagNames.value = []
+    return
+  }
+  const raw = await api.fetchTagNames(filters.subject || undefined, activeQuestionProjectId.value)
   tagNames.value = [...new Set(raw)]
 }
 
 const scrollContainerRef = ref(null)
 
 const loadFilters = async () => {
+  if (!activeQuestionProjectId.value) {
+    subjects.value = []
+    questionTypes.value = []
+    tagNames.value = []
+    return
+  }
   try {
     const [s, qt] = await Promise.all([
-      api.fetchSubjects(),
-      api.fetchQuestionTypes(),
+      api.fetchSubjects(activeQuestionProjectId.value),
+      api.fetchQuestionTypes(activeQuestionProjectId.value),
     ])
     subjects.value = s
     questionTypes.value = qt
@@ -309,6 +331,10 @@ const reloadTags = async () => {
 }
 
 watch(() => filters.subject, () => { reloadTags() })
+watch(activeQuestionProjectId, () => {
+  resetFilters()
+  loadFilters()
+})
 
 onMounted(() => { loadFilters(); doQuery() })
 
@@ -373,8 +399,9 @@ onBeforeUnmount(() => {
           <QuestionItemSkeleton v-if="loading && !items.length" />
 
           <!-- 空状态 -->
-          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group" title="暂无匹配记录"
-            description="调整筛选条件，或者开始新的录入">
+          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group"
+            :title="hasQuestionProject ? '暂无匹配记录' : '还没有错题库'"
+            :description="hasQuestionProject ? '调整筛选条件，或者开始新的录入' : '先在左侧创建一个错题库，再录入题目'">
             <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
               <i class="fa-solid fa-plus"></i> 录入新题目
             </BaseButton>

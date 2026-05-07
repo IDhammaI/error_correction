@@ -39,11 +39,25 @@ def compute_content_hash(content_blocks: List[Dict]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def question_exists(db, content_hash, user_id=None):
+def compute_project_content_hash(content_blocks: List[Dict], project_id=None) -> str:
+    """Calculate the stored dedupe hash; scoped by project when available."""
+    base_hash = compute_content_hash(content_blocks)
+    if project_id is None:
+        return base_hash
+    return hashlib.sha256(f"{project_id}:{base_hash}".encode()).hexdigest()
+
+
+def question_exists(db, content_hash, user_id=None, project_id=None):
     """检查题目是否已存在（通过内容哈希 + 用户隔离）"""
-    q = db.query(Question).filter(Question.content_hash == content_hash)
+    hashes = [content_hash]
+    if project_id is not None:
+        scoped_hash = hashlib.sha256(f"{project_id}:{content_hash}".encode()).hexdigest()
+        hashes.append(scoped_hash)
+    q = db.query(Question).filter(Question.content_hash.in_(hashes))
     if user_id is not None:
         q = q.filter(Question.user_id == user_id)
+    if project_id is not None:
+        q = q.filter(Question.project_id == project_id)
     return q.first()
 
 
@@ -52,6 +66,7 @@ def save_questions_to_db(
     questions: List[Dict],
     batch_info: Dict[str, Any],
     user_id=None,
+    project_id=None,
 ) -> Dict[str, int]:
     """
     批量入库题目
@@ -66,10 +81,14 @@ def save_questions_to_db(
     """
     # 科目由编排智能体识别，不再使用关键词匹配
     subject = batch_info.get("subject") or "未知"
+    project_id = project_id or batch_info.get("project_id")
+    if not project_id:
+        raise ValueError("PROJECT_REQUIRED")
 
     # 创建批次记录
     batch = UploadBatch(
         user_id=user_id,
+        project_id=project_id,
         original_filename=batch_info.get("original_filename", "未知"),
         subject=subject,
         file_path=batch_info.get("file_path", ""),
@@ -89,15 +108,16 @@ def save_questions_to_db(
         content_hash = compute_content_hash(content_blocks)
 
         # 检查是否已存在
-        if question_exists(db, content_hash, user_id=user_id):
+        if question_exists(db, content_hash, user_id=user_id, project_id=project_id):
             duplicates += 1
             continue
 
         # 创建题目记录
         question = Question(
             user_id=user_id,
+            project_id=project_id,
             batch_id=batch.id,
-            content_hash=content_hash,
+            content_hash=compute_project_content_hash(content_blocks, project_id),
             question_type=q.get("question_type"),
             content_json=json.dumps(content_blocks, ensure_ascii=False),
             options_json=json.dumps(q.get("options"), ensure_ascii=False) if q.get("options") else None,
@@ -283,6 +303,7 @@ def query_questions(
     page: int = 1,
     page_size: int = 20,
     user_id=None,
+    project_id=None,
 ) -> Tuple[List[Question], int]:
     """
     统一查询题目（合并 get_history_questions 和 search_questions 的能力）
@@ -293,6 +314,8 @@ def query_questions(
 
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
 
     # 未筛选的总收录数（仅按用户隔离）
     grand_total = query.distinct().count()
@@ -455,7 +478,7 @@ def update_review_status(db: Session, question_id: int, review_status: str, user
         raise
 
 
-def get_existing_subjects(db, user_id=None):
+def get_existing_subjects(db, user_id=None, project_id=None):
     """获取数据库中已有的所有科目名称（去重）"""
     query = db.query(UploadBatch.subject).distinct().filter(
         UploadBatch.subject.isnot(None),
@@ -463,10 +486,12 @@ def get_existing_subjects(db, user_id=None):
     )
     if user_id is not None:
         query = query.filter(UploadBatch.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(UploadBatch.project_id == project_id)
     return [r[0] for r in query.all()]
 
 
-def get_existing_question_types(db: Session, user_id=None) -> List[str]:
+def get_existing_question_types(db: Session, user_id=None, project_id=None) -> List[str]:
     """获取数据库中已有的所有题型（去重）"""
     query = db.query(Question.question_type).distinct().filter(
         Question.question_type.isnot(None),
@@ -474,4 +499,6 @@ def get_existing_question_types(db: Session, user_id=None) -> List[str]:
     )
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
     return [r[0] for r in query.all()]

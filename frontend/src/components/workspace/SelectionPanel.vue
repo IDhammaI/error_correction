@@ -6,6 +6,7 @@
 defineProps({
   count: { type: Number, default: 0 },
   visible: { type: Boolean, default: false },
+  showExport: { type: Boolean, default: true },
   exportLabel: { type: String, default: '生成复习卷' },
   showSave: { type: Boolean, default: false },
 })
@@ -29,20 +30,22 @@ const emit = defineEmits(['export', 'save', 'clear'])
         </div>
 
         <div class="flex items-center gap-3">
-          <button @click="emit('export')"
-            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800">
+          <button v-if="showExport" @click="emit('export')"
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl px-6 text-[13px] font-black tracking-widest text-white shadow-sm transition-all hover:shadow-[0_0_22px_rgb(var(--accent-rgb)/0.22)]"
+            style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.95), rgb(var(--accent-strong-rgb) / 0.95)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);">
             <i class="fa-solid fa-file-export transition-transform group-hover:-translate-x-0.5"></i>
             {{ exportLabel }}
           </button>
 
           <button v-if="showSave" @click="emit('save')"
-            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800">
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl px-6 text-[13px] font-black tracking-widest text-white shadow-sm transition-all hover:shadow-[0_0_22px_rgb(var(--accent-rgb)/0.22)]"
+            style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.95), rgb(var(--accent-strong-rgb) / 0.95)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);">
             <i class="fa-solid fa-database transition-transform group-hover:-translate-y-0.5"></i>
             导入错题库
           </button>
 
           <button @click="emit('clear')"
-            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-black tracking-widest text-slate-900 shadow-sm transition-all hover:border-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:border-white dark:hover:bg-slate-800">
+            class="group inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200/70 bg-white/70 px-6 text-[13px] font-black tracking-widest text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-white hover:text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-[#d0d6e0] dark:hover:border-white/[0.16] dark:hover:bg-white/[0.07] dark:hover:text-white">
             清除
           </button>
         </div>

@@ -17,8 +17,9 @@ def get_stats():
     """
     try:
         subject = request.args.get('subject', type=str) or None
+        project_id = request.args.get('project_id', type=int)
         with SessionLocal() as db:
-            stats = crud.get_knowledge_stats(db, subject=subject, user_id=session.get('user_id'))
+            stats = crud.get_knowledge_stats(db, subject=subject, user_id=session.get('user_id'), project_id=project_id)
             return jsonify({
                 'success': True,
                 'stats': stats,
@@ -35,31 +36,32 @@ def get_dashboard_stats():
     """获取 Dashboard 所需的完整统计数据，支持 ?subject= 学科筛选"""
     try:
         subject = request.args.get('subject') or None
+        project_id = request.args.get('project_id', type=int)
         uid = session.get('user_id')
         with SessionLocal() as db:
             # 可用学科列表（按当前用户隔离）
-            subjects = crud.get_existing_subjects(db, user_id=uid)
+            subjects = crud.get_existing_subjects(db, user_id=uid, project_id=project_id)
 
             # 复习状态统计
-            review_stats = crud.get_review_status_stats(db, subject=subject, user_id=uid)
+            review_stats = crud.get_review_status_stats(db, subject=subject, user_id=uid, project_id=project_id)
 
             # 总体统计
-            statistics = crud.get_statistics(db, subject=subject, user_id=uid)
+            statistics = crud.get_statistics(db, subject=subject, user_id=uid, project_id=project_id)
 
             # 知识点标签统计 top 10（横向条形图）
-            tag_stats = crud.get_knowledge_stats(db, subject=subject, limit=10, user_id=uid)
+            tag_stats = crud.get_knowledge_stats(db, subject=subject, limit=10, user_id=uid, project_id=project_id)
 
             # 知识点 × 掌握状态（堆叠柱状图）
-            tag_status_stats = crud.get_tag_status_stats(db, subject=subject, limit=10, user_id=uid)
+            tag_status_stats = crud.get_tag_status_stats(db, subject=subject, limit=10, user_id=uid, project_id=project_id)
 
             # 知识点 × 题型（热力图）
-            tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8, user_id=uid)
+            tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8, user_id=uid, project_id=project_id)
 
             # 今日掌握数
-            today_mastered = crud.get_today_mastered_count(db, subject=subject, user_id=uid)
+            today_mastered = crud.get_today_mastered_count(db, subject=subject, user_id=uid, project_id=project_id)
 
             # 最近30天每日新增 + 已掌握趋势
-            daily_counts = crud.get_daily_counts(db, days=30, subject=subject, user_id=uid)
+            daily_counts = crud.get_daily_counts(db, days=30, subject=subject, user_id=uid, project_id=project_id)
 
             return jsonify({
                 'success': True,

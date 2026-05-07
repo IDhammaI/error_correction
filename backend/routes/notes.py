@@ -37,6 +37,26 @@ def _effective_user_id():
     return session.get("user_id")
 
 
+def _project_id_arg():
+    value = request.args.get("project_id") or None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _project_id_form():
+    value = request.form.get("project_id") or None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _allowed_image(filename):
     """检查是否为允许的图片格式"""
     return PurePath(filename).suffix.lower().lstrip(".") in {
@@ -130,6 +150,14 @@ def create_note():
             )
 
     user_id = session.get("user_id")
+    project_id = _project_id_form()
+    try:
+        with SessionLocal() as db:
+            project_id = crud.require_project_id(db, project_id, user_id=user_id, project_type="note")
+    except ValueError as exc:
+        if str(exc) == "PROJECT_TYPE_MISMATCH":
+            return jsonify({"success": False, "error": "请选择一个笔记本"}), 400
+        return jsonify({"success": False, "error": "请先创建并选择一个笔记本"}), 400
     model_provider = request.form.get("model_provider", "openai")
     model_name = request.form.get("model_name") or None
     provider_source = request.form.get("provider_source") or None
@@ -261,6 +289,16 @@ def create_note():
 
         # 4. 保存到数据库
         with SessionLocal() as db:
+            try:
+                project_id = (
+                    crud.require_project_id(db, project_id, user_id=user_id, project_type="note")
+                    if project_id
+                    else crud.resolve_project_id(db, project_id, user_id=user_id, project_type="note")
+                )
+            except ValueError as exc:
+                if str(exc) == "PROJECT_REQUIRED":
+                    return jsonify({"success": False, "error": "请先创建并选择一个笔记本"}), 400
+                return jsonify({"success": False, "error": "项目不存在"}), 404
             note = crud.save_note(
                 db,
                 title=result.title,
@@ -270,6 +308,7 @@ def create_note():
                 ocr_text=ocr_text,
                 knowledge_tags=result.knowledge_tags,
                 user_id=user_id,
+                project_id=project_id,
             )
             note_id = note.id
 
@@ -309,6 +348,7 @@ def list_notes():
         knowledge_tag = request.args.get("knowledge_tag") or None
         keyword = request.args.get("keyword") or None
         user_id = session.get("user_id")
+        project_id = _project_id_arg()
 
         with SessionLocal() as db:
             notes, total = crud.get_notes(
@@ -319,6 +359,7 @@ def list_notes():
                 keyword=keyword,
                 page=page,
                 page_size=limit,
+                project_id=project_id,
             )
             return jsonify(
                 {
@@ -400,7 +441,7 @@ def list_note_subjects():
     """获取笔记库中的科目列表"""
     try:
         with SessionLocal() as db:
-            subjects = crud.get_note_subjects(db, user_id=_effective_user_id())
+            subjects = crud.get_note_subjects(db, user_id=_effective_user_id(), project_id=_project_id_arg())
             return jsonify({"success": True, "subjects": subjects})
     except Exception as e:
         logger.exception("获取笔记科目列表失败")
@@ -414,7 +455,7 @@ def list_note_tags():
         subject = request.args.get("subject") or None
         with SessionLocal() as db:
             tags = crud.get_note_tag_names(
-                db, subject=subject, user_id=_effective_user_id()
+                db, subject=subject, user_id=_effective_user_id(), project_id=_project_id_arg()
             )
             return jsonify({"success": True, "tags": tags})
     except Exception as e:

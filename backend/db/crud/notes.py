@@ -22,6 +22,7 @@ def save_note(
     ocr_text: str,
     knowledge_tags: List[str] = None,
     user_id: int = None,
+    project_id: int = None,
 ) -> Note:
     """保存一条笔记到数据库
 
@@ -39,6 +40,7 @@ def save_note(
     """
     note = Note(
         user_id=user_id,
+        project_id=project_id,
         title=title,
         subject=subject,
         content_markdown=content_markdown,
@@ -73,6 +75,7 @@ def get_notes(
     keyword: str = None,
     page: int = 1,
     page_size: int = 20,
+    project_id: int = None,
 ) -> tuple:
     """分页查询笔记列表
 
@@ -85,6 +88,8 @@ def get_notes(
 
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Note.project_id == project_id)
     if subject:
         query = query.filter(Note.subject == subject)
     if keyword:
@@ -109,7 +114,7 @@ def get_notes(
     return notes, total
 
 
-def get_note_by_id(db: Session, note_id: int, user_id=None) -> Optional[Note]:
+def get_note_by_id(db: Session, note_id: int, user_id=None, project_id=None) -> Optional[Note]:
     """根据 ID 获取单条笔记"""
     query = (
         db.query(Note)
@@ -120,6 +125,8 @@ def get_note_by_id(db: Session, note_id: int, user_id=None) -> Optional[Note]:
     )
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Note.project_id == project_id)
     return query.first()
 
 
@@ -131,6 +138,7 @@ def update_note(
     subject: str = None,
     knowledge_tags: List[str] = None,
     user_id=None,
+    project_id=None,
 ) -> Optional[Note]:
     """更新笔记内容
 
@@ -147,6 +155,8 @@ def update_note(
     query = db.query(Note).filter(Note.id == note_id)
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Note.project_id == project_id)
     note = query.first()
     if not note:
         return None
@@ -175,28 +185,33 @@ def update_note(
     return note
 
 
-def delete_note(db: Session, note_id: int, user_id=None) -> bool:
+def delete_note(db: Session, note_id: int, user_id=None, project_id=None) -> bool:
     """删除笔记（级联删除标签关联）"""
     query = db.query(Note).filter(Note.id == note_id)
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Note.project_id == project_id)
     note = query.first()
     if not note:
         return False
     db.delete(note)
     db.commit()
+    return True
 
 
-def get_note_subjects(db: Session, user_id=None) -> List[str]:
+def get_note_subjects(db: Session, user_id=None, project_id=None) -> List[str]:
     """获取笔记库中已有的科目列表"""
     query = db.query(Note.subject).filter(Note.subject.isnot(None))
     if user_id is not None:
         query = query.filter(Note.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Note.project_id == project_id)
     rows = query.distinct().order_by(Note.subject).all()
     return [r[0] for r in rows]
 
 
-def get_note_tag_names(db: Session, subject: str = None, user_id=None) -> List[str]:
+def get_note_tag_names(db: Session, subject: str = None, user_id=None, project_id=None) -> List[str]:
     """获取笔记库中已有的知识点标签名称列表"""
     query = (
         db.query(KnowledgeTag.tag_name)
@@ -205,6 +220,7 @@ def get_note_tag_names(db: Session, subject: str = None, user_id=None) -> List[s
         .filter(
             Note.subject == subject if subject else True,
             Note.user_id == user_id if user_id is not None else True,
+            Note.project_id == project_id if project_id is not None else True,
         )
     )
     rows = query.distinct().order_by(KnowledgeTag.tag_name).all()

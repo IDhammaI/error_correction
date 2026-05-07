@@ -31,6 +31,7 @@ const inputText = ref('')
 const streaming = ref(false)
 const messagesContainer = ref(null)
 const deepThink = ref(false)
+const hasConversationContent = computed(() => messages.value.length > 0 || streaming.value)
 
 watch(sessionId, (id) => {
   if (id) loadMessages()
@@ -177,14 +178,14 @@ function autoResize() {
         <MessageSquarePlus class="w-4 h-4" />
       </button>
     </template>
-    <div class="flex flex-col h-full">
+    <div class="flex h-full min-h-0 flex-col overflow-hidden">
       <!-- 消息区域（含空状态） -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="mx-auto max-w-5xl px-4 sm:px-8">
+      <div ref="messagesContainer" class="min-h-0 flex-1 custom-scrollbar"
+        :class="hasConversationContent ? 'overflow-y-auto' : 'overflow-hidden'">
+        <div class="mx-auto flex h-full max-w-5xl flex-col px-4 sm:px-8">
 
           <!-- 空状态：居中问候 -->
-          <div v-if="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center"
-            style="min-height: calc(100vh - 200px)">
+          <div v-if="messages.length === 0 && !streaming" class="flex min-h-0 flex-1 flex-col items-center justify-center">
             <p class="text-2xl font-bold text-gray-900 dark:text-[#f7f8f8]">
               Hi，{{ username || '同学' }}
             </p>

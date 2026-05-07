@@ -34,22 +34,7 @@ const NAV_GROUPS = [
     label: null,
     items: [
       { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
-    ],
-  },
-  {
-    label: '数据',
-    collapsible: true,
-    items: [
       { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
-      { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
-      { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
-    ],
-  },
-  {
-    label: '更多',
-    collapsible: true,
-    items: [
-      { id: 'review-disabled', label: '刷题', icon: 'fa-clock-rotate-left', disabled: true },
     ],
   },
 ]

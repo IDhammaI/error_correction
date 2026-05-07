@@ -43,6 +43,27 @@ def _migrate_schema():
         if 'answer' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN answer TEXT")
             conn.commit()
+        if 'project_id' not in columns:
+            cursor.execute("ALTER TABLE questions ADD COLUMN project_id INTEGER")
+            conn.commit()
+
+        cursor.execute("PRAGMA table_info(upload_batches)")
+        batch_columns = {row[1] for row in cursor.fetchall()}
+        if 'project_id' not in batch_columns:
+            cursor.execute("ALTER TABLE upload_batches ADD COLUMN project_id INTEGER")
+            conn.commit()
+
+        cursor.execute("PRAGMA table_info(notes)")
+        note_columns = {row[1] for row in cursor.fetchall()}
+        if 'project_id' not in note_columns:
+            cursor.execute("ALTER TABLE notes ADD COLUMN project_id INTEGER")
+            conn.commit()
+
+        cursor.execute("PRAGMA table_info(projects)")
+        project_columns = {row[1] for row in cursor.fetchall()}
+        if 'project_type' not in project_columns:
+            cursor.execute("ALTER TABLE projects ADD COLUMN project_type TEXT DEFAULT 'question'")
+            conn.commit()
 
         cursor.execute("PRAGMA table_info(users)")
         user_columns = {row[1] for row in cursor.fetchall()}
@@ -99,6 +120,7 @@ def _migrate_schema():
         # 给 public_id 创建唯一索引（SQLite 不支持后加 UNIQUE 约束，用唯一索引替代）
         cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessions_public_id_unique ON chat_sessions(public_id)")
         conn.commit()
+
     finally:
         conn.close()
 

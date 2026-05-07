@@ -12,11 +12,14 @@ import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useQuestionList } from '@/composables/useQuestionList.js'
 import { useFileUpload } from '@/composables/useFileUpload.js'
 import { useSplitPipeline } from '@/composables/useSplitPipeline.js'
+import { useProjects } from '@/composables/useProjects.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
 import UploadStage from '@/components/workspace/UploadStage.vue'
 import ReviewStage from '@/components/workspace/ReviewStage.vue'
 import SplitHistory from '@/views/app/SplitHistoryView.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
@@ -24,6 +27,7 @@ const route = useRoute()
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
+const { questionProjects, activeQuestionProjectId, setActiveProject } = useProjects()
 const {
   statusLoading, statusError,
   providerOptions, hasConfiguredModel, statusPills,
@@ -123,11 +127,14 @@ const doReset = async () => {
 const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
   ocrLoading, ocrPages, ocrDone,
-  startProcess, doErase, doOcr, doSplit, doExport, doSaveToDb,
+  startProcess, doErase, doOcr, doSplit, doSaveToDb,
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
 const restoringWorkspaceState = ref(true)
+const importDialogOpen = ref(false)
+const importTargetProjectId = ref(null)
+const importSaving = ref(false)
 const hasReviewContent = computed(() => {
   if (eraseLoading.value) return true
   if (eraseDone.value) return true
@@ -151,6 +158,38 @@ const handleBack = async () => {
   eraseImages.value = []; eraseDone.value = false
   ocrPages.value = []; ocrDone.value = false
   currentView.value = 'workspace'
+}
+
+const openImportDialog = () => {
+  if (!selectedIds.size) {
+    pushToast('error', '请至少选择一道题目！')
+    return
+  }
+  if (!questionProjects.value.length) {
+    pushToast('error', '请先创建一个错题库')
+    return
+  }
+  importTargetProjectId.value = activeQuestionProjectId.value || questionProjects.value[0]?.id || null
+  importDialogOpen.value = true
+}
+
+const closeImportDialog = () => {
+  if (importSaving.value) return
+  importDialogOpen.value = false
+}
+
+const confirmImportToProject = async () => {
+  if (!importTargetProjectId.value || importSaving.value) return
+  importSaving.value = true
+  try {
+    const saved = await doSaveToDb(importTargetProjectId.value)
+    if (saved) {
+      setActiveProject(importTargetProjectId.value, 'question')
+      importDialogOpen.value = false
+    }
+  } finally {
+    importSaving.value = false
+  }
 }
 
 // ── 键盘事件 ────────────────────────────────────────────
@@ -212,7 +251,7 @@ onBeforeUnmount(() => {
     <Transition name="flip" mode="out-in">
       <!-- 第一页：上传与分析 -->
       <ContentPanel v-if="currentView === 'workspace'" key="upload" title="智能录入与分析" :steps="workspaceSteps"
-        :current-step="step - 1">
+        :current-step="step - 1" :sidebar-open="showSplitHistory">
         <template #toolbar>
           <button @click="showSplitHistory = !showSplitHistory"
             class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
@@ -224,7 +263,7 @@ onBeforeUnmount(() => {
           </button>
         </template>
 
-        <template v-if="showSplitHistory" #sidebar>
+        <template #sidebar>
           <SplitHistory :theme="theme" :visible="showSplitHistory" @push-toast="pushToast" @open-image="openModal"
             @load-record="(r) => { handleLoadRecord(r); showSplitHistory = false }"
             @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'" />
@@ -282,7 +321,37 @@ onBeforeUnmount(() => {
     </Transition>
 
     <!-- 浮动选择面板 -->
-    <SelectionPanel :visible="currentView === 'workspace_review'" :count="selectedIds.size" export-label="导出错题本"
-      :show-save="true" @export="doExport" @save="doSaveToDb" @clear="deselectAll" />
+    <SelectionPanel :visible="currentView === 'workspace_review'" :count="selectedIds.size" :show-export="false"
+      :show-save="true" @save="openImportDialog" @clear="deselectAll" />
+
+    <BaseModal :open="importDialogOpen" title="导入错题库" icon="fa-database" iconBg="accent-bg-soft"
+      iconClass="accent-text" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeImportDialog">
+      <div class="space-y-3">
+        <p class="text-sm text-slate-500 dark:text-[#8a8f98]">
+          将 {{ selectedIds.size }} 道已选题目导入到：
+        </p>
+        <div class="max-h-64 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+          <button v-for="project in questionProjects" :key="project.id" type="button"
+            class="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors"
+            :class="String(importTargetProjectId) === String(project.id)
+              ? 'border-[rgb(var(--accent-rgb)/0.35)] bg-[rgb(var(--accent-rgb)/0.12)] text-[rgb(var(--accent-strong-rgb))] dark:text-[rgb(var(--accent-hover-rgb))]'
+              : 'border-slate-200/70 bg-white/50 text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-[#aeb6c2] dark:hover:bg-white/[0.05]'"
+            @click="importTargetProjectId = project.id">
+            <i class="fa-solid fa-database w-4 text-center text-xs"></i>
+            <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
+            <i v-if="String(importTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
+          </button>
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" :disabled="importSaving" @click="closeImportDialog">
+          取消
+        </BaseButton>
+        <BaseButton variant="primary" size="sm" :disabled="importSaving || !importTargetProjectId"
+          @click="confirmImportToProject">
+          {{ importSaving ? '导入中...' : '确认导入' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>

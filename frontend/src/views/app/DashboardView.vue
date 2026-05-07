@@ -4,6 +4,7 @@ import * as api from '@/api.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { useToast } from '@/composables/useToast.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useProjects } from '@/composables/useProjects.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -12,6 +13,7 @@ import StatCard from '@/components/dashboard/StatCard.vue'
 const { isDark, accentColorId } = useTheme()
 const { pushToast } = useToast()
 const { currentView } = useWorkspaceNav()
+const { activeQuestionProjectId } = useProjects()
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 // ---- 统计数据 ----
@@ -47,9 +49,23 @@ const chartColorWithAlpha = (color, alpha) => color === 'accent' ? accentRgba(al
 
 // ---- 数据加载 ----
 const loadStats = async () => {
+  if (!activeQuestionProjectId.value) {
+    stats.value = {
+      total_questions: 0,
+      review_stats: {},
+      today_mastered: 0,
+      daily_counts: [],
+      tag_stats: [],
+      tag_status_stats: [],
+      tag_type_stats: { tags: [], types: [], data: [] },
+      subjects: [],
+    }
+    statsLoading.value = false
+    return
+  }
   statsLoading.value = true
   try {
-    const data = await api.fetchDashboardStats(selectedSubject.value || undefined)
+    const data = await api.fetchDashboardStats(selectedSubject.value || undefined, activeQuestionProjectId.value)
     stats.value = data
   } catch (e) {
     pushToast('error', '加载统计数据失败')
@@ -60,6 +76,10 @@ const loadStats = async () => {
 
 // ---- 学科切换 ----
 watch(selectedSubject, () => { loadStats() })
+watch(activeQuestionProjectId, () => {
+  selectedSubject.value = ''
+  loadStats()
+})
 
 // ---- 图表初始化 ----
 const initCharts = async () => {

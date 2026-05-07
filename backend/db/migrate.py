@@ -43,6 +43,10 @@ def migrate():
         _add_column_if_missing(conn, "users", "daily_free_quota", "INTEGER", 5)
         _add_column_if_missing(conn, "users", "daily_free_used", "INTEGER", 0)
         _add_column_if_missing(conn, "users", "daily_free_quota_date", "VARCHAR(10)")
+        _add_column_if_missing(conn, "upload_batches", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "questions", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "notes", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "projects", "project_type", "VARCHAR(20)", "'question'")
         _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
         conn.commit()
 
