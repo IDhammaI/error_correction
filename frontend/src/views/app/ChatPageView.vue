@@ -1,14 +1,16 @@
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onUnmounted } from 'vue'
 import { MessageSquarePlus } from 'lucide-vue-next'
 import * as api from '@/api.js'
-import { renderMarkdown, typesetMath } from '@/utils.js'
+import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
+import { useProjects } from '@/composables/useProjects.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
@@ -17,6 +19,7 @@ const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
 const { currentView } = useWorkspaceNav()
+const { questionProjects } = useProjects()
 
 const sessionId = computed(() => activeAiChatId.value)
 const modelProvider = computed(() => selectedLlmOption.value?.category || 'openai')
@@ -30,13 +33,42 @@ const messages = ref([])
 const inputText = ref('')
 const streaming = ref(false)
 const messagesContainer = ref(null)
+const contextQuestionsEl = ref(null)
+const streamRenderTimer = ref(null)
+const streamRenderRunning = ref(false)
 const deepThink = ref(false)
+const contextDialogOpen = ref(false)
+const contextProjectId = ref(null)
+const selectedContextQuestionIds = ref([])
+const contextQuestionCache = ref({})
+const loadingContextProjectId = ref(null)
+const contextLoadError = ref('')
 const hasConversationContent = computed(() => messages.value.length > 0 || streaming.value)
+const selectedContextProject = computed(() =>
+  questionProjects.value.find((project) => String(project.id) === String(contextProjectId.value)) || null,
+)
+const contextQuestions = computed(() => contextQuestionCache.value[String(contextProjectId.value)] || [])
+const selectedContextLabel = computed(() => {
+  if (!selectedContextProject.value || selectedContextQuestionIds.value.length === 0) return ''
+  return `${selectedContextProject.value.name} · ${selectedContextQuestionIds.value.length} 题`
+})
 
 watch(sessionId, (id) => {
   if (id) loadMessages()
   else messages.value = []
 }, { immediate: true })
+
+watch(questionProjects, () => {
+  if (contextProjectId.value && !selectedContextProject.value) {
+    clearContext()
+  }
+})
+
+watch([contextDialogOpen, contextQuestions], async () => {
+  if (!contextDialogOpen.value || !contextQuestionsEl.value) return
+  await nextTick()
+  typesetMath(contextQuestionsEl.value)
+}, { flush: 'post' })
 
 async function loadMessages() {
   if (!sessionId.value) return
@@ -57,6 +89,39 @@ function scrollToBottom() {
   }
 }
 
+function getStreamingAssistantEl() {
+  return messagesContainer.value?.querySelector('[data-streaming-assistant="true"]') || null
+}
+
+async function flushStreamingMessage(msg) {
+  if (!msg || streamRenderRunning.value) return
+  streamRenderRunning.value = true
+  msg.content = msg.rawContent || ''
+  await nextTick()
+  const el = getStreamingAssistantEl()
+  if (el) await typesetMath(el)
+  scrollToBottom()
+  streamRenderRunning.value = false
+
+  if (msg.rawContent !== msg.content) {
+    scheduleStreamRender(msg)
+  }
+}
+
+function scheduleStreamRender(msg, delay = 260) {
+  if (streamRenderTimer.value) return
+  streamRenderTimer.value = window.setTimeout(async () => {
+    streamRenderTimer.value = null
+    await flushStreamingMessage(msg)
+  }, delay)
+}
+
+onUnmounted(() => {
+  if (streamRenderTimer.value) {
+    window.clearTimeout(streamRenderTimer.value)
+  }
+})
+
 async function sendMessage() {
   const text = inputText.value.trim()
   if (!text || !sessionId.value || streaming.value) return
@@ -65,7 +130,7 @@ async function sendMessage() {
   const rollbackIndex = messages.value.length
   // 消息结构：{ role, content, reasoning?, reasoningOpen? }
   messages.value.push({ role: 'user', content: text })
-  messages.value.push({ role: 'assistant', content: '', reasoning: '', reasoningOpen: false })
+  messages.value.push({ role: 'assistant', content: '', rawContent: '', reasoning: '', reasoningOpen: false })
   await nextTick()
   scrollToBottom()
   // 重置 textarea 高度
@@ -81,7 +146,16 @@ async function sendMessage() {
       modelProvider.value,
       null,
       modelName.value,
-      { deepThink: useDeepThink, providerSource: providerSource.value, providerId: providerId.value },
+      {
+        deepThink: useDeepThink,
+        providerSource: providerSource.value,
+        providerId: providerId.value,
+        contextRefs: selectedContextQuestionIds.value.length ? [{
+          type: 'question',
+          project_id: contextProjectId.value,
+          question_ids: selectedContextQuestionIds.value,
+        }] : [],
+      },
     )
 
     if (!resp.ok) {
@@ -120,8 +194,8 @@ async function sendMessage() {
             if (lastMsg().reasoningOpen && lastMsg().reasoning) {
               lastMsg().reasoningOpen = false
             }
-            lastMsg().content += payload.token
-            await nextTick()
+            lastMsg().rawContent = (lastMsg().rawContent || '') + payload.token
+            scheduleStreamRender(lastMsg())
             scrollToBottom()
           }
           if (payload.done) {
@@ -129,13 +203,22 @@ async function sendMessage() {
             onAiChatTitleUpdated(sessionId.value, firstMsg)
           }
           if (payload.error) {
-            lastMsg().content += `\n\n⚠️ ${payload.error}`
+            lastMsg().rawContent = (lastMsg().rawContent || lastMsg().content || '') + `\n\n⚠️ ${payload.error}`
+            await flushStreamingMessage(lastMsg())
           }
         } catch (_) { }
       }
     }
 
     await refreshCurrentUser()
+    const assistantMsg = messages.value[messages.value.length - 1]
+    if (assistantMsg?.role === 'assistant' && assistantMsg.rawContent !== undefined) {
+      if (streamRenderTimer.value) {
+        window.clearTimeout(streamRenderTimer.value)
+        streamRenderTimer.value = null
+      }
+      await flushStreamingMessage(assistantMsg)
+    }
     await nextTick()
     if (messagesContainer.value) typesetMath(messagesContainer.value)
   } catch (e) {
@@ -166,6 +249,66 @@ function autoResize() {
   if (!el) return
   el.style.height = 'auto'
   el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+}
+
+async function openContextProject(project) {
+  const nextId = project?.id || null
+  if (!nextId) return
+  if (String(contextProjectId.value) !== String(nextId)) {
+    contextProjectId.value = nextId
+    selectedContextQuestionIds.value = []
+  }
+  await loadContextQuestions(nextId)
+}
+
+async function openContextDialog() {
+  contextDialogOpen.value = true
+  if (!contextProjectId.value && questionProjects.value.length) {
+    await openContextProject(questionProjects.value[0])
+  }
+}
+
+async function loadContextQuestions(projectId) {
+  const key = String(projectId)
+  if (contextQuestionCache.value[key]) return
+  loadingContextProjectId.value = projectId
+  contextLoadError.value = ''
+  try {
+    const data = await api.fetchErrorBank({ project_id: projectId, page: 1, page_size: 30 })
+    contextQuestionCache.value = {
+      ...contextQuestionCache.value,
+      [key]: data.items || [],
+    }
+  } catch (e) {
+    contextLoadError.value = e.message || '题目加载失败'
+  } finally {
+    loadingContextProjectId.value = null
+    await nextTick()
+    if (contextDialogOpen.value && contextQuestionsEl.value) {
+      typesetMath(contextQuestionsEl.value)
+    }
+  }
+}
+
+function toggleContextQuestion(questionId) {
+  const id = Number(questionId)
+  const exists = selectedContextQuestionIds.value.some((item) => Number(item) === id)
+  selectedContextQuestionIds.value = exists
+    ? selectedContextQuestionIds.value.filter((item) => Number(item) !== id)
+    : [...selectedContextQuestionIds.value, id]
+}
+
+function isContextQuestionSelected(questionId) {
+  return selectedContextQuestionIds.value.some((item) => String(item) === String(questionId))
+}
+
+function clearContext() {
+  contextProjectId.value = null
+  selectedContextQuestionIds.value = []
+}
+
+function questionContextSnippet(question) {
+  return getQuestionSnippet(question, 0, '暂无题干内容')
 }
 </script>
 
@@ -220,7 +363,8 @@ function autoResize() {
                 </div>
                 <!-- 正文内容 -->
                 <div v-if="msg.role === 'assistant' && !(streaming && i === messages.length - 1 && !msg.content)"
-                  v-html="renderMarkdown(msg.content)" class="prose prose-sm max-w-none dark:prose-invert"></div>
+                  v-html="renderMarkdown(msg.content)" class="prose prose-sm max-w-none dark:prose-invert"
+                  :data-streaming-assistant="streaming && i === messages.length - 1 ? 'true' : null"></div>
                 <div v-else-if="msg.role === 'assistant' && streaming && i === messages.length - 1 && !msg.content"
                   class="flex gap-1">
                   <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-[#62666d] animate-bounce"
@@ -239,10 +383,10 @@ function autoResize() {
       </div>
 
       <!-- 底部输入区域 -->
-      <div class="shrink-0 px-4 pb-4 pt-2 sm:px-8">
+      <div class="shrink-0 px-4 pt-2 sm:px-8">
         <div class="mx-auto max-w-5xl">
           <div
-            class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-white/[0.08] dark:bg-white/[0.03]">
+            class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
             <!-- 文本输入 -->
             <textarea ref="textareaRef" v-model="inputText" @keydown="handleKeydown" @input="autoResize"
               :disabled="streaming || !sessionId" rows="1"
@@ -272,9 +416,18 @@ function autoResize() {
 
               <!-- 右侧操作按钮 -->
               <div class="flex items-center gap-1.5">
-                <button disabled
-                  class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:text-[#62666d] dark:hover:bg-white/[0.04] transition-colors cursor-not-allowed"
-                  title="附件（敬请期待）">
+                <div v-if="selectedContextLabel"
+                  class="flex max-w-[150px] items-center gap-1.5 rounded-lg border border-[rgb(var(--accent-rgb)/0.24)] bg-[rgb(var(--accent-rgb)/0.10)] px-2.5 py-1.5 text-xs font-semibold accent-text sm:max-w-[220px]">
+                  <i class="fa-solid fa-database text-[11px]"></i>
+                  <span class="min-w-0 truncate">{{ selectedContextLabel }}</span>
+                  <button class="ml-0.5 text-[10px] opacity-70 transition-opacity hover:opacity-100" title="移除引用"
+                    @click.stop="clearContext">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <button @click.stop="openContextDialog"
+                  class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors"
+                  title="引用错题">
                   <i class="fa-solid fa-plus text-sm"></i>
                 </button>
                 <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
@@ -292,4 +445,118 @@ function autoResize() {
       </div>
     </div>
   </ContentPanel>
+
+  <BaseModal
+    :open="contextDialogOpen"
+    title="引用错题回答"
+    icon="fa-database"
+    iconBg="accent-bg-soft"
+    iconClass="accent-text"
+    maxWidth="max-w-4xl sm:w-[58rem]"
+    bodyClass="px-0 py-0"
+    @close="contextDialogOpen = false"
+  >
+    <div v-if="questionProjects.length === 0" class="px-6 pb-8 pt-2">
+      <div class="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-white/[0.08]">
+        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-white/[0.05] dark:text-[#62666d]">
+          <i class="fa-solid fa-database"></i>
+        </div>
+        <p class="mt-3 text-sm font-semibold text-gray-700 dark:text-[#d0d6e0]">还没有可引用的错题库</p>
+        <p class="mt-1 text-xs text-gray-400 dark:text-[#62666d]">先创建错题库并导入题目后，就可以在 AI 对话里引用。</p>
+      </div>
+    </div>
+    <div v-else class="grid h-[66vh] min-h-[28rem] grid-cols-1 overflow-hidden border-t border-gray-100 dark:border-white/[0.06] md:grid-cols-[15rem_minmax(0,1fr)]">
+      <aside class="border-b border-gray-100 bg-gray-50/70 p-3 dark:border-white/[0.06] dark:bg-black/10 md:border-b-0 md:border-r">
+        <div class="mb-2 px-2 text-[11px] font-medium text-gray-400 dark:text-[#62666d]">选择错题库</div>
+        <div class="flex max-h-32 gap-1 overflow-x-auto pb-1 custom-scrollbar md:block md:max-h-none md:space-y-1 md:overflow-y-auto md:overflow-x-hidden md:pb-0">
+          <button v-for="project in questionProjects" :key="project.id"
+            class="flex min-w-32 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors md:w-full"
+            :class="String(contextProjectId) === String(project.id)
+              ? 'bg-[rgb(var(--accent-rgb)/0.14)] accent-text'
+              : 'text-gray-600 hover:bg-white hover:text-gray-900 dark:text-[#9aa0aa] dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]'"
+            @click="openContextProject(project)">
+            <i class="fa-solid fa-database w-4 text-center text-xs"></i>
+            <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+          </button>
+        </div>
+      </aside>
+
+      <section class="flex min-h-0 flex-col">
+        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3 dark:border-white/[0.06]">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">
+              {{ selectedContextProject?.name || '选择错题库' }}
+            </p>
+            <p class="mt-0.5 text-xs text-gray-400 dark:text-[#62666d]">
+              选择本次对话要参考的具体题目
+            </p>
+          </div>
+          <button v-if="selectedContextQuestionIds.length" class="shrink-0 text-xs font-semibold accent-text" @click="clearContext">
+            清空
+          </button>
+        </div>
+
+        <div ref="contextQuestionsEl" class="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div v-if="!contextProjectId" class="flex h-full items-center justify-center text-sm text-gray-400 dark:text-[#62666d]">
+            先选择一个错题库
+          </div>
+          <div v-else-if="loadingContextProjectId && String(loadingContextProjectId) === String(contextProjectId)"
+            class="flex h-full items-center justify-center gap-2 text-sm text-gray-400 dark:text-[#62666d]">
+            <i class="fa-solid fa-spinner animate-spin"></i>
+            加载题目中
+          </div>
+          <div v-else-if="contextLoadError" class="flex h-full items-center justify-center text-sm text-rose-500">
+            {{ contextLoadError }}
+          </div>
+          <div v-else-if="contextQuestions.length === 0" class="flex h-full items-center justify-center text-sm text-gray-400 dark:text-[#62666d]">
+            这个错题库还没有题目
+          </div>
+          <div v-else class="space-y-2">
+            <button v-for="question in contextQuestions" :key="question.id"
+              class="group flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors"
+              :class="isContextQuestionSelected(question.id)
+                ? 'border-[rgb(var(--accent-rgb)/0.45)] bg-[rgb(var(--accent-rgb)/0.12)]'
+                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-white/[0.07] dark:bg-white/[0.025] dark:hover:border-white/[0.12] dark:hover:bg-white/[0.045]'"
+              @click="toggleContextQuestion(question.id)">
+              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors"
+                :class="isContextQuestionSelected(question.id)
+                  ? 'accent-bg accent-border text-white'
+                  : 'border-gray-300 bg-white dark:border-white/[0.16] dark:bg-transparent'">
+                <i v-if="isContextQuestionSelected(question.id)" class="fa-solid fa-check text-[10px]"></i>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-[#8a8f98]">
+                  <span>#{{ question.id }}</span>
+                  <span v-if="question.question_type" class="rounded-md bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.06]">
+                    {{ question.question_type }}
+                  </span>
+                  <span v-if="question.subject" class="rounded-md bg-[rgb(var(--accent-rgb)/0.12)] px-1.5 py-0.5 accent-text">
+                    {{ question.subject }}
+                  </span>
+                </span>
+                <span class="mt-2 block text-sm leading-relaxed text-gray-700 dark:text-[#d0d6e0]">
+                  {{ questionContextSnippet(question) }}
+                </span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <template #footer>
+      <div class="mr-auto flex items-center gap-2 text-xs text-gray-400 dark:text-[#62666d]">
+        <i class="fa-solid fa-link"></i>
+        <span>已选择 {{ selectedContextQuestionIds.length }} 题</span>
+      </div>
+      <button class="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition-colors hover:bg-gray-100 dark:text-[#8a8f98] dark:hover:bg-white/[0.05]"
+        @click="contextDialogOpen = false">
+        取消
+      </button>
+      <button class="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors accent-bg disabled:opacity-40"
+        :disabled="selectedContextQuestionIds.length === 0"
+        @click="contextDialogOpen = false">
+        确定引用
+      </button>
+    </template>
+  </BaseModal>
 </template>
