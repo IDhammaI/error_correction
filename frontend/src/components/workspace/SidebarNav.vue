@@ -213,7 +213,7 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-transparent overflow-hidden"
+    class="sidebar-3d-stage flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-transparent overflow-hidden"
     :class="[
       isMobile
         ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
@@ -221,8 +221,11 @@ const userQuotaSummary = computed(() => {
     ]">
 
     <!-- 设置视图 -->
-    <template v-if="isSettingsView">
-      <div class="flex min-h-0 flex-1 flex-col px-4 py-4 overflow-hidden">
+    <div class="sidebar-3d-shell relative min-h-0 flex-1">
+      <div class="sidebar-3d-card absolute inset-0" :class="isSettingsView ? 'is-flipped' : ''">
+      <div class="sidebar-3d-face sidebar-3d-face-back absolute inset-0 flex min-h-0 flex-1 flex-col px-4 py-4 overflow-hidden"
+        :class="isSettingsView ? 'sidebar-3d-face-active' : 'sidebar-3d-face-inactive'"
+        :aria-hidden="!isSettingsView">
         <button @click="returnToApp"
           class="mb-4 inline-flex w-full items-center gap-2 overflow-hidden px-3 pt-2 text-sm font-medium text-gray-500 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-white">
           <i class="fa-solid fa-arrow-left text-xs"></i>
@@ -258,11 +261,12 @@ const userQuotaSummary = computed(() => {
           </div>
         </nav>
       </div>
-    </template>
+
 
     <!-- 主视图 -->
-    <template v-else>
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div class="sidebar-3d-face sidebar-3d-face-front absolute inset-0 flex min-h-0 flex-1 flex-col overflow-hidden pb-16"
+        :class="isSettingsView ? 'sidebar-3d-face-inactive' : 'sidebar-3d-face-active'"
+        :aria-hidden="isSettingsView">
         <div>
           <!-- Logo 标题区 -->
           <div class="flex h-14 items-center justify-between gap-2 px-3 transition-all duration-300 ease-[var(--sidebar-transition-timing)]">
@@ -650,8 +654,8 @@ const userQuotaSummary = computed(() => {
         </div>
       </div>
 
-      <!-- 底部用户区 -->
-      <div class="relative p-1.5">
+        <!-- 底部用户区 -->
+        <div class="absolute inset-x-0 bottom-0 p-1.5">
         <BaseDropdown :modelValue="userMenuOpen" @update:modelValue="(val) => emit('update:userMenuOpen', val)"
           :position="isNarrow ? 'right' : 'top'" :align="isNarrow ? 'end' : 'center'"
           :width="isNarrow ? 'w-48' : 'w-full'" :offset="isNarrow ? 'ml-4' : 'mb-1'"
@@ -665,7 +669,7 @@ const userQuotaSummary = computed(() => {
           <template #trigger="{ toggle }">
             <!-- 用户信息 -->
             <button @click.stop="toggle"
-              class="flex w-full items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-100 dark:bg-white/[0.025] dark:hover:bg-white/[0.045] transition-all">
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 hover:bg-gray-100 dark:bg-white/[0.025] dark:hover:bg-white/[0.045] transition-all">
               <div
                 class="h-7 w-7 shrink-0 rounded-lg relative overflow-hidden flex items-center justify-center text-white text-xs font-medium"
                 style="background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.9), rgb(var(--accent-strong-rgb) / 0.9)); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.12);">
@@ -717,12 +721,75 @@ const userQuotaSummary = computed(() => {
             </button>
           </template>
         </BaseDropdown>
+        </div>
       </div>
-    </template>
+    </div>
   </aside>
 </template>
 
 <style scoped>
+.sidebar-3d-stage {
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+
+.sidebar-3d-shell {
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+
+.sidebar-3d-card {
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  transition: filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: filter;
+}
+
+.sidebar-3d-card.is-flipped {
+  filter: brightness(0.985);
+}
+
+.sidebar-3d-face {
+  backface-visibility: hidden;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  transition:
+    opacity 120ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
+}
+
+.sidebar-3d-face-front {
+  transform: rotateY(0deg) translateX(0) scale(1);
+}
+
+.sidebar-3d-face-back {
+  transform: rotateY(0deg) translateX(0) scale(1);
+}
+
+.sidebar-3d-face-front.sidebar-3d-face-active,
+.sidebar-3d-face-back.sidebar-3d-face-active {
+  opacity: 1;
+  filter: brightness(1);
+  pointer-events: auto;
+  transform: rotateY(0deg) translateX(0) scale(1);
+}
+
+.sidebar-3d-face-front.sidebar-3d-face-inactive {
+  opacity: 0;
+  filter: brightness(0.9);
+  pointer-events: none;
+  transform: rotateY(90deg) scale(0.98);
+}
+
+.sidebar-3d-face-back.sidebar-3d-face-inactive {
+  opacity: 0;
+  filter: brightness(0.9);
+  pointer-events: none;
+  transform: rotateY(-90deg) scale(0.98);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
