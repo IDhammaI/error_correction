@@ -19,13 +19,16 @@ import { useImageModal } from '@/composables/useImageModal.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
 import { useTheme } from '@/composables/useTheme.js'
+import { useProjects } from '@/composables/useProjects.js'
 
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
 const { isDark } = useTheme()
+const { activeQuestionProjectId, questionProjects } = useProjects()
 const theme = computed(() => isDark.value ? 'dark' : 'light')
+const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 // ---- 筛选条件 ----
 const openFilter = ref('')
@@ -101,6 +104,14 @@ const totalText = computed(() => `共收录 ${grandTotal.value} 道题目`)
 // ---- 查询 ----
 let debounceTimer = null
 const doQuery = async () => {
+  if (!activeQuestionProjectId.value) {
+    items.value = []
+    total.value = 0
+    grandTotal.value = 0
+    totalPages.value = 0
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const params = { page: page.value, page_size: pageSize.value }
@@ -109,6 +120,7 @@ const doQuery = async () => {
     if (filters.question_type) params.question_type = filters.question_type
     if (filters.keyword) params.keyword = filters.keyword
     if (filters.review_status) params.review_status = filters.review_status
+    if (activeQuestionProjectId.value) params.project_id = activeQuestionProjectId.value
 
     const data = await api.fetchErrorBank(params)
     items.value = data.items || []
@@ -276,17 +288,27 @@ const pageButtons = computed(() => {
 })
 
 const refreshTags = async () => {
-  const raw = await api.fetchTagNames(filters.subject || undefined)
+  if (!activeQuestionProjectId.value) {
+    tagNames.value = []
+    return
+  }
+  const raw = await api.fetchTagNames(filters.subject || undefined, activeQuestionProjectId.value)
   tagNames.value = [...new Set(raw)]
 }
 
 const scrollContainerRef = ref(null)
 
 const loadFilters = async () => {
+  if (!activeQuestionProjectId.value) {
+    subjects.value = []
+    questionTypes.value = []
+    tagNames.value = []
+    return
+  }
   try {
     const [s, qt] = await Promise.all([
-      api.fetchSubjects(),
-      api.fetchQuestionTypes(),
+      api.fetchSubjects(activeQuestionProjectId.value),
+      api.fetchQuestionTypes(activeQuestionProjectId.value),
     ])
     subjects.value = s
     questionTypes.value = qt
@@ -309,6 +331,10 @@ const reloadTags = async () => {
 }
 
 watch(() => filters.subject, () => { reloadTags() })
+watch(activeQuestionProjectId, () => {
+  resetFilters()
+  loadFilters()
+})
 
 onMounted(() => { loadFilters(); doQuery() })
 
@@ -373,8 +399,9 @@ onBeforeUnmount(() => {
           <QuestionItemSkeleton v-if="loading && !items.length" />
 
           <!-- 空状态 -->
-          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group" title="暂无匹配记录"
-            description="调整筛选条件，或者开始新的录入">
+          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group"
+            :title="hasQuestionProject ? '暂无匹配记录' : '还没有错题库'"
+            :description="hasQuestionProject ? '调整筛选条件，或者开始新的录入' : '先在左侧创建一个错题库，再录入题目'">
             <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
               <i class="fa-solid fa-plus"></i> 录入新题目
             </BaseButton>
@@ -398,48 +425,48 @@ onBeforeUnmount(() => {
                     leave-to-class="opacity-0 scale-95 -translate-y-1">
                     <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle" @mouseenter="onMenuContentEnter"
                       @mouseleave="onMenuContentLeave"
-                      class="w-44 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-1.5 shadow-xl dark:border-white/10 dark:bg-[#12121A]/90 dark:bg-gradient-to-b dark:from-white/[0.08] dark:to-transparent dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+                      class="w-44 overflow-hidden rounded-lg border border-slate-200/70 bg-white p-1 shadow-xl shadow-black/10 dark:border-white/[0.08] dark:bg-[#151617] dark:shadow-black/30">
                       <div
-                        class="px-3 pb-1 pt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        class="px-3 pb-1.5 pt-1.5 text-[11px] font-medium text-slate-400 dark:text-[#777b84]">
                         复习状态</div>
                       <button @click.stop="quickMarkStatus(question, '待复习')"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                        :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/20 dark:hover:text-rose-400'">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
+                        :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/16 dark:text-rose-300' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/12 dark:hover:text-rose-300'">
                         <i class="fa-solid fa-clock text-xs"></i>待复习
                         <i v-if="!question.review_status || question.review_status === '待复习'"
                           class="fa-solid fa-check ml-auto text-[10px]"></i>
                       </button>
                       <button @click.stop="quickMarkStatus(question, '复习中')"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                        :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-400'">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
+                        :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/14 dark:text-amber-300' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/12 dark:hover:text-amber-300'">
                         <i class="fa-solid fa-spinner text-xs"></i>复习中
                         <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
                       </button>
                       <button @click.stop="quickMarkStatus(question, '已掌握')"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-all"
-                        :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400'">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
+                        :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/14 dark:text-emerald-300' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/12 dark:hover:text-emerald-300'">
                         <i class="fa-solid fa-circle-check text-xs"></i>已掌握
                         <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
                       </button>
-                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/[0.06]"></div>
                       <div
-                        class="px-3 pb-1 text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        class="px-3 pb-1 text-[11px] font-medium text-slate-400 dark:text-[#777b84]">
                         操作</div>
                       <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]">
                         <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
                       </button>
                       <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-blue-500/10 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-400">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]">
                         <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
                       </button>
                       <button @click.stop="openChat(question); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-600 transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)] hover:text-[rgb(var(--accent-rgb))] dark:text-slate-300">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-[rgb(var(--accent-rgb)/0.10)] hover:text-[rgb(var(--accent-rgb))] dark:text-slate-300 dark:hover:bg-[rgb(var(--accent-rgb)/0.12)]">
                         <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
                       </button>
-                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/5"></div>
+                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/[0.06]"></div>
                       <button @click.stop="doDelete(question); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-rose-500 transition-all hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-rose-500 transition-colors hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/12">
                         <i class="fa-solid fa-trash-can text-xs"></i>删除题目
                       </button>
                     </div>

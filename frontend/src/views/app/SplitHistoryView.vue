@@ -87,9 +87,18 @@ const loadToWorkspace = () => {
 }
 
 // ---- 格式化 ----
+const parseApiDate = (iso) => {
+  if (!iso) return ''
+  const value = String(iso)
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`
+  const d = new Date(normalized)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 const formatDate = (iso) => {
   if (!iso) return ''
-  const d = new Date(iso)
+  const d = parseApiDate(iso)
+  if (!d) return ''
   const now = new Date()
   const diffMs = now - d
   const diffMin = Math.floor(diffMs / 60000)
@@ -109,7 +118,8 @@ const formatDate = (iso) => {
 
 const formatFullDate = (iso) => {
   if (!iso) return ''
-  const d = new Date(iso)
+  const d = parseApiDate(iso)
+  if (!d) return ''
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
@@ -148,7 +158,7 @@ defineExpose({ refresh: loadRecords })
 </script>
 
 <template>
-  <div v-show="visible" class="flex h-full flex-col overflow-hidden">
+  <div class="flex h-full flex-col overflow-hidden">
     <div class="relative flex h-full flex-col">
       <!-- 页头 -->
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.05] shrink-0 transition-colors">
@@ -181,8 +191,8 @@ defineExpose({ refresh: loadRecords })
           <div
             v-for="(r, idx) in records"
             :key="r.id"
-            class="group cursor-pointer border-b border-gray-200 dark:border-white/[0.05] px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.03]"
-            :class="activeRecord?.id === r.id ? 'bg-gray-100 dark:bg-white/[0.04]' : ''"
+            class="group cursor-pointer border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-white/[0.05] dark:hover:bg-white/[0.03]"
+            :class="activeRecord?.id === r.id ? 'bg-gray-100 dark:bg-white/[0.04]' : 'border-b'"
             @click="openDetail(r)"
           >
             <!-- 一行：科目 + 时间 + 题数 -->
@@ -191,66 +201,58 @@ defineExpose({ refresh: loadRecords })
               <span class="text-xs tabular-nums accent-text">{{ r.question_count }} 题</span>
             </div>
             <!-- 二行：文件数 + 时间 -->
-            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-[#62666d] transition-colors">
+            <div class="flex items-center gap-2 text-xs text-gray-500 no-underline dark:text-[#62666d] transition-colors [&_*]:no-underline">
               <span>{{ (r.file_names || []).length }} 个文件</span>
               <span>·</span>
               <span :title="formatFullDate(r.created_at)">{{ formatDate(r.created_at) }}</span>
             </div>
 
             <!-- 展开详情面板 -->
-            <Transition
-              enter-active-class="transition-all duration-400 ease-out"
-              enter-from-class="max-h-0 opacity-0"
-              enter-to-class="max-h-[2000px] opacity-100"
-              leave-active-class="transition-all duration-300 ease-in"
-              leave-from-class="max-h-[2000px] opacity-100"
-              leave-to-class="max-h-0 opacity-0"
-            >
-              <div v-if="activeRecord?.id === r.id" class="overflow-hidden border-t border-slate-200/40 dark:border-white/5">
+            <Transition name="split-record-expand">
+              <div v-if="activeRecord?.id === r.id" class="split-record-detail">
+                <div class="split-record-detail-inner">
                 <!-- 加载中 -->
                 <div v-if="detailLoading" class="flex items-center justify-center py-10">
                   <div class="h-7 w-7 animate-spin rounded-full border-[3px] border-slate-200 border-t-[rgb(var(--accent-rgb))] dark:border-slate-700"></div>
                 </div>
 
                 <!-- 题目列表 -->
-                <div v-else class="split-history-questions px-5 py-4">
+                <div v-else class="split-history-questions">
                   <!-- 工具栏 -->
-                  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                      <button
-                        @click.stop="selectAllQuestions"
-                        class="rounded-lg border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                      >全选</button>
+                  <div class="border-b border-slate-200/40 dark:border-white/5">
+                    <div class="flex items-center gap-2 py-2">
                       <button
                         v-if="selectedIds.size > 0"
                         @click.stop="deselectAllQuestions"
-                        class="rounded-lg border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs font-bold text-slate-500 transition-all hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10"
-                      >取消选择</button>
-                      <span v-if="selectedIds.size > 0" class="ml-1 text-xs font-semibold accent-text">
-                        已选 {{ selectedIds.size }} / {{ activeQuestions.length }}
-                      </span>
-                    </div>
+                        class="shrink-0 rounded-lg border border-slate-200/60 bg-white/60 px-3 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10"
+                      >取消</button>
+                      <button
+                        v-else
+                        @click.stop="selectAllQuestions"
+                        class="shrink-0 rounded-lg border border-slate-200/60 bg-white/60 px-3 py-2 text-xs font-bold text-slate-600 transition-all hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                      >全选</button>
                     <button
                       @click.stop="loadToWorkspace"
-                      class="inline-flex items-center gap-2 rounded-xl accent-bg px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md"
+                      class="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg accent-bg px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md"
                     >
                       <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                      {{ selectedIds.size > 0 ? `加载选中 (${selectedIds.size})` : '全部加载到工作台' }}
+                      <span class="truncate">{{ selectedIds.size > 0 ? `加载选中 ${selectedIds.size}` : '全部加载' }}</span>
                     </button>
+                    </div>
                   </div>
 
                   <!-- 题目网格 -->
-                  <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+                  <div class="grid grid-cols-1 gap-2.5">
                     <div
                       v-for="q in activeQuestions"
                       :key="q.uid"
                       @click.stop="toggleSelect(q.uid)"
-                      class="cursor-pointer rounded-xl border p-3.5 transition-all duration-200"
+                      class="cursor-pointer rounded-lg border p-3 transition-all duration-200"
                       :class="selectedIds.has(q.uid)
                         ? 'accent-border accent-bg-muted ring-1 ring-[rgb(var(--accent-rgb)/0.3)]'
                         : 'border-slate-200/50 bg-white/50 hover:border-[rgb(var(--accent-rgb)/0.35)] hover:bg-white/80 dark:border-white/[0.05] dark:bg-white/[0.02] dark:hover:border-[rgb(var(--accent-rgb)/0.25)]'"
                     >
-                      <div class="mb-2 flex items-center gap-2">
+                      <div class="mb-2 flex items-start gap-2">
                         <!-- 选中指示 -->
                         <div
                           class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] transition-colors"
@@ -275,7 +277,7 @@ defineExpose({ refresh: loadRecords })
                         </span>
                       </div>
                       <!-- 题目内容 -->
-                      <div class="line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                      <div class="line-clamp-3 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                         <template v-if="(q.content_blocks || q.content_json)?.length">
                           <template v-for="(b, i) in (q.content_blocks || q.content_json)" :key="i">
                             <span v-if="b.block_type === 'text'" v-html="isHtml(b.content) ? sanitizeHtml(b.content) : b.content"></span>
@@ -300,6 +302,7 @@ defineExpose({ refresh: loadRecords })
                     此记录无题目数据
                   </div>
                 </div>
+                </div>
               </div>
             </Transition>
           </div>
@@ -308,3 +311,41 @@ defineExpose({ refresh: loadRecords })
     </div>
   </div>
 </template>
+
+<style scoped>
+.split-record-detail {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  overflow: hidden;
+  transform: translateY(0);
+  transition:
+    grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.split-record-detail-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-record-expand-enter-from,
+.split-record-expand-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.split-record-expand-enter-to,
+.split-record-expand-leave-from {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.split-record-expand-leave-active {
+  transition-duration: 260ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+</style>

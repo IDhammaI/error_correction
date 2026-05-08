@@ -19,18 +19,22 @@ def _get_filters():
     return _filter_by_subject, _filter_by_user
 
 
-def get_statistics(db: Session, subject: Optional[str] = None, user_id=None) -> Dict[str, Any]:
+def get_statistics(db: Session, subject: Optional[str] = None, user_id=None, project_id=None) -> Dict[str, Any]:
     """获取统计信息"""
     _filter_by_subject, _filter_by_user = _get_filters()
 
     q_query = _filter_by_subject(db.query(func.count(Question.id)), subject)
     if user_id is not None:
         q_query = q_query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        q_query = q_query.filter(Question.project_id == project_id)
     total_questions = q_query.scalar()
 
     batch_query = db.query(func.count(UploadBatch.id))
     if user_id is not None:
         batch_query = batch_query.filter(UploadBatch.user_id == user_id)
+    if project_id is not None:
+        batch_query = batch_query.filter(UploadBatch.project_id == project_id)
     total_batches = batch_query.scalar()
 
     total_tags = db.query(func.count(KnowledgeTag.id)).scalar()
@@ -39,6 +43,8 @@ def get_statistics(db: Session, subject: Optional[str] = None, user_id=None) -> 
     subject_q = db.query(UploadBatch.subject, func.count(Question.id)).join(Question)
     if user_id is not None:
         subject_q = subject_q.filter(Question.user_id == user_id)
+    if project_id is not None:
+        subject_q = subject_q.filter(Question.project_id == project_id)
     subject_stats = subject_q.group_by(UploadBatch.subject).all()
 
     return {
@@ -49,7 +55,7 @@ def get_statistics(db: Session, subject: Optional[str] = None, user_id=None) -> 
     }
 
 
-def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optional[int] = None, user_id=None) -> List[Dict]:
+def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optional[int] = None, user_id=None, project_id=None) -> List[Dict]:
     """
     获取知识点统计信息
 
@@ -72,6 +78,10 @@ def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optio
         query = query.join(Question, Question.id == QuestionTagMapping.question_id).filter(
             Question.user_id == user_id
         )
+    elif project_id is not None:
+        query = query.join(Question, Question.id == QuestionTagMapping.question_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
 
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
@@ -90,7 +100,7 @@ def get_knowledge_stats(db: Session, subject: Optional[str] = None, limit: Optio
     return [{"tag_name": tag_name, "count": count} for tag_name, count in stats]
 
 
-def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=None) -> Dict[str, int]:
+def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=None, project_id=None) -> Dict[str, int]:
     """按复习状态分组统计数量"""
     _filter_by_subject, _filter_by_user = _get_filters()
 
@@ -100,6 +110,8 @@ def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=
     ), subject)
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
 
     rows = query.group_by(Question.review_status).all()
 
@@ -113,7 +125,7 @@ def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=
     return result
 
 
-def get_today_mastered_count(db: Session, subject: Optional[str] = None, user_id=None) -> int:
+def get_today_mastered_count(db: Session, subject: Optional[str] = None, user_id=None, project_id=None) -> int:
     """获取今日新掌握的题目数（updated_at 在今天且状态为已掌握）"""
     _filter_by_subject, _filter_by_user = _get_filters()
 
@@ -124,10 +136,12 @@ def get_today_mastered_count(db: Session, subject: Optional[str] = None, user_id
     ), subject)
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
     return query.scalar() or 0
 
 
-def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, user_id=None) -> List[Dict[str, Any]]:
+def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, user_id=None, project_id=None) -> List[Dict[str, Any]]:
     """获取最近 N 天每日新增题目数 + 每日新增已掌握数"""
     from datetime import timedelta
     _filter_by_subject, _filter_by_user = _get_filters()
@@ -144,6 +158,8 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, 
     ).filter(Question.created_at >= cutoff), subject)
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
     rows = query.group_by(date_expr).order_by(date_expr).all()
     date_map = {str(row.date): row.count for row in rows}
 
@@ -158,6 +174,8 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, 
     ), subject)
     if user_id is not None:
         mq = mq.filter(Question.user_id == user_id)
+    if project_id is not None:
+        mq = mq.filter(Question.project_id == project_id)
     mastered_rows = mq.group_by(mastered_date_expr).order_by(mastered_date_expr).all()
     mastered_map = {str(row.date): row.count for row in mastered_rows}
 
@@ -176,7 +194,7 @@ def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, 
     return result
 
 
-def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int = 10, user_id=None) -> List[Dict]:
+def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int = 10, user_id=None, project_id=None) -> List[Dict]:
     """
     知识点 × 掌握状态统计（堆叠柱状图用）
 
@@ -195,6 +213,8 @@ def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int 
 
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
 
@@ -221,7 +241,7 @@ def get_tag_status_stats(db: Session, subject: Optional[str] = None, limit: int 
     return [tag_data[t] for t in sorted_tags]
 
 
-def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: int = 8, user_id=None) -> Dict[str, Any]:
+def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: int = 8, user_id=None, project_id=None) -> Dict[str, Any]:
     """
     知识点 × 题型交叉统计（热力图用）
 
@@ -243,6 +263,8 @@ def get_tag_type_stats(db: Session, subject: Optional[str] = None, tag_limit: in
 
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
     if subject:
         query = query.filter(KnowledgeTag.subject == subject)
 

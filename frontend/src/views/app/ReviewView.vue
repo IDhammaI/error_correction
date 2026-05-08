@@ -13,6 +13,8 @@ import { useImageModal } from '@/composables/useImageModal.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
 import { useTheme } from '@/composables/useTheme.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
+import { useProjects } from '@/composables/useProjects.js'
 
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
@@ -20,6 +22,7 @@ const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
 const { isDark } = useTheme()
 const { selectedLlmOption } = useSystemStatus()
+const { activeQuestionProjectId } = useProjects()
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 
 const answerEditId = ref(null)
@@ -48,17 +51,28 @@ const aiAnalyzing = ref(false)
 
 // ---- 数据加载 ----
 const loadSubjects = async () => {
+  if (!activeQuestionProjectId.value) {
+    subjects.value = []
+    return
+  }
   try {
-    const data = await api.fetchDashboardStats()
+    const data = await api.fetchDashboardStats(undefined, activeQuestionProjectId.value)
     subjects.value = data?.subjects || []
   } catch (_) { }
 }
 
 const loadReviewItems = async () => {
+  if (!activeQuestionProjectId.value) {
+    reviewItems.value = []
+    reviewTotal.value = 0
+    reviewLoading.value = false
+    return
+  }
   reviewLoading.value = true
   try {
     const params = { review_status: '待复习', page: 1, page_size: 20 }
     if (selectedSubject.value) params.subject = selectedSubject.value
+    if (activeQuestionProjectId.value) params.project_id = activeQuestionProjectId.value
     const data = await api.fetchErrorBank(params)
     reviewItems.value = data.items || []
     reviewTotal.value = data.total || 0
@@ -73,6 +87,10 @@ const loadReviewItems = async () => {
 const loadAll = () => { loadSubjects(); loadReviewItems() }
 
 watch(selectedSubject, () => { loadReviewItems() })
+watch(activeQuestionProjectId, () => {
+  selectedSubject.value = ''
+  loadAll()
+})
 
 // ---- 题目操作 ----
 const typesetMath = async () => {

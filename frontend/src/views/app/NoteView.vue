@@ -14,6 +14,7 @@ import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useAuth } from '@/composables/useAuth.js'
 import BaseViewSettingsPopover from '@/components/base/BaseViewSettingsPopover.vue'
+import { useProjects } from '@/composables/useProjects.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
@@ -22,6 +23,8 @@ const router = useRouter()
 const { pushToast } = useToast()
 const { selectedLlmOption } = useSystemStatus()
 const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
+const { activeNoteProjectId, noteProjects } = useProjects()
+const hasNoteProject = computed(() => noteProjects.value.length > 0)
 
 const noteContentRef = ref(null)
 
@@ -71,6 +74,12 @@ const editContent = ref('')
 
 // ---- 加载笔记列表 ----
 async function loadNotes() {
+  if (!activeNoteProjectId.value) {
+    notes.value = []
+    total.value = 0
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const data = await api.fetchNotes({
@@ -79,6 +88,7 @@ async function loadNotes() {
       subject: filters.subject || undefined,
       knowledge_tag: filters.tag || undefined,
       keyword: filters.keyword || undefined,
+      project_id: activeNoteProjectId.value || undefined,
     })
     notes.value = data.items
     total.value = data.total
@@ -91,14 +101,22 @@ async function loadNotes() {
 
 // 加载筛选选项
 async function loadFilterOptions() {
+  if (!activeNoteProjectId.value) {
+    subjects.value = []
+    return
+  }
   try {
-    subjects.value = await api.fetchNoteSubjects()
+    subjects.value = await api.fetchNoteSubjects(activeNoteProjectId.value)
   } catch (_) { }
 }
 
 async function loadTags() {
+  if (!activeNoteProjectId.value) {
+    tagNames.value = []
+    return
+  }
   try {
-    tagNames.value = await api.fetchNoteTagNames(filters.subject || undefined)
+    tagNames.value = await api.fetchNoteTagNames(filters.subject || undefined, activeNoteProjectId.value)
   } catch (_) { }
 }
 
@@ -110,6 +128,15 @@ onMounted(() => {
 watch([page, () => filters.subject, () => filters.tag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
 watch(() => filters.subject, () => {
   filters.tag = ''
+  loadTags()
+})
+watch(activeNoteProjectId, () => {
+  filters.subject = ''
+  filters.tag = ''
+  page.value = 1
+  selectedNote.value = null
+  loadNotes()
+  loadFilterOptions()
   loadTags()
 })
 
@@ -276,8 +303,9 @@ function goToWorkspace() {
 
           <!-- Notes Grid -->
           <div class="relative flex-1 flex flex-col">
-            <EmptyState v-if="!loading && notes.length === 0" icon="fa-solid fa-book-open" title="还没有笔记"
-              description="上传手写笔记或板书照片，AI 自动整理为结构化知识点">
+            <EmptyState v-if="!loading && notes.length === 0" icon="fa-solid fa-book-open"
+              :title="hasNoteProject ? '还没有笔记' : '还没有笔记本'"
+              :description="hasNoteProject ? '上传手写笔记或板书照片，AI 自动整理为结构化知识点' : '先在左侧创建一个笔记本，再录入笔记'">
               <BaseButton @click="goToWorkspace" variant="primary" size="sm">
                 <i class="fa-solid fa-plus"></i> 录入新笔记
               </BaseButton>

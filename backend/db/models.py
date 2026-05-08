@@ -35,6 +35,29 @@ class User(Base):
     split_records = relationship("SplitRecord", back_populates="user")
     provider_configs = relationship("ProviderConfig", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user")
+    projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+
+
+class Project(Base):
+    """Learning space that groups questions and notes."""
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True)
+    public_id = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    name = Column(String(100), nullable=False)
+    project_type = Column(String(20), default="question", nullable=False, index=True)
+    description = Column(Text, default="")
+    color = Column(String(20), default="#2563eb")
+    icon = Column(String(50), default="book-open")
+    is_default = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="projects")
+    upload_batches = relationship("UploadBatch", back_populates="project")
+    questions = relationship("Question", back_populates="project")
+    notes = relationship("Note", back_populates="project")
 
 
 class ProviderConfig(Base):
@@ -88,6 +111,7 @@ class UploadBatch(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     original_filename = Column(String(255), nullable=False)
     subject = Column(String(50))
     file_path = Column(Text)
@@ -95,6 +119,7 @@ class UploadBatch(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="upload_batches")
+    project = relationship("Project", back_populates="upload_batches")
     questions = relationship("Question", back_populates="batch")
 
 
@@ -104,6 +129,7 @@ class Question(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     batch_id = Column(Integer, ForeignKey("upload_batches.id"))
     content_hash = Column(String(64), nullable=False)
     question_type = Column(String(20))
@@ -121,10 +147,11 @@ class Question(Base):
     answer = Column(Text, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint('content_hash', 'user_id', name='uq_question_hash_user'),
+        UniqueConstraint('content_hash', 'user_id', 'project_id', name='uq_question_hash_user_project'),
     )
 
     user = relationship("User", back_populates="questions")
+    project = relationship("Project", back_populates="questions")
     batch = relationship("UploadBatch", back_populates="questions")
     tags = relationship("QuestionTagMapping", back_populates="question")
     chat_sessions = relationship("ChatSession", back_populates="question")
@@ -207,6 +234,7 @@ class Note(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     title = Column(String(255), nullable=False)          # 笔记标题
     subject = Column(String(50))                          # 科目
     content_markdown = Column(Text, default="")           # LLM 整理后的 Markdown 内容
@@ -216,6 +244,7 @@ class Note(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="notes")
+    project = relationship("Project", back_populates="notes")
     tags = relationship("NoteTagMapping", back_populates="note", cascade="all, delete-orphan")
 
 
