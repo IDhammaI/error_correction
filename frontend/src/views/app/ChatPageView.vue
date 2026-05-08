@@ -314,6 +314,7 @@ function questionContextSnippet(question) {
 </script>
 
 <template>
+  <div class="h-full min-h-0">
   <ContentPanel title="AI 对话">
     <template #header-actions>
       <button @click="createAiChat(currentView)"
@@ -560,6 +561,7 @@ function questionContextSnippet(question) {
       </button>
     </template>
   </BaseModal>
+  </div>
 </template>
 
 <style scoped>
@@ -595,5 +597,22 @@ function questionContextSnippet(question) {
 
 .chat-message-move {
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:deep(.prose mjx-container[display="true"]) {
+  display: block;
+  overflow-x: auto;
+  margin: 0.9rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgb(226 232 240 / 0.75);
+  border-radius: 0.75rem;
+  background: rgb(248 250 252 / 0.72);
+}
+
+:global(.dark .prose mjx-container[display="true"]) {
+  border: 1px solid #4b4747bf;
+  border-radius: 0.75rem;
+  background: #43434347;
+  color: #d0d6e0;
 }
 </style>
