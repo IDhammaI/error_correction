@@ -129,8 +129,9 @@ async function sendMessage() {
   inputText.value = ''
   const rollbackIndex = messages.value.length
   // 消息结构：{ role, content, reasoning?, reasoningOpen? }
-  messages.value.push({ role: 'user', content: text })
-  messages.value.push({ role: 'assistant', content: '', rawContent: '', reasoning: '', reasoningOpen: false })
+  const sentAt = Date.now()
+  messages.value.push({ id: `local-user-${sentAt}`, role: 'user', content: text })
+  messages.value.push({ id: `local-assistant-${sentAt}`, role: 'assistant', content: '', rawContent: '', reasoning: '', reasoningOpen: false })
   await nextTick()
   scrollToBottom()
   // 重置 textarea 高度
@@ -336,9 +337,9 @@ function questionContextSnippet(question) {
           </div>
 
           <!-- 消息列表 -->
-          <div v-else class="space-y-6 py-6">
-            <div v-for="(msg, i) in messages" :key="i" class="flex"
-              :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+          <TransitionGroup v-else appear name="chat-message" tag="div" class="space-y-6 py-6">
+            <div v-for="(msg, i) in messages" :key="msg.id || `${msg.role}-${i}-${msg.content.slice(0, 12)}`" class="flex chat-message-item"
+              :class="msg.role === 'user' ? 'justify-end chat-message-item--user' : 'justify-start chat-message-item--assistant'">
               <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed"
                 :class="msg.role === 'user'
                   ? 'max-w-[85%] accent-bg text-white rounded-br-lg shadow-sm dark:text-white dark:border-none'
@@ -377,7 +378,7 @@ function questionContextSnippet(question) {
                 <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
               </div>
             </div>
-          </div>
+          </TransitionGroup>
 
         </div>
       </div>
@@ -560,3 +561,39 @@ function questionContextSnippet(question) {
     </template>
   </BaseModal>
 </template>
+
+<style scoped>
+.chat-message-enter-active {
+  transition:
+    opacity 0.32s ease,
+    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chat-message-enter-from {
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+}
+
+.chat-message-enter-from.chat-message-item--user {
+  transform: translateX(18px) translateY(8px) scale(0.96);
+}
+
+.chat-message-enter-from.chat-message-item--assistant {
+  transform: translateX(-18px) translateY(8px) scale(0.98);
+}
+
+.chat-message-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.chat-message-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+}
+
+.chat-message-move {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+</style>
