@@ -339,10 +339,10 @@ function questionContextSnippet(question) {
           <div v-else class="space-y-6 py-6">
             <div v-for="(msg, i) in messages" :key="i" class="flex"
               :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-              <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
+              <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed"
                 :class="msg.role === 'user'
-                  ? 'accent-bg text-white rounded-br-lg shadow-sm dark:text-white dark:border-none'
-                  : 'bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'">
+                  ? 'max-w-[85%] accent-bg text-white rounded-br-lg shadow-sm dark:text-white dark:border-none'
+                  : 'w-full bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'">
                 <!-- 思考过程折叠面板 -->
                 <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
                   <button @click="msg.reasoningOpen = !msg.reasoningOpen"
