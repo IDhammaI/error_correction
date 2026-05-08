@@ -589,7 +589,7 @@ const userQuotaSummary = computed(() => {
             :class="isNarrow || !chatCollapsed ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
             <div class="flex min-h-0 flex-col overflow-hidden">
               <div :ref="(el) => $emit('update:chatListRef', el)"
-                class="relative h-full overflow-x-hidden pb-2 custom-scrollbar"
+                class="hidden-scrollbar relative h-full overflow-x-hidden pb-2"
                 :class="chatScrollReady ? 'overflow-y-auto' : 'overflow-y-hidden'"
                 @click="emit('update:chatMenuOpenId', null)">
 
@@ -788,6 +788,15 @@ const userQuotaSummary = computed(() => {
   filter: brightness(0.9);
   pointer-events: none;
   transform: rotateY(-90deg) scale(0.98);
+}
+
+.hidden-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hidden-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
