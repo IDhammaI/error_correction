@@ -44,6 +44,7 @@ const contextQuestionCache = ref({})
 const loadingContextProjectId = ref(null)
 const contextLoadError = ref('')
 const hasConversationContent = computed(() => messages.value.length > 0 || streaming.value)
+const AUTO_SCROLL_THRESHOLD = 80
 const selectedContextProject = computed(() =>
   questionProjects.value.find((project) => String(project.id) === String(contextProjectId.value)) || null,
 )
@@ -89,18 +90,29 @@ function scrollToBottom() {
   }
 }
 
+function isNearBottom() {
+  const el = messagesContainer.value
+  if (!el) return true
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= AUTO_SCROLL_THRESHOLD
+}
+
+function scrollToBottomIfNeeded(shouldScroll) {
+  if (shouldScroll) scrollToBottom()
+}
+
 function getStreamingAssistantEl() {
   return messagesContainer.value?.querySelector('[data-streaming-assistant="true"]') || null
 }
 
 async function flushStreamingMessage(msg) {
   if (!msg || streamRenderRunning.value) return
+  const shouldScroll = isNearBottom()
   streamRenderRunning.value = true
   msg.content = msg.rawContent || ''
   await nextTick()
   const el = getStreamingAssistantEl()
   if (el) await typesetMath(el)
-  scrollToBottom()
+  scrollToBottomIfNeeded(shouldScroll)
   streamRenderRunning.value = false
 
   if (msg.rawContent !== msg.content) {
@@ -186,18 +198,20 @@ async function sendMessage() {
         try {
           const payload = JSON.parse(line.slice(6))
           if (payload.reasoning) {
+            const shouldScroll = isNearBottom()
             lastMsg().reasoning += payload.reasoning
             lastMsg().reasoningOpen = true
             await nextTick()
-            scrollToBottom()
+            scrollToBottomIfNeeded(shouldScroll)
           }
           if (payload.token) {
+            const shouldScroll = isNearBottom()
             if (lastMsg().reasoningOpen && lastMsg().reasoning) {
               lastMsg().reasoningOpen = false
             }
             lastMsg().rawContent = (lastMsg().rawContent || '') + payload.token
             scheduleStreamRender(lastMsg())
-            scrollToBottom()
+            scrollToBottomIfNeeded(shouldScroll)
           }
           if (payload.done) {
             const firstMsg = text.slice(0, 20) + (text.length > 20 ? '...' : '')
