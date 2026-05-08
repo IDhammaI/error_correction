@@ -11,7 +11,6 @@ import time
 import traceback
 import difflib as _difflib
 from typing import List, Dict, Any, TypedDict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
@@ -50,7 +49,10 @@ class WorkflowState(TypedDict, total=False):
     # 数据库凭据（由路由层注入，避免环境变量依赖）
     llm_credentials: Dict[str, Any]      # {api_key, base_url, light_model_name, supports_function_calling}
     ocr_credentials: Dict[str, Any]      # {api_url, token, model, use_doc_orientation, ...}
+    baidu_paper_cut_credentials: Dict[str, Any]  # {api_url, api_key}
+    error_code: str
     ocr_cache_path: str                  # OCR 预览缓存文件路径（按用户隔离）
+    page_image_cache_path: str           # OCR 预览页图元数据缓存文件路径（按用户隔离）
     results_dir: str                     # 本次运行的结果目录（按 user/run 隔离）
 
 
@@ -74,11 +76,14 @@ def prepare_input_node(state: WorkflowState) -> dict:
 # ── 并行分割辅助函数 ──────────────────────────────────────────
 
 
-def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+def _run_ocr_raw(
+    file_paths: List[str],
+    ocr_credentials: Dict[str, Any] = None,
+) -> tuple[List[Dict[str, Any]], List[str]]:
     """执行 OCR 解析并简化结果（含重试机制）
 
     支持混合文件类型：PDF 直传 API，图片并行上传。
-    然后将结果简化为 split_batch 所需的格式。
+    然后将结果简化为分题器和纠错节点共用的轻量格式。
 
     Returns:
         简化后的 OCR 数据列表，每项包含 page_index 和 blocks
@@ -102,6 +107,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
     max_retries = 3
     retry_delays = [3, 5, 10]
     ocr_results = []
+    source_paths: List[str] = []
     last_error = None
 
     # PDF 直传（每个 PDF 单独提交，API 内部处理分页）
@@ -124,6 +130,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
                     console.print(f"[red]OCR PDF 解析失败（已重试 {max_retries} 次）: {type(last_error).__name__}: {last_error}[/red]")
         if result is not None:
             ocr_results.append(result)
+            source_paths.append(pdf_path)
 
     # 图片并行上传
     if image_paths:
@@ -146,11 +153,22 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
                     logger.error(f"OCR 图片全部 {max_retries} 次重试失败 ({type(last_error).__name__}: {last_error})\n{tb}")
                     console.print(f"[red]OCR 图片解析失败（已重试 {max_retries} 次）: {type(last_error).__name__}: {last_error}[/red]")
         if img_results:
-            ocr_results.extend(img_results)
+            valid_img_results = list(img_results)
+            ocr_results.extend(valid_img_results)
+            source_paths.extend(image_paths[: len(valid_img_results)])
 
     if not ocr_results:
-        return []
+        return [], []
 
+    return ocr_results, source_paths
+
+
+def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    """执行 OCR 并保留旧调用方需要的简化结果接口。"""
+
+    ocr_results, _source_paths = _run_ocr_raw(file_paths, ocr_credentials=ocr_credentials)
+    if not ocr_results:
+        return []
     return simplify_ocr_results(ocr_results)
 
 
@@ -644,15 +662,189 @@ def _sort_key(qid: str):
         return (1, 0, qid)
 
 
-def split_questions_node(state: WorkflowState) -> dict:
-    """节点: 并行 OCR + 分割题目
+def _load_ocr_pages_for_postprocess(results_dir: str) -> List[Dict[str, Any]]:
+    """Load flattened OCR pages saved for correction/tagging context."""
 
-    不再依赖编排智能体的顺序处理，而是直接执行：
-    1. OCR 解析（PaddleOCR，图片级并行）
-    2. 构建重叠批次（2页/批，1页重叠）
-    3. 并行调用 split_batch（批次级并行，每批独立的内层 agent）
-    4. 按 question_id 去重（重叠页产生的重复题目）
-    5. 保存结果
+    agent_input_path = os.path.join(results_dir, "agent_input.json")
+    if not os.path.exists(agent_input_path):
+        return []
+
+    try:
+        with open(agent_input_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception as e:
+        logger.warning("读取 OCR 后处理上下文失败: %s", e)
+        return []
+
+    if not isinstance(raw, list):
+        return []
+
+    if raw and isinstance(raw[0], list):
+        seen: Dict[int, Dict[str, Any]] = {}
+        for batch in raw:
+            for page in batch:
+                if not isinstance(page, dict):
+                    continue
+                idx = int(page.get("page_index", len(seen)))
+                if idx not in seen:
+                    seen[idx] = page
+        return [seen[k] for k in sorted(seen)]
+
+    return [page for page in raw if isinstance(page, dict)]
+
+
+def _read_subject_from_results(results_dir: str) -> str:
+    meta_path = os.path.join(results_dir, "split_metadata.json")
+    if not os.path.exists(meta_path):
+        return ""
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            return str((json.load(f) or {}).get("subject") or "")
+    except Exception as e:
+        logger.warning("读取 split_metadata.json 失败: %s", e)
+        return ""
+
+
+def _load_existing_tags_for_postprocess(subject: str) -> List[str]:
+    try:
+        from db import SessionLocal
+        from db.crud import get_existing_tag_names
+
+        with SessionLocal() as db:
+            return get_existing_tag_names(db, subject=subject or None)
+    except Exception as e:
+        logger.warning("读取知识点标签池失败: %s", e)
+        return []
+
+
+def _question_needs_postprocess(q: Dict[str, Any]) -> bool:
+    return bool(q.get("needs_correction", False)) or not bool(q.get("knowledge_tags"))
+
+
+def _question_starts_with_continuation(q: Dict[str, Any]) -> bool:
+    blocks = q.get("content_blocks") or []
+    first = next((b for b in blocks if b.get("content")), None)
+    if not first:
+        return False
+    if first.get("block_type") == "image":
+        return True
+    content = str(first.get("content") or "").strip()
+    return bool(_re.match(r"^[A-D][\.\、\)]", content))
+
+
+def _question_may_continue_next_page(q: Dict[str, Any]) -> bool:
+    text_blocks = [
+        str(b.get("content") or "").strip()
+        for b in (q.get("content_blocks") or [])
+        if b.get("block_type") == "text" and str(b.get("content") or "").strip()
+    ]
+    if not text_blocks:
+        return False
+    tail = text_blocks[-1]
+    if tail.endswith(("，", ",", "、", "：", ":", "；", ";", "（", "(", "【", "[")):
+        return True
+    return tail.count("(") > tail.count(")") or tail.count("（") > tail.count("）")
+
+
+def _postprocess_page_indices_for_question(
+    q: Dict[str, Any],
+    *,
+    max_page_index: int | None,
+) -> List[int] | None:
+    raw_pages = q.get("source_pages") or []
+    pages = set()
+    for page in raw_pages:
+        try:
+            pages.add(int(page))
+        except (TypeError, ValueError):
+            continue
+
+    if not pages:
+        return None
+
+    first_page = min(pages)
+    last_page = max(pages)
+    if first_page > 0 and _question_starts_with_continuation(q):
+        pages.add(first_page - 1)
+    if (
+        max_page_index is not None
+        and last_page < max_page_index
+        and _question_may_continue_next_page(q)
+    ):
+        pages.add(last_page + 1)
+    return sorted(pages)
+
+
+def _select_ocr_pages(
+    ocr_pages: List[Dict[str, Any]],
+    page_indices: List[int] | None,
+) -> List[Dict[str, Any]]:
+    if not ocr_pages:
+        return []
+    if page_indices is None:
+        return ocr_pages
+
+    page_by_index = {}
+    for fallback_index, page in enumerate(ocr_pages):
+        try:
+            idx = int(page.get("page_index", fallback_index))
+        except (TypeError, ValueError):
+            idx = fallback_index
+        page_by_index[idx] = page
+
+    selected = [page_by_index[idx] for idx in page_indices if idx in page_by_index]
+    return selected or ocr_pages
+
+
+def _build_postprocess_batches(
+    questions: List[Dict[str, Any]],
+    ocr_pages: List[Dict[str, Any]],
+    *,
+    max_questions: int = 8,
+) -> List[Dict[str, Any]]:
+    max_page_index = None
+    if ocr_pages:
+        indices = []
+        for fallback_index, page in enumerate(ocr_pages):
+            try:
+                indices.append(int(page.get("page_index", fallback_index)))
+            except (TypeError, ValueError):
+                indices.append(fallback_index)
+        max_page_index = max(indices) if indices else None
+
+    batches: List[Dict[str, Any]] = []
+    for question in questions:
+        page_indices = _postprocess_page_indices_for_question(
+            question,
+            max_page_index=max_page_index,
+        )
+        key = tuple(page_indices) if page_indices is not None else ("all",)
+        context_pages = _select_ocr_pages(ocr_pages, page_indices)
+
+        if (
+            batches
+            and batches[-1]["key"] == key
+            and len(batches[-1]["questions"]) < max_questions
+        ):
+            batches[-1]["questions"].append(question)
+            continue
+
+        batches.append(
+            {
+                "key": key,
+                "page_indices": page_indices,
+                "questions": [question],
+                "ocr_pages": context_pages,
+            }
+        )
+
+    return batches
+
+
+def split_questions_node(state: WorkflowState) -> dict:
+    """节点: PaddleOCR + Baidu paper_cut_edu + 规则分题.
+
+    只替换原先的题目分割智能体；科目识别、题目纠错、run 级产物隔离继续沿用现有流程。
     """
     console.print("[bold yellow]步骤 2: 并行 OCR + 分割题目[/bold yellow]")
     step_start = time.time()
@@ -662,8 +854,6 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     file_paths = state["image_paths"]
     model_provider = state.get("model_provider", "openai")
-    model_name = state.get("model_name")
-    llm_credentials = state.get("llm_credentials") or {}
     ocr_credentials = state.get("ocr_credentials") or {}
 
     # 清空旧的 questions.json 和 split_metadata.json
@@ -676,7 +866,10 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     # ── Step 1: OCR 解析（优先使用缓存） ──
     ocr_cache_path = state.get("ocr_cache_path") or os.path.join(results_dir, "ocr_cache.json")
+    page_image_cache_path = state.get("page_image_cache_path") or os.path.join(results_dir, "page_image_sources_cache.json")
     ocr_data = None
+    page_image_sources: List[Dict[str, Any]] = []
+    page_image_warnings: List[str] = []
     if os.path.exists(ocr_cache_path):
         try:
             with open(ocr_cache_path, 'r', encoding='utf-8') as f:
@@ -684,14 +877,32 @@ def split_questions_node(state: WorkflowState) -> dict:
             console.print(f"[green]✓ 使用 OCR 缓存: {len(ocr_data)} 页[/green]")
             logger.info(f"使用 OCR 缓存: {len(ocr_data)} 页")
             os.remove(ocr_cache_path)  # 用完即删，避免下次误用
+            if os.path.exists(page_image_cache_path):
+                with open(page_image_cache_path, "r", encoding="utf-8") as f:
+                    page_image_sources = json.load(f)
+                os.remove(page_image_cache_path)
         except Exception as e:
             logger.warning(f"读取 OCR 缓存失败: {e}，将重新执行 OCR")
             ocr_data = None
+            page_image_sources = []
 
     if not ocr_data:
         console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
         ocr_start = time.time()
-        ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
+        raw_ocr_results, ocr_source_paths = _run_ocr_raw(
+            file_paths,
+            ocr_credentials=ocr_credentials,
+        )
+        ocr_data = simplify_ocr_results(raw_ocr_results)
+
+        from src.question_splitter.page_images import extract_page_image_sources
+
+        page_image_sources, page_image_warnings = extract_page_image_sources(
+            raw_ocr_results,
+            ocr_source_paths,
+            output_dir=str(settings.struct_dir),
+            ocr_credentials=ocr_credentials,
+        )
 
         if not ocr_data:
             logger.error("OCR 解析失败，无数据返回")
@@ -705,6 +916,19 @@ def split_questions_node(state: WorkflowState) -> dict:
         ocr_elapsed = time.time() - ocr_start
         logger.info(f"OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block, 耗时 {ocr_elapsed:.2f}s")
         console.print(f"[green]✓ OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block ({ocr_elapsed:.1f}s)[/green]")
+    elif not page_image_sources:
+        from src.question_splitter.page_images import discover_page_image_sources_from_ocr_data
+
+        page_image_sources, page_image_warnings = discover_page_image_sources_from_ocr_data(
+            ocr_data,
+            file_paths,
+            output_dir=str(settings.struct_dir),
+            ocr_credentials=ocr_credentials,
+        )
+
+    page_image_sources_path = os.path.join(results_dir, "page_image_sources.json")
+    with open(page_image_sources_path, "w", encoding="utf-8") as f:
+        json.dump(page_image_sources, f, ensure_ascii=False, indent=2)
 
     # 保存 agent_input.json（供纠错节点使用）
     agent_input_path = os.path.join(results_dir, "agent_input.json")
@@ -732,206 +956,206 @@ def split_questions_node(state: WorkflowState) -> dict:
         except Exception as e:
             logger.warning(f"按科目过滤标签失败，使用全量标签: {e}")
 
-    # ── Step 4: 构建重叠批次 ──
-    batches = _build_overlapping_batches(ocr_data, batch_size=2, overlap=1)
-    console.print(f"[cyan]构建 {len(batches)} 个批次（每批1主页+1上下文页）[/cyan]")
-
-    # 保存完整批次数据到 agent_input.json（含 is_primary 标记，供调试和纠错节点使用）
-    agent_input_path = os.path.join(results_dir, "agent_input.json")
-    with open(agent_input_path, 'w', encoding='utf-8') as f:
-        json.dump(batches, f, ensure_ascii=False, indent=2)
-
-    # ── Step 5: 并行分割 ──
+    # ── Step 4: 百度题框 + OCR reading order 分题 ──
     split_start = time.time()
-    console.print(f"[cyan]并行分割 {len(batches)} 个批次...[/cyan]")
+    split_warnings: List[str] = []
+    baidu_credentials = state.get("baidu_paper_cut_credentials") or {}
+    if not baidu_credentials.get("api_key"):
+        warning_msg = "步骤 3（题目分割）失败：未配置百度智能云 paper_cut_edu API Key"
+        return {
+            "questions": [],
+            "warnings": [warning_msg],
+            "error_code": "BAIDU_PAPER_CUT_NOT_CONFIGURED",
+        }
 
-    from agents.error_correction.tools import split_batch
+    baidu_pages: List[Dict[str, Any]] = []
+    baidu_sources = [
+        item
+        for item in page_image_sources
+        if item.get("baidu_image_path") and os.path.exists(str(item.get("baidu_image_path")))
+    ]
+    baidu_image_paths = [str(item["baidu_image_path"]) for item in baidu_sources]
+    try:
+        if baidu_image_paths:
+            from src.baidu_paper_cut_client import (
+                BaiduPaperCutClient,
+                cut_images_concurrently,
+            )
 
-    existing_tags_str = ",".join(db_tags) if db_tags else ""
-    max_workers = min(len(batches), 3)
-    batch_results: List[List[Dict[str, Any]]] = [[] for _ in range(len(batches))]
-    batch_errors: List[str] = []  # 记录失败原因，供 warning 使用
+            client = BaiduPaperCutClient(
+                api_url=baidu_credentials.get("api_url"),
+                api_key=baidu_credentials.get("api_key"),
+            )
+            baidu_pages = cut_images_concurrently(
+                client,
+                baidu_image_paths,
+                max_workers=3,
+            )
+            for idx, page in enumerate(baidu_pages):
+                source = baidu_sources[idx]
+                page["page_index"] = int(source.get("page_index", idx))
+                page["page_image_source"] = source
+        else:
+            split_warnings.append(
+                "BAIDU_PAPER_CUT_NO_PAGE_IMAGE: 当前输入没有可用于 paper_cut_edu 的页图，已仅按 OCR 题号和版面顺序切分。"
+            )
+    except Exception as e:
+        error_code = getattr(e, "code", "BAIDU_PAPER_CUT_FAILED")
+        logger.warning("Baidu paper_cut_edu split failed: %s", error_code, exc_info=True)
+        warning_msg = f"步骤 3（题目分割）失败：百度 paper_cut_edu API 调用失败（{error_code}）"
+        return {
+            "questions": [],
+            "warnings": [warning_msg],
+            "error_code": error_code,
+        }
 
-    max_batch_retries = 2
+    baidu_debug_path = os.path.join(results_dir, "baidu_paper_cut.json")
+    with open(baidu_debug_path, "w", encoding="utf-8") as f:
+        json.dump(baidu_pages, f, ensure_ascii=False, indent=2)
 
-    def _invoke_split(batch_idx: int, batch_data: list) -> None:
-        """在线程中调用 split_batch 并存储结果（含重试）"""
-        for attempt in range(1, max_batch_retries + 1):
-            try:
-                invoke_kwargs = {
-                    "ocr_data": json.dumps(batch_data, ensure_ascii=False),
-                    "subject": subject,
-                    "existing_tags": existing_tags_str,
-                    "model_provider": model_provider,
-                }
-                if model_name:
-                    invoke_kwargs["model_name"] = model_name
-                result_str = split_batch.invoke(invoke_kwargs)
-                # split_batch 内部捕获异常并返回 "分割失败: ..." 字符串，
-                # 需要检测这种情况并触发重试
-                if not result_str or not result_str.startswith("["):
-                    raise RuntimeError(f"split_batch 返回非JSON: {result_str[:200]}")
-                questions = json.loads(result_str)
-                batch_results[batch_idx] = questions
-                logger.info(f"批次 {batch_idx} 完成: {len(questions)} 道题目")
-                console.print(f"[green]  ✓ 批次 {batch_idx} 完成: {len(questions)} 道题目[/green]")
-                return
-            except Exception as e:
-                if attempt < max_batch_retries:
-                    logger.warning(f"批次 {batch_idx} 第 {attempt} 次失败 ({e})，重试中...")
-                    console.print(f"[yellow]  ⚠ 批次 {batch_idx} 第 {attempt} 次失败，重试...[/yellow]")
-                    time.sleep(2)
-                else:
-                    logger.error(f"批次 {batch_idx} 分割失败（已重试 {max_batch_retries} 次）: {e}")
-                    console.print(f"[red]  ✗ 批次 {batch_idx} 失败: {e}[/red]")
-                    batch_errors.append(str(e))
+    from src.question_splitter import build_questions_from_ocr
 
-    if len(batches) == 1:
-        _invoke_split(0, batches[0])
-    else:
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {
-                pool.submit(_invoke_split, i, batch): i
-                for i, batch in enumerate(batches)
-            }
-            # 等待全部完成
-            for future in as_completed(futures):
-                future.result()  # 触发异常传播（已在 _invoke_split 内处理）
+    all_questions, split_debug, splitter_warnings = build_questions_from_ocr(
+        ocr_data,
+        baidu_pages,
+        subject=subject,
+        page_image_sources=page_image_sources,
+    )
+    split_warnings.extend(page_image_warnings)
+    split_warnings.extend(splitter_warnings)
+    split_debug_path = os.path.join(results_dir, "split_debug.json")
+    with open(split_debug_path, "w", encoding="utf-8") as f:
+        json.dump(split_debug, f, ensure_ascii=False, indent=2)
 
     split_elapsed = time.time() - split_start
-    logger.info(f"并行分割完成, 耗时 {split_elapsed:.2f}s")
-
-    # ── Step 6: 跨批次 section 传播 + 合并 + 去重 ──
-    _propagate_section_between_batches(batch_results)
-
-    all_questions = []
-    for questions in batch_results:
-        all_questions.extend(questions)
+    logger.info(
+        "Baidu paper_cut_edu splitter completed: %s questions, %s regions, %.2fs",
+        len(all_questions),
+        split_debug.get("region_count", 0),
+        split_elapsed,
+    )
 
     before_dedup = len(all_questions)
     deduped = _dedup_questions(all_questions)
     after_dedup = len(deduped)
 
     if before_dedup > after_dedup:
-        logger.info(f"去重: {before_dedup} → {after_dedup} 道题目（移除 {before_dedup - after_dedup} 道重复）")
+        logger.info("question dedup: %s -> %s", before_dedup, after_dedup)
         console.print(f"[yellow]去重: 移除 {before_dedup - after_dedup} 道重复题目[/yellow]")
 
-    # 修复 leading image（页面顶部图属于上一题）
     _fix_leading_images(deduped)
-
-    # 修复 LLM 可能篡改的图片路径（如 imgs/xxx → /images/xxx）
     _normalize_image_paths(deduped)
 
-    # 为每道题赋全局唯一 uid（顺序字符串），供前端选择和导出时使用
     for i, q in enumerate(deduped):
         q["uid"] = str(i)
 
-    # ── Step 7: 保存结果 ──
-    with open(questions_file, 'w', encoding='utf-8') as f:
+    with open(questions_file, "w", encoding="utf-8") as f:
         json.dump(deduped, f, ensure_ascii=False, indent=2)
 
     if subject:
-        meta = {"subject": subject}
-        with open(meta_path, 'w', encoding='utf-8') as f:
+        meta = {"subject": subject, "split_provider": "baidu_paper_cut"}
+        with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
     total_elapsed = time.time() - step_start
     if deduped:
-        logger.info(f"分割完成: 共 {len(deduped)} 道题目, 总耗时 {total_elapsed:.2f}s")
+        logger.info("split completed: %s questions, %.2fs", len(deduped), total_elapsed)
         console.print(f"[bold green]✓ 成功分割 {len(deduped)} 道题目 (总耗时 {total_elapsed:.1f}s)[/bold green]")
-        return {"questions": deduped}
-    else:
-        logger.warning("未生成任何题目，请检查执行日志")
-        console.print("[yellow]⚠ 未生成任何题目[/yellow]")
-        err_str = " ".join(batch_errors).lower()
-        if "401" in err_str or "authentication" in err_str or "invalid" in err_str and "api key" in err_str:
-            warning_msg = f"步骤 3（分割题目）失败：LLM API Key 认证错误，请检查 {model_provider.upper()} API Key 配置"
-        elif "429" in err_str or "rate limit" in err_str or "quota" in err_str:
-            warning_msg = "步骤 3（分割题目）失败：LLM API 请求频率超限，请稍后重试"
-        elif batch_errors:
-            warning_msg = f"步骤 3（分割题目）失败：{batch_errors[0][:80]}"
-        else:
-            warning_msg = "步骤 3（分割题目）失败：AI 未能从图片中识别出题目，请确认图片内容包含试题"
-        return {
-            "questions": [],
-            "warnings": [warning_msg],
-        }
+        return {"questions": deduped, "warnings": split_warnings}
+
+    warning_msg = (
+        split_warnings[0]
+        if split_warnings
+        else "步骤 3（题目分割）失败：未能从 OCR 结果中形成题目，请检查题号识别或API切题结果。"
+    )
+    return {
+        "questions": [],
+        "warnings": [warning_msg],
+        "error_code": "QUESTION_SPLIT_EMPTY",
+    }
+
 
 
 def correct_questions_node(state: WorkflowState) -> dict:
-    """节点: OCR 纠错
+    """节点: 题目后处理.
 
-    对标记了 needs_correction 的题目执行 OCR 纠错。
-    未标记的题目直接通过，不消耗额外 LLM 调用。
+    对需要 OCR 纠错或缺少知识点标签的题目执行后处理。后处理上下文只取
+    题目 source_pages 对应 OCR 页，必要时带前后一页，不再默认发送整卷 OCR。
     """
-    console.print("[bold yellow]步骤 2.5: OCR 纠错检查[/bold yellow]")
+    console.print("[bold yellow]步骤 2.5: 题目纠错与知识点标注[/bold yellow]")
     step_start = time.time()
 
     questions = state.get("questions", [])
     if not questions:
-        logger.info("纠错跳过: 无题目")
+        logger.info("后处理跳过: 无题目")
         return {"questions": questions}
 
-    # 筛选需要纠错的题目
-    flagged = [q for q in questions if q.get("needs_correction", False)]
+    targets = [q for q in questions if _question_needs_postprocess(q)]
 
-    if not flagged:
-        logger.info("纠错跳过: 无需纠错的题目")
-        console.print("[green]✓ 所有题目均无 OCR 错误标记，跳过纠错[/green]")
+    if not targets:
+        logger.info("后处理跳过: 无需纠错且知识点标签已完整")
+        console.print("[green]✓ 所有题目均无需纠错且已有知识点标签[/green]")
         return {"questions": questions}
 
-    console.print(f"[cyan]发现 {len(flagged)} 道题目需要纠错（共 {len(questions)} 道）[/cyan]")
-    logger.info(f"开始纠错: {len(flagged)}/{len(questions)} 道题目")
-
-    # 加载 OCR 数据作为纠错上下文
-    # agent_input.json 现在保存的是批次数据（[[page, ...], ...]），需要还原为扁平页面列表
-    ocr_context = "{}"
     results_dir = state.get("results_dir") or settings.results_dir
-    agent_input_path = os.path.join(results_dir, "agent_input.json")
-    if os.path.exists(agent_input_path):
-        with open(agent_input_path, 'r', encoding='utf-8') as f:
-            raw = json.load(f)
-        # 兼容新格式（批次列表）和旧格式（扁平页面列表）
-        if raw and isinstance(raw[0], list):
-            # 新格式：按 page_index 去重，还原为扁平页面列表
-            seen = {}
-            for batch in raw:
-                for page in batch:
-                    idx = page.get("page_index", id(page))
-                    if idx not in seen:
-                        seen[idx] = page
-            flat_pages = [seen[k] for k in sorted(seen)]
-            ocr_context = json.dumps(flat_pages, ensure_ascii=False)
-        else:
-            ocr_context = json.dumps(raw, ensure_ascii=False)
+    ocr_pages = _load_ocr_pages_for_postprocess(results_dir)
+    subject = _read_subject_from_results(results_dir)
+    existing_tags = _load_existing_tags_for_postprocess(subject)
+    existing_tags_str = ",".join(existing_tags[:100]) if existing_tags else ""
+    batches = _build_postprocess_batches(targets, ocr_pages, max_questions=8)
 
-    # 调用纠错工具
+    console.print(
+        f"[cyan]发现 {len(targets)} 道题目需要后处理（共 {len(questions)} 道，"
+        f"{len(batches)} 个批次）[/cyan]"
+    )
+    logger.info(
+        "开始题目后处理: %s/%s questions, %s batches, subject=%s, tag_pool=%s",
+        len(targets),
+        len(questions),
+        len(batches),
+        subject or "",
+        len(existing_tags),
+    )
+
     from agents.error_correction.tools import correct_batch
 
     model_provider = state.get("model_provider", "openai")
     model_name = state.get("model_name")
-    flagged_json = json.dumps(flagged, ensure_ascii=False)
-    correct_kwargs = {
-        "questions_json": flagged_json,
-        "ocr_context": ocr_context,
-        "model_provider": model_provider,
-    }
-    if model_name:
-        correct_kwargs["model_name"] = model_name
-    result_str = correct_batch.invoke(correct_kwargs)
+    corrected: List[Dict[str, Any]] = []
+    failed_batches = 0
+    for batch_index, batch in enumerate(batches):
+        batch_questions = batch["questions"]
+        batch_pages = batch["ocr_pages"]
+        correct_kwargs = {
+            "questions_json": json.dumps(batch_questions, ensure_ascii=False),
+            "ocr_context": json.dumps(batch_pages, ensure_ascii=False),
+            "model_provider": model_provider,
+            "subject": subject,
+            "existing_tags": existing_tags_str,
+        }
+        if model_name:
+            correct_kwargs["model_name"] = model_name
 
-    # 解析纠错结果
-    try:
-        corrected = json.loads(result_str)
-    except (json.JSONDecodeError, TypeError):
-        logger.error(f"纠错结果解析失败: {result_str[:200]}")
-        console.print("[red]⚠ 纠错结果解析失败，保留原始题目[/red]")
-        return {"questions": questions}
+        result_str = correct_batch.invoke(correct_kwargs)
+        try:
+            parsed = json.loads(result_str)
+            if not isinstance(parsed, list):
+                raise TypeError("correct_batch result is not a list")
+            corrected.extend(item for item in parsed if isinstance(item, dict))
+        except (json.JSONDecodeError, TypeError) as e:
+            failed_batches += 1
+            logger.error(
+                "后处理批次 %s 解析失败: %s; result=%s",
+                batch_index,
+                e,
+                str(result_str)[:200],
+            )
+            console.print(f"[red]⚠ 后处理批次 {batch_index} 解析失败，保留该批原题[/red]")
 
-    # 按 (section_title, question_id) 复合键合并纠错结果，避免不同大题同号题互相覆盖
     corrected_map = {
         (q.get("section_title") or "", q["question_id"]): q
         for q in corrected
+        if q.get("question_id") is not None
     }
 
     merged = []
@@ -942,11 +1166,21 @@ def correct_questions_node(state: WorkflowState) -> dict:
         if key in corrected_map:
             cq = corrected_map[key]
             corrections = cq.pop("corrections_applied", [])
-            cq["needs_correction"] = False
-            cq["ocr_issues"] = None
-            cq["uid"] = q.get("uid")  # 纠错对象来自 LLM 输出，不含 uid，从原题还原
-            merged.append(cq)
-            logger.info(f"题目 {section}-{qid} 已纠错: {corrections}")
+            merged_q = dict(q)
+            merged_q.update(cq)
+            if not cq.get("knowledge_tags") and q.get("knowledge_tags"):
+                merged_q["knowledge_tags"] = q.get("knowledge_tags")
+            merged_q["needs_correction"] = False
+            merged_q["ocr_issues"] = None
+            merged_q["uid"] = q.get("uid")  # 纠错对象来自 LLM 输出，不含 uid，从原题还原
+            merged.append(merged_q)
+            logger.info(
+                "题目 %s-%s 已后处理: tags=%s corrections=%s",
+                section,
+                qid,
+                merged_q.get("knowledge_tags") or [],
+                corrections,
+            )
         else:
             merged.append(q)
 
@@ -955,8 +1189,17 @@ def correct_questions_node(state: WorkflowState) -> dict:
     with open(questions_file, 'w', encoding='utf-8') as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 
-    logger.info(f"纠错完成: {len(corrected)}/{len(flagged)} 道题目已修复，耗时 {time.time() - step_start:.2f}s")
-    console.print(f"[green]✓ 纠错完成: {len(corrected)} 道题目已修复[/green]")
+    logger.info(
+        "题目后处理完成: corrected=%s targets=%s failed_batches=%s elapsed=%.2fs",
+        len(corrected),
+        len(targets),
+        failed_batches,
+        time.time() - step_start,
+    )
+    console.print(
+        f"[green]✓ 题目后处理完成: {len(corrected)} 道题目已处理"
+        f"{'，' + str(failed_batches) + ' 个批次失败' if failed_batches else ''}[/green]"
+    )
 
     return {"questions": merged}
 
@@ -983,12 +1226,14 @@ def build_workflow():
 
         START → prepare_input → [中断] → split_questions → correct_questions → [中断] → export → END
 
-    split_questions 节点直接执行 OCR + 并行分割（不再依赖编排智能体）:
-    1. 调用 PaddleOCR API 解析图片（图片级并行）
-    2. 构建重叠批次 → 并行调用 split_batch（批次级并行）
-    3. 按 question_id 去重 → 保存结果
+    split_questions 节点直接执行 OCR + API 边界分题:
+    1. 调用 PaddleOCR API 解析图片
+    2. 调用百度 paper_cut_edu 获取题目候选框
+    3. 用题框、OCR bbox/order、题号文本组装 Question JSON
+    4. 按 question_id 去重 → 保存结果
 
-    纠错节点在分割后自动执行，仅对标记了 needs_correction 的题目调用纠错智能体。
+    后处理节点在分割后自动执行，对 needs_correction=True 或 knowledge_tags 为空的题目
+    执行 OCR 纠错与知识点标注。
 
     Returns:
         编译后的 CompiledStateGraph 实例

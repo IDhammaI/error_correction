@@ -220,7 +220,8 @@ def simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
         for page in result["layoutParsingResults"]:
             if "prunedResult" not in page:
                 continue
-            parsing_res = page["prunedResult"].get("parsing_res_list", [])
+            pruned_result = page["prunedResult"]
+            parsing_res = pruned_result.get("parsing_res_list", [])
             slim_blocks = []
             # block_label 归一化映射：OCR API 可能返回新标签，统一转为已知类型
             _label_normalize = {
@@ -238,15 +239,30 @@ def simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
                 # 统一 OCR 原始输出中的图片路径：imgs/ → /images/
                 if 'src="imgs/' in content:
                     content = content.replace('src="imgs/', 'src="/images/')
-                slim_blocks.append({
+                slim_block = {
                     "block_label": label,
                     "block_content": content,
                     "block_order": b.get("block_order"),
-                })
-            simplified.append({
+                }
+                for optional_key in (
+                    "block_id",
+                    "group_id",
+                    "block_bbox",
+                    "block_polygon_points",
+                    "layout_score",
+                ):
+                    if optional_key in b:
+                        slim_block[optional_key] = b.get(optional_key)
+                slim_blocks.append(slim_block)
+            simplified_page = {
                 "page_index": page_index,
                 "blocks": slim_blocks,
-            })
+            }
+            if "width" in pruned_result:
+                simplified_page["page_width"] = pruned_result.get("width")
+            if "height" in pruned_result:
+                simplified_page["page_height"] = pruned_result.get("height")
+            simplified.append(simplified_page)
             page_index += 1
     return simplified
 

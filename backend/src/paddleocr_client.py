@@ -8,6 +8,7 @@ import json
 import asyncio
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+from urllib.parse import urlsplit, urlunsplit
 import requests
 import aiohttp
 from rich.console import Console
@@ -62,6 +63,44 @@ class PaddleOCRClient:
             kwargs["proxies"] = {"http": None, "https": None}
         return kwargs
 
+    @property
+    def _public_download_kwargs(self) -> Dict[str, Any]:
+        from core.config import settings
+        kwargs: Dict[str, Any] = {}
+        if not settings.trust_env:
+            kwargs["proxies"] = {"http": None, "https": None}
+        return kwargs
+
+    @staticmethod
+    def _safe_public_url_for_error(url: str) -> str:
+        try:
+            parts = urlsplit(url)
+            return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+        except Exception:
+            return "<invalid-url>"
+
+    @staticmethod
+    def _validate_public_download_url(url: str) -> None:
+        parts = urlsplit(url)
+        host = parts.hostname or ""
+        if parts.scheme != "https" or not (host == "bcebos.com" or host.endswith(".bcebos.com")):
+            safe_url = PaddleOCRClient._safe_public_url_for_error(url)
+            raise ValueError(f"Unsafe PaddleOCR result download URL: {safe_url}")
+
+    @staticmethod
+    def _input_image_filename(file_prefix: str, page_index: int) -> str:
+        return f"input_image_{file_prefix}_{page_index}.jpg"
+
+    def _download_public_image(self, url: str, save_path: str) -> bool:
+        self._validate_public_download_url(url)
+        img_response = requests.get(url, **self._public_download_kwargs)
+        if img_response.status_code != 200:
+            return False
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, "wb") as img_file:
+            img_file.write(img_response.content)
+        return True
+
     # ── 同步方法 ──────────────────────────────────────────────
 
     def _submit_job(self, file_path: str) -> str:
@@ -110,8 +149,19 @@ class PaddleOCRClient:
 
     def _download_result(self, jsonl_url: str) -> List[Dict[str, Any]]:
         """下载 JSONL 结果并解析为结果列表"""
-        resp = requests.get(jsonl_url, **self._request_kwargs)
-        resp.raise_for_status()
+        self._validate_public_download_url(jsonl_url)
+        try:
+            resp = requests.get(jsonl_url, **self._public_download_kwargs)
+        except requests.RequestException as exc:
+            safe_url = self._safe_public_url_for_error(jsonl_url)
+            raise RuntimeError(
+                f"PaddleOCR result download failed: {exc.__class__.__name__} for {safe_url}"
+            ) from None
+        if resp.status_code >= 400:
+            safe_url = self._safe_public_url_for_error(jsonl_url)
+            raise RuntimeError(
+                f"PaddleOCR result download failed: HTTP {resp.status_code} for {safe_url}"
+            )
 
         results = []
         for line in resp.text.strip().split("\n"):
@@ -180,6 +230,18 @@ class PaddleOCRClient:
     def _save_images(self, result: Dict[str, Any], output_dir: str, file_prefix: str = ""):
         """下载并保存结果中的图片资源"""
         for i, res in enumerate(result.get("layoutParsingResults", [])):
+            input_image_url = res.get("inputImage")
+            if input_image_url:
+                input_filename = self._input_image_filename(file_prefix, i)
+                input_path = os.path.join(output_dir, input_filename)
+                try:
+                    if self._download_public_image(input_image_url, input_path):
+                        console.print(f"[green]Input image saved: {input_path}[/green]")
+                    else:
+                        console.print(f"[yellow]Input image download failed: {input_filename}[/yellow]")
+                except Exception as e:
+                    console.print(f"[yellow]Input image download error: {input_filename} - {e}[/yellow]")
+
             markdown_text = res.get("markdown", {}).get("text", "")
             if markdown_text:
                 md_filename = os.path.join(output_dir, f"{file_prefix}_doc_{i}.md")
@@ -190,12 +252,8 @@ class PaddleOCRClient:
             images = res.get("markdown", {}).get("images", {})
             for img_path, img_url in images.items():
                 full_img_path = os.path.join(output_dir, img_path)
-                os.makedirs(os.path.dirname(full_img_path), exist_ok=True)
                 try:
-                    img_response = requests.get(img_url)
-                    if img_response.status_code == 200:
-                        with open(full_img_path, "wb") as img_file:
-                            img_file.write(img_response.content)
+                    if self._download_public_image(img_url, full_img_path):
                         console.print(f"[green]图片已保存: {full_img_path}[/green]")
                     else:
                         console.print(f"[yellow]图片下载失败: {img_path}[/yellow]")
@@ -205,11 +263,8 @@ class PaddleOCRClient:
             output_images = res.get("outputImages", {})
             for img_name, img_url in output_images.items():
                 try:
-                    img_response = requests.get(img_url)
-                    if img_response.status_code == 200:
-                        filename = os.path.join(output_dir, f"{img_name}_{file_prefix}_{i}.jpg")
-                        with open(filename, "wb") as f:
-                            f.write(img_response.content)
+                    filename = os.path.join(output_dir, f"{img_name}_{file_prefix}_{i}.jpg")
+                    if self._download_public_image(img_url, filename):
                         console.print(f"[green]图片已保存: {filename}[/green]")
                 except Exception as e:
                     console.print(f"[yellow]图片下载出错: {img_name} - {e}[/yellow]")
@@ -258,9 +313,20 @@ class PaddleOCRClient:
 
     async def _async_download_result(self, session: aiohttp.ClientSession, jsonl_url: str) -> List[Dict[str, Any]]:
         """异步下载 JSONL 结果"""
-        async with session.get(jsonl_url) as resp:
-            resp.raise_for_status()
-            text = await resp.text()
+        self._validate_public_download_url(jsonl_url)
+        try:
+            async with session.get(jsonl_url) as resp:
+                if resp.status >= 400:
+                    safe_url = self._safe_public_url_for_error(jsonl_url)
+                    raise RuntimeError(
+                        f"PaddleOCR result download failed: HTTP {resp.status} for {safe_url}"
+                    )
+                text = await resp.text()
+        except aiohttp.ClientError as exc:
+            safe_url = self._safe_public_url_for_error(jsonl_url)
+            raise RuntimeError(
+                f"PaddleOCR result download failed: {exc.__class__.__name__} for {safe_url}"
+            ) from None
 
         results = []
         for line in text.strip().split("\n"):
@@ -310,6 +376,7 @@ class PaddleOCRClient:
     async def _async_download_image(self, session: aiohttp.ClientSession, url: str, save_path: str):
         """异步下载单张图片"""
         try:
+            self._validate_public_download_url(url)
             async with session.get(url) as response:
                 if response.status == 200:
                     content = await response.read()
@@ -339,6 +406,14 @@ class PaddleOCRClient:
                 console.print(f"[green]Markdown 已保存: {md_filename}[/green]")
 
             download_tasks = []
+            input_image_url = res.get("inputImage")
+            if input_image_url:
+                input_filename = self._input_image_filename(file_prefix, i)
+                input_path = os.path.join(output_dir, input_filename)
+                download_tasks.append(
+                    self._async_download_image(session, input_image_url, input_path)
+                )
+
             images = res.get("markdown", {}).get("images", {})
             for img_path, img_url in images.items():
                 full_img_path = os.path.join(output_dir, img_path)

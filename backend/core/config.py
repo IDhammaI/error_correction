@@ -137,12 +137,15 @@ class OpenAICompatibleConfig(LLMProviderConfig):
         from langchain_openai import ChatOpenAI
         import httpx
         from core.config import settings
-        http_client = httpx.Client(trust_env=settings.trust_env)
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        http_client = httpx.Client(trust_env=settings.trust_env, timeout=timeout)
         kwargs = dict(
             model=model, 
             api_key=self.api_key, 
             temperature=temperature,
-            http_client=http_client
+            http_client=http_client,
+            timeout=(10.0, 120.0),
+            max_retries=0,
         )
         if self.base_url:
             kwargs["base_url"] = self.base_url
@@ -165,11 +168,14 @@ class AnthropicCompatibleConfig(LLMProviderConfig):
         from langchain_anthropic import ChatAnthropic
         import httpx
         from core.config import settings
-        http_client = httpx.Client(trust_env=settings.trust_env)
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        http_client = httpx.Client(trust_env=settings.trust_env, timeout=timeout)
         return ChatAnthropic(
             model=model, api_key=self.api_key,
             base_url=self.base_url or None, temperature=temperature,
-            http_client=http_client
+            http_client=http_client,
+            timeout=120.0,
+            max_retries=0,
         )
 
 

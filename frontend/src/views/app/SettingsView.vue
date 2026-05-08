@@ -382,17 +382,28 @@ const makePaddleOCRProvider = (data = {}) => ({
   api_key_hint: data.api_key_hint || data.api_token_hint || '',
 })
 
+const makeBaiduPaperCutProvider = (data = {}) => ({
+  id: data.id || genId(),
+  name: data.name || '',
+  api_key: data.api_key || '',
+  base_url: data.base_url || data.api_url || '',
+  api_key_set: data.api_key_set || data.api_token_set || false,
+  api_key_hint: data.api_key_hint || data.api_token_hint || '',
+})
+
 const openaiProviders = ref([])
 const anthropicProviders = ref([])
 const paddleocrProviders = ref([])
+const baiduPaperCutProviders = ref([])
 
 // 当前激活的 provider ID（每类只能激活一个）
 const activeOpenaiId = ref(null)
 const activeAnthropicId = ref(null)
 const activePaddleocrId = ref(null)
+const activeBaiduPaperCutId = ref(null)
 
 const toggleActive = (type, id) => {
-  const refMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
+  const refMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId, baidu_paper_cut: activeBaiduPaperCutId }
   const target = refMap[type]
   const isActivating = target.value !== id
   target.value = isActivating ? id : null
@@ -411,15 +422,17 @@ const toggleActive = (type, id) => {
 const systemOpenaiProviders = ref([])
 const systemAnthropicProviders = ref([])
 const systemPaddleocrProviders = ref([])
+const systemBaiduPaperCutProviders = ref([])
 const systemActiveOpenaiId = ref(null)
 const systemActiveAnthropicId = ref(null)
 const systemActivePaddleocrId = ref(null)
+const systemActiveBaiduPaperCutId = ref(null)
 const systemLoading = ref(false)
 const systemSaving = ref(false)
 const systemConfigLoaded = ref(false)
 
 const toggleSystemActive = async (type, id) => {
-  const refMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId }
+  const refMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId, baidu_paper_cut: systemActiveBaiduPaperCutId }
   const target = refMap[type]
   const isActivating = target.value !== id
   target.value = isActivating ? id : null
@@ -474,6 +487,9 @@ const loadConfig = async () => {
       paddleocrProviders.value = []
     }
     activePaddleocrId.value = cfg.active_paddleocr_id ?? null
+
+    baiduPaperCutProviders.value = (cfg.baidu_paper_cut_providers || []).map(p => makeBaiduPaperCutProvider(p))
+    activeBaiduPaperCutId.value = cfg.active_baidu_paper_cut_id ?? null
   } catch (e) {
     pushToast('error', '加载配置失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -506,9 +522,16 @@ const saveConfig = async () => {
       return item
     })
 
+    payload.baidu_paper_cut_providers = baiduPaperCutProviders.value.map(p => {
+      const item = { id: p.id, name: p.name, api_url: p.base_url }
+      if (p.api_key) item.api_key = p.api_key
+      return item
+    })
+
     payload.active_openai_id = activeOpenaiId.value
     payload.active_anthropic_id = activeAnthropicId.value
     payload.active_paddleocr_id = activePaddleocrId.value
+    payload.active_baidu_paper_cut_id = activeBaiduPaperCutId.value
 
     await updateAppConfig(payload)
     doFetchStatus()
@@ -527,9 +550,11 @@ const loadSystemConfig = async () => {
     systemOpenaiProviders.value = (cfg.openai_providers || []).map(p => makeOpenAIProvider(p))
     systemAnthropicProviders.value = (cfg.anthropic_providers || []).map(p => makeAnthropicProvider(p))
     systemPaddleocrProviders.value = (cfg.paddleocr_providers || []).map(p => makePaddleOCRProvider(p))
+    systemBaiduPaperCutProviders.value = (cfg.baidu_paper_cut_providers || []).map(p => makeBaiduPaperCutProvider(p))
     systemActiveOpenaiId.value = cfg.active_openai_id ?? null
     systemActiveAnthropicId.value = cfg.active_anthropic_id ?? null
     systemActivePaddleocrId.value = cfg.active_paddleocr_id ?? null
+    systemActiveBaiduPaperCutId.value = cfg.active_baidu_paper_cut_id ?? null
     systemConfigLoaded.value = true
   } catch (e) {
     pushToast('error', '加载系统托管配置失败: ' + (e instanceof Error ? e.message : String(e)))
@@ -558,9 +583,15 @@ const saveSystemConfig = async () => {
       if (p.api_key) item.api_token = p.api_key
       return item
     })
+    payload.baidu_paper_cut_providers = systemBaiduPaperCutProviders.value.map(p => {
+      const item = { id: p.id, name: p.name, api_url: p.base_url }
+      if (p.api_key) item.api_key = p.api_key
+      return item
+    })
     payload.active_openai_id = systemActiveOpenaiId.value
     payload.active_anthropic_id = systemActiveAnthropicId.value
     payload.active_paddleocr_id = systemActivePaddleocrId.value
+    payload.active_baidu_paper_cut_id = systemActiveBaiduPaperCutId.value
 
     await updateAdminSystemConfig(payload)
     doFetchStatus()
@@ -577,7 +608,7 @@ let autoSaveTimer = null
 const configLoaded = ref(false)
 
 watch(
-  [openaiProviders, anthropicProviders, paddleocrProviders, activeOpenaiId, activeAnthropicId, activePaddleocrId],
+  [openaiProviders, anthropicProviders, paddleocrProviders, baiduPaperCutProviders, activeOpenaiId, activeAnthropicId, activePaddleocrId, activeBaiduPaperCutId],
   () => {
     if (!configLoaded.value) return
     clearTimeout(autoSaveTimer)
@@ -587,8 +618,8 @@ watch(
 )
 
 const removeProvider = async (type, idx) => {
-  const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
-  const activeMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
+  const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders, baidu_paper_cut: baiduPaperCutProviders }
+  const activeMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId, baidu_paper_cut: activeBaiduPaperCutId }
   const list = listMap[type]
   if (list.value[idx]?.id === activeMap[type].value) activeMap[type].value = null
   list.value.splice(idx, 1)
@@ -600,8 +631,8 @@ const removeProvider = async (type, idx) => {
 }
 
 const removeSystemProvider = async (type, idx) => {
-  const listMap = { openai: systemOpenaiProviders, anthropic: systemAnthropicProviders, paddleocr: systemPaddleocrProviders }
-  const activeMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId }
+  const listMap = { openai: systemOpenaiProviders, anthropic: systemAnthropicProviders, paddleocr: systemPaddleocrProviders, baidu_paper_cut: systemBaiduPaperCutProviders }
+  const activeMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId, baidu_paper_cut: systemActiveBaiduPaperCutId }
   const list = listMap[type]
   if (list.value[idx]?.id === activeMap[type].value) activeMap[type].value = null
   list.value.splice(idx, 1)
@@ -633,7 +664,7 @@ const openEditDialog = (type, provider, idx) => {
 
 const onDialogConfirm = async (formData) => {
   if (dialogEditIndex.value >= 0) {
-    const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
+    const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders, baidu_paper_cut: baiduPaperCutProviders }
     const list = listMap[dialogType.value]
     const existing = list.value[dialogEditIndex.value]
     if (existing) {
@@ -652,10 +683,14 @@ const onDialogConfirm = async (formData) => {
       const p = makeAnthropicProvider(formData)
       anthropicProviders.value.push(p)
       if (anthropicProviders.value.length === 1) activeAnthropicId.value = p.id
-    } else {
+    } else if (dialogType.value === 'paddleocr') {
       const p = makePaddleOCRProvider({ name: formData.name, api_key: formData.api_key, api_url: formData.base_url, model: formData.model_name, use_doc_orientation: formData.use_doc_orientation, use_doc_unwarping: formData.use_doc_unwarping, use_chart_recognition: formData.use_chart_recognition })
       paddleocrProviders.value.push(p)
       if (paddleocrProviders.value.length === 1) activePaddleocrId.value = p.id
+    } else {
+      const p = makeBaiduPaperCutProvider(formData)
+      baiduPaperCutProviders.value.push(p)
+      if (baiduPaperCutProviders.value.length === 1) activeBaiduPaperCutId.value = p.id
     }
   }
   const isEdit = dialogEditIndex.value >= 0
@@ -689,7 +724,7 @@ const openSystemEditDialog = (type, provider, idx) => {
 
 const onSystemDialogConfirm = async (formData) => {
   if (systemDialogEditIndex.value >= 0) {
-    const listMap = { openai: systemOpenaiProviders, anthropic: systemAnthropicProviders, paddleocr: systemPaddleocrProviders }
+    const listMap = { openai: systemOpenaiProviders, anthropic: systemAnthropicProviders, paddleocr: systemPaddleocrProviders, baidu_paper_cut: systemBaiduPaperCutProviders }
     const list = listMap[systemDialogType.value]
     const existing = list.value[systemDialogEditIndex.value]
     if (existing) {
@@ -708,10 +743,14 @@ const onSystemDialogConfirm = async (formData) => {
       const p = makeAnthropicProvider(formData)
       systemAnthropicProviders.value.push(p)
       if (systemAnthropicProviders.value.length === 1) systemActiveAnthropicId.value = p.id
-    } else {
+    } else if (systemDialogType.value === 'paddleocr') {
       const p = makePaddleOCRProvider({ name: formData.name, api_key: formData.api_key, api_url: formData.base_url, model: formData.model_name, use_doc_orientation: formData.use_doc_orientation, use_doc_unwarping: formData.use_doc_unwarping, use_chart_recognition: formData.use_chart_recognition })
       systemPaddleocrProviders.value.push(p)
       if (systemPaddleocrProviders.value.length === 1) systemActivePaddleocrId.value = p.id
+    } else {
+      const p = makeBaiduPaperCutProvider(formData)
+      systemBaiduPaperCutProviders.value.push(p)
+      if (systemBaiduPaperCutProviders.value.length === 1) systemActiveBaiduPaperCutId.value = p.id
     }
   }
 
@@ -917,6 +956,7 @@ watch(
               <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
               <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
               <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+              <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
             </div>
 
             <div v-else class="space-y-6">
@@ -939,6 +979,13 @@ watch(
                 @add="openSystemAddDialog('paddleocr')" @toggle-active="(id) => toggleSystemActive('paddleocr', id)"
                 @edit="(p, idx) => openSystemEditDialog('paddleocr', p, idx)"
                 @remove="(idx) => removeSystemProvider('paddleocr', idx)" />
+
+              <ProviderSection icon="fa-solid fa-scissors" title="Baidu Paper Cut"
+                subtitle="paper_cut_edu question boundary API" :providers="systemBaiduPaperCutProviders"
+                :active-id="systemActiveBaiduPaperCutId" @add="openSystemAddDialog('baidu_paper_cut')"
+                @toggle-active="(id) => toggleSystemActive('baidu_paper_cut', id)"
+                @edit="(p, idx) => openSystemEditDialog('baidu_paper_cut', p, idx)"
+                @remove="(idx) => removeSystemProvider('baidu_paper_cut', idx)" />
             </div>
           </section>
 
@@ -1073,6 +1120,13 @@ watch(
             @toggle-active="(id) => toggleActive('paddleocr', id)"
             @edit="(p, idx) => openEditDialog('paddleocr', p, idx)"
             @remove="(idx) => removeProvider('paddleocr', idx)" />
+
+          <ProviderSection icon="fa-solid fa-scissors" title="Baidu Paper Cut"
+            subtitle="paper_cut_edu question boundary API" :providers="baiduPaperCutProviders"
+            :active-id="activeBaiduPaperCutId" @add="openAddDialog('baidu_paper_cut')"
+            @toggle-active="(id) => toggleActive('baidu_paper_cut', id)"
+            @edit="(p, idx) => openEditDialog('baidu_paper_cut', p, idx)"
+            @remove="(idx) => removeProvider('baidu_paper_cut', idx)" />
         </div>
       </div>
 
