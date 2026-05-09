@@ -35,12 +35,12 @@ class QuestionSplitResult(BaseModel):
 
 
 class CorrectedQuestion(BaseModel):
-    """后处理后的单道题目"""
+    """纠错后的单道题目"""
     question_id: str = Field(description="题号")
     section_title: Optional[str] = Field(default=None, description="所属大题标题，透传自分割结果，不需要修改")
     question_type: Literal["选择题", "填空题", "解答题", "判断题"] = Field(description="题目类型")
-    content_blocks: List[ContentBlock] = Field(description="后处理后的题干内容块列表")
-    options: Optional[List[str]] = Field(default=None, description="后处理后的选项列表")
+    content_blocks: List[ContentBlock] = Field(description="纠错后的题干内容块列表")
+    options: Optional[List[str]] = Field(default=None, description="纠错后的选项列表")
     option_images: Optional[List[str]] = Field(default=None, description="选项对应的图片路径列表，与 options 按索引一一对应")
     has_formula: bool = Field(default=False, description="是否包含数学公式")
     has_image: bool = Field(default=False, description="是否包含图片")
@@ -50,5 +50,5 @@ class CorrectedQuestion(BaseModel):
 
 
 class CorrectionResult(BaseModel):
-    """题目后处理结果"""
-    corrected_questions: List[CorrectedQuestion] = Field(description="后处理后的题目列表")
+    """纠错结果"""
+    corrected_questions: List[CorrectedQuestion] = Field(description="纠错后的题目列表")

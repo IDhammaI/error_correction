@@ -13,7 +13,7 @@ const { pushToast } = useToast()
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  type: { type: String, default: 'openai' }, // 'openai' | 'anthropic' | 'paddleocr' | 'baidu_paper_cut'
+  type: { type: String, default: 'openai' }, // 'openai' | 'anthropic' | 'paddleocr'
   editData: { type: Object, default: null }, // null=新增, object=编辑
 })
 
@@ -64,19 +64,6 @@ const typeConfig = computed(() => ({
     secretPlaceholder: '输入 API Token',
     urlLabel: 'API URL',
   },
-  baidu_paper_cut: {
-    title: isEdit.value ? '编辑百度切题服务' : '添加百度切题服务',
-    iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
-    iconCls: 'fa-scissors text-slate-600 dark:text-slate-400',
-    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
-    namePlaceholder: '例如：百度 paper_cut_edu',
-    urlPlaceholder: 'https://aip.baidubce.com/rest/2.0/ocr/v1/paper_cut_edu',
-    modelPlaceholder: '',
-    defaultName: 'Baidu Paper Cut',
-    secretLabel: 'API Key',
-    secretPlaceholder: '输入 API Key',
-    urlLabel: 'API URL',
-  },
 }[props.type]))
 
 const defaultForm = () => ({
@@ -100,7 +87,7 @@ const fetchingModels = ref(false)
 const fetchModelError = ref('')
 
 const canFetchModels = computed(() => {
-  if (props.type !== 'openai' && props.type !== 'anthropic') return false
+  if (props.type === 'paddleocr') return false
   // 需要有 API Key（新输入或已设置）
   const hasKey = form.value.api_key || (props.editData?.api_key_set)
   return !!hasKey
@@ -273,7 +260,7 @@ const selectOption = (field, value) => {
       </div>
 
       <!-- 获取模型列表按钮（仅 OpenAI / Anthropic） -->
-      <div v-if="type === 'openai' || type === 'anthropic'" class="flex items-center gap-3">
+      <div v-if="type !== 'paddleocr'" class="flex items-center gap-3">
         <BaseButton variant="secondary" @click="fetchModels" :disabled="!canFetchModels || fetchingModels"
           class="!h-8 !px-3 !text-[11px] !rounded-lg">
           <i class="fa-solid text-[10px]" :class="fetchingModels ? 'fa-circle-notch fa-spin' : 'fa-arrows-rotate'"></i>
@@ -282,7 +269,7 @@ const selectOption = (field, value) => {
         <span v-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
       </div>
 
-      <div v-if="type !== 'baidu_paper_cut'" class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
+      <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
         <div>
           <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
             {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}

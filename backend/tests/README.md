@@ -33,7 +33,6 @@ python -m pytest tests/ -v
 # 运行单个测试文件
 python -m pytest tests/test_workflow_helpers.py -v
 python -m pytest tests/test_crud.py -v
-python -m pytest tests/test_baidu_paper_cut_client.py tests/test_page_images.py tests/test_coordinate_mapper.py tests/test_question_splitter.py -v
 
 # 运行某个测试类
 python -m pytest tests/test_workflow_helpers.py::TestSimplifyOcrResults -v
@@ -60,10 +59,6 @@ backend/tests/
 ├── test_schemas.py              # Pydantic schema 校验测试
 ├── test_question_tools.py       # 题目工具函数测试
 ├── test_correct_node.py         # 纠错节点合并逻辑测试
-├── test_baidu_paper_cut_client.py # 百度 paper_cut_edu 客户端单测（mock requests，不访问外网）
-├── test_page_images.py          # OCR 页图源提取与 PDF outputImages 查找单测
-├── test_coordinate_mapper.py    # OCR/分题 API bbox 坐标归一化与可信度单测
-├── test_question_splitter.py     # API 框 + PaddleOCR block 的题目切分规则单测
 ├── test_utils.py                # 通用工具函数测试
 ├── test_benchmark_metrics.py    # benchmark 评测指标测试
 ├── test_solve_schemas.py        # 解题结果 schema 测试
@@ -88,7 +83,7 @@ backend/tests/
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
-| `TestSimplifyOcrResults` | `_simplify_ocr_results` | 12 | OCR 原始数据简化：text/image/chart block 处理、bbox 路径生成、多页索引、保留切题所需版面字段 |
+| `TestSimplifyOcrResults` | `_simplify_ocr_results` | 12 | OCR 原始数据简化：text/image/chart block 处理、bbox 路径生成、多页索引、字段过滤 |
 | `TestBuildOverlappingBatches` | `_build_overlapping_batches` | 9 | 重叠批次构建：边界情况、不同页数/batch_size/overlap 组合 |
 | `TestQuestionRichness` | `_question_richness` | 6 | 题目丰富度计算：content_blocks + options 字符数 |
 | `TestSortKey` | `_sort_key` | 7 | 题号排序：数字优先、混合排序 |
@@ -164,31 +159,14 @@ backend/tests/
 
 ### test_correct_node.py
 
-测试 `backend/src/workflow.py` 中 `correct_questions_node` 的后处理合并逻辑（mock 纠错/标签工具）：
+测试 `backend/src/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
 
 | 测试方法 | 说明 |
 |----------|------|
 | `test_skip_when_no_questions` | 空题目列表直接跳过 |
-| `test_skip_when_no_flagged` | 无需纠错且已有 knowledge_tags 时跳过 |
-| `test_merge_corrected` | 后处理结果按 question_id 合并回原列表，非目标题不受影响 |
-| `test_invalid_json_keeps_original` | 后处理返回无效 JSON 时保留原始题目 |
-| `test_missing_tags_are_postprocessed` | 缺少 knowledge_tags 的题目进入后处理，并只传 source_pages 对应 OCR 页 |
-
-### test_baidu_paper_cut_client.py
-
-测试 `backend/src/baidu_paper_cut_client.py`：API Key 必填、Bearer Header、base64 payload、鉴权失败错误码、并发页序保持。
-
-### test_page_images.py
-
-测试 `backend/src/question_splitter/page_images.py`：图片输入复用原图，PDF 输入优先复用 PaddleOCR `outputImages` 页图，并在页图缺失时产生降级告警。
-
-### test_coordinate_mapper.py
-
-测试 `backend/src/question_splitter/coordinate_mapper.py`：OCR block 与百度题框按各自页面尺寸归一化，记录 high/medium/low 坐标可信度，避免不同分辨率直接比较。
-
-### test_question_splitter.py
-
-测试 `backend/src/question_splitter/`：百度题框与 PaddleOCR block 的归属、选项提取、公式/图片保留、归一化坐标分配、低可信坐标降级，以及 API 无题框时按 OCR 题号降级切分。
+| `test_skip_when_no_flagged` | 无 needs_correction 标记时跳过 |
+| `test_merge_corrected` | 纠错结果按 question_id 合并回原列表，未标记题目不受影响 |
+| `test_invalid_json_keeps_original` | 纠错返回无效 JSON 时保留原始题目 |
 
 ### test_benchmark_metrics.py
 

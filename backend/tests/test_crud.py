@@ -22,7 +22,6 @@ from tests.conftest import make_question
 from db.crud import (
     compute_content_hash,
     get_active_provider,
-    get_user_providers,
     save_questions_to_db,
     save_user_providers,
     get_existing_subjects,
@@ -618,61 +617,6 @@ class TestGetDailyCounts:
 
 
 class TestProviderSelection:
-    def test_save_user_providers_supports_baidu_paper_cut(self, db):
-        user = User(id=1, username="test", email="test@example.com", password_hash="x")
-        db.add(user)
-        db.commit()
-
-        save_user_providers(db, user.id, {
-            "openai_providers": [],
-            "anthropic_providers": [],
-            "paddleocr_providers": [],
-            "baidu_paper_cut_providers": [{
-                "id": "baidu-1",
-                "name": "Baidu Paper Cut",
-                "api_key": "bce-v3/test",
-                "base_url": "https://aip.baidubce.com/rest/2.0/ocr/v1/paper_cut_edu",
-            }],
-            "active_openai_id": None,
-            "active_anthropic_id": None,
-            "active_paddleocr_id": None,
-            "active_baidu_paper_cut_id": "baidu-1",
-        })
-
-        provider = get_active_provider(db, user.id, "baidu_paper_cut")
-        assert provider is not None
-        assert provider.api_key == "bce-v3/test"
-
-        payload = get_user_providers(db, user.id)
-        assert payload["active_baidu_paper_cut_id"] == "baidu-1"
-        assert payload["baidu_paper_cut_providers"][0]["api_key_set"] is True
-
-    def test_save_user_providers_preserves_categories_missing_from_payload(self, db):
-        user = User(id=1, username="test", email="test@example.com", password_hash="x")
-        db.add(user)
-        db.add(ProviderConfig(
-            id="baidu-1",
-            user_id=user.id,
-            category="baidu_paper_cut",
-            name="Baidu",
-            is_active=True,
-            api_key="bce-v3/test",
-        ))
-        db.commit()
-
-        save_user_providers(db, user.id, {
-            "openai_providers": [],
-            "anthropic_providers": [],
-            "paddleocr_providers": [],
-            "active_openai_id": None,
-            "active_anthropic_id": None,
-            "active_paddleocr_id": None,
-        })
-
-        provider = get_active_provider(db, user.id, "baidu_paper_cut")
-        assert provider is not None
-        assert provider.api_key == "bce-v3/test"
-
     def test_save_user_providers_allows_clearing_active_provider(self, db):
         user = User(id=1, username="test", email="test@example.com", password_hash="x")
         db.add(user)

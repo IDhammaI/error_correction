@@ -45,11 +45,9 @@ def _empty_provider_payload() -> dict:
         "openai_providers": [],
         "anthropic_providers": [],
         "paddleocr_providers": [],
-        "baidu_paper_cut_providers": [],
         "active_openai_id": None,
         "active_anthropic_id": None,
         "active_paddleocr_id": None,
-        "active_baidu_paper_cut_id": None,
     }
 
 
@@ -64,13 +62,11 @@ def get_user_providers(db: Session, user_id: int) -> dict:
         "openai": "openai_providers",
         "anthropic": "anthropic_providers",
         "paddleocr": "paddleocr_providers",
-        "baidu_paper_cut": "baidu_paper_cut_providers",
     }
     active_key = {
         "openai": "active_openai_id",
         "anthropic": "active_anthropic_id",
         "paddleocr": "active_paddleocr_id",
-        "baidu_paper_cut": "active_baidu_paper_cut_id",
     }
 
     for p in providers:
@@ -94,13 +90,11 @@ def get_system_providers(db: Session) -> dict:
         "openai": "openai_providers",
         "anthropic": "anthropic_providers",
         "paddleocr": "paddleocr_providers",
-        "baidu_paper_cut": "baidu_paper_cut_providers",
     }
     active_key = {
         "openai": "active_openai_id",
         "anthropic": "active_anthropic_id",
         "paddleocr": "active_paddleocr_id",
-        "baidu_paper_cut": "active_baidu_paper_cut_id",
     }
 
     for p in providers:
@@ -130,7 +124,6 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
         "openai": data.get("active_openai_id"),
         "anthropic": data.get("active_anthropic_id"),
         "paddleocr": data.get("active_paddleocr_id"),
-        "baidu_paper_cut": data.get("active_baidu_paper_cut_id"),
     }
 
     # 读取已有配置（用于保留未重新提交的 api_key）
@@ -149,7 +142,6 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
         "openai_providers": "openai",
         "anthropic_providers": "anthropic",
         "paddleocr_providers": "paddleocr",
-        "baidu_paper_cut_providers": "baidu_paper_cut",
     }
 
     for list_key, category in category_map.items():
@@ -219,7 +211,6 @@ def save_system_providers(db: Session, data: dict) -> None:
         "openai": data.get("active_openai_id"),
         "anthropic": data.get("active_anthropic_id"),
         "paddleocr": data.get("active_paddleocr_id"),
-        "baidu_paper_cut": data.get("active_baidu_paper_cut_id"),
     }
 
     existing = {p.id: p for p in db.query(SystemProviderConfig).all()}
@@ -231,7 +222,6 @@ def save_system_providers(db: Session, data: dict) -> None:
         "openai_providers": "openai",
         "anthropic_providers": "anthropic",
         "paddleocr_providers": "paddleocr",
-        "baidu_paper_cut_providers": "baidu_paper_cut",
     }
 
     for list_key, category in category_map.items():

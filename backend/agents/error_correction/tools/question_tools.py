@@ -202,66 +202,37 @@ OCR数据：
 
 
 @tool(parse_docstring=True)
-def correct_batch(
-    questions_json: str,
-    ocr_context: str,
-    model_provider: str = "openai",
-    model_name: str = "",
-    subject: str = "",
-    existing_tags: str = "",
-) -> str:
-    """对一批题目进行OCR纠错和知识点标注，返回处理后的题目列表JSON
+def correct_batch(questions_json: str, ocr_context: str, model_provider: str = "openai", model_name: str = "") -> str:
+    """对一批疑似OCR错误的题目进行纠错，返回纠错后的题目列表JSON
 
-    将需要纠错或缺少知识点标签的题目发送给内层后处理智能体
-    （create_agent + ToolStrategy），返回经过Pydantic校验的处理结果。
+    将标记了 needs_correction 的题目发送给内层纠错智能体（create_agent + ToolStrategy），
+    返回经过Pydantic校验的纠错结果。
 
     Args:
-        questions_json: 待处理题目列表的JSON字符串
+        questions_json: 待纠错题目列表的JSON字符串
         ocr_context: 对应页面的原始OCR数据JSON字符串，作为纠错参考上下文
         model_provider: 模型供应商，"openai"（默认）或 "anthropic"
         model_name: 指定模型名称（可选），为空时使用 provider 默认模型
-        subject: 试卷所属科目，用于辅助知识点标注
-        existing_tags: 已有知识点标签池，用逗号分隔；应优先复用
 
     Returns:
-        处理后的题目列表JSON字符串
+        纠错后的题目列表JSON字符串
     """
-    logger.info(
-        "correct_batch called (provider=%s, model=%s, subject=%s)",
-        model_provider,
-        model_name or "default",
-        subject,
-    )
+    logger.info(f"correct_batch called (provider={model_provider}, model={model_name or 'default'})")
 
     from ..agent import invoke_correction
 
     effective_model = model_name if model_name else None
 
-    tag_context = ""
-    if subject.strip() or existing_tags.strip():
-        tag_context = "\n## 知识点标注上下文"
-        if subject.strip():
-            tag_context += f"\n- 本试卷科目：{subject.strip()}"
-        if existing_tags.strip():
-            tag_context += f"\n- 已有知识点标签池（请优先复用）：{existing_tags.strip()}"
+    prompt = f"""请修复以下题目中的 OCR 错误。
 
-    prompt = f"""请对以下题目执行后处理：修复 OCR 错误，并补全知识点标签。
-
-## 待处理题目
+## 待纠错题目
 {questions_json}
-{tag_context}
 
 ## 原始 OCR 参考数据
 以下是这些题目对应页面的原始 OCR block 数据，可作为纠错参考：
 {ocr_context}
 
-## 处理规则
-1. 只修复明确的 OCR 错误，不改写题意。
-2. 每道题都要尽量补全 knowledge_tags，通常给 1-3 个。
-3. 标签使用二级知识点短语，避免“数学”“选择题”“计算题”这类过宽或题型标签。
-4. 有已有知识点标签池时优先复用；只有明显不匹配时才创建新标签。
-5. 如果题目信息不足以判断知识点，可以返回空列表，不要硬编。
-6. 输出处理后的完整结构化题目数据，并在 corrections_applied 中记录 OCR 修复；如果只补标签没有修正文案，也可记录“补全知识点标签”。"""
+请逐题修复标记的 OCR 问题，输出纠错后的结构化数据。"""
 
     try:
         structured = _retry_invoke(

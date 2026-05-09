@@ -87,10 +87,6 @@ class PaddleOCRClient:
             safe_url = PaddleOCRClient._safe_public_url_for_error(url)
             raise ValueError(f"Unsafe PaddleOCR result download URL: {safe_url}")
 
-    @staticmethod
-    def _input_image_filename(file_prefix: str, page_index: int) -> str:
-        return f"input_image_{file_prefix}_{page_index}.jpg"
-
     def _download_public_image(self, url: str, save_path: str) -> bool:
         self._validate_public_download_url(url)
         img_response = requests.get(url, **self._public_download_kwargs)
@@ -230,18 +226,6 @@ class PaddleOCRClient:
     def _save_images(self, result: Dict[str, Any], output_dir: str, file_prefix: str = ""):
         """下载并保存结果中的图片资源"""
         for i, res in enumerate(result.get("layoutParsingResults", [])):
-            input_image_url = res.get("inputImage")
-            if input_image_url:
-                input_filename = self._input_image_filename(file_prefix, i)
-                input_path = os.path.join(output_dir, input_filename)
-                try:
-                    if self._download_public_image(input_image_url, input_path):
-                        console.print(f"[green]Input image saved: {input_path}[/green]")
-                    else:
-                        console.print(f"[yellow]Input image download failed: {input_filename}[/yellow]")
-                except Exception as e:
-                    console.print(f"[yellow]Input image download error: {input_filename} - {e}[/yellow]")
-
             markdown_text = res.get("markdown", {}).get("text", "")
             if markdown_text:
                 md_filename = os.path.join(output_dir, f"{file_prefix}_doc_{i}.md")
@@ -406,14 +390,6 @@ class PaddleOCRClient:
                 console.print(f"[green]Markdown 已保存: {md_filename}[/green]")
 
             download_tasks = []
-            input_image_url = res.get("inputImage")
-            if input_image_url:
-                input_filename = self._input_image_filename(file_prefix, i)
-                input_path = os.path.join(output_dir, input_filename)
-                download_tasks.append(
-                    self._async_download_image(session, input_image_url, input_path)
-                )
-
             images = res.get("markdown", {}).get("images", {})
             for img_path, img_url in images.items():
                 full_img_path = os.path.join(output_dir, img_path)

@@ -97,10 +97,10 @@ def create_inner_split_agent(provider: str = "openai", model_name: str | None = 
 
 
 def create_correction_agent(provider: str = "openai", model_name: str | None = None):
-    """创建内层题目后处理智能体
+    """创建内层 OCR 纠错智能体
 
     使用 create_agent + ToolStrategy，保证结构化输出。
-    无外部工具，专注于修复 OCR 错误、补全知识点标签并输出 CorrectionResult。
+    无外部工具，专注于修复 OCR 错误并输出 CorrectionResult。
 
     由 correct_batch 工具内部调用。
 
@@ -501,7 +501,7 @@ def invoke_split(prompt: str, provider: str = "openai", model_name: str | None =
 
 
 def invoke_correction(prompt: str, provider: str = "openai", model_name: str | None = None):
-    """统一调用题目后处理，屏蔽 ToolStrategy vs with_structured_output 差异"""
+    """统一调用纠错，屏蔽 ToolStrategy vs with_structured_output 差异"""
     return _invoke_structured(
         prompt=prompt, provider=provider, model_name=model_name,
         temperature=0.0, schema=CorrectionResult,

@@ -12,8 +12,6 @@ workflow.py 中纯函数的单元测试
 """
 
 import pytest
-import shutil
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 from src.utils import simplify_ocr_results as _simplify_ocr_results
 from src.paddleocr_client import PaddleOCRClient
@@ -186,7 +184,7 @@ class TestSimplifyOcrResults:
         assert len(result) == 1
         assert result[0]["blocks"] == []
 
-    def test_preserves_layout_fields_needed_by_splitter(self):
+    def test_only_keeps_three_fields(self):
         """输出 block 只应包含 block_label, block_content, block_order"""
         ocr = [{
             "layoutParsingResults": [{
@@ -196,10 +194,6 @@ class TestSimplifyOcrResults:
                         "block_content": "hi",
                         "block_order": 1,
                         "block_bbox": [0, 0, 10, 10],
-                        "block_polygon_points": [{"x": 0, "y": 0}],
-                        "block_id": 7,
-                        "group_id": 3,
-                        "layout_score": 0.9,
                         "extra_field": "should_not_appear",
                     }]
                 }
@@ -207,12 +201,7 @@ class TestSimplifyOcrResults:
         }]
         result = _simplify_ocr_results(ocr)
         block = result[0]["blocks"][0]
-        assert block["block_bbox"] == [0, 0, 10, 10]
-        assert block["block_polygon_points"] == [{"x": 0, "y": 0}]
-        assert block["block_id"] == 7
-        assert block["group_id"] == 3
-        assert block["layout_score"] == 0.9
-        assert "extra_field" not in block
+        assert set(block.keys()) == {"block_label", "block_content", "block_order"}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -786,34 +775,6 @@ class TestPaddleOCRResultDownload:
         assert "127.0.0.1" in message
         assert "authorization" not in message
         assert "secret" not in message
-
-
-class TestPaddleOCRImageSaving:
-    def test_save_images_downloads_input_image_without_auth_header(self):
-        work_dir = Path(__file__).resolve().parents[1] / "runtime_data" / "test_paddleocr_image_saving"
-        if work_dir.exists():
-            shutil.rmtree(work_dir)
-        work_dir.mkdir(parents=True, exist_ok=True)
-        client = object.__new__(PaddleOCRClient)
-        response = MagicMock(status_code=200)
-        response.content = b"clean-page"
-
-        result = {
-            "layoutParsingResults": [
-                {
-                    "inputImage": "https://bj.bcebos.com/input.jpg?authorization=signed",
-                    "markdown": {"images": {}},
-                    "outputImages": {},
-                }
-            ]
-        }
-
-        with patch("src.paddleocr_client.requests.get", return_value=response) as mock_get:
-            client._save_images(result, str(work_dir), "paper")
-
-        assert (work_dir / "input_image_paper_0.jpg").read_bytes() == b"clean-page"
-        _, kwargs = mock_get.call_args
-        assert "headers" not in kwargs
 
 
 class TestRunOcrAndSimplifyFileTypes:

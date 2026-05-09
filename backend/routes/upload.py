@@ -100,17 +100,6 @@ def _apply_provider_context(db, user_id: Optional[int]) -> None:
         settings.reload_providers()
 
 
-def _resolve_baidu_paper_cut_provider(db, user_id: Optional[int]):
-    if user_id:
-        provider = crud.get_active_provider(db, user_id, "baidu_paper_cut")
-        if provider and provider.api_key:
-            return provider, "personal"
-    provider = crud.get_active_system_provider(db, "baidu_paper_cut")
-    if provider and provider.api_key:
-        return provider, "system"
-    return None, None
-
-
 def _ocr_cache_key(user_id: Optional[int]) -> str:
     return str(user_id) if user_id is not None else "anon"
 
@@ -121,18 +110,12 @@ def _ocr_cache_path(user_id: Optional[int]) -> str:
     )
 
 
-def _ocr_page_images_cache_path(user_id: Optional[int]) -> str:
-    return os.path.join(
-        str(settings.results_dir), f"ocr_page_images_{_ocr_cache_key(user_id)}.json"
-    )
-
-
 def _clear_ocr_cache(user_id: Optional[int]) -> None:
-    for cache_path in (_ocr_cache_path(user_id), _ocr_page_images_cache_path(user_id)):
-        try:
-            os.remove(cache_path)
-        except FileNotFoundError:
-            pass
+    cache_path = _ocr_cache_path(user_id)
+    try:
+        os.remove(cache_path)
+    except FileNotFoundError:
+        pass
 
 
 def _mark_server_ocr_cache(user_id: Optional[int], value: bool) -> None:
@@ -536,11 +519,9 @@ def run_ocr():
         image_only = [p for p in all_image_paths if not p.lower().endswith(".pdf")]
 
         raw_ocr_results = []
-        source_inputs = []
         for pdf_path in pdf_paths:
             try:
                 raw_ocr_results.append(client.parse_pdf(pdf_path, save_output=True))
-                source_inputs.append(pdf_path)
             except Exception:
                 logger.exception(f"OCR PDF 失败: {pdf_path}")
         if image_only:
@@ -549,9 +530,7 @@ def run_ocr():
                     client.parse_images_async(image_only, save_output=True)
                 )
                 if img_results:
-                    valid_img_results = list(img_results)
-                    raw_ocr_results.extend(valid_img_results)
-                    source_inputs.extend(image_only[: len(valid_img_results)])
+                    raw_ocr_results.extend(img_results)
             except Exception:
                 logger.exception("OCR 图片失败")
 
@@ -566,15 +545,6 @@ def run_ocr():
         # 简化结果用于后续分割
         ocr_data = simplify_ocr_results(raw_ocr_results)
 
-        from src.question_splitter.page_images import extract_page_image_sources
-
-        page_image_sources, page_image_warnings = extract_page_image_sources(
-            raw_ocr_results,
-            source_inputs,
-            output_dir=str(settings.struct_dir),
-            ocr_credentials=ocr_credentials,
-        )
-
         # 保存 OCR 结果到会话，供后续 /api/split 复用
         import json
 
@@ -583,8 +553,6 @@ def run_ocr():
         ocr_cache_path = _ocr_cache_path(user_id)
         with open(ocr_cache_path, "w", encoding="utf-8") as f:
             json.dump(ocr_data, f, ensure_ascii=False, indent=2)
-        with open(_ocr_page_images_cache_path(user_id), "w", encoding="utf-8") as f:
-            json.dump(page_image_sources, f, ensure_ascii=False, indent=2)
         _mark_server_ocr_cache(user_id, False)
 
         # 构建前端预览数据：每页的图片 + bbox 标注
@@ -592,11 +560,7 @@ def run_ocr():
 
         preview_pages = []
         page_idx = 0
-        page_source_by_index = {
-            int(item.get("page_index")): item
-            for item in page_image_sources
-            if item.get("page_index") is not None
-        }
+        source_inputs = [*pdf_paths, *image_only]
         for source_idx, result in enumerate(raw_ocr_results):
             source_path = (
                 source_inputs[source_idx] if source_idx < len(source_inputs) else None
@@ -627,14 +591,10 @@ def run_ocr():
                     )
 
                 image_url = None
-                page_source = page_source_by_index.get(page_idx) or {}
-                if page_source.get("baidu_image_path"):
-                    image_url = f"/api/image/{os.path.basename(str(page_source['baidu_image_path']))}"
-
                 # 图片输入优先显示原图；PDF 优先尝试 OCR 产出的页面图（_save_images 保存到 struct_dir）。
-                if not image_url and source_path and not is_pdf_source and layout_idx == 0:
+                if source_path and not is_pdf_source and layout_idx == 0:
                     image_url = f"/api/image/{os.path.basename(source_path)}"
-                elif not image_url:
+                else:
                     output_images = layout_page.get("outputImages", {}) or {}
                     if source_name and output_images:
                         first_key = next(iter(output_images.keys()), None)
@@ -670,7 +630,6 @@ def run_ocr():
                 "message": f"OCR 完成，共 {len(preview_pages)} 页",
                 "pages": preview_pages,
                 "total_blocks": sum(len(p["blocks"]) for p in preview_pages),
-                "warnings": page_image_warnings,
             }
         )
 
@@ -699,12 +658,9 @@ def split_questions():
         model_name = data.get("model_name")  # 可选，None 时使用 provider 默认模型
         provider_source = data.get("provider_source") or None
         provider_id = data.get("provider_id") or None
-        split_provider = "baidu_paper_cut"
         # 从数据库加载用户的 LLM + OCR 凭据
         user_id = session.get("user_id")
         ocr_credentials = {}
-        baidu_paper_cut_credentials = {}
-        baidu_paper_cut_source = None
         should_consume_quota = False
         with SessionLocal() as db:
             try:
@@ -750,46 +706,6 @@ def split_questions():
                         "use_chart_recognition": ocr_provider.use_chart_recognition,
                     }
 
-                baidu_provider, baidu_paper_cut_source = _resolve_baidu_paper_cut_provider(
-                    db,
-                    user_id,
-                )
-                if not baidu_provider or not baidu_provider.api_key:
-                    return (
-                        jsonify(
-                            {
-                                "success": False,
-                                "code": "BAIDU_PAPER_CUT_NOT_CONFIGURED",
-                                "error": "请先在设置中配置百度智能云 paper_cut_edu API Key",
-                            }
-                        ),
-                        400,
-                    )
-                baidu_paper_cut_credentials = {
-                    "api_url": baidu_provider.base_url or "",
-                    "api_key": baidu_provider.api_key,
-                }
-                if baidu_paper_cut_source == "system" and not should_consume_quota:
-                    quota_user = crud.get_user_by_id(db, user_id)
-                    if not quota_user:
-                        session.clear()
-                        return jsonify({"success": False, "error": "用户不存在"}), 401
-                    if not has_daily_free_quota(db, quota_user):
-                        payload, status = quota_exceeded_response(db, quota_user)
-                        return jsonify(payload), status
-                    should_consume_quota = True
-            else:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "code": "LOGIN_REQUIRED",
-                            "error": "请先登录后再进行题目分割",
-                        }
-                    ),
-                    401,
-                )
-
         with session_lock:
             us = get_user_session(user_id)
             keys = list(us["session_file_order"])
@@ -815,7 +731,7 @@ def split_questions():
                 db,
                 user_id=user_id,
                 file_names=file_names,
-                model_provider=split_provider,
+                model_provider=model_provider,
             )
             run_id = run.public_id
             result_dir = run.result_dir
@@ -831,9 +747,7 @@ def split_questions():
             "model_provider": model_provider,
             "model_name": llm_selection["model_name"],
             "ocr_credentials": ocr_credentials,
-            "baidu_paper_cut_credentials": baidu_paper_cut_credentials,
             "ocr_cache_path": _ocr_cache_path(user_id),
-            "page_image_cache_path": _ocr_page_images_cache_path(user_id),
             "results_dir": result_dir,
         }
         workflow_graph.invoke(initial_state, config=config)
@@ -856,12 +770,11 @@ def split_questions():
                     user_id=user_id,
                     error_message=failure_message,
                 )
-            failure_code = result_state.get("error_code") or "SPLIT_NO_QUESTIONS"
             return (
                 jsonify(
                     {
                         "success": False,
-                        "code": failure_code,
+                        "code": "SPLIT_NO_QUESTIONS",
                         "error": failure_message,
                         "run_id": run_id,
                         "questions": [],
@@ -891,7 +804,7 @@ def split_questions():
                     question_count=len(questions),
                 )
                 crud.save_split_record(
-                    db, subject, split_provider, file_names, questions, user_id=user_id
+                    db, subject, model_provider, file_names, questions, user_id=user_id
                 )
         except Exception:
             logger.warning("保存分割记录失败，不影响主流程", exc_info=True)
@@ -1032,7 +945,6 @@ def serve_image(filename):
         settings.upload_dir,
         settings.erased_dir,
         settings.results_dir,
-        settings.struct_dir,
         settings.pages_dir,
     ]:
         path = os.path.join(str(d), filename)
