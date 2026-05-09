@@ -16,8 +16,12 @@ import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
 import { useToast } from '@/composables/useToast.js'
+import { useProjects } from '@/composables/useProjects.js'
 import SidebarNav from '@/components/workspace/SidebarNav.vue'
 import ImageModal from '@/components/base/ImageModal.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
 import WorkspaceBackground from '@/components/workspace/WorkspaceBackground.vue'
 import AnswerInputModal from '@/components/workspace/AnswerInputModal.vue'
 import WorkspaceView from '@/views/app/WorkspaceView.vue'
@@ -35,6 +39,10 @@ const { currentUser, clearCurrentUser } = useAuth()
 const { loading: globalLoading } = usePageTransition()
 const { isDark, toggleTheme, initTheme } = useTheme()
 const { pushToast } = useToast()
+const {
+  projects, activeQuestionProjectId, activeNoteProjectId, loadingProjects,
+  loadProjects, setActiveProject, createAndSelectProject, renameProject, removeProject,
+} = useProjects()
 const { modalOpen, modalSrc, modalScale, closeModal } = useImageModal()
 const { doFetchStatus, doFetchModelOptions } = useSystemStatus()
 const {
@@ -72,6 +80,23 @@ const {
 // ── 认证 ────────────────────────────────────────────────
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 const userMenuOpen = ref(false)
+const projectDialogOpen = ref(false)
+const projectDialogName = ref('')
+const projectDialogType = ref('question')
+const projectDialogMode = ref('create')
+const projectDialogTarget = ref(null)
+const projectDialogSaving = ref(false)
+const deleteProjectDialogOpen = ref(false)
+const deleteProjectTarget = ref(null)
+const deleteProjectSaving = ref(false)
+const projectDialogTitle = computed(() => {
+  if (projectDialogMode.value === 'rename') return '重命名'
+  return projectDialogType.value === 'note' ? '新建笔记本' : '新建错题库'
+})
+const projectDialogPlaceholder = computed(() => projectDialogType.value === 'note' ? '比如：语文笔记、数学公式' : '比如：数学错题、语文错题')
+const sidebarActiveProjectId = computed(() =>
+  currentView.value === 'notes' ? activeNoteProjectId.value : activeQuestionProjectId.value
+)
 
 const handleLogout = async () => {
   try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) { }
@@ -117,6 +142,87 @@ const updateRenamingChatId = createRefSetter(renamingChatId)
 const updateNavRef = createRefSetter(navRef)
 const updateChatListRef = createRefSetter(chatListRef)
 
+const openProjectDialog = (projectType = 'question') => {
+  projectDialogMode.value = 'create'
+  projectDialogTarget.value = null
+  projectDialogType.value = projectType === 'note' ? 'note' : 'question'
+  projectDialogName.value = ''
+  projectDialogOpen.value = true
+  nextTick(() => {
+    document.querySelector('[data-project-name-input] input')?.focus()
+  })
+}
+
+const closeProjectDialog = () => {
+  if (projectDialogSaving.value) return
+  projectDialogOpen.value = false
+  projectDialogName.value = ''
+  projectDialogTarget.value = null
+}
+
+const openRenameProjectDialog = (project) => {
+  if (!project || project.is_default) return
+  projectDialogMode.value = 'rename'
+  projectDialogTarget.value = project
+  projectDialogType.value = project.project_type === 'note' ? 'note' : 'question'
+  projectDialogName.value = project.name || ''
+  projectDialogOpen.value = true
+  nextTick(() => {
+    const input = document.querySelector('[data-project-name-input] input')
+    input?.focus()
+    input?.select()
+  })
+}
+
+const handleCreateProject = async () => {
+  const name = projectDialogName.value.trim()
+  if (!name || projectDialogSaving.value) return
+  projectDialogSaving.value = true
+  try {
+    if (projectDialogMode.value === 'rename') {
+      await renameProject(projectDialogTarget.value.id, name)
+      pushToast('success', '项目已重命名')
+    } else {
+      await createAndSelectProject(name, projectDialogType.value)
+      pushToast('success', '项目已创建')
+    }
+    projectDialogOpen.value = false
+    projectDialogName.value = ''
+    projectDialogTarget.value = null
+  } catch (e) {
+    pushToast('error', e instanceof Error ? e.message : (projectDialogMode.value === 'rename' ? '重命名失败' : '创建项目失败'))
+  } finally {
+    projectDialogSaving.value = false
+  }
+}
+
+const handleDeleteProject = async (project) => {
+  if (!project || project.is_default) return
+  deleteProjectTarget.value = project
+  deleteProjectDialogOpen.value = true
+}
+
+const closeDeleteProjectDialog = () => {
+  if (deleteProjectSaving.value) return
+  deleteProjectDialogOpen.value = false
+  deleteProjectTarget.value = null
+}
+
+const confirmDeleteProject = async () => {
+  const project = deleteProjectTarget.value
+  if (!project || project.is_default || deleteProjectSaving.value) return
+  deleteProjectSaving.value = true
+  try {
+    await removeProject(project.id)
+    deleteProjectDialogOpen.value = false
+    deleteProjectTarget.value = null
+    pushToast('success', '项目已删除')
+  } catch (e) {
+    pushToast('error', e instanceof Error ? e.message : '删除项目失败')
+  } finally {
+    deleteProjectSaving.value = false
+  }
+}
 
 // ── 键盘事件 ────────────────────────────────────────────
 const onKeydown = (e) => {
@@ -134,6 +240,7 @@ onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   document.addEventListener('click', closeChatMenu)
   loadAiChatSessions()
+  loadProjects().catch((e) => pushToast('error', e instanceof Error ? e.message : '加载项目失败'))
   nextTick(updateIndicator)
   watch(() => activeAiChatId.value, () => nextTick(updateIndicator))
 
@@ -178,6 +285,7 @@ onBeforeUnmount(() => {
       :active-ai-chat-id="activeAiChatId" :chat-list-ref="chatListRef" :chat-btn-refs="chatBtnRefs"
       :chat-indicator-style="chatIndicatorStyle" :chat-indicator-transition="chatIndicatorTransition"
       :chat-menu-open-id="chatMenuOpenId" :renaming-chat-id="renamingChatId" :rename-text="renameText"
+      :projects="projects" :active-project-id="sidebarActiveProjectId" :loading-projects="loadingProjects"
       :user-menu-open="userMenuOpen" :sidebar-mode="sidebarMode" :is-mobile="isMobile"
       :mobile-drawer-open="mobileDrawerOpen" @update:current-view="updateCurrentView"
       @update:current-settings-sub-view="updateCurrentSettingsSubView" @update:collapsed-groups="updateCollapsedGroups"
@@ -185,7 +293,9 @@ onBeforeUnmount(() => {
       @update:chat-menu-open-id="updateChatMenuOpenId" @update:rename-text="updateRenameText"
       @update:renaming-chat-id="updateRenamingChatId" @update:nav-ref="updateNavRef"
       @update:chat-list-ref="updateChatListRef" @navigate-home="navigateToHome" @logout="handleLogout"
-      @toggle-theme="toggleTheme" @create-ai-chat="createAiChat" @select-ai-chat="selectAiChat"
+      @toggle-theme="toggleTheme" @select-project="setActiveProject" @create-project="openProjectDialog"
+      @rename-project="openRenameProjectDialog" @delete-project="handleDeleteProject"
+      @create-ai-chat="createAiChat" @select-ai-chat="selectAiChat"
       @start-rename-chat="startRenameChat" @confirm-rename-chat="confirmRenameChat" @delete-ai-chat="deleteAiChat"
       @toggle-chat-menu="toggleChatMenu" @toggle-sidebar="toggleSidebar" />
 
@@ -232,6 +342,43 @@ onBeforeUnmount(() => {
       <AnswerInputModal :open="answerModalOpen" :text="answerModalText" :saving="answerModalSaving"
         @update:open="(v) => answerModalOpen = v" @update:text="(v) => answerModalText = v"
         @confirm="saveAnswerAndChat" />
+      <BaseModal :open="projectDialogOpen" :title="projectDialogTitle" icon="fa-folder-plus" iconBg="accent-bg-soft"
+        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1"
+        @close="closeProjectDialog">
+        <form class="space-y-4" @submit.prevent="handleCreateProject">
+          <BaseInput v-model="projectDialogName" label="名称" :placeholder="projectDialogPlaceholder" maxlength="100"
+            data-project-name-input />
+        </form>
+        <template #footer>
+          <BaseButton variant="secondary" size="sm" :disabled="projectDialogSaving" @click="closeProjectDialog">
+            取消
+          </BaseButton>
+          <BaseButton variant="primary" size="sm" :disabled="projectDialogSaving || !projectDialogName.trim()"
+            @click="handleCreateProject">
+            {{ projectDialogSaving ? '处理中...' : (projectDialogMode === 'rename' ? '保存' : '创建') }}
+          </BaseButton>
+        </template>
+      </BaseModal>
+      <BaseModal :open="deleteProjectDialogOpen" title="删除项目" icon="fa-trash"
+        iconBg="bg-rose-50 dark:bg-rose-500/10" iconClass="text-rose-600 dark:text-rose-300"
+        maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeDeleteProjectDialog">
+        <div class="space-y-3 text-sm text-slate-600 dark:text-[#aeb6c2]">
+          <p>
+            确定删除“<span class="font-semibold text-slate-900 dark:text-[#f7f8f8]">{{ deleteProjectTarget?.name }}</span>”吗？
+          </p>
+          <p class="text-xs text-slate-400 dark:text-[#737b86]">
+            默认项目不能删除；已有内容的项目会被系统阻止删除。
+          </p>
+        </div>
+        <template #footer>
+          <BaseButton variant="secondary" size="sm" :disabled="deleteProjectSaving" @click="closeDeleteProjectDialog">
+            取消
+          </BaseButton>
+          <BaseButton variant="primary" size="sm" :disabled="deleteProjectSaving" @click="confirmDeleteProject">
+            {{ deleteProjectSaving ? '删除中...' : '删除' }}
+          </BaseButton>
+        </template>
+      </BaseModal>
     </Teleport>
   </div>
 </template>
