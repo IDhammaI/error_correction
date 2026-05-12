@@ -213,11 +213,11 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="sidebar-3d-stage flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] bg-transparent overflow-hidden"
+    class="sidebar-3d-stage flex min-h-0 flex-col z-20 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] overflow-hidden"
     :class="[
       isMobile
-        ? 'fixed inset-y-0 left-0 w-64 transform ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
-        : 'hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:bottom-0 ' + (isNarrow ? 'w-16' : 'w-64')
+        ? 'fixed inset-y-0 left-0 w-64 transform bg-white dark:bg-[#1b1b1d] shadow-2xl ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
+        : 'hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:bottom-0 bg-transparent ' + (isNarrow ? 'w-16' : 'w-64')
     ]">
 
     <!-- 设置视图 -->
