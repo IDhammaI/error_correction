@@ -13,6 +13,7 @@ import QuestionItem from '@/components/question/QuestionItem.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import QuestionItemSkeleton from '@/components/question/QuestionItemSkeleton.vue'
 import EditNoteDialog from '@/components/question/EditNoteDialog.vue'
+import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
 import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useImageModal } from '@/composables/useImageModal.js'
@@ -77,6 +78,20 @@ const subjects = ref([])
 const questionTypes = ref([])
 const tagNames = ref([])
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
+
+// ---- 详情弹窗 ----
+const detailOpen = ref(false)
+const detailQuestion = ref(null)
+
+const openDetail = (q) => {
+  detailQuestion.value = q
+  detailOpen.value = true
+}
+
+const onDetailClose = () => {
+  detailOpen.value = false
+  detailQuestion.value = null
+}
 
 
 // ---- 知识点多选标签 ----
@@ -410,7 +425,8 @@ onBeforeUnmount(() => {
           <!-- 列表（有旧数据时保留，遮罩覆盖） -->
           <div v-else class="space-y-4">
             <QuestionItem v-for="q in items" :key="q.id" :question="q" :selectable="selectMode"
-              :selected="selectedIds.has(q.id)" :show-status="true" @toggle-select="toggleSelect">
+              :selected="selectedIds.has(q.id)" :show-status="true" @toggle-select="toggleSelect"
+              @click="openDetail">
               <template #actions="{ question }">
                 <button @mouseenter="onMenuEnter(question.id, $event.currentTarget)" @mouseleave="onMenuLeave"
                   class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
@@ -522,6 +538,10 @@ onBeforeUnmount(() => {
         : (dialogQuestion?.[dialogField] || '')"
         :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''" :saving="dialogSaving"
         @close="dialogOpen = false" @save="onDialogSave" />
+
+      <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="onDetailClose"
+        @open-image="openModal" @deleted="doQuery" @push-toast="pushToast" @start-chat="openChat"
+        @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
   </ContentPanel>
 </template>

@@ -6,6 +6,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
 import * as api from '@/api.js'
+import { useSystemStatus } from '@/composables/useSystemStatus.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -160,7 +161,7 @@ const changeReviewStatus = async (status) => {
 }
 
 const reviewStatusOptions = [
-  { value: '待复习', icon: 'fa-clock', color: 'orange' },
+  { value: '待复习', icon: 'fa-clock', color: 'rose' },
   { value: '复习中', icon: 'fa-spinner', color: 'amber' },
   { value: '已掌握', icon: 'fa-circle-check', color: 'emerald' },
 ]
@@ -168,21 +169,22 @@ const reviewStatusOptions = [
 
 <template>
   <Teleport to="body">
-    <Transition name="modal-fade">
-      <div v-if="open" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-        <!-- 遮罩层 -->
-        <div class="absolute inset-0 bg-slate-950/60" @click="emit('close')"></div>
+    <Transition name="dialog-overlay" appear>
+      <div v-if="open" class="dialog-backdrop fixed inset-0 z-[100] bg-black/40" @click="emit('close')"></div>
+    </Transition>
 
+    <Transition name="dialog-content" appear>
+      <div v-if="open" class="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6"
+        @click.self="emit('close')">
         <!-- 弹窗主体 -->
         <div
-          class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-white/10 bg-white shadow-2xl transition-all dark:bg-[#0F111A]">
+          class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-2xl transition-all dark:border-[#2f3336] dark:bg-[#1b1b1d]">
 
           <!-- 头部控制栏 -->
           <div
             class="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/50 px-8 py-5 dark:border-white/5 dark:bg-white/5">
             <div class="flex items-center gap-4">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-xl accent-bg text-white shadow-lg">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl accent-bg text-white shadow-lg">
                 <i class="fa-solid fa-file-lines text-lg"></i>
               </div>
               <div>
@@ -197,7 +199,7 @@ const reviewStatusOptions = [
                 <button v-for="opt in reviewStatusOptions" :key="opt.value" @click="changeReviewStatus(opt.value)"
                   class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all"
                   :class="(question?.review_status || '待复习') === opt.value
-                    ? opt.color === 'emerald' ? 'bg-emerald-500 text-white shadow-sm' : opt.color === 'amber' ? 'bg-amber-500 text-white shadow-sm' : 'bg-orange-500 text-white shadow-sm'
+                    ? opt.color === 'emerald' ? 'bg-emerald-500 text-white shadow-sm' : opt.color === 'amber' ? 'bg-amber-500 text-white shadow-sm' : 'bg-rose-500 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'">
                   <i class="fa-solid" :class="opt.icon"></i> {{ opt.value }}
                 </button>
@@ -218,15 +220,17 @@ const reviewStatusOptions = [
           <!-- 内容主体 -->
           <div class="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
             <!-- 左侧：题干内容 (滚动区) -->
-            <div class="flex-1 overflow-y-auto border-r border-slate-100 p-8 dark:border-white/5">
+            <div
+              class="flex-1 overflow-y-auto border-r border-slate-100 p-8 dark:border-white/5 bg-slate-50/60 dark:bg-transparent">
               <!-- 核心题干 -->
               <div class="question-view">
                 <template v-for="(b, i) in question?.content_json" :key="i">
                   <div v-if="b.block_type === 'text' && isHtml(b.content)" v-html="sanitizeHtml(b.content)"
-                    class="question-text mb-6 text-lg font-bold leading-relaxed text-slate-800 dark:text-slate-200">
+                    class="question-text mb-6 text-[15px] font-medium leading-relaxed text-slate-800 dark:text-slate-200">
                   </div>
                   <p v-else-if="b.block_type === 'text'"
-                    class="mb-6 text-lg font-bold leading-relaxed text-slate-800 dark:text-slate-200">{{ b.content }}
+                    class="mb-6 text-[15px] font-medium leading-relaxed text-slate-800 dark:text-slate-200">{{ b.content
+                    }}
                   </p>
                   <img v-else-if="b.block_type === 'image'" :src="b.content"
                     class="mb-6 max-w-full cursor-zoom-in rounded-2xl border border-slate-200 shadow-sm dark:border-white/10"
@@ -243,7 +247,7 @@ const reviewStatusOptions = [
                 <!-- 选项 -->
                 <div v-if="question?.options_json" class="mt-8 grid gap-3">
                   <div v-for="(opt, idx) in question.options_json" :key="idx"
-                    class="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-sm font-bold text-slate-700 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
+                    class="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-[15px] font-medium text-slate-700 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
                     {{ formatOption(opt) }}
                   </div>
                 </div>
@@ -251,7 +255,7 @@ const reviewStatusOptions = [
             </div>
 
             <!-- 右侧：交互与分析 (侧边栏) -->
-            <div class="flex w-full flex-col overflow-hidden bg-slate-50/30 md:w-[400px] dark:bg-black/20">
+            <div class="flex w-full flex-col overflow-hidden bg-white md:w-[400px] dark:bg-[#1b1b1d]">
               <!-- Tab 切换 -->
               <div class="flex shrink-0 border-b border-slate-100 dark:border-white/5">
                 <button @click="activeTab = 'content'"
@@ -275,8 +279,7 @@ const reviewStatusOptions = [
                     <textarea v-model="answerText" rows="4" placeholder="录入正确答案或标准解析…（支持 Markdown / LaTeX）"
                       class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
                   </div>
-                  <button @click="saveCorrectAnswer" :disabled="isAnswerSaving"
-                    class="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-50/80 py-3 text-sm font-bold text-emerald-700 transition-all hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-400 h-12">
+                  <button @click="saveCorrectAnswer" :disabled="isAnswerSaving" class="btn-success w-full h-12">
                     <i class="fa-solid" :class="isAnswerSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
                     {{ isAnswerSaving ? '同步中...' : '保存正确答案' }}
                   </button>
@@ -289,7 +292,7 @@ const reviewStatusOptions = [
                       <i class="fa-solid fa-pen-to-square mr-1"></i>我的错因/心得笔记
                     </label>
                     <textarea v-model="userAnswer" rows="4" placeholder="记录下当时的解题思路，或者标记这里错在哪里了..."
-                      class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
+                      class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-[rgb(var(--accent-rgb)/0.4)] focus:ring-4 focus:ring-[rgb(var(--accent-rgb)/0.05)] dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
                   </div>
                   <button @click="saveAnswer" :disabled="isSaving" class="btn-primary w-full h-12">
                     <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
@@ -315,10 +318,9 @@ const reviewStatusOptions = [
                     <p class="text-xs font-black uppercase tracking-widest accent-text animate-pulse">分析中...</p>
                   </div>
                   <div v-else-if="aiReport" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                    <div class="rounded-2xl border accent-border accent-bg-muted p-5">
-                      <h4
-                        class="mb-3 flex items-center gap-2 text-xs font-black uppercase accent-text">
-                        <i class="fa-solid fa-microchip"></i> 认知诊断诊断报告
+                    <div class="rounded-2xl border accent-border accent-bg-soft p-5">
+                      <h4 class="mb-3 flex items-center gap-2 text-xs font-black uppercase accent-text">
+                        <i class="fa-solid fa-microchip"></i> 认知诊断报告
                       </h4>
                       <p class="text-sm font-medium leading-relaxed text-slate-700 dark:text-slate-300">
                         {{ typedText }}<span
@@ -354,15 +356,30 @@ const reviewStatusOptions = [
 </template>
 
 <style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+.dialog-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.modal-fade-enter-from,
-.modal-fade-leave-to {
+.dialog-overlay-enter-active,
+.dialog-overlay-leave-active {
+  transition: opacity 0.22s ease, backdrop-filter 0.22s ease, -webkit-backdrop-filter 0.22s ease;
+}
+
+.dialog-overlay-enter-from,
+.dialog-overlay-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+}
+
+.dialog-content-enter-active,
+.dialog-content-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-content-enter-from,
+.dialog-content-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
 }
 
 @keyframes blink {
@@ -382,17 +399,18 @@ const reviewStatusOptions = [
 }
 
 .question-text :deep(table) {
-  @apply my-6 w-full rounded-xl border border-slate-200 bg-white/50 text-sm overflow-hidden dark:bg-white/[0.02] dark:border-white/10;
+  @apply my-6 w-full max-w-full rounded-xl border border-slate-200 bg-white/50 text-[14px] overflow-hidden dark:bg-white/[0.02] dark:border-white/10;
   display: block;
   overflow-x: auto;
+  white-space: nowrap;
 }
 
 .question-text :deep(th) {
-  @apply bg-slate-100 p-3 text-left font-black dark:bg-white/5 dark:text-slate-300;
+  @apply bg-slate-100/80 px-4 py-2.5 text-left font-bold text-slate-600 dark:bg-white/5 dark:text-slate-300 whitespace-nowrap;
 }
 
 .question-text :deep(td) {
-  @apply border-t border-slate-100 p-3 dark:border-white/10 dark:text-slate-300;
+  @apply border-t border-slate-100/80 px-4 py-2.5 dark:border-white/10 dark:text-slate-300 whitespace-nowrap;
 }
 
 .question-text :deep(ul) {
