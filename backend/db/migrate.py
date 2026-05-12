@@ -21,12 +21,150 @@ from db import crud
 def _add_column_if_missing(conn, table: str, column: str, col_type: str, default=None):
     """安全地给已有表添加列，若已存在则跳过"""
     from sqlalchemy import text, inspect
+
     inspector = inspect(conn)
     existing = [c["name"] for c in inspector.get_columns(table)]
     if column not in existing:
         default_clause = f" DEFAULT {default}" if default is not None else ""
-        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}{default_clause}"))
+        conn.execute(
+            text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}{default_clause}")
+        )
         print(f"[migrate] 已添加列: {table}.{column}")
+
+
+def _ensure_default_question_project(db, user_id: int, name: str):
+    from db.models import Project
+
+    project = (
+        db.query(Project)
+        .filter(
+            Project.user_id == user_id,
+            Project.project_type == "question",
+            Project.name == name,
+        )
+        .first()
+    )
+    if project:
+        return project
+
+    project = Project(
+        user_id=user_id,
+        name=name,
+        project_type="question",
+        description="",
+        color="#2563eb",
+        icon="database",
+        is_default=False,
+    )
+    db.add(project)
+    db.flush()
+    return project
+
+
+def _migrate_legacy_questions_for_user(db, user_id: int, project_id: int):
+    import hashlib
+    from db.models import Question, QuestionTagMapping, UploadBatch
+
+    legacy_questions = (
+        db.query(Question)
+        .filter(Question.user_id == user_id, Question.project_id == None)
+        .all()
+    )
+    if not legacy_questions:
+        return 0, 0
+
+    migrated = 0
+    merged = 0
+    batch_ids = set()
+
+    for q in legacy_questions:
+        if q.batch_id:
+            batch_ids.add(q.batch_id)
+
+        base_hash = (q.content_hash or "").strip()
+        scoped_hash = (
+            hashlib.sha256(f"{project_id}:{base_hash}".encode()).hexdigest()
+            if base_hash
+            else ""
+        )
+
+        existing = None
+        if base_hash:
+            candidates = [base_hash]
+            if scoped_hash:
+                candidates.append(scoped_hash)
+            existing = (
+                db.query(Question)
+                .filter(
+                    Question.user_id == user_id,
+                    Question.project_id == project_id,
+                    Question.content_hash.in_(candidates),
+                )
+                .first()
+            )
+
+        if existing:
+            if (
+                existing.answer is None or str(existing.answer).strip() == ""
+            ) and q.answer:
+                existing.answer = q.answer
+            if (
+                existing.user_answer is None or str(existing.user_answer).strip() == ""
+            ) and q.user_answer:
+                existing.user_answer = q.user_answer
+            if (
+                (
+                    existing.review_status is None
+                    or str(existing.review_status).strip() == ""
+                    or existing.review_status == "待复习"
+                )
+                and q.review_status
+                and q.review_status != "待复习"
+            ):
+                existing.review_status = q.review_status
+
+            old_mappings = (
+                db.query(QuestionTagMapping)
+                .filter(QuestionTagMapping.question_id == q.id)
+                .all()
+            )
+            if old_mappings:
+                existing_tag_ids = {
+                    m.tag_id
+                    for m in db.query(QuestionTagMapping)
+                    .filter(QuestionTagMapping.question_id == existing.id)
+                    .all()
+                }
+                for m in old_mappings:
+                    if m.tag_id not in existing_tag_ids:
+                        db.add(
+                            QuestionTagMapping(question_id=existing.id, tag_id=m.tag_id)
+                        )
+                db.query(QuestionTagMapping).filter(
+                    QuestionTagMapping.question_id == q.id
+                ).delete()
+
+            db.delete(q)
+            merged += 1
+            continue
+
+        q.project_id = project_id
+        if base_hash and scoped_hash:
+            q.content_hash = scoped_hash
+        migrated += 1
+
+    if batch_ids:
+        (
+            db.query(UploadBatch)
+            .filter(
+                UploadBatch.user_id == user_id,
+                UploadBatch.id.in_(list(batch_ids)),
+                UploadBatch.project_id == None,
+            )
+            .update({UploadBatch.project_id: project_id}, synchronize_session=False)
+        )
+
+    return migrated, merged
 
 
 def migrate():
@@ -46,23 +184,40 @@ def migrate():
         _add_column_if_missing(conn, "upload_batches", "project_id", "INTEGER")
         _add_column_if_missing(conn, "questions", "project_id", "INTEGER")
         _add_column_if_missing(conn, "notes", "project_id", "INTEGER")
-        _add_column_if_missing(conn, "projects", "project_type", "VARCHAR(20)", "'question'")
+        _add_column_if_missing(
+            conn, "projects", "project_type", "VARCHAR(20)", "'question'"
+        )
         _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
         conn.commit()
 
     # 回填 chat_sessions.public_id（历史数据兼容）
     import uuid
     from db.models import ChatSession
+
     with SessionLocal() as db:
-        rows = db.query(ChatSession).filter((ChatSession.public_id == None) | (ChatSession.public_id == "")).all()
+        rows = (
+            db.query(ChatSession)
+            .filter((ChatSession.public_id == None) | (ChatSession.public_id == ""))
+            .all()
+        )
         if rows:
             for s in rows:
                 s.public_id = str(uuid.uuid4())
             db.commit()
 
     default_users = [
-        {"email": "admin@admin.com",  "username": "Admin",  "password": "123456", "is_admin": True},
-        {"email": "admin2@admin.com", "username": "Admin2", "password": "123456", "is_admin": True},
+        {
+            "email": "admin@admin.com",
+            "username": "Admin",
+            "password": "123456",
+            "is_admin": True,
+        },
+        {
+            "email": "admin2@admin.com",
+            "username": "Admin2",
+            "password": "123456",
+            "is_admin": True,
+        },
     ]
     with SessionLocal() as db:
         for u in default_users:
@@ -75,6 +230,30 @@ def migrate():
                     is_admin=u["is_admin"],
                 )
                 print(f"[migrate] 已创建默认用户: {u['username']} ({u['email']})")
+
+    from db.models import User
+
+    with SessionLocal() as db:
+        users = db.query(User).all()
+        total_users = 0
+        total_migrated = 0
+        total_merged = 0
+        project_name = "默认错题库"
+
+        for user in users:
+            total_users += 1
+            project = _ensure_default_question_project(db, user.id, project_name)
+            migrated, merged = _migrate_legacy_questions_for_user(
+                db, user.id, project.id
+            )
+            total_migrated += migrated
+            total_merged += merged
+
+        if total_migrated or total_merged:
+            db.commit()
+            print(
+                f"[migrate] 已迁移旧错题到项目“{project_name}”: 用户 {total_users}，迁移 {total_migrated}，合并去重 {total_merged}"
+            )
 
 
 def rebuild():
