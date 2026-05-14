@@ -54,7 +54,10 @@ const selectedContextLabel = computed(() => {
   return `${selectedContextProject.value.name} · ${selectedContextQuestionIds.value.length} 题`
 })
 
-watch(sessionId, (id) => {
+watch(sessionId, (id, prevId) => {
+  if (prevId !== undefined && id !== prevId) {
+    clearContext()
+  }
   if (id) loadMessages()
   else messages.value = []
 }, { immediate: true })
@@ -320,6 +323,7 @@ function isContextQuestionSelected(questionId) {
 function clearContext() {
   contextProjectId.value = null
   selectedContextQuestionIds.value = []
+  contextLoadError.value = ''
 }
 
 function questionContextSnippet(question) {
