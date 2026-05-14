@@ -7,7 +7,14 @@ from flask import Blueprint, request, jsonify, session, Response
 
 from db import SessionLocal
 from db import crud
-from db.models import Note, Project, Question, ChatSession as ChatSessionModel, QuestionTagMapping
+from db.models import (
+    Note,
+    NoteTagMapping,
+    Project,
+    Question,
+    ChatSession as ChatSessionModel,
+    QuestionTagMapping,
+)
 from core.model_selection import LLMSelectionError, resolve_llm_selection
 from core.quota import (
     consume_daily_free_quota,
@@ -109,7 +116,11 @@ def _text_from_note(note: Note) -> str:
     return "\n".join(parts)
 
 
-def _build_project_context(db, refs, user_id=None, max_items=20, max_chars=12000) -> str:
+def _build_project_context(
+    db, refs, user_id=None, max_items=20, max_chars=12000
+) -> str:
+    from sqlalchemy.orm import selectinload
+
     if not refs:
         return ""
     sections = []
@@ -140,6 +151,7 @@ def _build_project_context(db, refs, user_id=None, max_items=20, max_chars=12000
         if project_type == "note":
             rows = (
                 db.query(Note)
+                .options(selectinload(Note.tags).selectinload(NoteTagMapping.tag))
                 .filter(Note.project_id == project.id)
                 .order_by(Note.updated_at.desc(), Note.created_at.desc())
                 .limit(max_items)
@@ -160,7 +172,14 @@ def _build_project_context(db, refs, user_id=None, max_items=20, max_chars=12000
             if not question_ids:
                 continue
 
-            question_query = db.query(Question).filter(Question.project_id == project.id)
+            question_query = (
+                db.query(Question)
+                .options(
+                    selectinload(Question.batch),
+                    selectinload(Question.tags).selectinload(QuestionTagMapping.tag),
+                )
+                .filter(Question.project_id == project.id)
+            )
             question_query = question_query.filter(Question.id.in_(question_ids))
             rows = question_query.all()
             order = {question_id: idx for idx, question_id in enumerate(question_ids)}
