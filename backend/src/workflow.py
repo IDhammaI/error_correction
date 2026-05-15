@@ -11,7 +11,7 @@ import time
 import traceback
 import difflib as _difflib
 from contextvars import copy_context
-from typing import List, Dict, Any, TypedDict
+from typing import List, Dict, Any, TypedDict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
@@ -75,11 +75,20 @@ def prepare_input_node(state: WorkflowState) -> dict:
 # ── 并行分割辅助函数 ──────────────────────────────────────────
 
 
-def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+def _run_ocr_and_simplify(
+    file_paths: List[str],
+    ocr_credentials: Dict[str, Any] = None,
+    output_dir: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """执行 OCR 解析并简化结果（含重试机制）
 
     支持混合文件类型：PDF 直传 API，图片并行上传。
     然后将结果简化为 split_batch 所需的格式。
+
+    Args:
+        file_paths: 待解析文件路径列表
+        ocr_credentials: OCR 凭据
+        output_dir: 结果保存目录，不传时使用全局 struct_dir
 
     Returns:
         简化后的 OCR 数据列表，每项包含 page_index 和 blocks
@@ -110,7 +119,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
         result = None
         for attempt in range(1, max_retries + 1):
             try:
-                result = client.parse_pdf(pdf_path, save_output=True)
+                result = client.parse_pdf(pdf_path, save_output=True, output_dir=output_dir)
                 break
             except Exception as e:
                 last_error = e
@@ -132,7 +141,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
         for attempt in range(1, max_retries + 1):
             try:
                 img_results = run_async(
-                    client.parse_images_async(image_paths, save_output=True)
+                    client.parse_images_async(image_paths, save_output=True, output_dir=output_dir)
                 )
                 break
             except Exception as e:
@@ -692,7 +701,11 @@ def split_questions_node(state: WorkflowState) -> dict:
     if not ocr_data:
         console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
         ocr_start = time.time()
-        ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
+        ocr_data = _run_ocr_and_simplify(
+            file_paths,
+            ocr_credentials=ocr_credentials,
+            output_dir=results_dir,
+        )
 
         if not ocr_data:
             logger.error("OCR 解析失败，无数据返回")

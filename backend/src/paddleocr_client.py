@@ -242,7 +242,8 @@ class PaddleOCRClient:
                     else:
                         console.print(f"[yellow]图片下载失败: {img_path}[/yellow]")
                 except Exception as e:
-                    console.print(f"[yellow]图片下载出错: {img_path} - {e}[/yellow]")
+                    # 不直接打印异常 e，防止泄露 URL 中的敏感签名
+                    console.print(f"[yellow]图片下载出错: {img_path} - {type(e).__name__}[/yellow]")
 
             output_images = res.get("outputImages", {})
             for img_name, img_url in output_images.items():
@@ -251,7 +252,8 @@ class PaddleOCRClient:
                     if self._download_public_image(img_url, filename):
                         console.print(f"[green]图片已保存: {filename}[/green]")
                 except Exception as e:
-                    console.print(f"[yellow]图片下载出错: {img_name} - {e}[/yellow]")
+                    # 不直接打印异常 e，防止泄露 URL 中的敏感签名
+                    console.print(f"[yellow]图片下载出错: {img_name} - {type(e).__name__}[/yellow]")
 
     # ── 异步方法 ──────────────────────────────────────────────
 
@@ -371,7 +373,8 @@ class PaddleOCRClient:
                 else:
                     console.print(f"[yellow]图片下载失败: {save_path}[/yellow]")
         except Exception as e:
-            console.print(f"[yellow]图片下载出错: {save_path} - {e}[/yellow]")
+            # 不直接打印异常 e，防止泄露 URL 中的敏感签名
+            console.print(f"[yellow]图片下载出错: {save_path} - {type(e).__name__}[/yellow]")
 
     async def _async_save_images(
         self,

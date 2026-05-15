@@ -957,6 +957,7 @@ def serve_image(filename):
         settings.erased_dir,
         settings.results_dir,
         settings.pages_dir,
+        settings.struct_dir,
     ]:
         path = os.path.join(str(d), filename)
         if os.path.exists(path):
