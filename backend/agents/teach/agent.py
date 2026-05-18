@@ -49,6 +49,7 @@ def stream_teach(
     messages: List[Dict[str, str]],
     provider: str = "openai",
     model_name: str | None = None,
+    context_prompt: str | None = None,
 ) -> Generator[str, None, None]:
     """流式教学对话
 
@@ -75,6 +76,14 @@ def stream_teach(
         )
     else:
         system_prompt = GENERAL_SYSTEM_PROMPT
+
+    if context_prompt:
+        system_prompt = (
+            f"{system_prompt}\n\n"
+            "以下是用户主动引用的学习资料。回答时优先结合这些资料；"
+            "如果资料不足以回答，请明确说明并基于通用知识补充。\n\n"
+            f"{context_prompt}"
+        )
 
     # 构建 LangChain 消息列表
     lc_messages = [SystemMessage(content=system_prompt)]
