@@ -44,6 +44,7 @@ const props = defineProps({
   // 响应式状态
   sidebarMode: { type: String, default: 'expanded' }, // 'expanded' | 'collapsed-icon'
   isMobile: { type: Boolean, default: false },
+  canHover: { type: Boolean, default: true },
   mobileDrawerOpen: { type: Boolean, default: false },
 })
 
@@ -275,7 +276,7 @@ const userQuotaSummary = computed(() => {
               class="flex h-14 items-center justify-between gap-2 px-3 transition-all duration-300 ease-[var(--sidebar-transition-timing)]">
               <button @click="emit('navigate-home')"
                 class="flex w-[156px] min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:bg-gray-100 dark:hover:bg-white/[0.04]"
-                title="返回首页">
+                :title="canHover ? '返回首页' : null">
                 <BaseLogo size="sm" class="shrink-0" />
                 <span
                   class="overflow-hidden whitespace-nowrap text-sm font-semibold text-gray-900 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#f7f8f8]"
@@ -288,7 +289,7 @@ const userQuotaSummary = computed(() => {
                 :class="isNarrow ? 'w-7 -translate-x-1 opacity-0' : 'w-7 translate-x-0 opacity-100'">
                 <button @click="openSettings('profile')"
                   class="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98] transition-colors"
-                  title="系统设置">
+                  :title="canHover ? '系统设置' : null">
                   <i class="fa-solid fa-gear text-xs"></i>
                 </button>
               </div>
@@ -371,7 +372,7 @@ const userQuotaSummary = computed(() => {
                   </button>
                   <button
                     class="flex h-6 w-6 items-center justify-center rounded-md text-gray-500 transition-colors duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]"
-                    title="新建错题库" @click.stop="emit('create-project', 'question')">
+                    :title="canHover ? '新建错题库' : null" @click.stop="emit('create-project', 'question')">
                     <i class="fa-solid fa-plus text-[10px]"></i>
                   </button>
                 </div>
@@ -407,7 +408,7 @@ const userQuotaSummary = computed(() => {
                             <template #trigger="{ toggle }">
                               <button
                                 class="flex h-6 w-6 items-center justify-center opacity-55 transition-opacity duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] hover:opacity-100"
-                                title="更多操作" @click.stop="toggle">
+                                :title="canHover ? '更多操作' : null" @click.stop="toggle">
                                 <i class="fa-solid fa-ellipsis text-[9px]"></i>
                               </button>
                             </template>
@@ -453,7 +454,7 @@ const userQuotaSummary = computed(() => {
                   </button>
                   <button
                     class="flex h-6 w-6 items-center justify-center rounded-md text-gray-500 transition-colors duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]"
-                    title="新建笔记本" @click.stop="emit('create-project', 'note')">
+                    :title="canHover ? '新建笔记本' : null" @click.stop="emit('create-project', 'note')">
                     <i class="fa-solid fa-plus text-[10px]"></i>
                   </button>
                 </div>
@@ -489,7 +490,7 @@ const userQuotaSummary = computed(() => {
                             <template #trigger="{ toggle }">
                               <button
                                 class="flex h-6 w-6 items-center justify-center opacity-55 transition-opacity duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] hover:opacity-100"
-                                title="更多操作" @click.stop="toggle">
+                                :title="canHover ? '更多操作' : null" @click.stop="toggle">
                                 <i class="fa-solid fa-ellipsis text-[9px]"></i>
                               </button>
                             </template>
@@ -601,7 +602,7 @@ const userQuotaSummary = computed(() => {
               <button @click="createChat"
                 class="flex items-center justify-center overflow-hidden rounded-md text-gray-500 transition-all duration-300 ease-[var(--sidebar-transition-timing)] hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]"
                 :class="isNarrow ? 'pointer-events-none h-0 w-0 -translate-x-1 opacity-0' : 'h-6 w-6 translate-x-0 opacity-100'"
-                title="新对话">
+                :title="canHover ? '新对话' : null">
                 <i class="fa-solid fa-plus text-[10px]"></i>
               </button>
             </div>
@@ -652,7 +653,7 @@ const userQuotaSummary = computed(() => {
                         <template #trigger="{ toggle }">
                           <button
                             class="flex h-6 w-6 items-center justify-center opacity-55 transition-opacity hover:opacity-100"
-                            title="更多操作" @click.stop="toggle">
+                            :title="canHover ? '更多操作' : null" @click.stop="toggle">
                             <i class="fa-solid fa-ellipsis text-[9px]"></i>
                           </button>
                         </template>

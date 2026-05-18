@@ -18,7 +18,7 @@ const { pushToast } = useToast()
 const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
-const { currentView } = useWorkspaceNav()
+const { currentView, isMobile, canHover } = useWorkspaceNav()
 const { questionProjects } = useProjects()
 
 const sessionId = computed(() => activeAiChatId.value)
@@ -341,7 +341,7 @@ function questionContextSnippet(question) {
       <template #header-actions>
         <button @click="createCurrentAiChat"
           class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
-          title="新对话">
+          :title="canHover ? '新对话' : null">
           <MessageSquarePlus class="w-4 h-4" />
         </button>
       </template>
@@ -428,13 +428,13 @@ function questionContextSnippet(question) {
                     class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
                     :class="deepThink
                       ? 'accent-bg-soft accent-text'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'" title="深度思考">
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'" :title="canHover ? '深度思考' : null">
                     <i class="fa-solid fa-brain text-sm"></i>
                     <span class="hidden sm:inline">深度思考</span>
                   </button>
                   <button disabled
                     class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-gray-400 dark:text-[#62666d] cursor-not-allowed"
-                    title="联网搜索（敬请期待）">
+                    :title="canHover ? '联网搜索（敬请期待）' : null">
                     <i class="fa-solid fa-globe text-sm"></i>
                     <span class="hidden sm:inline">联网搜索</span>
                   </button>
@@ -446,14 +446,14 @@ function questionContextSnippet(question) {
                     class="flex max-w-[150px] items-center gap-1.5 rounded-lg border border-[rgb(var(--accent-rgb)/0.24)] bg-[rgb(var(--accent-rgb)/0.10)] px-2.5 py-1.5 text-xs font-semibold accent-text sm:max-w-[220px]">
                     <i class="fa-solid fa-database text-[11px]"></i>
                     <span class="min-w-0 truncate">{{ selectedContextLabel }}</span>
-                    <button class="ml-0.5 text-[10px] opacity-70 transition-opacity hover:opacity-100" title="移除引用"
-                      @click.stop="clearContext">
+                    <button class="ml-0.5 text-[10px] opacity-70 transition-opacity hover:opacity-100"
+                      :title="canHover ? '移除引用' : null" @click.stop="clearContext">
                       <i class="fa-solid fa-xmark"></i>
                     </button>
                   </div>
                   <button @click.stop="openContextDialog"
                     class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0] transition-colors"
-                    title="引用错题">
+                    :title="canHover ? '引用错题' : null">
                     <i class="fa-solid fa-plus text-sm"></i>
                   </button>
                   <button @click="sessionId ? sendMessage() : createCurrentAiChat()"
