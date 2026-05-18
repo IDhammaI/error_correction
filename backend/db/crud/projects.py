@@ -1,4 +1,4 @@
-﻿"""Project CRUD helpers."""
+"""Project CRUD helpers."""
 
 from typing import List, Optional
 
@@ -119,11 +119,17 @@ def delete_project(db: Session, project_id: int, user_id=None) -> bool:
         return False
     if project.is_default:
         raise ValueError("DEFAULT_PROJECT_IMMUTABLE")
+
+    # 检查是否有题目或笔记
     has_questions = db.query(Question.id).filter(Question.project_id == project.id).first()
     has_notes = db.query(Note.id).filter(Note.project_id == project.id).first()
-    has_batches = db.query(UploadBatch.id).filter(UploadBatch.project_id == project.id).first()
-    if has_questions or has_notes or has_batches:
+
+    if has_questions or has_notes:
         raise ValueError("PROJECT_NOT_EMPTY")
+
+    # 如果没有题目和笔记了，自动清理关联的空批次（UploadBatch）
+    db.query(UploadBatch).filter(UploadBatch.project_id == project.id).delete()
+
     db.delete(project)
     db.commit()
     return True

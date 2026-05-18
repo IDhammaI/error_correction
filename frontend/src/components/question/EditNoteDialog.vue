@@ -143,10 +143,11 @@ const config = () => {
         <div v-show="previewMode" ref="questionContentRef"
           class="rounded-xl border border-slate-200/60 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-white/[0.03] min-h-[100px] html-preview-content">
           <div v-if="isHtml(draft)" v-html="sanitizeHtml(draft)"
-            class="text-sm font-bold leading-relaxed text-slate-700 dark:text-slate-200 overflow-x-auto w-full">
+            class="text-[15px] font-medium leading-relaxed text-slate-700 dark:text-slate-200 overflow-x-auto w-full">
           </div>
-          <p v-else class="text-sm font-bold leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{{
-            draft }}</p>
+          <p v-else
+            class="text-[15px] font-medium leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{{
+              draft }}</p>
 
           <div v-if="question?.content_json?.some(b => b.block_type === 'image' && b.content)"
             class="mt-3 flex flex-wrap gap-2">
@@ -155,7 +156,7 @@ const config = () => {
           </div>
           <div v-if="question?.options_json?.length" class="mt-3 grid grid-cols-2 gap-1.5">
             <div v-for="(opt, idx) in question.options_json" :key="idx"
-              class="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400">
+              class="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-[15px] font-medium text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400">
               <span class="shrink-0 text-slate-400">{{ String.fromCharCode(65 + idx) }}.</span>
               <span>{{ String(opt).replace(/^[A-Da-d][.、．]\s*/, '') }}</span>
             </div>
@@ -191,18 +192,18 @@ const config = () => {
 
 <style scoped>
 .html-preview-content :deep(table) {
-  @apply my-4 w-full rounded-xl border border-slate-200 bg-white/50 text-sm overflow-hidden dark:bg-white/[0.02] dark:border-white/10;
+  @apply my-4 w-full max-w-full rounded-xl border border-slate-200 bg-white/50 text-[14px] overflow-hidden dark:bg-white/[0.02] dark:border-white/10;
   display: block;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 .html-preview-content :deep(th) {
-  @apply bg-slate-100 p-3 text-left font-black dark:bg-white/5 dark:text-slate-300;
+  @apply bg-slate-100/80 px-4 py-2.5 text-left font-bold text-slate-600 dark:bg-white/5 dark:text-slate-300 whitespace-nowrap;
 }
 
 .html-preview-content :deep(td) {
-  @apply border-t border-slate-100 p-3 dark:border-white/10 dark:text-slate-300;
+  @apply border-t border-slate-100/80 px-4 py-2.5 dark:border-white/10 dark:text-slate-300 whitespace-nowrap;
 }
 
 .html-preview-content :deep(ul) {

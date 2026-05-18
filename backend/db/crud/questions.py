@@ -395,11 +395,18 @@ def delete_question(db: Session, question_id: int, user_id=None) -> bool:
         return False
 
     try:
+        batch_id = question.batch_id
         # 删除关联的标签映射
         db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id == question_id).delete()
 
         # 删除题目
         db.delete(question)
+
+        # 检查批次是否已空，若空则清理
+        if batch_id:
+            other_q = db.query(Question.id).filter(Question.batch_id == batch_id).first()
+            if not other_q:
+                db.query(UploadBatch).filter(UploadBatch.id == batch_id).delete()
         db.commit()
     except Exception as e:
         db.rollback()

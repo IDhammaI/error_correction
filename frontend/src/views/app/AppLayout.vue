@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
       leave-active-class="transition duration-[var(--mask-transition-duration)] ease-out" leave-from-class="opacity-100"
       leave-to-class="opacity-0">
       <div v-if="isMobile && mobileDrawerOpen"
-        class="fixed inset-0 z-[15] bg-black/40 dark:bg-black/60 backdrop-blur-[2px]" @click="closeDrawer"></div>
+        class="fixed inset-0 z-[15] bg-black/40 dark:bg-black/60 backdrop-blur-md" @click="closeDrawer"></div>
     </Transition>
 
     <!-- 侧边栏导航 -->
