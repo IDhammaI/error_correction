@@ -54,6 +54,10 @@ const selectedContextLabel = computed(() => {
   return `${selectedContextProject.value.name} · ${selectedContextQuestionIds.value.length} 题`
 })
 
+function createCurrentAiChat() {
+  return createAiChat(currentView)
+}
+
 watch(sessionId, (id, prevId) => {
   if (prevId !== undefined && id !== prevId) {
     clearContext()
@@ -335,7 +339,7 @@ function questionContextSnippet(question) {
   <div class="h-full min-h-0">
     <ContentPanel title="AI 对话">
       <template #header-actions>
-        <button @click="createAiChat(currentView)"
+        <button @click="createCurrentAiChat"
           class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
           title="新对话">
           <MessageSquarePlus class="w-4 h-4" />
@@ -452,7 +456,7 @@ function questionContextSnippet(question) {
                     title="引用错题">
                     <i class="fa-solid fa-plus text-sm"></i>
                   </button>
-                  <button @click="sessionId ? sendMessage() : createAiChat(currentView)"
+                  <button @click="sessionId ? sendMessage() : createCurrentAiChat()"
                     :disabled="sessionId ? (!inputText.trim() || streaming) : false"
                     class="h-8 w-8 rounded-full flex items-center justify-center transition-all" :class="inputText.trim() && sessionId
                       ? 'accent-bg text-white shadow-sm'
