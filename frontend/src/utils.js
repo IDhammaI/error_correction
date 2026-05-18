@@ -54,7 +54,19 @@ export const getQuestionSnippet = (q, maxLen = 0, fallback = '') => {
 const protectMathMarkdown = (text) => {
   const placeholders = []
   if (!text) return { text: '', restore: (html) => html }
+  const codePlaceholders = []
+  const stashCode = (match) => {
+    const key = `@@CODE_${codePlaceholders.length}@@`
+    codePlaceholders.push(match)
+    return key
+  }
+
   let s = String(text)
+  s = s
+    .replace(/```[\s\S]*?```/g, stashCode)
+    .replace(/`[^`\n]+`/g, stashCode)
+
+  s = s
     .replace(/\\\[((?:.|\n)*?)\\\]/g, (_, content) => `$$${content}$$`)
     .replace(/\\\(((?:.|\n)*?)\\\)/g, (_, content) => `$${content}$`)
 
@@ -70,11 +82,13 @@ const protectMathMarkdown = (text) => {
 
   // Some LLM replies contain bare LaTeX commands, for example "\overline{z}".
   // Wrap those small math fragments so MathJax can process them while streaming.
-  s = s.replace(/\\(?:frac|sqrt|overline|bar|hat|vec|angle|triangle|pi|cdot|times|leq|geq|neq|approx|sum|int|Delta|alpha|beta|gamma|theta|lambda|mu|sigma|omega)(?:\s*\{[^{}\n]*\}){0,2}(?:\s*[_^]\s*\{?[\w+\-=]+\}?){0,2}/g, (match) => `$${match}$`)
+  s = s.replace(/(?<![A-Za-z0-9:\\\\/])\\(?:frac|sqrt|overline|bar|hat|vec|angle|triangle|pi|cdot|times|leq|geq|neq|approx|sum|int|Delta|alpha|beta|gamma|theta|lambda|mu|sigma|omega)(?:\s*\{[^{}\n]*\}){0,2}(?:\s*[_^]\s*\{?[\w+\-=]+\}?){0,2}/g, (match) => `$${match}$`)
 
   s = s
     .replace(/\$\$[\s\S]*?\$\$/g, stash)
     .replace(/\$(?!\$)[\s\S]*?(?<!\$)\$/g, stash)
+
+  s = s.replace(/@@CODE_(\d+)@@/g, (_, index) => codePlaceholders[Number(index)] || '')
 
   return {
     text: s,
