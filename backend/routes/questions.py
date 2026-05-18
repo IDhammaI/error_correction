@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import uuid
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, session
@@ -9,6 +10,8 @@ from db import SessionLocal
 from db import crud
 from db.models import Question, UploadBatch, KnowledgeTag
 from core.config import settings
+from core import workflow_run_store as run_store
+from core.state import session_lock, get_user_session
 from src.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)
@@ -21,6 +24,11 @@ def _effective_user_id():
     if session.get('is_admin'):
         return None
     return session.get('user_id')
+
+
+def _current_split_run_id(user_id):
+    with session_lock:
+        return get_user_session(user_id).get("current_thread_id")
 
 
 def _project_id_arg():
@@ -81,9 +89,9 @@ def _serialize_question_detail(q: Question) -> dict:
     return base
 
 
-def _read_split_subject():
+def _read_split_subject(result_dir: str | None = None):
     """从 split_metadata.json 读取学科信息"""
-    meta_path = os.path.join(str(settings.results_dir), "split_metadata.json")
+    meta_path = os.path.join(str(result_dir or settings.results_dir), "split_metadata.json")
     if os.path.exists(meta_path):
         with open(meta_path, 'r', encoding='utf-8') as f:
             return json.load(f).get("subject")
@@ -99,21 +107,29 @@ def get_questions():
         JSON响应，包含题目列表
     """
     try:
-        results_dir = settings.results_dir
-        questions_file = os.path.join(results_dir, "questions.json")
-
-        if not os.path.exists(questions_file):
+        user_id = session.get("user_id")
+        run_id = request.args.get("run_id") or _current_split_run_id(user_id)
+        if not run_id:
             return jsonify({
                 'success': True,
                 'questions': [],
                 'message': '暂无题目数据'
             })
 
-        with open(questions_file, 'r', encoding='utf-8') as f:
-            questions = json.load(f)
+        with SessionLocal() as db:
+            run = run_store.get_split_run(db, run_id, user_id=user_id)
+        if not run or run.status != run_store.STATUS_SUCCEEDED:
+            return jsonify({
+                'success': True,
+                'questions': [],
+                'message': '暂无题目数据'
+            })
+
+        questions = run_store.read_questions(run)
 
         return jsonify({
             'success': True,
+            'run_id': run.public_id,
             'questions': questions
         })
 
@@ -464,13 +480,15 @@ def save_to_db():
         if not isinstance(selected_uids, list) or not selected_uids:
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
-        results_dir = settings.results_dir
-        questions_file = os.path.join(results_dir, "questions.json")
-        if not os.path.exists(questions_file):
-            return jsonify({'success': False, 'error': '请先分割题目'}), 400
-
-        with open(questions_file, 'r', encoding='utf-8') as f:
-            questions = json.load(f)
+        run_id = data.get('run_id')
+        if not run_id:
+            return jsonify({'success': False, 'code': 'MISSING_RUN_ID', 'error': '缺少 run_id，请重新分割题目'}), 400
+        user_id = session.get('user_id')
+        with SessionLocal() as db:
+            run = run_store.get_split_run(db, run_id, user_id=user_id)
+            if not run or run.status != run_store.STATUS_SUCCEEDED:
+                return jsonify({'success': False, 'error': '请先分割题目'}), 400
+            questions = run_store.read_questions(run)
 
         uid_set = set(selected_uids)
         selected_questions = [q for q in questions if q.get('uid') in uid_set]
@@ -488,20 +506,14 @@ def save_to_db():
                     sq['user_answer'] = answers_map[uid]['user_answer']
 
         # 读取科目信息
-        subject = _read_split_subject()
+        subject = run_store.read_subject(run)
 
-        from core.state import session_lock, get_user_session
-        uid = session.get('user_id')
-        with session_lock:
-            us = get_user_session(uid)
-            batch_info = {
-                "original_filename": ", ".join(
-                    us["session_files"].get(k, {}).get("filename", "未知")
-                    for k in us["session_file_order"]
-                ),
-                "subject": subject,
-                "file_path": "",
-            }
+        file_names = json.loads(run.file_names_json) if run.file_names_json else []
+        batch_info = {
+            "original_filename": ", ".join(file_names) or "Unknown",
+            "subject": subject,
+            "file_path": run.result_dir,
+        }
 
         with SessionLocal() as db:
             try:
@@ -525,6 +537,7 @@ def save_to_db():
         return jsonify({
             'success': True,
             'message': f'已导入 {result["created"]} 道题目（跳过 {result["duplicates"]} 道重复）',
+            'run_id': run.public_id,
             'created': result['created'],
             'duplicates': result['duplicates'],
         })
@@ -659,12 +672,20 @@ def export_from_db():
             # DB 导出的题目已按 selected_ids 过滤完毕，赋顺序 uid 后全部导出
             for i, q in enumerate(questions):
                 q['uid'] = str(i)
-            output_path = export_wrongbook_md(questions, [str(i) for i in range(len(questions))])
+            export_user = session.get('user_id') or "anon"
+            export_name = f"user_{export_user}_{uuid.uuid4().hex}_wrongbook.md"
+            output_path = export_wrongbook_md(
+                questions,
+                [str(i) for i in range(len(questions))],
+                output_path=os.path.join(str(settings.results_dir), export_name),
+            )
+            download_url = f"/download/{os.path.basename(output_path)}"
 
         return jsonify({
             'success': True,
             'message': '错题本导出成功',
             'output_path': output_path,
+            'download_url': download_url,
         })
 
     except Exception as e:

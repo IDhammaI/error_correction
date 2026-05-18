@@ -231,17 +231,20 @@ export async function splitQuestions(modelProvider, modelName, providerSource, p
   return _assertJsonSuccess(resp, '题目分割失败')
 }
 
-export async function exportQuestions(selectedIds) {
+export async function exportQuestions(selectedIds, runId) {
+  const body = { selected_ids: selectedIds }
+  if (runId) body.run_id = runId
   const resp = await fetch('/api/export', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selected_ids: selectedIds }),
+    body: JSON.stringify(body),
   })
   return _assertJsonSuccess(resp, '导出失败')
 }
 
-export async function saveToDb(selectedIds, answers = [], projectId) {
+export async function saveToDb(selectedIds, answers = [], runId, projectId) {
   const body = { selected_ids: selectedIds, answers }
+  if (runId) body.run_id = runId
   if (projectId) body.project_id = projectId
   const resp = await fetch('/api/save-to-db', {
     method: 'POST',

@@ -13,17 +13,53 @@ Flask 路由集成测试
 """
 
 import io
+import json
 import uuid
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, User, ProviderConfig, SystemProviderConfig
+from db.models import Base, User, ProviderConfig, SystemProviderConfig, Question
 from db import crud
 
 # 测试用户 ID，与 client fixture 中的 session['user_id'] 一致
 TEST_USER_ID = 1
+
+
+def _seed_split_run(db, tmp_path, *, user_id, run_id, question_text):
+    """Create an isolated succeeded split run with its own questions.json."""
+    run_dir = tmp_path / f"user-{user_id}" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    questions = [
+        {
+            "uid": "0",
+            "question_id": "1",
+            "question_type": "选择题",
+            "content_blocks": [{"block_type": "text", "content": question_text}],
+            "has_formula": False,
+            "has_image": False,
+        }
+    ]
+    (run_dir / "questions.json").write_text(
+        json.dumps(questions, ensure_ascii=False), encoding="utf-8"
+    )
+    (run_dir / "split_metadata.json").write_text(
+        json.dumps({"subject": "数学"}, ensure_ascii=False), encoding="utf-8"
+    )
+    crud.create_workflow_run(
+        db,
+        user_id=user_id,
+        run_type="split",
+        status="succeeded",
+        public_id=run_id,
+        subject="数学",
+        model_provider="openai",
+        file_names=[f"user-{user_id}.pdf"],
+        result_dir=str(run_dir),
+        question_count=1,
+    )
+    return questions
 
 
 @pytest.fixture
@@ -476,6 +512,88 @@ class TestExportFromDbRoute:
     def test_nonexistent_ids(self, client):
         resp = client.post("/api/export-from-db", json={"selected_ids": [99999]})
         assert resp.status_code == 404
+
+
+class TestMultiUserWorkflowRunIsolation:
+    """Split-run routes must not leak questions across users."""
+
+    def test_get_questions_requires_run_owner(self, client, test_db, tmp_path):
+        test_db.add(
+            User(id=2, username="other", email="other@test.com", password_hash="x")
+        )
+        test_db.commit()
+
+        _seed_split_run(
+            test_db,
+            tmp_path,
+            user_id=TEST_USER_ID,
+            run_id="user-1-run",
+            question_text="current user question",
+        )
+        _seed_split_run(
+            test_db,
+            tmp_path,
+            user_id=2,
+            run_id="user-2-run",
+            question_text="other user question",
+        )
+
+        own_resp = client.get("/api/questions?run_id=user-1-run")
+        assert own_resp.status_code == 200
+        own_data = own_resp.get_json()
+        assert own_data["run_id"] == "user-1-run"
+        assert own_data["questions"][0]["content_blocks"][0]["content"] == (
+            "current user question"
+        )
+
+        other_resp = client.get("/api/questions?run_id=user-2-run")
+        assert other_resp.status_code == 200
+        other_data = other_resp.get_json()
+        assert other_data["questions"] == []
+        assert "run_id" not in other_data
+
+    def test_save_to_db_rejects_other_users_run(self, client, test_db, tmp_path):
+        test_db.add(
+            User(id=2, username="other", email="other2@test.com", password_hash="x")
+        )
+        test_db.commit()
+        _seed_split_run(
+            test_db,
+            tmp_path,
+            user_id=2,
+            run_id="other-owned-run",
+            question_text="should not import",
+        )
+
+        resp = client.post(
+            "/api/save-to-db",
+            json={"run_id": "other-owned-run", "selected_ids": ["0"]},
+        )
+        assert resp.status_code == 400
+        assert test_db.query(Question).count() == 0
+
+    def test_save_to_db_imports_current_users_run(self, client, test_db, tmp_path):
+        _seed_split_run(
+            test_db,
+            tmp_path,
+            user_id=TEST_USER_ID,
+            run_id="own-run-to-import",
+            question_text="import me",
+        )
+
+        resp = client.post(
+            "/api/save-to-db",
+            json={"run_id": "own-run-to-import", "selected_ids": ["0"]},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["run_id"] == "own-run-to-import"
+
+        saved = test_db.query(Question).all()
+        assert len(saved) == 1
+        assert saved[0].user_id == TEST_USER_ID
+        assert "import me" in saved[0].content_json
 
 
 # ── PATCH /api/question/<id>/review-status ────────────

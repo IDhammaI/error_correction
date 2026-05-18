@@ -10,7 +10,8 @@ import logging
 import time
 import traceback
 import difflib as _difflib
-from typing import List, Dict, Any, TypedDict
+from contextvars import copy_context
+from typing import List, Dict, Any, TypedDict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from langgraph.graph import StateGraph, START, END
@@ -51,6 +52,7 @@ class WorkflowState(TypedDict, total=False):
     llm_credentials: Dict[str, Any]      # {api_key, base_url, light_model_name, supports_function_calling}
     ocr_credentials: Dict[str, Any]      # {api_url, token, model, use_doc_orientation, ...}
     ocr_cache_path: str                  # OCR 预览缓存文件路径（按用户隔离）
+    results_dir: str                     # 本次运行的结果目录（按 user/run 隔离）
 
 
 # ── 节点函数 ──────────────────────────────────────────────
@@ -73,11 +75,20 @@ def prepare_input_node(state: WorkflowState) -> dict:
 # ── 并行分割辅助函数 ──────────────────────────────────────────
 
 
-def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+def _run_ocr_and_simplify(
+    file_paths: List[str],
+    ocr_credentials: Dict[str, Any] = None,
+    output_dir: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """执行 OCR 解析并简化结果（含重试机制）
 
     支持混合文件类型：PDF 直传 API，图片并行上传。
     然后将结果简化为 split_batch 所需的格式。
+
+    Args:
+        file_paths: 待解析文件路径列表
+        ocr_credentials: OCR 凭据
+        output_dir: 结果保存目录，不传时使用全局 struct_dir
 
     Returns:
         简化后的 OCR 数据列表，每项包含 page_index 和 blocks
@@ -108,7 +119,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
         result = None
         for attempt in range(1, max_retries + 1):
             try:
-                result = client.parse_pdf(pdf_path, save_output=True)
+                result = client.parse_pdf(pdf_path, save_output=True, output_dir=output_dir)
                 break
             except Exception as e:
                 last_error = e
@@ -130,7 +141,7 @@ def _run_ocr_and_simplify(file_paths: List[str], ocr_credentials: Dict[str, Any]
         for attempt in range(1, max_retries + 1):
             try:
                 img_results = run_async(
-                    client.parse_images_async(image_paths, save_output=True)
+                    client.parse_images_async(image_paths, save_output=True, output_dir=output_dir)
                 )
                 break
             except Exception as e:
@@ -656,7 +667,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     console.print("[bold yellow]步骤 2: 并行 OCR + 分割题目[/bold yellow]")
     step_start = time.time()
 
-    results_dir = settings.results_dir
+    results_dir = state.get("results_dir") or settings.results_dir
     os.makedirs(results_dir, exist_ok=True)
 
     file_paths = state["image_paths"]
@@ -690,7 +701,11 @@ def split_questions_node(state: WorkflowState) -> dict:
     if not ocr_data:
         console.print(f"[cyan]OCR 解析 {len(file_paths)} 个文件...[/cyan]")
         ocr_start = time.time()
-        ocr_data = _run_ocr_and_simplify(file_paths, ocr_credentials=ocr_credentials)
+        ocr_data = _run_ocr_and_simplify(
+            file_paths,
+            ocr_credentials=ocr_credentials,
+            output_dir=results_dir,
+        )
 
         if not ocr_data:
             logger.error("OCR 解析失败，无数据返回")
@@ -790,7 +805,7 @@ def split_questions_node(state: WorkflowState) -> dict:
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {
-                pool.submit(_invoke_split, i, batch): i
+                pool.submit(copy_context().run, _invoke_split, i, batch): i
                 for i, batch in enumerate(batches)
             }
             # 等待全部完成
@@ -885,7 +900,8 @@ def correct_questions_node(state: WorkflowState) -> dict:
     # 加载 OCR 数据作为纠错上下文
     # agent_input.json 现在保存的是批次数据（[[page, ...], ...]），需要还原为扁平页面列表
     ocr_context = "{}"
-    agent_input_path = os.path.join(settings.results_dir, "agent_input.json")
+    results_dir = state.get("results_dir") or settings.results_dir
+    agent_input_path = os.path.join(results_dir, "agent_input.json")
     if os.path.exists(agent_input_path):
         with open(agent_input_path, 'r', encoding='utf-8') as f:
             raw = json.load(f)
@@ -949,7 +965,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
             merged.append(q)
 
     # 更新 questions.json
-    questions_file = os.path.join(settings.results_dir, "questions.json")
+    questions_file = os.path.join(results_dir, "questions.json")
     with open(questions_file, 'w', encoding='utf-8') as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 
@@ -963,7 +979,9 @@ def export_node(state: WorkflowState) -> dict:
     """节点: 导出错题本"""
     console.print("[bold yellow]步骤 3: 导出错题本[/bold yellow]")
     step_start = time.time()
-    output_path = export_wrongbook(state["questions"], state["selected_ids"])
+    results_dir = state.get("results_dir") or settings.results_dir
+    output_path = state.get("output_path") or os.path.join(results_dir, "wrongbook.md")
+    output_path = export_wrongbook(state["questions"], state["selected_ids"], output_path=output_path)
     logger.info(f"导出完成: {output_path}，耗时 {time.time() - step_start:.2f}s")
     return {"output_path": output_path}
 

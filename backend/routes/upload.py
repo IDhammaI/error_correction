@@ -18,6 +18,7 @@ from db import SessionLocal
 from db import crud
 from core.config import settings
 from core.model_selection import LLMSelectionError, resolve_llm_selection
+from core import workflow_run_store as run_store
 from core.quota import (
     consume_daily_free_quota,
     has_daily_free_quota,
@@ -42,9 +43,9 @@ def allowed_file(filename):
     return PurePath(filename).suffix.lower().lstrip(".") in settings.allowed_extensions
 
 
-def _read_split_subject() -> Optional[str]:
+def _read_split_subject(result_dir: str | None = None) -> Optional[str]:
     """从 split_metadata.json 读取学科信息"""
-    meta_path = os.path.join(str(settings.results_dir), "split_metadata.json")
+    meta_path = os.path.join(str(result_dir or settings.results_dir), "split_metadata.json")
     if os.path.exists(meta_path):
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f).get("subject")
@@ -659,6 +660,8 @@ def split_questions():
     Returns:
         JSON响应，包含分割后的题目
     """
+    run_id = None
+    user_id = None
     try:
         # 读取请求体参数（模型供应商 + 模型名称）
         data = request.get_json(silent=True) or {}
@@ -729,7 +732,24 @@ def split_questions():
 
         with session_lock:
             us = get_user_session(user_id)
-            us["current_thread_id"] = str(uuid.uuid4())
+            file_names = [
+                us["session_files"].get(k, {}).get("filename", "Unknown")
+                for k in us["session_file_order"]
+            ]
+
+        with SessionLocal() as db:
+            run = run_store.create_split_run(
+                db,
+                user_id=user_id,
+                file_names=file_names,
+                model_provider=model_provider,
+            )
+            run_id = run.public_id
+            result_dir = run.result_dir
+
+        with session_lock:
+            us = get_user_session(user_id)
+            us["current_thread_id"] = run_id
             thread_id = us["current_thread_id"]
         config = {"configurable": {"thread_id": thread_id}}
 
@@ -739,6 +759,7 @@ def split_questions():
             "model_name": llm_selection["model_name"],
             "ocr_credentials": ocr_credentials,
             "ocr_cache_path": _ocr_cache_path(user_id),
+            "results_dir": result_dir,
         }
         workflow_graph.invoke(initial_state, config=config)
         result_state = workflow_graph.invoke(None, config=config)
@@ -747,18 +768,52 @@ def split_questions():
         questions = result_state.get("questions", [])
         warnings = result_state.get("warnings", [])
 
+        if not questions:
+            failure_message = (
+                warnings[0]
+                if warnings
+                else "未能分割出题目，请检查上传内容或模型配置"
+            )
+            with SessionLocal() as db:
+                run_store.mark_failed(
+                    db,
+                    run_id,
+                    user_id=user_id,
+                    error_message=failure_message,
+                )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "code": "SPLIT_NO_QUESTIONS",
+                        "error": failure_message,
+                        "run_id": run_id,
+                        "questions": [],
+                        "warnings": warnings,
+                    }
+                ),
+                422,
+            )
+
         # 自动保存分割记录
         try:
-            subject = _read_split_subject()
+            subject = _read_split_subject(result_dir)
 
             with session_lock:
                 us = get_user_session(user_id)
                 file_names = [
-                    us["session_files"].get(k, {}).get("filename", "未知")
+                    us["session_files"].get(k, {}).get("filename", "Unknown")
                     for k in us["session_file_order"]
                 ]
 
             with SessionLocal() as db:
+                run_store.mark_succeeded(
+                    db,
+                    run_id,
+                    user_id=user_id,
+                    subject=subject,
+                    question_count=len(questions),
+                )
                 crud.save_split_record(
                     db, subject, model_provider, file_names, questions, user_id=user_id
                 )
@@ -775,6 +830,7 @@ def split_questions():
             {
                 "success": True,
                 "message": f"成功分割 {len(questions)} 道题目",
+                "run_id": run_id,
                 "questions": questions,
                 "warnings": warnings,
             }
@@ -782,6 +838,14 @@ def split_questions():
 
     except Exception as e:
         logger.exception("题目分割失败")
+        if run_id:
+            try:
+                with SessionLocal() as db:
+                    run_store.mark_failed(
+                        db, run_id, user_id=user_id, error_message=str(e)
+                    )
+            except Exception:
+                logger.warning("failed to mark workflow run as failed", exc_info=True)
         return jsonify({"success": False, "error": "题目分割失败，请稍后重试"}), 500
 
 
@@ -824,7 +888,7 @@ def get_split_record_detail(record_id):
 
     except Exception as e:
         logger.exception("获取分割记录详情失败")
-        return jsonify({"success": False, "error": "获取分割记录详情失败"}), 500
+        return jsonify({"success": False, "error": "Get split record detail failed"}), 500
 
 
 @bp.route("/export", methods=["POST"])
@@ -848,21 +912,33 @@ def export_wrongbook():
             return jsonify({"success": False, "error": "未选择任何题目"}), 400
 
         # 检查是否已分割（通过 questions.json 存在性判断，不依赖内存中的 current_thread_id）
-        results_dir = settings.results_dir
-        questions_file = os.path.join(results_dir, "questions.json")
-        if not os.path.exists(questions_file):
+        run_id = data.get("run_id")
+        if not run_id:
+            return jsonify({"success": False, "code": "MISSING_RUN_ID", "error": "缺少 run_id，请重新分割题目"}), 400
+        user_id = session.get("user_id")
+        with SessionLocal() as db:
+            run = run_store.get_split_run(db, run_id, user_id=user_id)
+            if not run or run.status != run_store.STATUS_SUCCEEDED:
+                return jsonify({"success": False, "error": "请先分割题目"}), 400
+            questions = run_store.read_questions(run)
+        if not questions:
             return jsonify({"success": False, "error": "请先分割题目"}), 400
-
-        with open(questions_file, "r", encoding="utf-8") as f:
-            questions = json.load(f)
 
         output_path = export_wrongbook_md(
             questions,
             selected_uids,
+            output_path=str(run_store.wrongbook_path(run)),
         )
+        download_url = f"/download/{os.path.basename(output_path)}"
 
         return jsonify(
-            {"success": True, "message": "错题本导出成功", "output_path": output_path}
+            {
+                "success": True,
+                "message": "错题本导出成功",
+                "output_path": output_path,
+                "download_url": download_url,
+                "run_id": run.public_id,
+            }
         )
 
     except Exception as e:
@@ -881,6 +957,7 @@ def serve_image(filename):
         settings.erased_dir,
         settings.results_dir,
         settings.pages_dir,
+        settings.struct_dir,
     ]:
         path = os.path.join(str(d), filename)
         if os.path.exists(path):

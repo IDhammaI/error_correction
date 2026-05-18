@@ -101,6 +101,14 @@ from db.crud.split_records import (
     get_split_record_by_id,
 )
 
+from db.crud.workflow_runs import (
+    create_workflow_run,
+    get_workflow_run,
+    get_latest_workflow_run,
+    update_workflow_run,
+    serialize_workflow_run,
+)
+
 from db.crud.providers import (
     _mask_secret,
     _serialize_provider,
@@ -198,6 +206,12 @@ __all__ = [
     "_cleanup_old_split_records",
     "get_recent_split_records",
     "get_split_record_by_id",
+    # workflow_runs
+    "create_workflow_run",
+    "get_workflow_run",
+    "get_latest_workflow_run",
+    "update_workflow_run",
+    "serialize_workflow_run",
     # providers
     "_mask_secret",
     "_serialize_provider",

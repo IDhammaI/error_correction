@@ -26,6 +26,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 from core.config import settings
+from core import workflow_run_store as run_store
 from db import init_db, SessionLocal
 from db import crud
 from routes import register_routes
@@ -176,11 +177,38 @@ def download_file(filename):
 
     禁用浏览器缓存，确保每次下载都是最新版本。
     """
+    user_id = session.get('user_id')
+    if user_id is None:
+        return jsonify({'success': False, 'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401
+
+    owner_user_id = None if session.get('is_admin') else user_id
+    basename = os.path.basename(filename)
+
     file_path = _safe_join(settings.results_dir, filename)
     if not file_path:
         return jsonify({'success': False, 'error': '非法文件路径'}), 400
     if not os.path.exists(file_path):
-        return jsonify({'success': False, 'error': '文件不存在'}), 404
+        run_file = None
+        if basename == filename:
+            with SessionLocal() as db:
+                run = run_store.get_split_run_by_wrongbook_filename(
+                    db,
+                    basename,
+                    user_id=owner_user_id,
+                )
+            if run:
+                candidate = run_store.wrongbook_path(run)
+                if candidate.exists():
+                    run_file = str(candidate)
+        if run_file and os.path.exists(run_file):
+            file_path = run_file
+        else:
+            return jsonify({'success': False, 'error': '文件不存在'}), 404
+    elif not session.get('is_admin'):
+        expected_prefix = f"user_{user_id}_"
+        if not basename.startswith(expected_prefix):
+            return jsonify({'success': False, 'error': '文件不存在'}), 404
+
 
     resp = send_file(
         file_path,

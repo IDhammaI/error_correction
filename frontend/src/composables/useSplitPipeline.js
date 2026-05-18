@@ -15,6 +15,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const ocrPages = ref([])
   const ocrDone = ref(false)
   const eraseEnabled = ref(true)
+  const currentRunId = ref(null)
 
   const syncQuotaFromError = (error) => {
     if (error?.quota) setQuotaSnapshot(error.quota)
@@ -92,6 +93,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
 
     splitting.value = true
+    currentRunId.value = null
     ocrDone.value = false
     step.value = S.value.SPLIT
     pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
@@ -102,6 +104,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
         selectedLlmOption.value?.source || '',
         selectedLlmOption.value?.provider_id || ''
       )
+      currentRunId.value = data.run_id || null
       questions.value = data.questions || []
       selectedIds.clear()
       if (data.warnings && data.warnings.length) {
@@ -138,6 +141,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       return
     }
     splitting.value = true
+    currentRunId.value = null
     step.value = S.value.SPLIT
     pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
     try {
@@ -192,7 +196,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const doExport = async () => {
     if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
     try {
-      const data = await api.exportQuestions(Array.from(selectedIds))
+      const data = await api.exportQuestions(Array.from(selectedIds), currentRunId.value)
       step.value = S.value.EXPORT + 1
       pushToast('success', `错题本导出成功！已保存到: ${data.output_path}`)
       let filename = 'wrongbook.md'
@@ -201,8 +205,10 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
         const last = parts[parts.length - 1]
         if (last) filename = last
       }
+      let downloadHref = data.download_url || `/download/${encodeURIComponent(filename)}`
+      downloadHref += downloadHref.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`
       const a = document.createElement('a')
-      a.href = `/download/${encodeURIComponent(filename)}?t=${Date.now()}`
+      a.href = downloadHref
       a.download = filename
       a.style.display = 'none'
       document.body.appendChild(a)
@@ -221,7 +227,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       const answers = questions.value
         .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
         .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
-      const data = await api.saveToDb(Array.from(selectedIds), answers, projectId)
+      const data = await api.saveToDb(Array.from(selectedIds), answers, currentRunId.value, projectId)
       await loadProjects()
       pushToast('success', data.message || '已导入错题库')
       errorBankRef?.value?.refresh()

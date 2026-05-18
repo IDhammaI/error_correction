@@ -135,6 +135,7 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
 
     # 收集本次提交的所有 ID
     submitted_ids = set()
+    submitted_categories = set()
     items_to_save = []
 
     category_map = {
@@ -144,6 +145,9 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
     }
 
     for list_key, category in category_map.items():
+        if list_key not in data:
+            continue
+        submitted_categories.add(category)
         for item in data.get(list_key, []):
             pid = item.get("id")
             submitted_ids.add(pid)
@@ -184,8 +188,9 @@ def save_user_providers(db: Session, user_id: int, data: dict) -> None:
         item["is_active"] = item["id"] == active_ids.get(item["category"])
 
     # 删除已移除的 provider
-    for pid in set(existing.keys()) - submitted_ids:
-        db.delete(existing[pid])
+    for pid, provider in existing.items():
+        if provider.category in submitted_categories and pid not in submitted_ids:
+            db.delete(provider)
 
     # 更新或新增
     for item in items_to_save:
@@ -210,6 +215,7 @@ def save_system_providers(db: Session, data: dict) -> None:
 
     existing = {p.id: p for p in db.query(SystemProviderConfig).all()}
     submitted_ids = set()
+    submitted_categories = set()
     items_to_save = []
 
     category_map = {
@@ -219,6 +225,9 @@ def save_system_providers(db: Session, data: dict) -> None:
     }
 
     for list_key, category in category_map.items():
+        if list_key not in data:
+            continue
+        submitted_categories.add(category)
         for item in data.get(list_key, []):
             pid = item.get("id")
             submitted_ids.add(pid)
@@ -254,8 +263,9 @@ def save_system_providers(db: Session, data: dict) -> None:
     for item in items_to_save:
         item["is_active"] = item["id"] == active_ids.get(item["category"])
 
-    for pid in set(existing.keys()) - submitted_ids:
-        db.delete(existing[pid])
+    for pid, provider in existing.items():
+        if provider.category in submitted_categories and pid not in submitted_ids:
+            db.delete(provider)
 
     for item in items_to_save:
         old = existing.get(item["id"])

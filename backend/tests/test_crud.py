@@ -39,6 +39,10 @@ from db.crud import (
     update_review_status,
     get_review_status_stats,
     get_daily_counts,
+    create_workflow_run,
+    get_workflow_run,
+    get_latest_workflow_run,
+    update_workflow_run,
 )
 from db.models import ProviderConfig, User
 
@@ -678,3 +682,64 @@ class TestProviderSelection:
         provider = db.query(ProviderConfig).filter(ProviderConfig.id == "openai-1").one()
         assert provider.is_active is False
         assert get_active_provider(db, user.id, "openai") is None
+
+
+class TestWorkflowRuns:
+    def test_create_and_get_by_user(self, db):
+        db.add(User(id=1, username="runner", email="runner@example.com", password_hash="x"))
+        db.commit()
+        run = create_workflow_run(
+            db,
+            user_id=1,
+            run_type="split",
+            status="running",
+            public_id="run-1",
+            file_names=["a.pdf"],
+            result_dir="/tmp/run-1",
+        )
+
+        assert run.public_id == "run-1"
+        assert get_workflow_run(db, "run-1", user_id=1) is not None
+        assert get_workflow_run(db, "run-1", user_id=2) is None
+
+    def test_update_and_latest(self, db):
+        db.add(User(id=1, username="runner", email="runner@example.com", password_hash="x"))
+        db.commit()
+        create_workflow_run(
+            db,
+            user_id=1,
+            run_type="split",
+            status="running",
+            public_id="run-2",
+            result_dir="/tmp/run-2",
+        )
+        update_workflow_run(
+            db,
+            "run-2",
+            user_id=1,
+            status="succeeded",
+            subject="math",
+            question_count=3,
+        )
+
+        latest = get_latest_workflow_run(
+            db, user_id=1, run_type="split", status="succeeded"
+        )
+        assert latest.public_id == "run-2"
+        assert latest.subject == "math"
+        assert latest.question_count == 3
+
+    def test_create_accepts_question_count(self, db):
+        db.add(User(id=1, username="runner", email="runner@example.com", password_hash="x"))
+        db.commit()
+        run = create_workflow_run(
+            db,
+            user_id=1,
+            run_type="split",
+            status="succeeded",
+            public_id="run-3",
+            result_dir="/tmp/run-3",
+            question_count=2,
+        )
+
+        assert run.question_count == 2

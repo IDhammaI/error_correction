@@ -137,12 +137,15 @@ class OpenAICompatibleConfig(LLMProviderConfig):
         from langchain_openai import ChatOpenAI
         import httpx
         from core.config import settings
-        http_client = httpx.Client(trust_env=settings.trust_env)
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        http_client = httpx.Client(trust_env=settings.trust_env, timeout=timeout)
         kwargs = dict(
             model=model, 
             api_key=self.api_key, 
             temperature=temperature,
-            http_client=http_client
+            http_client=http_client,
+            timeout=(10.0, 120.0),
+            max_retries=0,
         )
         if self.base_url:
             kwargs["base_url"] = self.base_url
@@ -165,11 +168,14 @@ class AnthropicCompatibleConfig(LLMProviderConfig):
         from langchain_anthropic import ChatAnthropic
         import httpx
         from core.config import settings
-        http_client = httpx.Client(trust_env=settings.trust_env)
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        http_client = httpx.Client(trust_env=settings.trust_env, timeout=timeout)
         return ChatAnthropic(
             model=model, api_key=self.api_key,
             base_url=self.base_url or None, temperature=temperature,
-            http_client=http_client
+            http_client=http_client,
+            timeout=120.0,
+            max_retries=0,
         )
 
 
@@ -201,6 +207,7 @@ class Settings(BaseSettings):
     struct_dir: Path | None = None
     results_dir: Path | None = None
     erased_dir: Path | None = None
+    runs_dir: Path | None = None
 
     # 文字擦除模型权重路径，可通过 APP_MODEL_PATH 覆盖
     model_path: Path | None = None
@@ -261,6 +268,8 @@ class Settings(BaseSettings):
             self.results_dir = self.runtime_dir / "results"
         if self.erased_dir is None:
             self.erased_dir = self.runtime_dir / "erased"
+        if self.runs_dir is None:
+            self.runs_dir = self.runtime_dir / "runs"
         if self.model_path is None:
             self.model_path = _BACKEND_ROOT / "models" / "weight" / "best.pth"
 
@@ -285,6 +294,7 @@ class Settings(BaseSettings):
             self.struct_dir,
             self.results_dir,
             self.erased_dir,
+            self.runs_dir,
         ]:
             d.mkdir(parents=True, exist_ok=True)
 

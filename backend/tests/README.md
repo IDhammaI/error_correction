@@ -1,5 +1,25 @@
 # 单元测试
 
+## 本机解释器与多用户工作流测试
+
+当前本机可用的测试解释器：
+
+```bash
+C:\ProgramData\miniconda3\envs\da\python.exe
+```
+
+如果默认临时目录权限异常，可以把 pytest 临时目录放到项目内：
+
+```bash
+C:\ProgramData\miniconda3\envs\da\python.exe -m pytest backend\tests\test_web_routes.py::TestMultiUserWorkflowRunIsolation -q --basetemp=backend\runtime_data\pytest_tmp_route -p no:cacheprovider
+C:\ProgramData\miniconda3\envs\da\python.exe -m pytest backend\tests\test_crud.py::TestWorkflowRuns -q --basetemp=backend\runtime_data\pytest_tmp_crud -p no:cacheprovider
+```
+
+新增的多用户相关测试：
+
+- `test_web_routes.py::TestMultiUserWorkflowRunIsolation`：验证用户不能读取或保存其他用户的工作流运行产物，且当前用户可以按 `run_id` 正常保存自己的分题结果。
+- `test_crud.py::TestWorkflowRuns`：验证 `WorkflowRun` 的创建、查询、状态更新、最近运行记录查询，以及 `question_count` 落库。
+
 
 ## 运行测试
 

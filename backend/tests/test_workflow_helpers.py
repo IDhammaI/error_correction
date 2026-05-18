@@ -736,6 +736,47 @@ class TestMergePages:
 # ── _run_ocr_and_simplify 混合文件类型测试 ────────────────────
 
 
+class TestPaddleOCRResultDownload:
+    def test_download_result_does_not_send_authorization_header(self):
+        client = object.__new__(PaddleOCRClient)
+        response = MagicMock()
+        response.status_code = 200
+        response.text = '{"result": {"layoutParsingResults": []}}\n'
+        response.raise_for_status.return_value = None
+
+        with patch("src.paddleocr_client.requests.get", return_value=response) as mock_get:
+            result = client._download_result("https://bj.bcebos.com/result.json?authorization=signed")
+
+        assert result == [{"layoutParsingResults": []}]
+        _, kwargs = mock_get.call_args
+        assert "headers" not in kwargs
+
+    def test_download_result_error_hides_signed_query(self):
+        client = object.__new__(PaddleOCRClient)
+        response = MagicMock(status_code=400)
+        response.text = "bad request"
+
+        with patch("src.paddleocr_client.requests.get", return_value=response):
+            with pytest.raises(RuntimeError) as exc_info:
+                client._download_result("https://bj.bcebos.com/result.json?authorization=secret")
+
+        message = str(exc_info.value)
+        assert "https://bj.bcebos.com/result.json" in message
+        assert "authorization" not in message
+        assert "secret" not in message
+
+    def test_download_result_rejects_non_bos_url(self):
+        client = object.__new__(PaddleOCRClient)
+
+        with pytest.raises(ValueError) as exc_info:
+            client._download_result("http://127.0.0.1/result.json?authorization=secret")
+
+        message = str(exc_info.value)
+        assert "127.0.0.1" in message
+        assert "authorization" not in message
+        assert "secret" not in message
+
+
 class TestRunOcrAndSimplifyFileTypes:
     """_run_ocr_and_simplify 文件类型分发逻辑测试"""
 

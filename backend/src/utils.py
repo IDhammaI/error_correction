@@ -94,7 +94,8 @@ def export_wrongbook(
     md_content += f"> 共收录 {len(selected_questions)} 道题目\n\n"
     md_content += "---\n\n"
 
-    rel_struct_dir = os.path.relpath(settings.struct_dir, settings.results_dir)
+    output_dir = os.path.dirname(os.path.abspath(output_path))
+    rel_struct_dir = os.path.relpath(settings.struct_dir, output_dir)
     _img_src_re = re.compile(r'src="((?:/images/|imgs/)[^"]+)"')
 
     def _resolve_image_path(p: str) -> str:
