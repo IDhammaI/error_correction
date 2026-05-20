@@ -1,7 +1,11 @@
 <script setup>
+/**
+ * ReviewView.vue
+ * 待复习页面，集中展示需要复习的题目，并支持快速标记、补答案和 AI 分析。
+ */
 import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
-import * as api from '@/api.js'
-import { typesetMath as _typesetMath } from '@/utils.js'
+import * as api from '@/api/index.js'
+import { typesetMath as _typesetMath } from '@/utils/index.js'
 import { useSelectableList } from '@/composables/useSelectableList.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
@@ -50,6 +54,9 @@ const aiAnalysisResult = ref(null)
 const aiAnalyzing = ref(false)
 
 // ---- 数据加载 ----
+/**
+ * 根据当前错题库加载可筛选的学科列表。
+ */
 const loadSubjects = async () => {
   if (!activeQuestionProjectId.value) {
     subjects.value = []
@@ -61,6 +68,9 @@ const loadSubjects = async () => {
   } catch (_) { }
 }
 
+/**
+ * 加载待复习题目列表，并在数据更新后重新渲染公式。
+ */
 const loadReviewItems = async () => {
   if (!activeQuestionProjectId.value) {
     reviewItems.value = []
@@ -93,6 +103,9 @@ watch(activeQuestionProjectId, () => {
 })
 
 // ---- 题目操作 ----
+/**
+ * 等待 DOM 更新后重新排版题目中的数学公式。
+ */
 const typesetMath = async () => {
   await nextTick()
   await _typesetMath()
@@ -101,6 +114,9 @@ const typesetMath = async () => {
 const openDetail = (q) => { detailQuestion.value = q; detailOpen.value = true }
 const closeDetail = () => { detailOpen.value = false; detailQuestion.value = null }
 
+/**
+ * 快速修改复习状态，非“待复习”状态会从当前列表移除。
+ */
 const quickMarkStatus = async (q, status) => {
   try {
     const data = await api.updateReviewStatus(q.id, status)
@@ -132,6 +148,9 @@ const startInlineEdit = (q, field) => {
   answerEditDraft.value = q[field] || ''
 }
 const cancelInlineEdit = () => { answerEditId.value = null }
+/**
+ * 保存内联编辑的答案或用户笔记。
+ */
 const saveInlineEdit = async () => {
   if (answerEditSaving.value) return
   const q = reviewItems.value.find(x => x.id === answerEditId.value)
@@ -165,6 +184,9 @@ const onReviewStatusChanged = (id, status, updatedAt) => {
 
 const selectAllReview = () => selectAllItems(reviewItems.value)
 
+/**
+ * 对已选题目发起 AI 分析，并把结果展示在分析弹窗中。
+ */
 const startAiAnalysis = async () => {
   if (!selectedIds.size) {
     pushToast('error', '请先选择要分析的题目')

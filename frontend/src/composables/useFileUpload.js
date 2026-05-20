@@ -1,7 +1,11 @@
 import { ref, reactive, computed } from 'vue'
-import { fileKey } from '@/utils.js'
-import * as api from '@/api.js'
+import { fileKey } from '@/utils/index.js'
+import * as api from '@/api/index.js'
 
+/**
+ * useFileUpload.js
+ * 管理工作台文件上传队列、上传进度、撤销文件和重置上传会话。
+ */
 export function useFileUpload(pushToast, S, questions, selectedIds, splitCompleted, splitting, uploadMode) {
   const uploadBusy = ref(false)
   const uploadReady = ref(false)
@@ -16,8 +20,14 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
   let fakeProgressTimer = null
   let fakeProgressKeys = []
 
+  /**
+   * 统一限制上传进度范围，避免接口或模拟进度写入异常数值。
+   */
   const setProgress = (key, p) => { fileProgress[key] = Math.max(0, Math.min(100, Number(p) || 0)) }
 
+  /**
+   * 停止模拟上传进度，并清空正在模拟的文件 key。
+   */
   const stopFakeProgress = () => {
     if (fakeProgressTimer) {
       window.clearInterval(fakeProgressTimer)
@@ -26,6 +36,9 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     fakeProgressKeys = []
   }
 
+  /**
+   * 启动模拟进度，让没有真实进度回调的等待阶段也有连续反馈。
+   */
   const startFakeProgress = (keys) => {
     stopFakeProgress()
     fakeProgressKeys = Array.from(keys || [])
@@ -43,6 +56,9 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     fakeProgressTimer = window.setInterval(tick, 360)
   }
 
+  /**
+   * 真正发起上传请求，并把 XHR 回调同步到上传状态和进度条。
+   */
   const handleUpload = (files, { resetSession = false } = {}) => {
     const uploadFiles = Array.from(files || []).filter(f => pendingFiles.some(x => x.key === fileKey(f)))
     if (!uploadFiles.length) return
@@ -93,12 +109,18 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     })
   }
 
+  /**
+   * 当前上传结束后，从等待队列里取下一批文件继续上传。
+   */
   const pumpUploadQueue = () => {
     if (uploadBusy.value || !uploadQueue.length) return
     const next = uploadQueue.shift()
     if (next && next.length) handleUpload(next)
   }
 
+  /**
+   * 加入上传队列；如果正在上传，则排队等待，否则立即上传。
+   */
   const enqueueUpload = (files) => {
     const list = Array.from(files || [])
     if (!list.length) return
@@ -118,6 +140,9 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     handleUpload(list, { resetSession: isFreshStart })
   }
 
+  /**
+   * 请求后端撤销单个文件，并清理前端相关列表、进度和选择状态。
+   */
   const doCancelFile = async (key, step) => {
     try {
       if (fakeProgressKeys.length) fakeProgressKeys = fakeProgressKeys.filter(k => k !== key)
@@ -140,6 +165,9 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     } catch (_) { pushToast('error', '撤销失败: 网络错误') }
   }
 
+  /**
+   * 从待上传列表删除文件；已上传到后端的文件走撤销接口。
+   */
   const removePendingFile = async (key) => {
     if (!key || splitting.value || splitCompleted.value) return
     if (uploadBusy.value || uploadReady.value) { await doCancelFile(key, S.value); return }
@@ -153,6 +181,9 @@ export function useFileUpload(pushToast, S, questions, selectedIds, splitComplet
     }
   }
 
+  /**
+   * 重置整个上传会话，包括后端临时文件、前端队列、进度和题目结果。
+   */
   const doReset = async (modelOptionsData, selectedLlmOptionId, step) => {
     if (activeXhr) {
       try { activeXhr.abort() } catch (_) {}

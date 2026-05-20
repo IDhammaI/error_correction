@@ -1,6 +1,10 @@
 import { computed, ref } from 'vue'
-import * as api from '@/api.js'
+import * as api from '@/api/index.js'
 
+/**
+ * useProjects.js
+ * 管理错题库项目与笔记本项目的全局列表和当前选中项。
+ */
 const STORAGE_KEYS = {
   question: 'active_question_project_id_v1',
   note: 'active_note_project_id_v1',
@@ -20,6 +24,9 @@ const activeNoteProject = computed(() =>
   noteProjects.value.find(p => String(p.id) === String(activeNoteProjectId.value)) || null
 )
 
+/**
+ * 按项目类型、更新时间、ID 排序，确保列表展示稳定且最新项目靠前。
+ */
 function sortProjects(list) {
   return [...list].sort((a, b) => {
     const typeCompare = String(a.project_type || 'question').localeCompare(String(b.project_type || 'question'))
@@ -31,10 +38,16 @@ function sortProjects(list) {
   })
 }
 
+/**
+ * 规范化项目类型，未知类型默认按错题库处理。
+ */
 function normalizeType(projectType) {
   return projectType === 'note' ? 'note' : 'question'
 }
 
+/**
+ * 持久化当前选中的项目 ID，刷新页面后可以恢复。
+ */
 function persistActiveProject(id, projectType = 'question') {
   const key = STORAGE_KEYS[normalizeType(projectType)]
   try {
@@ -43,6 +56,9 @@ function persistActiveProject(id, projectType = 'question') {
   } catch (_) { }
 }
 
+/**
+ * 设置当前项目，并根据项目类型写入对应的选中状态。
+ */
 function setActiveProject(id, projectType) {
   const type = normalizeType(projectType || projects.value.find(p => String(p.id) === String(id))?.project_type)
   const value = id ? Number(id) : null
@@ -51,6 +67,9 @@ function setActiveProject(id, projectType) {
   persistActiveProject(value, type)
 }
 
+/**
+ * 优先恢复本地保存的项目；保存项不存在时回退到列表第一项。
+ */
 function pickActiveProject(list, projectType) {
   let saved = null
   try { saved = localStorage.getItem(STORAGE_KEYS[projectType]) } catch (_) { }
@@ -58,6 +77,9 @@ function pickActiveProject(list, projectType) {
   return savedExists ? saved : (list[0]?.id || null)
 }
 
+/**
+ * 从后端加载项目列表，并初始化错题库/笔记本各自的当前项目。
+ */
 async function loadProjects() {
   loadingProjects.value = true
   try {
@@ -71,6 +93,9 @@ async function loadProjects() {
   }
 }
 
+/**
+ * 创建项目后立即选中，供新建错题库或笔记本流程使用。
+ */
 async function createAndSelectProject(name, projectType = 'question') {
   const type = normalizeType(projectType)
   const project = await api.createProject({ name, project_type: type })
@@ -79,12 +104,18 @@ async function createAndSelectProject(name, projectType = 'question') {
   return project
 }
 
+/**
+ * 重命名项目，并把返回的新项目数据同步回本地列表。
+ */
 async function renameProject(projectId, name) {
   const project = await api.updateProject(projectId, { name })
   projects.value = sortProjects(projects.value.map(p => p.id === project.id ? project : p))
   return project
 }
 
+/**
+ * 删除项目；如果删掉的是当前项目，则自动切换到同类型的下一项。
+ */
 async function removeProject(projectId) {
   const project = projects.value.find(p => p.id === projectId)
   const type = normalizeType(project?.project_type)
@@ -98,6 +129,9 @@ async function removeProject(projectId) {
   }
 }
 
+/**
+ * 暴露项目列表、当前项目和项目增删改查动作。
+ */
 export function useProjects() {
   return {
     projects,

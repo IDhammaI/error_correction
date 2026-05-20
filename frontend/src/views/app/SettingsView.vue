@@ -1,7 +1,11 @@
 <script setup>
+/**
+ * SettingsView.vue
+ * 设置页面，包含用户资料、免费额度、外观主题、个人 API 和系统 API 配置。
+ */
 import { computed, ref, onMounted, watch, onBeforeUnmount } from 'vue'
-import { fetchAppConfig, updateAppConfig, fetchAdminSystemConfig, updateAdminSystemConfig, updateProfile, uploadProfileAvatar, deleteProfileAvatar } from '@/api.js'
-import { genId } from '@/utils.js'
+import { fetchAppConfig, updateAppConfig, fetchAdminSystemConfig, updateAdminSystemConfig, updateProfile, uploadProfileAvatar, deleteProfileAvatar } from '@/api/index.js'
+import { genId } from '@/utils/index.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
@@ -88,10 +92,16 @@ const appearanceModeOptions = [
 
 const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
 
+/**
+ * 切换明暗主题模式。
+ */
 const setAppearanceMode = (mode) => {
   setTheme(mode === 'dark')
 }
 
+/**
+ * 切换当前主题色。
+ */
 const selectAccentColor = (colorId) => {
   setAccentColor(colorId)
   pushToast('success', '主题颜色已更新')
@@ -109,6 +119,9 @@ const emailChecking = ref(false)
 const emailCodeCooldown = ref(0)
 let emailCodeTimer = null
 
+/**
+ * 打开修改邮箱第一步弹窗，并初始化表单。
+ */
 const openEmailDialog = () => {
   emailForm.value.newEmail = ''
   emailForm.value.code = ''
@@ -126,6 +139,9 @@ const closeEmailCodeDialog = () => {
   isEmailCodeDialogOpen.value = false
 }
 
+/**
+ * 校验新邮箱并进入验证码确认步骤。
+ */
 const handleEmailNextStep = async () => {
   if (!emailForm.value.newEmail || emailChecking.value) return
   if (!emailForm.value.newEmail.includes('@')) {
@@ -164,6 +180,9 @@ const handleEmailNextStep = async () => {
   }
 }
 
+/**
+ * 向新邮箱发送验证码。
+ */
 const sendVerificationCode = async () => {
   if (emailCodeSending.value || emailCodeCooldown.value > 0) return
 
@@ -203,6 +222,9 @@ const sendVerificationCode = async () => {
   }
 }
 
+/**
+ * 提交邮箱修改验证码，成功后同步当前用户信息。
+ */
 const submitEmailChange = async () => {
   if (emailFormSaving.value || !emailForm.value.newEmail || !emailForm.value.code) return
 
@@ -256,6 +278,9 @@ const clearAvatarPreview = () => {
   }
 }
 
+/**
+ * 将当前用户信息同步到资料编辑表单。
+ */
 const syncProfileForm = () => {
   profileForm.value = {
     display_name: currentUser.value?.display_name || '',
@@ -265,6 +290,9 @@ const syncProfileForm = () => {
 
 watch(currentUser, syncProfileForm, { immediate: true })
 
+/**
+ * 保存用户资料，并更新全局 currentUser。
+ */
 const saveProfile = async () => {
   if (profileSaving.value) return
   profileSaving.value = true
@@ -289,6 +317,9 @@ const chooseAvatarFile = () => {
   avatarInputRef.value?.click()
 }
 
+/**
+ * 选择头像文件后生成本地预览。
+ */
 const onAvatarFileChange = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
@@ -298,6 +329,9 @@ const onAvatarFileChange = (event) => {
   profileError.value = ''
 }
 
+/**
+ * 上传头像文件，成功后刷新用户资料。
+ */
 const submitAvatarUpload = () => {
   if (!selectedAvatarFile.value || profileUploading.value) return
   profileUploading.value = true
@@ -323,6 +357,9 @@ const submitAvatarUpload = () => {
   })
 }
 
+/**
+ * 删除当前头像，并清理本地预览状态。
+ */
 const removeAvatar = async () => {
   if (profileDeletingAvatar.value || profileUploading.value) return
   profileDeletingAvatar.value = true
@@ -391,6 +428,9 @@ const activeOpenaiId = ref(null)
 const activeAnthropicId = ref(null)
 const activePaddleocrId = ref(null)
 
+/**
+ * 切换个人 Provider 的启用状态；同类型下只有一个可激活。
+ */
 const toggleActive = (type, id) => {
   const refMap = { openai: activeOpenaiId, anthropic: activeAnthropicId, paddleocr: activePaddleocrId }
   const target = refMap[type]
@@ -418,6 +458,9 @@ const systemLoading = ref(false)
 const systemSaving = ref(false)
 const systemConfigLoaded = ref(false)
 
+/**
+ * 切换系统级 Provider 的启用状态，并立即保存到后端。
+ */
 const toggleSystemActive = async (type, id) => {
   const refMap = { openai: systemActiveOpenaiId, anthropic: systemActiveAnthropicId, paddleocr: systemActivePaddleocrId }
   const target = refMap[type]
@@ -442,6 +485,9 @@ const toggleSystemActive = async (type, id) => {
 
 // ---------- 加载 / 保存 ----------
 
+/**
+ * 加载当前用户的个人 API 配置。
+ */
 const loadConfig = async () => {
   configLoaded.value = false
   loading.value = true
@@ -482,6 +528,9 @@ const loadConfig = async () => {
   }
 }
 
+/**
+ * 保存个人 API 配置，并刷新系统状态。
+ */
 const saveConfig = async () => {
   if (saving.value) return
   saving.value = true
@@ -519,6 +568,9 @@ const saveConfig = async () => {
   }
 }
 
+/**
+ * 管理员加载系统级 API 配置。
+ */
 const loadSystemConfig = async () => {
   if (!currentUser.value?.is_admin || systemLoading.value) return
   systemLoading.value = true
@@ -538,6 +590,9 @@ const loadSystemConfig = async () => {
   }
 }
 
+/**
+ * 保存系统级 API 配置，并刷新系统状态。
+ */
 const saveSystemConfig = async () => {
   if (!currentUser.value?.is_admin || systemSaving.value) return
   systemSaving.value = true
@@ -631,6 +686,9 @@ const openEditDialog = (type, provider, idx) => {
   dialogOpen.value = true
 }
 
+/**
+ * 保存个人 Provider 弹窗结果，支持新增和编辑。
+ */
 const onDialogConfirm = async (formData) => {
   if (dialogEditIndex.value >= 0) {
     const listMap = { openai: openaiProviders, anthropic: anthropicProviders, paddleocr: paddleocrProviders }
@@ -687,6 +745,9 @@ const openSystemEditDialog = (type, provider, idx) => {
   systemDialogOpen.value = true
 }
 
+/**
+ * 保存系统 Provider 弹窗结果，支持新增和编辑。
+ */
 const onSystemDialogConfirm = async (formData) => {
   if (systemDialogEditIndex.value >= 0) {
     const listMap = { openai: systemOpenaiProviders, anthropic: systemAnthropicProviders, paddleocr: systemPaddleocrProviders }

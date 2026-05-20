@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * LoginView.vue
+ * 登录表单页面，负责提交账号密码、写入登录用户并进入工作台。
+ */
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
@@ -14,6 +18,9 @@ const error = ref('')
 const form = reactive({ email: '', password: '' })
 const fpOpen = ref(false)
 
+/**
+ * 提交登录表单，成功后同步全局用户状态并跳转到 /app。
+ */
 async function handleLogin() {
   error.value = ''
   loading.value = true

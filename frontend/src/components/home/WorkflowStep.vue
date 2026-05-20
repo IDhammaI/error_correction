@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 首页工作流步骤卡片。
+ *
+ * 用于展示 OCR、AI 分题、纠错整理等流程节点。
+ */
 const props = defineProps({
   icon: {
     type: [Object, Function],

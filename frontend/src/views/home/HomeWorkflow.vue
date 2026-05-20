@@ -24,18 +24,27 @@ const iconMap = {
 const activeStep = ref(0)
 let intervalId = null
 
+/**
+ * 启动流程步骤自动轮播。
+ */
 function startStepInterval() {
   intervalId = setInterval(() => {
     activeStep.value = (activeStep.value + 1) % STEPS.length
   }, 3000)
 }
 
+/**
+ * 用户点击步骤时立即切换，并重新开始自动轮播计时。
+ */
 function onStepClick(idx) {
   clearInterval(intervalId)
   activeStep.value = idx
   startStepInterval()
 }
 
+/**
+ * 根据当前步骤计算顶部连接线进度宽度。
+ */
 function getProgressWidth() {
   return `${(activeStep.value / (STEPS.length - 1)) * 100}%`
 }

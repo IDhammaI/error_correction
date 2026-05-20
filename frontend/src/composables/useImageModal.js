@@ -1,10 +1,13 @@
 import { ref } from 'vue'
 
-// ── 模块级单例状态 ──────────────────────────────────────
+// 模块级单例状态：全站图片预览共用同一个弹窗实例。
 const modalOpen = ref(false)
 const modalSrc = ref('')
 const modalScale = ref(1)
 
+/**
+ * 打开图片预览，并锁定 body 滚动避免背景页面跟随滚动。
+ */
 const openModal = (src) => {
   modalSrc.value = src || ''
   modalScale.value = 1
@@ -12,6 +15,9 @@ const openModal = (src) => {
   if (src) document.body.style.overflow = 'hidden'
 }
 
+/**
+ * 关闭图片预览，并恢复缩放和 body 滚动状态。
+ */
 const closeModal = () => {
   modalOpen.value = false
   modalSrc.value = ''

@@ -18,6 +18,9 @@ export function usePaginatedList(fetchFn, { pageSize: defaultPageSize = 10, filt
 
   let debounceTimer = null
 
+  /**
+   * 执行分页查询，并把返回数据写入 items/total。
+   */
   const doQuery = async (params = {}) => {
     loading.value = true
     try {
@@ -30,6 +33,9 @@ export function usePaginatedList(fetchFn, { pageSize: defaultPageSize = 10, filt
     }
   }
 
+  /**
+   * 切换页码，越界页码会被忽略。
+   */
   const goPage = (p) => {
     if (p < 1 || p > totalPages.value) return
     page.value = p
@@ -55,6 +61,9 @@ export function usePaginatedList(fetchFn, { pageSize: defaultPageSize = 10, filt
     })
   }
 
+  /**
+   * 监听页面变化并重新查询当前筛选条件下的数据。
+   */
   const watchPage = (buildParams, { afterQuery } = {}) => {
     watch(page, async () => {
       const data = await doQuery(buildParams())

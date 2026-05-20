@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * RegisterView.vue
+ * 注册表单页面，负责邮箱验证码、密码校验、注册并进入工作台。
+ */
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
@@ -24,6 +28,9 @@ let sendDebounceTimer = null
 
 const passwordMismatch = () => form.confirm && form.password !== form.confirm
 
+/**
+ * 清理普通验证码倒计时，避免重复创建 interval。
+ */
 function clearCountdown() {
   if (countdownTimer) {
     clearInterval(countdownTimer)
@@ -31,6 +38,9 @@ function clearCountdown() {
   }
 }
 
+/**
+ * 启动发送验证码后的冷却倒计时。
+ */
 function startCountdown(seconds = 60) {
   clearCountdown()
   countdown.value = seconds
@@ -43,6 +53,9 @@ function startCountdown(seconds = 60) {
   }, 1000)
 }
 
+/**
+ * 清理接口频率限制倒计时。
+ */
 function clearRateLimitCountdown() {
   if (rateLimitTimer) {
     clearInterval(rateLimitTimer)
@@ -50,6 +63,9 @@ function clearRateLimitCountdown() {
   }
 }
 
+/**
+ * 根据后端 429 返回启动频率限制倒计时。
+ */
 function startRateLimitCountdown(seconds) {
   clearRateLimitCountdown()
   rateLimitCountdown.value = seconds
@@ -66,6 +82,9 @@ function startRateLimitCountdown(seconds) {
   }, 1000)
 }
 
+/**
+ * 向后端请求注册验证码，并处理频率限制提示。
+ */
 async function handleSendCode() {
   error.value = ''
   clearRateLimitCountdown()
@@ -108,6 +127,9 @@ async function handleSendCode() {
   }, 280)
 }
 
+/**
+ * 提交注册表单，成功后写入用户状态并跳转工作台。
+ */
 async function handleRegister() {
   error.value = ''
   success.value = ''

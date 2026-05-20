@@ -5,7 +5,7 @@
  */
 import { ref, nextTick, watch, onMounted } from 'vue'
 import QuestionCard from './QuestionCard.vue'
-import { typesetMath } from '@/utils.js'
+import { typesetMath } from '@/utils/index.js'
 
 const props = defineProps({
   questions: { type: Array, default: () => [] },

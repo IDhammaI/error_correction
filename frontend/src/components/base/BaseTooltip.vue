@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 通用 Tooltip 组件。
+ *
+ * 使用 Teleport 固定到 body，避免被父级 overflow 裁剪，并在移动端禁用 hover 残留。
+ */
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
 const props = defineProps({
@@ -19,6 +24,7 @@ const tooltipStyle = computed(() => ({
   top: `${position.value.top}px`,
 }))
 
+/** 根据触发元素和浮层尺寸计算 Tooltip 在视口内的位置。 */
 const updatePosition = async () => {
   await nextTick()
   if (!triggerRef.value || !tooltipRef.value) return
@@ -56,13 +62,13 @@ const updatePosition = async () => {
       )
     }
   } else {
-    // left or right placement
+    // 左右布局时以触发元素垂直中心为基准，再限制到视口内。
     top = triggerRect.top + triggerRect.height / 2
     left = props.placement === 'left'
       ? triggerRect.left - props.offset
       : triggerRect.right + props.offset
 
-    // Vertical viewport check
+    // 防止 Tooltip 超出上下视口边界。
     const viewportPadding = 8
     const halfHeight = tooltipRect.height / 2
     top = Math.min(
@@ -76,6 +82,7 @@ const updatePosition = async () => {
 
 const isTouch = ref(false)
 
+/** 显示 Tooltip，并在 DOM 更新后重新计算位置。 */
 const show = async () => {
   if (props.disabled || isTouch.value) return
   // 如果设备不支持 hover（如移动端），则不显示 tooltip，防止点击后残留
@@ -84,14 +91,17 @@ const show = async () => {
   await updatePosition()
 }
 
+/** 隐藏 Tooltip。 */
 const hide = () => {
   visible.value = false
 }
 
+/** 记录触屏交互，避免移动端点击后出现无法自然关闭的 hover 浮层。 */
 const handleTouchStart = () => {
   isTouch.value = true
 }
 
+/** 视口尺寸或滚动变化时，保持已显示 Tooltip 跟随触发元素。 */
 const onViewportChange = () => {
   if (visible.value) updatePosition()
 }

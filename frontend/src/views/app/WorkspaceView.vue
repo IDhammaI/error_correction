@@ -73,10 +73,16 @@ const {
 
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value && hasConfiguredModel.value)
 
+/**
+ * 清理本地保存的工作台分割结果。
+ */
 const clearPersistedWorkspaceState = () => {
   try { localStorage.removeItem(WORKSPACE_STATE_KEY) } catch (_) { }
 }
 
+/**
+ * 分割完成后保存结果快照，刷新页面时可以恢复核对页。
+ */
 const savePersistedWorkspaceState = () => {
   const shouldPersist = splitCompleted.value && questions.value.length > 0
   if (!shouldPersist) {
@@ -97,6 +103,9 @@ const savePersistedWorkspaceState = () => {
   } catch (_) { }
 }
 
+/**
+ * 尝试从 localStorage 恢复上次分割结果和选中状态。
+ */
 const restorePersistedWorkspaceState = async () => {
   let raw = ''
   try { raw = localStorage.getItem(WORKSPACE_STATE_KEY) || '' } catch (_) { }
@@ -117,6 +126,9 @@ const restorePersistedWorkspaceState = async () => {
   setTimeout(() => { reviewStageRef.value?.triggerTypeset?.() }, 400)
 }
 
+/**
+ * 重置上传与分割流程，并清理本地恢复快照。
+ */
 const doReset = async () => {
   await _doReset(modelOptionsData, selectedLlmOptionId, step)
   clearPersistedWorkspaceState()
@@ -145,6 +157,9 @@ const hasReviewContent = computed(() => {
   return false
 })
 
+/**
+ * 把分割历史中的题目载入当前工作台核对页。
+ */
 const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
   splitCompleted.value = true; step.value = S.value.EXPORT
@@ -153,6 +168,9 @@ const handleLoadRecord = (qs, record) => {
   nextTick(() => typesetMath())
 }
 
+/**
+ * 从核对页返回上传页，并重置擦除/OCR/分割结果。
+ */
 const handleBack = async () => {
   await doReset()
   eraseImages.value = []; eraseDone.value = false
@@ -160,6 +178,9 @@ const handleBack = async () => {
   currentView.value = 'workspace'
 }
 
+/**
+ * 打开导入错题库弹窗，要求用户至少选中一道题。
+ */
 const openImportDialog = () => {
   if (!selectedIds.size) {
     pushToast('error', '请至少选择一道题目！')
@@ -178,6 +199,9 @@ const closeImportDialog = () => {
   importDialogOpen.value = false
 }
 
+/**
+ * 将选中题目保存到目标错题库，成功后切换当前错题库。
+ */
 const confirmImportToProject = async () => {
   if (!importTargetProjectId.value || importSaving.value) return
   importSaving.value = true

@@ -1,5 +1,9 @@
 import { computed, ref } from 'vue'
 
+/**
+ * useTheme.js
+ * 管理暗色模式、主题色和主题切换动画。
+ */
 const canUseDom = typeof document !== 'undefined'
 const canUseStorage = typeof localStorage !== 'undefined'
 const isDark = ref(canUseDom ? document.documentElement.classList.contains('dark') : true)
@@ -51,10 +55,16 @@ const themeColors = [
 const defaultThemeColor = themeColors[0]
 const accentColorId = ref(defaultThemeColor.id)
 
+/**
+ * 根据主题色 ID 获取配置，不存在时回退到默认主题色。
+ */
 function getThemeColor(id) {
   return themeColors.find((color) => color.id === id) || defaultThemeColor
 }
 
+/**
+ * 把主题色写入根节点 CSS 变量，供 Tailwind 和自定义样式复用。
+ */
 function applyAccentColor(color) {
   if (!canUseDom) return
   const root = document.documentElement
@@ -64,6 +74,9 @@ function applyAccentColor(color) {
   root.style.setProperty('--accent-strong-rgb', color.strongRgb)
 }
 
+/**
+ * 安全读取 localStorage，避免隐私模式或禁用存储时报错。
+ */
 function getStoredValue(key, fallback) {
   if (!canUseStorage) return fallback
   try {
@@ -73,24 +86,33 @@ function getStoredValue(key, fallback) {
   }
 }
 
+/**
+ * 安全写入 localStorage；写入失败不影响当前页面主题切换。
+ */
 function setStoredValue(key, value) {
   if (!canUseStorage) return
   try {
     localStorage.setItem(key, value)
   } catch (_) {
-    // Ignore storage failures so theme switching still updates the live UI.
+    // 存储失败时仍保留当前页面的主题效果。
   }
 }
 
 export function useTheme() {
   const accentColor = computed(() => getThemeColor(accentColorId.value))
 
+  /**
+   * 直接设置明暗主题，并持久化用户选择。
+   */
   function setTheme(dark) {
     isDark.value = dark
     if (canUseDom) document.documentElement.classList.toggle('dark', dark)
     setStoredValue('theme', dark ? 'dark' : 'light')
   }
 
+  /**
+   * 设置主题色，并同步到 CSS 变量和本地存储。
+   */
   function setAccentColor(colorId) {
     const color = getThemeColor(colorId)
     accentColorId.value = color.id
@@ -136,6 +158,9 @@ export function useTheme() {
     }
   }
 
+  /**
+   * 页面启动时恢复本地保存的明暗模式和主题色。
+   */
   function initTheme() {
     const saved = getStoredValue('theme', 'dark')
     const savedColor = getStoredValue(THEME_COLOR_STORAGE_KEY, defaultThemeColor.id)

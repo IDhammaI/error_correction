@@ -5,7 +5,7 @@
  */
 import { ref, computed } from 'vue'
 import BaseCard from '@/components/base/BaseCard.vue'
-import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
+import { isHtml, sanitizeHtml, formatOption } from '@/utils/index.js'
 
 const props = defineProps({
   question: { type: Object, required: true },

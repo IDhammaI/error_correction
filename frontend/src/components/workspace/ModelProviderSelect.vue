@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 模型选择下拉框。
+ *
+ * 负责展示平台托管/个人配置的模型分组、当前模型状态，以及跳转到 API 设置页。
+ */
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -26,9 +31,11 @@ const router = useRouter()
 const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
 const checking = ref(false)
 
+// 后端返回的模型选项原样保留，组件只负责分组和展示状态。
 const options = computed(() => props.modelOptionsData?.options || [])
 const sourceLabelMap = { system: '平台托管', personal: '自己设置' }
 
+// 仅展示存在可选模型的来源分组，避免下拉菜单出现空分组。
 const sourceGroups = computed(() => {
   const groups = props.modelOptionsData?.groups || []
   return groups
@@ -40,6 +47,7 @@ const sourceGroups = computed(() => {
     .filter((group) => group.count > 0)
 })
 
+// HeadlessUI Listbox 需要扁平列表，这里把分组标题和模型项展开到同一个数组。
 const groupedOptions = computed(() => {
   const groups = sourceGroups.value
   const items = []
@@ -68,21 +76,25 @@ const groupedOptions = computed(() => {
   return items
 })
 
+// 当前选中模型的完整配置，用于展示名称、来源和可用状态。
 const currentOption = computed(() => {
   return options.value.find((option) => option.option_id === props.modelValue) || null
 })
 
+// 根据当前模型来源展示“平台托管 / 自己设置”。
 const currentSourceLabel = computed(() => {
   const source = currentOption.value?.source || ''
   const group = sourceGroups.value.find((item) => item.key === source)
   return group?.label || ''
 })
 
+// 按状态降级展示按钮文案，确保无模型和未选择时也有明确提示。
 const selectedLabel = computed(() => {
   if (props.noModels) return '暂无模型'
   return currentOption.value?.label || currentOption.value?.model_name || '选择模型'
 })
 
+// 状态灯由外部加载状态、组件内部检查状态和模型可用性共同决定。
 const statusState = computed(() => {
   if (props.statusLoading || checking.value) return 'checking'
   if (!currentOption.value) return 'idle'
@@ -90,14 +102,17 @@ const statusState = computed(() => {
   return 'ready'
 })
 
+/** 向父组件同步当前选择的模型 option_id。 */
 const selectModel = (value) => {
   emit('update:modelValue', value)
 }
 
+/** 跳转到设置页，方便用户补充或修复个人 API 配置。 */
 const goToApiSettings = () => {
   router.push('/app/settings/api')
 }
 
+// 切换模型后给用户一个短暂的状态检查反馈，真实可用性来自后端返回的 option.available。
 watch(() => props.modelValue, () => {
   if (!props.modelValue) return
   checking.value = true
