@@ -85,9 +85,14 @@ const emit = defineEmits([
   <div class="flex flex-1 min-h-0 flex-col items-center justify-center gap-6 overflow-y-auto custom-scrollbar py-8">
     <!-- 引导信息 -->
     <div class="w-full max-w-2xl text-center transition-colors">
-      <h3 class="mb-2 text-base font-medium text-gray-900 dark:text-[#f7f8f8]">
-        {{ uploadMode === 'note' ? '上传手写笔记' : '上传试卷图片' }}
-      </h3>
+      <h2 class="mb-3 text-3xl font-black leading-tight text-gray-900 dark:text-[#f7f8f8] md:text-4xl">
+        <template v-if="uploadMode === 'note'">
+          智能笔记整理<span class="accent-text">工作台</span>
+        </template>
+        <template v-else>
+          智能录入与分析<span class="accent-text">工作台</span>
+        </template>
+      </h2>
       <p class="text-sm leading-relaxed text-gray-500 dark:text-[#62666d] md:whitespace-nowrap">
         {{ uploadMode === 'note'
           ? '支持拍照或扫描件，AI 将自动识别内容并整理为结构化笔记'
