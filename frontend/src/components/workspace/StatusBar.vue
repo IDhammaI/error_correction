@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 工作台顶部状态栏。
+ *
+ * 汇总引擎连接状态、模型可用状态，并承载模型选择入口。
+ */
 import ModelProviderSelect from '@/components/workspace/ModelProviderSelect.vue'
 
 const emit = defineEmits(['update:selectedLlmOptionId'])

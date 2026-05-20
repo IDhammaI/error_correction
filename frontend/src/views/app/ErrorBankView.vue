@@ -1,7 +1,11 @@
 <script setup>
+/**
+ * ErrorBankView.vue
+ * 错题库页面，负责错题筛选、分页查询、批量导出、详情查看和题目维护。
+ */
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import * as api from '@/api.js'
-import { typesetMath as _typesetMath } from '@/utils.js'
+import * as api from '@/api/index.js'
+import { typesetMath as _typesetMath } from '@/utils/index.js'
 import { useSelectableList } from '@/composables/useSelectableList.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseViewSettingsPopover from '@/components/base/BaseViewSettingsPopover.vue'
@@ -35,9 +39,12 @@ const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 const openFilter = ref('')
 const filterPanelOpen = ref(false)
 
+/**
+ * 打开或关闭移动端/窄屏筛选面板。
+ */
 function toggleFilterPanel() { filterPanelOpen.value = !filterPanelOpen.value }
 
-// 点击外部关闭筛选下拉
+// 点击外部关闭筛选下拉。
 function closeFilters(e) {
   if (!e.target.closest('.filter-pill') && !e.target.closest('.dropdown-item')) {
     openFilter.value = ''
@@ -83,6 +90,9 @@ const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection 
 const detailOpen = ref(false)
 const detailQuestion = ref(null)
 
+/**
+ * 打开题目详情弹窗，并同步当前题目数据。
+ */
 const openDetail = (q) => {
   detailQuestion.value = q
   detailOpen.value = true
@@ -97,6 +107,9 @@ const onDetailClose = () => {
 // ---- 知识点多选标签 ----
 const selectedTags = reactive(new Set())
 
+/**
+ * 切换知识点多选标签，并同步到筛选字段。
+ */
 const toggleTagSelect = (tag) => {
   if (selectedTags.has(tag)) {
     selectedTags.delete(tag)
@@ -118,6 +131,9 @@ const totalText = computed(() => `共收录 ${grandTotal.value} 道题目`)
 
 // ---- 查询 ----
 let debounceTimer = null
+/**
+ * 按当前筛选条件查询错题列表，并保持分页和总数状态。
+ */
 const doQuery = async () => {
   if (!activeQuestionProjectId.value) {
     items.value = []
@@ -150,6 +166,9 @@ const doQuery = async () => {
   }
 }
 
+/**
+ * 对搜索和筛选变更做防抖查询，避免每次输入都请求后端。
+ */
 const debouncedQuery = () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 300)
@@ -161,6 +180,9 @@ watch(() => filters.keyword, () => {
   debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 500)
 })
 
+/**
+ * 重置所有筛选条件并回到第一页。
+ */
 const resetFilters = () => {
   Object.keys(filters).forEach(k => filters[k] = '')
   selectedTags.clear()
@@ -175,6 +197,9 @@ const goPage = (p) => {
 }
 
 
+/**
+ * 导出当前筛选条件下的错题，并触发浏览器下载。
+ */
 const doExport = async () => {
   if (!selectedIds.size) return
   try {
@@ -234,12 +259,18 @@ const onMenuLeave = () => {
 const onMenuContentEnter = () => { clearTimeout(hoverCloseTimer) }
 const onMenuContentLeave = () => { hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150) }
 
+/**
+ * 打开答案/笔记编辑弹窗，field 决定编辑哪一类内容。
+ */
 const openEditDialog = (q, field) => {
   dialogQuestion.value = q
   dialogField.value = field
   dialogOpen.value = true
 }
 
+/**
+ * 保存编辑弹窗中的答案或用户笔记，并同步列表项展示。
+ */
 const onDialogSave = async (draft) => {
   if (dialogSaving.value || !dialogQuestion.value) return
   dialogSaving.value = true
@@ -264,6 +295,9 @@ const onDialogSave = async (draft) => {
   }
 }
 
+/**
+ * 快速修改某道题的复习状态。
+ */
 const quickMarkStatus = async (q, status) => {
   try {
     const data = await api.updateReviewStatus(q.id, status)
@@ -274,6 +308,9 @@ const quickMarkStatus = async (q, status) => {
   }
 }
 
+/**
+ * 删除错题，并从当前列表和总数里同步移除。
+ */
 const doDelete = async (q) => {
   if (!window.confirm('确定要永久删除这道题吗？')) return
   try {
@@ -287,6 +324,9 @@ const doDelete = async (q) => {
   }
 }
 
+/**
+ * 当前页题目更新后重新渲染数学公式。
+ */
 const typesetMath = async () => {
   await nextTick()
   await _typesetMath()
@@ -304,6 +344,9 @@ const pageButtons = computed(() => {
   return pages
 })
 
+/**
+ * 刷新知识点标签选项，用于筛选器和标签多选区域。
+ */
 const refreshTags = async () => {
   if (!activeQuestionProjectId.value) {
     tagNames.value = []
@@ -315,6 +358,9 @@ const refreshTags = async () => {
 
 const scrollContainerRef = ref(null)
 
+/**
+ * 加载学科、题型、知识点等筛选选项。
+ */
 const loadFilters = async () => {
   if (!activeQuestionProjectId.value) {
     subjects.value = []

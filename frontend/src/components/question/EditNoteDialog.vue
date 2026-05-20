@@ -1,6 +1,11 @@
 <script setup>
+/**
+ * 编辑题目/答案/笔记弹窗。
+ *
+ * field 决定当前编辑模式：题目会显示 HTML/公式预览，答案和笔记走普通文本编辑。
+ */
 import { ref, watch, nextTick } from 'vue'
-import { typesetMath, isHtml, sanitizeHtml } from '@/utils.js'
+import { typesetMath, isHtml, sanitizeHtml } from '@/utils/index.js'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 
@@ -21,7 +26,7 @@ const questionContentRef = ref(null)
 const previewMode = ref(false)
 const htmlError = ref('')
 
-// 简单的 HTML 结构验证
+// 简单校验 HTML 标签闭合，避免编辑题干时保存明显破损的富文本结构。
 const validateHtml = (html) => {
   if (!html) return ''
   const stack = []
@@ -48,6 +53,7 @@ const validateHtml = (html) => {
   return ''
 }
 
+/** 草稿变化时实时校验题干 HTML，并在预览模式下刷新公式渲染。 */
 const onDraftChange = () => {
   if (props.field === 'question') {
     htmlError.value = validateHtml(draft.value)
@@ -57,6 +63,7 @@ const onDraftChange = () => {
   }
 }
 
+// 每次打开弹窗时从外部值初始化草稿，题目模式默认进入预览便于检查公式。
 watch(() => props.open, async (v) => {
   if (v) {
     draft.value = props.value || ''
@@ -70,6 +77,7 @@ watch(() => props.open, async (v) => {
   }
 })
 
+/** 保存前阻止明显错误的 HTML；题目模式需要同时提交题干和答案。 */
 const onSave = () => {
   if (htmlError.value) {
     alert(htmlError.value)
@@ -82,6 +90,7 @@ const onSave = () => {
   }
 }
 
+/** 根据编辑字段返回标题、图标和按钮样式配置。 */
 const config = () => {
   if (props.field === 'answer') {
     return {

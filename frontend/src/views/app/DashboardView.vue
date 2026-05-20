@@ -1,6 +1,10 @@
 <script setup>
+/**
+ * DashboardView.vue
+ * 数据面板页面，展示错题数量、复习状态、知识点统计和趋势图表。
+ */
 import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
-import * as api from '@/api.js'
+import * as api from '@/api/index.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { useToast } from '@/composables/useToast.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
@@ -36,6 +40,9 @@ let stackedChart = null
 const CHART_COLORS = ['accent', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#e11d48', '#84cc16']
 const STATUS_COLORS = { '待复习': '#f97316', '复习中': '#eab308', '已掌握': '#10b981' }
 
+/**
+ * 从 CSS 变量读取当前主题色，保证图表颜色和页面主题一致。
+ */
 const getAccentRgb = () => {
   if (typeof window === 'undefined') return '129 115 223'
   const raw = window.getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
@@ -48,6 +55,9 @@ const chartColor = (color) => color === 'accent' ? accentColor() : color
 const chartColorWithAlpha = (color, alpha) => color === 'accent' ? accentRgba(alpha) : `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
 
 // ---- 数据加载 ----
+/**
+ * 加载当前错题库的统计数据；没有错题库时使用空统计兜底。
+ */
 const loadStats = async () => {
   if (!activeQuestionProjectId.value) {
     stats.value = {
@@ -82,6 +92,9 @@ watch(activeQuestionProjectId, () => {
 })
 
 // ---- 图表初始化 ----
+/**
+ * 等待 canvas 渲染后初始化所有 Chart.js 图表。
+ */
 const initCharts = async () => {
   await nextTick()
   if (!window.Chart || !stats.value) return
@@ -94,6 +107,9 @@ const initCharts = async () => {
   initStackedChart(isDark, textColor, gridColor)
 }
 
+/**
+ * 初始化每日新增和每日掌握趋势折线图。
+ */
 const initTrendChart = (isDark, textColor, gridColor) => {
   if (!trendCanvas.value) return
   if (trendChart) trendChart.destroy()
@@ -136,6 +152,9 @@ const initTrendChart = (isDark, textColor, gridColor) => {
   })
 }
 
+/**
+ * 初始化知识点错题数量横向柱状图。
+ */
 const initBarChart = (isDark, textColor, gridColor) => {
   if (!barCanvas.value) return
   if (barChart) barChart.destroy()
@@ -170,6 +189,9 @@ const initBarChart = (isDark, textColor, gridColor) => {
   })
 }
 
+/**
+ * 初始化知识点按复习状态拆分的堆叠柱状图。
+ */
 const initStackedChart = (isDark, textColor, gridColor) => {
   if (!stackedCanvas.value) return
   if (stackedChart) stackedChart.destroy()
@@ -204,6 +226,9 @@ const heatmapMax = computed(() => {
   return Math.max(1, ...d.flat())
 })
 
+/**
+ * 根据热力图单元格数值计算透明度，数值越大主题色越明显。
+ */
 const heatmapCellColor = (val) => {
   if (!val) return theme.value === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.03)'
   const ratio = val / heatmapMax.value

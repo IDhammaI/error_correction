@@ -1,7 +1,11 @@
 <script setup>
+/**
+ * SplitHistoryView.vue
+ * 分割历史页面，展示历史分割记录，并支持把历史题目重新载入工作台。
+ */
 import { ref, watch, nextTick } from 'vue'
-import * as api from '@/api.js'
-import { isHtml, sanitizeHtml, typesetMath as _typesetMath } from '@/utils.js'
+import * as api from '@/api/index.js'
+import { isHtml, sanitizeHtml, typesetMath as _typesetMath } from '@/utils/index.js'
 
 const props = defineProps({
   theme: { type: String, default: 'light' },
@@ -20,6 +24,9 @@ const activeRecord = ref(null)
 const activeQuestions = ref([])
 const selectedIds = ref(new Set())
 
+/**
+ * 加载最近的分割历史记录。
+ */
 const loadRecords = async () => {
   loading.value = true
   try {
@@ -31,6 +38,9 @@ const loadRecords = async () => {
   }
 }
 
+/**
+ * 展开历史记录详情，加载题目并重新渲染公式。
+ */
 const openDetail = async (record) => {
   if (activeRecord.value?.id === record.id) {
     closeDetail()
@@ -78,6 +88,9 @@ const deselectAllQuestions = () => {
   selectedIds.value = new Set()
 }
 
+/**
+ * 将选中的历史题目载入工作台；未选择时默认载入全部题目。
+ */
 const loadToWorkspace = () => {
   if (!activeQuestions.value.length) return
   const qs = selectedIds.value.size > 0
@@ -87,6 +100,9 @@ const loadToWorkspace = () => {
 }
 
 // ---- 格式化 ----
+/**
+ * 兼容后端无时区时间，统一转换成可比较的 Date 对象。
+ */
 const parseApiDate = (iso) => {
   if (!iso) return ''
   const value = String(iso)
@@ -95,6 +111,9 @@ const parseApiDate = (iso) => {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+/**
+ * 格式化列表里的相对时间展示。
+ */
 const formatDate = (iso) => {
   if (!iso) return ''
   const d = parseApiDate(iso)

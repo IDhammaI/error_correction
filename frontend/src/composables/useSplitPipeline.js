@@ -1,10 +1,14 @@
 import { ref } from 'vue'
-import * as api from '@/api.js'
+import * as api from '@/api/index.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useProjects } from '@/composables/useProjects.js'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 
+/**
+ * useSplitPipeline.js
+ * 串联“擦除空白、OCR、AI 分割、笔记整理、导出、入库”的工作台主流程。
+ */
 export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
   const { activeQuestionProjectId, activeNoteProjectId, loadProjects } = useProjects()
@@ -17,17 +21,26 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const eraseEnabled = ref(true)
   const currentRunId = ref(null)
 
+  /**
+   * 从接口错误里同步额度快照，并判断是否命中免费额度耗尽。
+   */
   const syncQuotaFromError = (error) => {
     if (error?.quota) setQuotaSnapshot(error.quota)
     return error?.code === QUOTA_EXCEEDED_CODE
   }
 
+  /**
+   * 主流程成功后刷新用户额度，让页面展示和后端额度保持一致。
+   */
   const refreshQuotaSnapshot = async () => {
     try {
       await refreshCurrentUser()
     } catch (_) { }
   }
 
+  /**
+   * 根据是否启用擦除，决定从擦除步骤还是 OCR 步骤开始。
+   */
   const startProcess = () => {
     if (eraseEnabled.value) {
       doErase()
@@ -36,6 +49,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 调用后端擦除接口，生成去除手写痕迹后的预览图。
+   */
   const doErase = async () => {
     if (eraseLoading.value) return
     eraseLoading.value = true
@@ -57,6 +73,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 调用 OCR 接口识别上传图片或 PDF，并同步扣减后的额度。
+   */
   const doOcr = async () => {
     if (ocrLoading.value) return
     ocrLoading.value = true
@@ -84,6 +103,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 根据上传模式分流：错题模式执行 AI 分割，笔记模式执行笔记整理。
+   */
   const doSplit = async () => {
     if (!uploadReady.value || splitting.value || splitCompleted.value) return
 
@@ -135,6 +157,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 将上传文件提交给笔记整理接口，生成笔记后切换到笔记视图。
+   */
   const doNoteOrganize = async () => {
     if (!activeNoteProjectId.value) {
       pushToast('error', '请先创建并选择一个笔记本')
@@ -193,6 +218,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 导出选中的错题，并触发浏览器下载生成的 markdown 文件。
+   */
   const doExport = async () => {
     if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return }
     try {
@@ -219,6 +247,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 把选中的错题保存到当前错题库，并刷新错题库页面。
+   */
   const doSaveToDb = async (targetProjectId, errorBankRef) => {
     if (!selectedIds.size) { pushToast('error', '请至少选择一道题目！'); return false }
     try {

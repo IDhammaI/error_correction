@@ -1,8 +1,16 @@
 import { ref, computed, watch } from 'vue'
-import * as api from '@/api.js'
+import * as api from '@/api/index.js'
 
-// ── 安全的 localStorage 访问 ─────────────────────────────
+/**
+ * useSystemStatus.js
+ * 管理系统依赖状态、可用模型列表和当前选中的大模型配置。
+ */
+
+// 安全的 localStorage 访问：浏览器禁用存储时不影响页面运行。
 const safeLocalStorage = {
+  /**
+   * 读取本地存储，失败时返回兜底值。
+   */
   getItem(key, fallback = '') {
     try {
       return localStorage.getItem(key) || fallback
@@ -10,6 +18,9 @@ const safeLocalStorage = {
       return fallback
     }
   },
+  /**
+   * 写入本地存储，失败时只记录警告。
+   */
   setItem(key, value) {
     try {
       localStorage.setItem(key, value)
@@ -19,7 +30,7 @@ const safeLocalStorage = {
   },
 }
 
-// ── 模块级单例状态 ──────────────────────────────────────
+// 模块级单例状态：多个组件共享同一份系统状态与模型选择。
 const statusLoading = ref(true)
 const systemStatus = ref(null)
 const statusError = ref('')
@@ -44,6 +55,7 @@ const selectedProvider = computed(() => {
   return configured ? configured.value : (providerOptions.value[0]?.value ?? 'openai')
 })
 
+// 旧版模型选择依赖 selectedModel，这里继续保持兼容同步。
 watch(systemStatus, (newVal) => {
   if (newVal && newVal.available_models) {
     const configured = newVal.available_models.find(m => m.configured)
@@ -71,6 +83,9 @@ const statusPills = computed(() => {
   return pills
 })
 
+/**
+ * 获取后端系统状态，例如 OCR、EnsExam、LangSmith 是否可用。
+ */
 const doFetchStatus = async () => {
   statusLoading.value = true
   statusError.value = ''
@@ -83,6 +98,9 @@ const doFetchStatus = async () => {
   }
 }
 
+/**
+ * 获取可用模型选项，并修正本地保存的无效选中项。
+ */
 const doFetchModelOptions = async () => {
   modelOptionsLoading.value = true
   try {
@@ -114,6 +132,7 @@ const doFetchModelOptions = async () => {
   }
 }
 
+// 用户切换模型时持久化选项，同时同步旧的 selectedModel 字段。
 watch(selectedLlmOptionId, (newId) => {
   if (newId) {
     try {
@@ -129,6 +148,7 @@ watch(selectedLlmOptionId, (newId) => {
   }
 })
 
+// 当前真正选中的模型配置对象，供分割、笔记整理等流程读取。
 const selectedLlmOption = computed(() => {
   if (!modelOptionsData.value || !modelOptionsData.value.options) return null
   return modelOptionsData.value.options.find(o => o.option_id === selectedLlmOptionId.value) || null

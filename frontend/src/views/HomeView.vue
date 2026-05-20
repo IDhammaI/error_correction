@@ -1,4 +1,10 @@
 <script setup>
+/**
+ * HomeView.vue
+ * 首页总装页面，负责组合 Hero、功能、流程、演示和页脚。
+ *
+ * 这里还集中处理首页滚动吸附、区块导航、高亮指示器和进场动画。
+ */
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useTheme } from '@/composables/useTheme.js'
 
@@ -37,6 +43,9 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3)
 }
 
+/**
+ * 平滑滚动到目标 Y 坐标，用于滚轮吸附和区块导航。
+ */
 function scrollToY(target, duration) {
   const start = window.scrollY
   const dist = target - start
@@ -51,6 +60,9 @@ function scrollToY(target, duration) {
   requestAnimationFrame(step)
 }
 
+/**
+ * 读取首页各 section 的页面顶部坐标，作为导航和吸附滚动的依据。
+ */
 function getSectionTops() {
   const ids = SECTIONS.map(s => s.id)
   return ids.map(id => {
@@ -60,6 +72,9 @@ function getSectionTops() {
   }).filter(v => v !== null)
 }
 
+/**
+ * 在 Hero 与功能区之间做滚轮吸附，其余位置交给浏览器原生滚动。
+ */
 function onWheel(e) {
   if (wheelLock) return
   const y = window.scrollY
@@ -91,6 +106,9 @@ function onWheel(e) {
 // ── Scroll handler ──
 let ticking = false
 
+/**
+ * 根据滚动位置更新 Hero 透明度、返回顶部按钮和侧边导航状态。
+ */
 function onScroll() {
   const y = window.scrollY
 
@@ -129,6 +147,9 @@ function onScrollThrottled() {
 // ── Section nav ──
 const DOT_SIZE = 40
 
+/**
+ * 根据当前滚动位置计算激活 section，并移动侧边导航指示器。
+ */
 function updateNav() {
   const { scrollY, innerHeight } = window
   const scrollHeight = document.documentElement.scrollHeight
@@ -152,6 +173,9 @@ function updateNav() {
   indicatorTop.value = idx * DOT_SIZE + 44
 }
 
+/**
+ * 滚动到指定 section，并处理固定导航栏带来的顶部偏移。
+ */
 function scrollToSection(id) {
   if (id === 'hero') {
     window.scrollTo({ top: 0, behavior: 'smooth' })

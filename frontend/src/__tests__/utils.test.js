@@ -3,7 +3,7 @@
  * 对应后端 tests/test_utils.py 的测试风格
  */
 import { describe, it, expect } from 'vitest'
-import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale, renderMarkdown } from '../utils.js'
+import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale, renderMarkdown } from '../utils/index.js'
 
 describe('fileKey', () => {
   it('根据文件名、大小、修改时间生成唯一标识', () => {

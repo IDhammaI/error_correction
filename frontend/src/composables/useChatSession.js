@@ -3,7 +3,7 @@
  * AI 辅导对话会话管理（题目绑定对话）— 单例 composable
  */
 import { ref } from 'vue'
-import * as api from '@/api.js'
+import * as api from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 
@@ -20,6 +20,9 @@ export function useChatSession() {
   const { pushToast } = useToast()
   const { currentView } = useWorkspaceNav()
 
+  /**
+   * 获取题目绑定的对话会话；没有历史会话时创建一个新会话。
+   */
   const doOpenChatSession = async (question) => {
     try {
       const sessions = await api.fetchChatSessions(question.id)
@@ -31,6 +34,9 @@ export function useChatSession() {
     }
   }
 
+  /**
+   * 打开题目辅导对话；没有答案解析时先要求用户补充答案。
+   */
   const openChat = async (question) => {
     chatQuestion.value = question
     if (!question.answer) {
@@ -42,6 +48,9 @@ export function useChatSession() {
     await doOpenChatSession(question)
   }
 
+  /**
+   * 保存补充的答案解析，然后继续进入题目辅导对话。
+   */
   const saveAnswerAndChat = async () => {
     if (!answerModalTarget.value || answerModalSaving.value) return
     const text = answerModalText.value.trim()
@@ -60,6 +69,9 @@ export function useChatSession() {
     }
   }
 
+  /**
+   * 退出题目辅导对话，回到错题库视图。
+   */
   const backToErrorBank = () => {
     chatActive.value = false
     chatSessionId.value = null

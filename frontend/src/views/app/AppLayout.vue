@@ -98,6 +98,9 @@ const sidebarActiveProjectId = computed(() =>
   currentView.value === 'notes' ? activeNoteProjectId.value : activeQuestionProjectId.value
 )
 
+/**
+ * 退出登录并回到登录页。
+ */
 const handleLogout = async () => {
   try { await fetch('/api/auth/logout', { method: 'POST' }) } catch (_) { }
   clearCurrentUser()
@@ -106,6 +109,9 @@ const handleLogout = async () => {
 }
 
 // ── 指示器更新 ──────────────────────────────────────────
+/**
+ * 根据当前视图和 AI 会话状态刷新侧边栏指示条。
+ */
 const updateIndicator = (animate = true) => {
   _updateIndicator(currentView.value, activeAiChatId.value, NAV_GROUPS, collapsedGroups.value, animate)
 }
@@ -121,6 +127,9 @@ const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
 
 // ── 视图切换包装 ──────────────────────────────────────
+/**
+ * 从侧边栏切换工作台主视图。
+ */
 const updateCurrentView = (v) => {
   currentView.value = v
 }
@@ -142,6 +151,9 @@ const updateRenamingChatId = createRefSetter(renamingChatId)
 const updateNavRef = createRefSetter(navRef)
 const updateChatListRef = createRefSetter(chatListRef)
 
+/**
+ * 打开新建项目弹窗，projectType 区分错题库和笔记本。
+ */
 const openProjectDialog = (projectType = 'question') => {
   projectDialogMode.value = 'create'
   projectDialogTarget.value = null
@@ -160,6 +172,9 @@ const closeProjectDialog = () => {
   projectDialogTarget.value = null
 }
 
+/**
+ * 打开重命名项目弹窗，并填入当前项目名称。
+ */
 const openRenameProjectDialog = (project) => {
   if (!project || project.is_default) return
   projectDialogMode.value = 'rename'
@@ -174,6 +189,9 @@ const openRenameProjectDialog = (project) => {
   })
 }
 
+/**
+ * 根据弹窗状态创建或重命名项目。
+ */
 const handleCreateProject = async () => {
   const name = projectDialogName.value.trim()
   if (!name || projectDialogSaving.value) return
@@ -196,6 +214,9 @@ const handleCreateProject = async () => {
   }
 }
 
+/**
+ * 打开删除项目确认弹窗。
+ */
 const handleDeleteProject = async (project) => {
   if (!project || project.is_default) return
   deleteProjectTarget.value = project
@@ -208,6 +229,9 @@ const closeDeleteProjectDialog = () => {
   deleteProjectTarget.value = null
 }
 
+/**
+ * 确认删除项目，并由 useProjects 负责切换当前项目。
+ */
 const confirmDeleteProject = async () => {
   const project = deleteProjectTarget.value
   if (!project || project.is_default || deleteProjectSaving.value) return
@@ -225,6 +249,9 @@ const confirmDeleteProject = async () => {
 }
 
 // ── 键盘事件 ────────────────────────────────────────────
+/**
+ * 全局快捷键：Esc 关闭移动端抽屉。
+ */
 const onKeydown = (e) => {
   if (e.key === 'Escape' && modalOpen.value) closeModal()
 }

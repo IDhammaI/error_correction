@@ -4,6 +4,7 @@ import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 让 @ 指向 src，简化前端模块导入路径。
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -11,7 +12,7 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    // 开发模式：将 /auth 和 /app 路径重写到 app.html（SPA 入口）
+    // 开发环境下将前端 history 路由重写到 app.html，避免刷新 /auth 或 /app 页面时 404。
     {
       name: 'spa-html-rewrite',
       configureServer(server) {
@@ -25,11 +26,13 @@ export default defineConfig({
       },
     },
   ],
+  // Vitest 在 jsdom 中运行，方便测试依赖 window/document 的前端逻辑。
   test: {
     environment: 'jsdom',
   },
   server: {
     host: '127.0.0.1',
+    // 开发环境接口代理：前端保持相对路径请求，由 Vite 转发到 Flask API 服务。
     proxy: {
       '/api': {
         target: 'http://localhost:5001',
@@ -53,16 +56,17 @@ export default defineConfig({
       },
     },
   },
+  // 生产资源从站点根路径加载；若部署到子目录，需要同步调整该值。
   base: '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     manifest: false,
-    // 新增多页面入口配置
+    // 项目使用 app.html 作为 Vue SPA 入口，而不是 Vite 默认的 index.html。
     rollupOptions: {
       input: {
-        app: resolve(__dirname, 'app.html')     // Vue SPA 入口（含落地页路由）
-      }
-    }
+        app: resolve(__dirname, 'app.html'),
+      },
+    },
   },
 })

@@ -4,8 +4,8 @@
  * 题目详情弹窗（查看题目内容、答案、AI 解题与对话）
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
-import { isHtml, sanitizeHtml, formatOption } from '@/utils.js'
-import * as api from '@/api.js'
+import { isHtml, sanitizeHtml, formatOption } from '@/utils/index.js'
+import * as api from '@/api/index.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 
 const props = defineProps({

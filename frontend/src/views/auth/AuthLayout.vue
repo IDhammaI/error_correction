@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * AuthLayout.vue
+ * 登录/注册共用认证布局，负责左右分栏、Tab 切换动画和品牌区动效。
+ */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
@@ -25,6 +29,9 @@ router.beforeEach((to, from) => {
 const brandRef = ref(null)
 const featureRefs = ref([])
 
+/**
+ * 根据鼠标位置更新品牌区和特性图标的局部发光坐标。
+ */
 function handleMouseMove(e) {
   const el = brandRef.value
   if (!el) return

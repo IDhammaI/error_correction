@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 忘记密码弹窗。
+ *
+ * 两步流程：先发送邮箱验证码并提交新密码，成功后展示重置完成状态。
+ */
 import { ref, reactive, onUnmounted, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -18,8 +23,10 @@ const codeSending = ref(false)
 const countdown = ref(0)
 let timer = null
 
+// 组件卸载时清理验证码倒计时，避免弹窗关闭后定时器继续运行。
 onUnmounted(() => clearInterval(timer))
 
+// 每次重新打开弹窗都重置表单，避免保留上一次输入的邮箱、验证码或错误信息。
 watch(() => props.open, (val) => {
   if (!val) return
   step.value = 1
@@ -29,6 +36,7 @@ watch(() => props.open, (val) => {
   clearInterval(timer)
 })
 
+/** 启动验证码重发倒计时。 */
 function startCountdown() {
   countdown.value = 60
   timer = setInterval(() => {
@@ -37,6 +45,7 @@ function startCountdown() {
   }, 1000)
 }
 
+/** 请求后端发送重置密码验证码。 */
 async function sendCode() {
   if (codeSending.value || countdown.value > 0) return
   const email = form.email.trim()
@@ -66,6 +75,7 @@ async function sendCode() {
   }
 }
 
+/** 校验表单并提交新密码。 */
 async function resetPassword() {
   error.value = ''
   if (!form.email.trim() || !form.email.includes('@')) {

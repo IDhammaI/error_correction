@@ -1,8 +1,12 @@
 <script setup>
+/**
+ * ChatPageView.vue
+ * 独立 AI 对话页面，支持多轮流式对话、深度思考展示和错题上下文引用。
+ */
 import { ref, watch, nextTick, computed, onUnmounted } from 'vue'
 import { MessageSquarePlus } from 'lucide-vue-next'
-import * as api from '@/api.js'
-import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils.js'
+import * as api from '@/api/index.js'
+import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils/index.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import { useToast } from '@/composables/useToast.js'
@@ -54,6 +58,9 @@ const selectedContextLabel = computed(() => {
   return `${selectedContextProject.value.name} · ${selectedContextQuestionIds.value.length} 题`
 })
 
+/**
+ * 创建新独立对话，并保持当前工作台视图为 AI 对话。
+ */
 function createCurrentAiChat() {
   return createAiChat(currentView)
 }
@@ -78,6 +85,9 @@ watch([contextDialogOpen, contextQuestions], async () => {
   typesetMath(contextQuestionsEl.value)
 }, { flush: 'post' })
 
+/**
+ * 加载当前独立对话的历史消息。
+ */
 async function loadMessages() {
   if (!sessionId.value) return
   try {
@@ -91,12 +101,18 @@ async function loadMessages() {
   }
 }
 
+/**
+ * 将消息容器滚动到底部。
+ */
 function scrollToBottom() {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
 
+/**
+ * 判断用户是否接近底部，用于决定流式更新时是否自动跟随滚动。
+ */
 function isNearBottom() {
   const el = messagesContainer.value
   if (!el) return true
@@ -111,6 +127,9 @@ function getStreamingAssistantEl() {
   return messagesContainer.value?.querySelector('[data-streaming-assistant="true"]') || null
 }
 
+/**
+ * 把流式缓存内容刷入消息正文，并对当前助手消息重新渲染公式。
+ */
 async function flushStreamingMessage(msg) {
   if (!msg || streamRenderRunning.value) return
   const shouldScroll = isNearBottom()
@@ -127,6 +146,9 @@ async function flushStreamingMessage(msg) {
   }
 }
 
+/**
+ * 对流式渲染做节流，避免每个 token 都触发 Markdown/MathJax 重排。
+ */
 function scheduleStreamRender(msg, delay = 260) {
   if (streamRenderTimer.value) return
   streamRenderTimer.value = window.setTimeout(async () => {
@@ -141,6 +163,9 @@ onUnmounted(() => {
   }
 })
 
+/**
+ * 发送独立对话消息，并消费后端 SSE 风格的流式响应。
+ */
 async function sendMessage() {
   const text = inputText.value.trim()
   if (!text || !sessionId.value || streaming.value) return
@@ -259,6 +284,9 @@ async function sendMessage() {
 
 const textareaRef = ref(null)
 
+/**
+ * Enter 发送消息，Shift + Enter 保留换行。
+ */
 function handleKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -266,6 +294,9 @@ function handleKeydown(e) {
   }
 }
 
+/**
+ * 根据输入内容自动调整 textarea 高度。
+ */
 function autoResize() {
   const el = textareaRef.value
   if (!el) return
@@ -273,6 +304,9 @@ function autoResize() {
   el.style.height = Math.min(el.scrollHeight, 200) + 'px'
 }
 
+/**
+ * 切换上下文题目所属的错题库，并懒加载该项目题目。
+ */
 async function openContextProject(project) {
   const nextId = project?.id || null
   if (!nextId) return
@@ -283,6 +317,9 @@ async function openContextProject(project) {
   await loadContextQuestions(nextId)
 }
 
+/**
+ * 打开上下文选择弹窗，默认选中第一个错题库。
+ */
 async function openContextDialog() {
   contextDialogOpen.value = true
   if (!contextProjectId.value && questionProjects.value.length) {
@@ -290,6 +327,9 @@ async function openContextDialog() {
   }
 }
 
+/**
+ * 加载某个错题库下可作为对话上下文的题目列表。
+ */
 async function loadContextQuestions(projectId) {
   const key = String(projectId)
   if (contextQuestionCache.value[key]) return
@@ -312,6 +352,9 @@ async function loadContextQuestions(projectId) {
   }
 }
 
+/**
+ * 切换某道题是否作为本次提问的上下文。
+ */
 function toggleContextQuestion(questionId) {
   const id = Number(questionId)
   const exists = selectedContextQuestionIds.value.some((item) => Number(item) === id)
@@ -324,6 +367,9 @@ function isContextQuestionSelected(questionId) {
   return selectedContextQuestionIds.value.some((item) => String(item) === String(questionId))
 }
 
+/**
+ * 清空当前已选择的上下文题目。
+ */
 function clearContext() {
   contextProjectId.value = null
   selectedContextQuestionIds.value = []

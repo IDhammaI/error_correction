@@ -1,8 +1,12 @@
 <script setup>
+/**
+ * NoteView.vue
+ * 笔记页面，负责笔记列表筛选、详情查看、Markdown 渲染、编辑和删除。
+ */
 import { ref, reactive, watch, computed, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as api from '@/api.js'
-import { renderMarkdown, typesetMath, getNotePreviewText } from '@/utils.js'
+import * as api from '@/api/index.js'
+import { renderMarkdown, typesetMath, getNotePreviewText } from '@/utils/index.js'
 import ContentPanel from '@/components/workspace/ContentPanel.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseGhostButton from '@/components/base/BaseGhostButton.vue'
@@ -54,12 +58,21 @@ const selectedTags = computed(() => {
 })
 
 const filterPanelOpen = ref(false)
+/**
+ * 打开或关闭笔记筛选面板。
+ */
 function toggleFilterPanel() { filterPanelOpen.value = !filterPanelOpen.value }
 
+/**
+ * 切换标签筛选，当前实现保持单标签筛选。
+ */
 function toggleTagSelect(tag) {
   filters.tag = filters.tag === tag ? '' : tag
 }
 
+/**
+ * 重置搜索和标签筛选，并回到第一页。
+ */
 function resetFilters() {
   filters.subject = ''
   filters.tag = ''
@@ -73,6 +86,9 @@ const editTitle = ref('')
 const editContent = ref('')
 
 // ---- 加载笔记列表 ----
+/**
+ * 按当前项目、分页和筛选条件加载笔记列表。
+ */
 async function loadNotes() {
   if (!activeNoteProjectId.value) {
     notes.value = []
@@ -99,7 +115,10 @@ async function loadNotes() {
   }
 }
 
-// 加载筛选选项
+// 加载筛选选项。
+/**
+ * 加载当前笔记本下的学科筛选项。
+ */
 async function loadFilterOptions() {
   if (!activeNoteProjectId.value) {
     subjects.value = []
@@ -110,6 +129,9 @@ async function loadFilterOptions() {
   } catch (_) { }
 }
 
+/**
+ * 根据当前学科加载可选知识点标签。
+ */
 async function loadTags() {
   if (!activeNoteProjectId.value) {
     tagNames.value = []
@@ -147,10 +169,16 @@ watch(() => filters.keyword, () => {
 })
 
 // ---- 详情 ----
+/**
+ * 进入某条笔记详情路由。
+ */
 async function openNote(note) {
   router.push(`/app/notes/${note.id}`)
 }
 
+/**
+ * 加载笔记详情，并在内容渲染后排版 LaTeX 公式。
+ */
 async function loadNoteDetail(id) {
   if (isDeleting.value) return // 正在删除时，不加载详情
   try {
@@ -181,6 +209,9 @@ watch(() => route.params.subview, (newId) => {
   }
 }, { immediate: true })
 
+/**
+ * 关闭详情页并回到笔记列表路由。
+ */
 function closeDetail() {
   selectedNote.value = null
   editing.value = false
@@ -188,12 +219,18 @@ function closeDetail() {
 }
 
 // ---- 编辑 ----
+/**
+ * 进入编辑模式，并把当前笔记内容复制到编辑草稿。
+ */
 function startEdit() {
   editTitle.value = selectedNote.value.title
   editContent.value = selectedNote.value.content_markdown
   editing.value = true
 }
 
+/**
+ * 取消编辑，回到预览模式后重新排版公式。
+ */
 async function cancelEdit() {
   editing.value = false
   await nextTick()
@@ -202,6 +239,9 @@ async function cancelEdit() {
   }, 100)
 }
 
+/**
+ * 保存笔记标题和 Markdown 内容，并刷新列表。
+ */
 async function saveEdit() {
   try {
     const updated = await api.updateNote(selectedNote.value.id, {
@@ -222,6 +262,9 @@ async function saveEdit() {
 }
 
 // ---- 删除 ----
+/**
+ * 删除笔记；404 视为笔记已不存在，直接回到列表。
+ */
 async function doDelete(noteId) {
   if (!confirm('确认删除这条笔记？')) return
   isDeleting.value = true
@@ -245,6 +288,9 @@ async function doDelete(noteId) {
 }
 
 // ---- 跳转到工作台录入 ----
+/**
+ * 跳转到工作台的笔记整理模式。
+ */
 function goToWorkspace() {
   router.push('/app/workspace?mode=note')
 }

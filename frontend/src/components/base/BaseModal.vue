@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * 通用弹窗组件。
+ *
+ * 支持工作台侧边栏偏移，避免弹窗遮罩和内容在 app 布局下压住左侧导航。
+ */
 import { computed } from 'vue'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useRoute } from 'vue-router'
@@ -18,24 +23,26 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const route = useRoute()
-const { sidebarMode, isMobile } = useWorkspaceNav()
+const { sidebarOffset: workspaceSidebarOffset } = useWorkspaceNav()
 
+// 默认由工作台导航状态计算偏移，也允许调用方显式传入 sidebarOffset 覆盖。
 const computedSidebarOffset = computed(() => {
   if (props.sidebarOffset !== null) return props.sidebarOffset
-  if (isMobile.value) return 0
   
   // 仅在应用内路径显示侧边栏偏移
   const isInApp = route?.path?.startsWith('/app')
   if (!isInApp) return 0
   
-  return sidebarMode.value === 'collapsed-icon' ? 64 : 256
+  return workspaceSidebarOffset.value
 })
 
+// 遮罩和内容都需要应用相同偏移，保证视觉中心落在主内容区域。
 const backdropStyle = computed(() => ({
   left: `${computedSidebarOffset.value}px`,
   '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px',
 }))
 
+// 内容层单独计算，后续若只调整内容不调整遮罩，可以在这里扩展。
 const contentStyle = computed(() => ({
   left: `${computedSidebarOffset.value}px`,
 }))

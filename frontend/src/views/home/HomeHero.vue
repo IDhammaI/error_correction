@@ -18,6 +18,7 @@ const heroVisible = ref(true)
 let visibilityObserver = null
 
 onMounted(() => {
+  // 生成首屏底部装饰星点，保持每次进入都有轻微随机感。
   const count = 40
   const list = []
   for (let i = 0; i < count; i++) {
@@ -43,6 +44,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // 释放 IntersectionObserver，避免离开首页后仍监听 Hero。
   visibilityObserver?.disconnect()
 })
 </script>
