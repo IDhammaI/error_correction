@@ -3,7 +3,7 @@
  * WorkspaceView.vue
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
@@ -25,6 +25,7 @@ const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
 const route = useRoute()
 const { pushToast } = useToast()
+const openProjectDialog = inject('openProjectDialog', null)
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { questionProjects, activeQuestionProjectId, setActiveProject } = useProjects()
@@ -187,7 +188,11 @@ const openImportDialog = () => {
     return
   }
   if (!questionProjects.value.length) {
-    pushToast('error', '请先创建一个错题库')
+    if (openProjectDialog) {
+      openProjectDialog('question')
+    } else {
+      pushToast('error', '请先创建一个错题库')
+    }
     return
   }
   importTargetProjectId.value = activeQuestionProjectId.value || questionProjects.value[0]?.id || null
@@ -348,8 +353,8 @@ onBeforeUnmount(() => {
     <SelectionPanel :visible="currentView === 'workspace_review'" :count="selectedIds.size" :show-export="false"
       :show-save="true" @save="openImportDialog" @clear="deselectAll" />
 
-    <BaseModal :open="importDialogOpen" title="导入错题库" icon="fa-database" iconBg="accent-bg-soft"
-      iconClass="accent-text" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeImportDialog">
+    <BaseModal :open="importDialogOpen" title="导入错题库" icon="fa-database" iconBg="accent-bg-soft" iconClass="accent-text"
+      maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeImportDialog">
       <div class="space-y-3">
         <p class="text-sm text-slate-500 dark:text-[#8a8f98]">
           将 {{ selectedIds.size }} 道已选题目导入到：
