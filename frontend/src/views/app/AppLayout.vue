@@ -371,7 +371,7 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:p-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
+      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:py-3 lg:pr-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
       :class="[
         isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'lg:ml-16' : 'lg:ml-64')
       ]">
