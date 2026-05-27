@@ -15,22 +15,19 @@ const { initTheme } = useTheme()
 const { toasts, pushToast, dismissToast } = useWorkspaceToast()
 const { sidebarOffset } = useWorkspaceNav()
 
-// 向子组件提供全局 toast 方法，页面内可通过 useToast 统一触发消息。
+// Provide the global toast API to app pages and nested components.
 provide(TOAST_INJECTION_KEY, pushToast)
 
 onMounted(() => {
-  // 应用启动后读取本地主题偏好，并同步到根节点样式。
+  // Restore the persisted theme after app startup.
   initTheme()
 })
 </script>
 
 <template>
-  <!-- 路由出口：渲染当前匹配路由对应的页面。 -->
   <RouterView />
 
-  <!-- Toast 浮层：容器自身使用 fixed 定位，不需要脱离 App 根组件。 -->
   <BaseToastContainer :toasts="toasts" :sidebar-offset="sidebarOffset" @dismiss="dismissToast" />
 
-  <!-- 全局加载遮罩：用于跨布局页面切换的 loading 展示。 -->
   <BaseLoading :visible="loading" @after-enter="notifyEnterCompleted" />
 </template>
