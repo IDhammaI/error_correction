@@ -44,7 +44,7 @@ def list_projects():
 def create_project():
     try:
         data = request.get_json(silent=True) or {}
-        name = (data.get("name") or "").strip()
+        name = (data.get("name") or data.get("title") or "").strip()
         project_type = crud.normalize_project_type(data.get("project_type") or data.get("type"))
         if not name:
             return jsonify({"success": False, "error": "项目名称不能为空"}), 400
@@ -56,6 +56,7 @@ def create_project():
                 db,
                 name=name,
                 user_id=_project_owner_id(),
+                summary=data.get("summary") or "",
                 description=data.get("description") or "",
                 color=data.get("color") or "#2563eb",
                 icon=data.get("icon") or ("book-open" if project_type == "note" else "database"),
@@ -75,15 +76,22 @@ def create_project():
 def update_project(project_id):
     try:
         data = request.get_json(silent=True) or {}
-        name = (data.get("name") or "").strip()
-        if not name:
+        name = (data.get("name") or data.get("title") or "").strip() if "name" in data or "title" in data else None
+        if name is not None and not name:
             return jsonify({"success": False, "error": "项目名称不能为空"}), 400
-        if len(name) > 100:
+        if name is not None and len(name) > 100:
             return jsonify({"success": False, "error": "项目名称不能超过 100 个字符"}), 400
 
         with SessionLocal() as db:
             try:
-                project = crud.update_project(db, project_id, user_id=_project_owner_id(), name=name)
+                project = crud.update_project(
+                    db,
+                    project_id,
+                    user_id=_project_owner_id(),
+                    name=name,
+                    summary=data.get("summary") if "summary" in data else None,
+                    description=data.get("description") if "description" in data else None,
+                )
             except ValueError as exc:
                 if str(exc) == "DEFAULT_PROJECT_IMMUTABLE":
                     return jsonify({"success": False, "error": "默认项目不能重命名"}), 400

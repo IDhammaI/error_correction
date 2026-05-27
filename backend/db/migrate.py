@@ -177,6 +177,8 @@ def migrate():
 
     # 增量列迁移（新增字段时在此追加）
     with engine.connect() as conn:
+        from sqlalchemy import text
+
         _add_column_if_missing(conn, "users", "session_version", "INTEGER", 0)
         _add_column_if_missing(conn, "users", "display_name", "VARCHAR(50)")
         _add_column_if_missing(conn, "users", "nickname", "VARCHAR(50)")
@@ -191,22 +193,34 @@ def migrate():
         _add_column_if_missing(
             conn, "projects", "project_type", "VARCHAR(20)", "'question'"
         )
+        _add_column_if_missing(conn, "projects", "summary", "VARCHAR(200)", "''")
+        _add_column_if_missing(conn, "projects", "public_id", "TEXT")
         _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_public_id_unique ON projects(public_id)"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessions_public_id_unique ON chat_sessions(public_id)"))
         conn.commit()
 
-    # 回填 chat_sessions.public_id（历史数据兼容）
+    # 回填 projects/chat_sessions.public_id（历史数据兼容）
     import uuid
-    from db.models import ChatSession
+    from db.models import ChatSession, Project
 
     with SessionLocal() as db:
+        project_rows = (
+            db.query(Project)
+            .filter((Project.public_id == None) | (Project.public_id == ""))
+            .all()
+        )
+        for project in project_rows:
+            project.public_id = str(uuid.uuid4())
+
         rows = (
             db.query(ChatSession)
             .filter((ChatSession.public_id == None) | (ChatSession.public_id == ""))
             .all()
         )
-        if rows:
-            for s in rows:
-                s.public_id = str(uuid.uuid4())
+        for s in rows:
+            s.public_id = str(uuid.uuid4())
+        if project_rows or rows:
             db.commit()
 
     default_users = [
