@@ -15,6 +15,8 @@ export const SIDEBAR_WIDTH = Object.freeze({
 const VIEW_TO_PATH = {
   workspace: '/app/workspace',
   workspace_review: '/app/workspace/review',
+  'search-chat': '/app/search-chat',
+  library: '/app/library',
   dashboard: '/app/dashboard',
   review: '/app/review',
   'error-bank': '/app/error-bank',
@@ -39,6 +41,8 @@ const NAV_GROUPS = [
     label: null,
     items: [
       { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
+      { id: 'search-chat', label: '搜索聊天', icon: 'fa-magnifying-glass', match: (v) => v === 'search-chat' },
+      { id: 'library', label: '库', icon: 'fa-box-archive', match: (v) => v === 'library' },
     ],
   },
 ]

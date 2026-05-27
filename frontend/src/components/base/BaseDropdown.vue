@@ -94,9 +94,12 @@ onUnmounted(() => {
             'top-full mt-1': position === 'bottom',
             'right-full mr-1': position === 'left',
             'left-full ml-1': position === 'right',
-            'right-0': align === 'right',
-            'left-0': align === 'left',
-            'left-1/2 -translate-x-1/2': align === 'center',
+            'right-0': (position === 'top' || position === 'bottom') && (align === 'right' || align === 'end'),
+            'left-0': (position === 'top' || position === 'bottom') && (align === 'left' || align === 'start'),
+            'left-1/2 -translate-x-1/2': (position === 'top' || position === 'bottom') && align === 'center',
+            'top-0': (position === 'left' || position === 'right') && (align === 'left' || align === 'start'),
+            'bottom-0': (position === 'left' || position === 'right') && (align === 'right' || align === 'end'),
+            'top-1/2 -translate-y-1/2': (position === 'left' || position === 'right') && align === 'center',
           }
         ]"
       >

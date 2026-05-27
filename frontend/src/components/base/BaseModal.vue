@@ -1,12 +1,5 @@
 <script setup>
-/**
- * 通用弹窗组件。
- *
- * 支持工作台侧边栏偏移，避免弹窗遮罩和内容在 app 布局下压住左侧导航。
- */
 import { computed } from 'vue'
-import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
-import { useRoute } from 'vue-router'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -22,29 +15,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const route = useRoute()
-const { sidebarOffset: workspaceSidebarOffset } = useWorkspaceNav()
+const close = () => emit('close')
 
-// 默认由工作台导航状态计算偏移，也允许调用方显式传入 sidebarOffset 覆盖。
-const computedSidebarOffset = computed(() => {
-  if (props.sidebarOffset !== null) return props.sidebarOffset
-  
-  // 仅在应用内路径显示侧边栏偏移
-  const isInApp = route?.path?.startsWith('/app')
-  if (!isInApp) return 0
-  
-  return workspaceSidebarOffset.value
-})
-
-// 遮罩和内容都需要应用相同偏移，保证视觉中心落在主内容区域。
 const backdropStyle = computed(() => ({
-  left: `${computedSidebarOffset.value}px`,
   '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px',
-}))
-
-// 内容层单独计算，后续若只调整内容不调整遮罩，可以在这里扩展。
-const contentStyle = computed(() => ({
-  left: `${computedSidebarOffset.value}px`,
 }))
 </script>
 
@@ -63,40 +37,38 @@ const contentStyle = computed(() => ({
       <div
         v-if="open"
         class="fixed inset-0 z-[101] flex items-center justify-center p-4 transition-all duration-300"
-        :style="contentStyle"
         @click.self="emit('close')"
       >
         <div
           class="relative w-full rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-[#2f3336] dark:bg-[#1b1b1d]"
           :class="maxWidth"
         >
-          <!-- 头部 -->
-          <div class="flex items-center justify-between px-6 pt-5 pb-4">
-            <div class="flex items-center gap-3">
-              <div v-if="$slots.icon || icon" class="flex h-9 w-9 items-center justify-center rounded-xl" :class="iconBg">
-                <slot name="icon">
-                  <i class="fa-solid text-base" :class="[icon, iconClass]"></i>
-                </slot>
+          <slot name="header" :close="close">
+            <div class="flex items-center justify-between px-6 pt-5 pb-4">
+              <div class="flex items-center gap-3">
+                <div v-if="$slots.icon || icon" class="flex h-9 w-9 items-center justify-center rounded-xl" :class="iconBg">
+                  <slot name="icon">
+                    <i class="fa-solid text-base" :class="[icon, iconClass]"></i>
+                  </slot>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-[#f7f8f8]">
+                  {{ title }}
+                </h3>
               </div>
-              <h3 class="text-lg font-bold text-slate-900 dark:text-[#f7f8f8]">
-                {{ title }}
-              </h3>
+              <button
+                @click="emit('close')"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/[0.04] dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]"
+              >
+                <i class="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <button
-              @click="emit('close')"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/[0.04] dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]"
-            >
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
+          </slot>
 
-          <!-- 主体内容 -->
           <div :class="bodyClass">
             <slot />
           </div>
-          
-          <!-- 底部操作区（可选） -->
-          <div v-if="$slots.footer" class="rounded-b-2xl border-t border-slate-200/60 px-6 pb-5 pt-2 flex justify-end gap-2 dark:border-[#2f3336]">
+
+          <div v-if="$slots.footer" class="flex min-h-16 items-center justify-end gap-2 rounded-b-2xl border-t border-slate-200/60 px-6 py-3 dark:border-[#2f3336]">
             <slot name="footer" />
           </div>
         </div>

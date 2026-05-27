@@ -1,4 +1,8 @@
 <script setup>
+/**
+ * BaseToastContainer.vue
+ * 全局 Toast 容器，负责浮层定位、动画和消息列表渲染。
+ */
 defineProps({
   toasts: { type: Array, default: () => [] },
   sidebarOffset: { type: Number, default: 0 },

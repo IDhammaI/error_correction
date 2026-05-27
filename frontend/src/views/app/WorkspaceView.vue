@@ -13,13 +13,14 @@ import { useQuestionList } from '@/composables/useQuestionList.js'
 import { useFileUpload } from '@/composables/useFileUpload.js'
 import { useSplitPipeline } from '@/composables/useSplitPipeline.js'
 import { useProjects } from '@/composables/useProjects.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
-import UploadStage from '@/components/workspace/UploadStage.vue'
-import ReviewStage from '@/components/workspace/ReviewStage.vue'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
+import SelectionPanel from '@/components/features/app/workspace/SelectionPanel.vue'
+import UploadStage from '@/components/features/app/workspace/UploadStage.vue'
+import ReviewStage from '@/components/features/app/workspace/ReviewStage.vue'
 import SplitHistory from '@/views/app/SplitHistoryView.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseToolbarButton from '@/components/base/BaseToolbarButton.vue'
 
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
@@ -277,14 +278,13 @@ onBeforeUnmount(() => {
       <ContentPanel v-if="currentView === 'workspace'" key="upload" title="智能录入与分析" :steps="workspaceSteps"
         :current-step="step - 1" :sidebar-open="showSplitHistory">
         <template #toolbar>
-          <button @click="showSplitHistory = !showSplitHistory"
-            class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="showSplitHistory
-              ? 'bg-gray-200 dark:bg-white/[0.06] text-gray-900 dark:text-[#f7f8f8] border border-gray-300 dark:border-white/[0.12]'
-              : 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12]'">
-            <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+          <BaseToolbarButton
+            icon="fa-clock-rotate-left"
+            :active="showSplitHistory"
+            @click="showSplitHistory = !showSplitHistory"
+          >
             分割历史
-          </button>
+          </BaseToolbarButton>
         </template>
 
         <template #sidebar>
@@ -309,30 +309,16 @@ onBeforeUnmount(() => {
         :title="eraseLoading ? '正在擦除...' : eraseDone && !ocrLoading && !ocrDone ? '擦除预览' : splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
         :steps="workspaceSteps" :current-step="step - 1">
         <template #toolbar>
-          <button @click="handleBack"
-            class="group inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] hover:border-gray-300 dark:hover:border-white/[0.12] transition-colors">
-            <i class="fa-solid fa-arrow-left-long text-xs transition-transform group-hover:-translate-x-0.5"></i>
+          <BaseToolbarButton icon="fa-arrow-left-long" @click="handleBack">
             返回
-          </button>
+          </BaseToolbarButton>
           <template v-if="eraseDone && !ocrLoading && !ocrDone">
-            <button @click="doErase"
-              class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
-              <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新擦除
-            </button>
-            <button @click="doOcr"
-              class="inline-flex items-center gap-1.5 rounded-md accent-bg px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(var(--accent-hover-rgb))] transition-colors">
-              <i class="fa-solid fa-check text-[10px]"></i> 确认，开始 OCR
-            </button>
+            <BaseToolbarButton icon="fa-arrows-rotate" @click="doErase">重新擦除</BaseToolbarButton>
+            <BaseToolbarButton icon="fa-check" variant="primary" @click="doOcr">确认，开始 OCR</BaseToolbarButton>
           </template>
           <template v-else-if="ocrDone && !splitCompleted && !splitting">
-            <button @click="doOcr"
-              class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-[#d0d6e0] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
-              <i class="fa-solid fa-arrows-rotate text-[10px]"></i> 重新识别
-            </button>
-            <button @click="doSplit"
-              class="inline-flex items-center gap-1.5 rounded-md accent-bg px-3 py-1.5 text-xs font-medium text-white hover:bg-[rgb(var(--accent-hover-rgb))] transition-colors">
-              <i class="fa-solid fa-check text-[10px]"></i> 确认并分割
-            </button>
+            <BaseToolbarButton icon="fa-arrows-rotate" @click="doOcr">重新识别</BaseToolbarButton>
+            <BaseToolbarButton icon="fa-check" variant="primary" @click="doSplit">确认并分割</BaseToolbarButton>
           </template>
         </template>
 

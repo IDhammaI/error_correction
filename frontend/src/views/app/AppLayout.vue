@@ -17,13 +17,14 @@ import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
 import { useToast } from '@/composables/useToast.js'
 import { useProjects } from '@/composables/useProjects.js'
-import SidebarNav from '@/components/workspace/SidebarNav.vue'
+import SidebarNav from '@/components/features/app/layout/SidebarNav.vue'
+import ChatSearchDialog from '@/components/features/app/layout/ChatSearchDialog.vue'
 import ImageModal from '@/components/base/ImageModal.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import WorkspaceBackground from '@/components/workspace/WorkspaceBackground.vue'
-import AnswerInputModal from '@/components/workspace/AnswerInputModal.vue'
+import WorkspaceBackground from '@/components/features/app/layout/WorkspaceBackground.vue'
+import AnswerInputModal from '@/components/features/app/workspace/AnswerInputModal.vue'
 import WorkspaceView from '@/views/app/WorkspaceView.vue'
 import Dashboard from '@/views/app/DashboardView.vue'
 import ReviewView from '@/views/app/ReviewView.vue'
@@ -32,6 +33,7 @@ import ChatView from '@/views/app/ChatView.vue'
 import SettingsView from '@/views/app/SettingsView.vue'
 import NoteView from '@/views/app/NoteView.vue'
 import ChatPage from '@/views/app/ChatPageView.vue'
+import SearchHubView from '@/views/app/SearchHubView.vue'
 
 // ── 全局 Composables ────────────────────────────────────
 const router = useRouter()
@@ -80,6 +82,7 @@ const {
 // ── 认证 ────────────────────────────────────────────────
 const theme = computed(() => isDark.value ? 'dark' : 'light')
 const userMenuOpen = ref(false)
+const chatSearchDialogOpen = ref(false)
 const projectDialogOpen = ref(false)
 const projectDialogName = ref('')
 const projectDialogType = ref('question')
@@ -125,12 +128,31 @@ watch(collapsedGroups, () => {
 // ── AI 独立对话包装 ────────────────────────────────────
 const createAiChat = () => _createAiChat(currentView)
 const selectAiChat = (s) => _selectAiChat(s, currentView)
+const openChatSearchDialog = () => {
+  chatSearchDialogOpen.value = true
+  loadAiChatSessions()
+}
+const closeChatSearchDialog = () => {
+  chatSearchDialogOpen.value = false
+}
+const createAiChatFromSearch = async () => {
+  closeChatSearchDialog()
+  await createAiChat()
+}
+const selectAiChatFromSearch = (session) => {
+  closeChatSearchDialog()
+  selectAiChat(session)
+}
 
 // ── 视图切换包装 ──────────────────────────────────────
 /**
  * 从侧边栏切换工作台主视图。
  */
 const updateCurrentView = (v) => {
+  if (v === 'search-chat') {
+    openChatSearchDialog()
+    return
+  }
   currentView.value = v
 }
 
@@ -253,13 +275,21 @@ const confirmDeleteProject = async () => {
  * 全局快捷键：Esc 关闭移动端抽屉。
  */
 const onKeydown = (e) => {
+  if (e.key === 'Escape' && chatSearchDialogOpen.value) {
+    closeChatSearchDialog()
+    return
+  }
   if (e.key === 'Escape' && modalOpen.value) closeModal()
 }
 
 // ── 视图切换 ────────────────────────────────────────────
 watch(currentView, (newView) => {
   if (newView === 'ai-chat') loadAiChatSessions()
-})
+  if (newView === 'search-chat') {
+    openChatSearchDialog()
+    currentView.value = lastWorkspaceView.value || 'workspace'
+  }
+}, { immediate: true })
 
 // ── 生命周期 ────────────────────────────────────────────
 onMounted(() => {
@@ -327,7 +357,7 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:pt-3 lg:pr-3 transition-all duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)]"
+      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:p-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
       :class="[
         isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'lg:ml-16' : 'lg:ml-64')
       ]">
@@ -340,6 +370,8 @@ onBeforeUnmount(() => {
           <Dashboard v-else-if="currentView === 'dashboard'" key="dashboard" />
           <ErrorBank v-else-if="currentView === 'error-bank'" key="error-bank" />
           <SettingsView v-else-if="currentView === 'settings'" key="settings" :section="currentSettingsSubView" />
+          <SearchHubView v-else-if="currentView === 'search-chat'" key="search-chat" mode="chat" />
+          <SearchHubView v-else-if="currentView === 'library'" key="library" mode="library" />
           <ChatView v-else-if="currentView === 'chat'" key="chat" />
           <NoteView v-else-if="currentView === 'notes'" key="notes" />
           <ChatPage v-else-if="currentView === 'ai-chat'" key="ai-chat" />
@@ -368,6 +400,13 @@ onBeforeUnmount(() => {
       <AnswerInputModal :open="answerModalOpen" :text="answerModalText" :saving="answerModalSaving"
         @update:open="(v) => answerModalOpen = v" @update:text="(v) => answerModalText = v"
         @confirm="saveAnswerAndChat" />
+      <ChatSearchDialog
+        :open="chatSearchDialogOpen"
+        :sessions="aiChatSessions"
+        @close="closeChatSearchDialog"
+        @create-chat="createAiChatFromSearch"
+        @select-chat="selectAiChatFromSearch"
+      />
       <BaseModal :open="projectDialogOpen" :title="projectDialogTitle" icon="fa-folder-plus" iconBg="accent-bg-soft"
         iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeProjectDialog">
         <form class="space-y-4" @submit.prevent="handleCreateProject">

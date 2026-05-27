@@ -2,7 +2,7 @@
 import { onMounted, provide } from 'vue'
 
 import BaseLoading from '@/components/base/BaseLoading.vue'
-import ToastContainer from '@/components/base/ToastContainer.vue'
+import BaseToastContainer from '@/components/base/BaseToastContainer.vue'
 
 import { usePageTransition } from '@/composables/usePageTransition.js'
 import { useTheme } from '@/composables/useTheme.js'
@@ -29,7 +29,7 @@ onMounted(() => {
   <RouterView />
 
   <!-- Toast 浮层：容器自身使用 fixed 定位，不需要脱离 App 根组件。 -->
-  <ToastContainer :toasts="toasts" :sidebar-offset="sidebarOffset" />
+  <BaseToastContainer :toasts="toasts" :sidebar-offset="sidebarOffset" />
 
   <!-- 全局加载遮罩：用于跨布局页面切换的 loading 展示。 -->
   <BaseLoading :visible="loading" @after-enter="notifyEnterCompleted" />
