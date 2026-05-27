@@ -49,17 +49,20 @@ const quotaResetText = computed(() => {
 
 const isProfileSection = computed(() => props.section === 'profile')
 const isQuotaSection = computed(() => props.section === 'quota')
+const isSystemProvidersSection = computed(() => props.section === 'system-providers')
 const isApiSection = computed(() => props.section === 'api')
 const isAppearanceSection = computed(() => props.section === 'appearance')
 const settingsPageTitle = computed(() => {
   if (isApiSection.value) return 'API 设置'
   if (isQuotaSection.value) return '免费额度'
+  if (isSystemProvidersSection.value) return '平台托管'
   if (isAppearanceSection.value) return '外观设置'
   return '用户资料设置'
 })
 const settingsPageDescription = computed(() => {
   if (isApiSection.value) return '集中管理 AI 与 OCR provider 的接口配置。'
   if (isQuotaSection.value) return '查看系统托管 AI / OCR 服务的免费体验额度与每日重置时间。'
+  if (isSystemProvidersSection.value) return '配置用于免费体验额度消耗的系统级 AI / OCR Provider。'
   if (isAppearanceSection.value) return '切换明暗模式和主题强调色，界面会立即应用。'
   return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
 })
@@ -786,15 +789,15 @@ const onSystemDialogConfirm = async (formData) => {
 
 onMounted(async () => {
   await loadConfig()
-  if (currentUser.value?.is_admin && isQuotaSection.value) {
+  if (currentUser.value?.is_admin && isSystemProvidersSection.value) {
     await loadSystemConfig()
   }
 })
 
 watch(
-  () => [currentUser.value?.is_admin, isQuotaSection.value],
-  ([isAdmin, quotaSection]) => {
-    if (isAdmin && quotaSection && !systemConfigLoaded.value) {
+  () => [currentUser.value?.is_admin, isSystemProvidersSection.value],
+  ([isAdmin, systemProvidersSection]) => {
+    if (isAdmin && systemProvidersSection && !systemConfigLoaded.value) {
       loadSystemConfig()
     }
   },
@@ -847,6 +850,12 @@ watch(
 
         <div v-else-if="loading && isQuotaSection" class="space-y-6 animate-pulse">
           <div class="h-48 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
+        </div>
+
+        <div v-else-if="systemLoading && isSystemProvidersSection" class="space-y-6 animate-pulse">
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
         </div>
 
         <div v-else-if="loading && isApiSection" class="space-y-6 animate-pulse">
@@ -921,7 +930,7 @@ watch(
           </section>
         </div>
 
-        <div v-else-if="isProfileSection || isQuotaSection" class="space-y-6">
+        <div v-else-if="isProfileSection || isQuotaSection || isSystemProvidersSection" class="space-y-6">
           <section v-if="isQuotaSection"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-4 flex items-start justify-between gap-4">
@@ -963,7 +972,7 @@ watch(
             </p>
           </section>
 
-          <section v-if="isQuotaSection && currentUser?.is_admin"
+          <section v-if="isSystemProvidersSection && currentUser?.is_admin"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-5 flex items-start justify-between gap-3">
               <div>

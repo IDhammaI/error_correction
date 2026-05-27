@@ -66,6 +66,20 @@ const {
   NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
 
+const visibleSettingsNavItems = computed(() =>
+  SETTINGS_NAV_ITEMS.filter(item => !item.adminOnly || currentUser.value?.is_admin)
+)
+
+watch(
+  () => [currentView.value, currentSettingsSubView.value, currentUser.value?.is_admin],
+  ([view, subview, isAdmin]) => {
+    if (view === 'settings' && subview === 'system-providers' && !isAdmin) {
+      setSettingsSubView('profile', { replace: true })
+    }
+  },
+  { immediate: true },
+)
+
 // ── 锁定滚动 ──────────────────────────────────────────
 watch(mobileDrawerOpen, (val) => {
   if (val) {
@@ -335,7 +349,7 @@ onBeforeUnmount(() => {
 
     <!-- 侧边栏导航 -->
     <SidebarNav :current-view="currentView" :current-settings-sub-view="currentSettingsSubView"
-      :settings-nav-items="SETTINGS_NAV_ITEMS" :last-workspace-view="lastWorkspaceView" :current-user="currentUser"
+      :settings-nav-items="visibleSettingsNavItems" :last-workspace-view="lastWorkspaceView" :current-user="currentUser"
       :is-dark="isDark" :theme="theme" :nav-groups="NAV_GROUPS" :workspace-views="WORKSPACE_VIEWS"
       :collapsed-groups="collapsedGroups" :nav-btn-refs="navBtnRefs" :indicator-style="indicatorStyle"
       :indicator-transition="indicatorTransition" :chat-collapsed="chatCollapsed" :ai-chat-sessions="aiChatSessions"
