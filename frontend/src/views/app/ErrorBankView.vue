@@ -1,585 +1,289 @@
 <script setup>
 /**
  * ErrorBankView.vue
- * 错题库页面，负责错题筛选、分页查询、批量导出、详情查看和题目维护。
+ * 错题库工作台：左侧题目列表 + 中间题目详情 + 右侧学习分析。
+ *
+ * 第一版只使用现有后端能力：错题查询、筛选、统计、复习状态和 AI 分析占位接口。
  */
-import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import * as api from '@/api/index.js'
-import { typesetMath as _typesetMath } from '@/utils/index.js'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import {
+  typesetMath as _typesetMath,
+} from '@/utils/index.js'
 import { useSelectableList } from '@/composables/useSelectableList.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import BaseViewSettingsPopover from '@/components/base/BaseViewSettingsPopover.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseCard from '@/components/base/BaseCard.vue'
+import { useErrorBankActions } from '@/composables/useErrorBankActions.js'
+import { useErrorBankQuery } from '@/composables/useErrorBankQuery.js'
+import { useErrorBankStats } from '@/composables/useErrorBankStats.js'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import SearchInput from '@/components/base/SearchInput.vue'
-import QuestionItem from '@/components/question/QuestionItem.vue'
-import EmptyState from '@/components/base/EmptyState.vue'
-import QuestionItemSkeleton from '@/components/question/QuestionItemSkeleton.vue'
-import EditNoteDialog from '@/components/question/EditNoteDialog.vue'
-import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
-import SelectionPanel from '@/components/workspace/SelectionPanel.vue'
+import BaseStat from '@/components/base/BaseStat.vue'
+import ErrorLearningAside from '@/components/features/app/error-bank/ErrorLearningAside.vue'
+import ErrorQuestionFinderAside from '@/components/features/app/error-bank/ErrorQuestionFinderAside.vue'
+import ErrorQuestionDetailPanel from '@/components/features/app/error-bank/ErrorQuestionDetailPanel.vue'
+import ErrorQuestionListPanel from '@/components/features/app/error-bank/ErrorQuestionListPanel.vue'
+import EditNoteDialog from '@/components/features/app/question/EditNoteDialog.vue'
+import QuestionDetailModal from '@/components/features/app/question/QuestionDetailModal.vue'
+import SelectionPanel from '@/components/features/app/workspace/SelectionPanel.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useImageModal } from '@/composables/useImageModal.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useChatSession } from '@/composables/useChatSession.js'
-import { useTheme } from '@/composables/useTheme.js'
 import { useProjects } from '@/composables/useProjects.js'
+
+defineProps({
+  embedded: { type: Boolean, default: false },
+})
 
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
-const { isDark } = useTheme()
 const { activeQuestionProjectId, questionProjects } = useProjects()
-const theme = computed(() => isDark.value ? 'dark' : 'light')
 const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
-// ---- 筛选条件 ----
-const openFilter = ref('')
-const filterPanelOpen = ref(false)
+const activeTab = ref('analysis')
+const workbenchView = ref('list')
 
-/**
- * 打开或关闭移动端/窄屏筛选面板。
- */
-function toggleFilterPanel() { filterPanelOpen.value = !filterPanelOpen.value }
-
-// 点击外部关闭筛选下拉。
-function closeFilters(e) {
-  if (!e.target.closest('.filter-pill') && !e.target.closest('.dropdown-item')) {
-    openFilter.value = ''
-  }
-}
-onMounted(() => document.addEventListener('click', closeFilters))
-onBeforeUnmount(() => document.removeEventListener('click', closeFilters))
-
-const filters = reactive({
-  subject: '',
-  knowledge_tag: '',
-  question_type: '',
-  keyword: '',
-  review_status: '',
-})
-const page = ref(1)
-const pageSize = ref(10)
-
-const reviewStatusIcon = (status) => {
-  if (status === '待复习') return 'fa-clock'
-  if (status === '复习中') return 'fa-spinner'
-  return 'fa-circle-check'
-}
-
-const reviewStatusClass = (status) => {
-  if (status === '待复习') return 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-200/50 dark:border-rose-500/30'
-  if (status === '复习中') return 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200/50 dark:border-amber-500/30'
-  return 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/30'
-}
-
-// ---- 数据 ----
-const items = ref([])
-const total = ref(0)
-const grandTotal = ref(0)
-const totalPages = ref(0)
-const loading = ref(false)
-const subjects = ref([])
-const questionTypes = ref([])
-const tagNames = ref([])
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
-// ---- 详情弹窗 ----
-const detailOpen = ref(false)
-const detailQuestion = ref(null)
+const detailTabs = [
+  { value: 'analysis', label: 'AI 解析', icon: 'fa-wand-magic-sparkles' },
+  { value: 'answer', label: '答案解析', icon: 'fa-circle-check' },
+  { value: 'note', label: '作答记录', icon: 'fa-camera' },
+]
 
-/**
- * 打开题目详情弹窗，并同步当前题目数据。
- */
-const openDetail = (q) => {
-  detailQuestion.value = q
-  detailOpen.value = true
-}
-
-const onDetailClose = () => {
-  detailOpen.value = false
-  detailQuestion.value = null
-}
-
-
-// ---- 知识点多选标签 ----
-const selectedTags = reactive(new Set())
-
-/**
- * 切换知识点多选标签，并同步到筛选字段。
- */
-const toggleTagSelect = (tag) => {
-  if (selectedTags.has(tag)) {
-    selectedTags.delete(tag)
-  } else {
-    selectedTags.add(tag)
-  }
-  // 多选标签同步到筛选（取第一个选中的标签给下拉框）
-  const arr = Array.from(selectedTags)
-  filters.knowledge_tag = arr.length === 1 ? arr[0] : arr.length > 1 ? arr.join(',') : ''
-}
-
-const clearTagSelection = () => {
-  selectedTags.clear()
-  filters.knowledge_tag = ''
-}
-
-
-const totalText = computed(() => `共收录 ${grandTotal.value} 道题目`)
-
-// ---- 查询 ----
-let debounceTimer = null
-/**
- * 按当前筛选条件查询错题列表，并保持分页和总数状态。
- */
-const doQuery = async () => {
-  if (!activeQuestionProjectId.value) {
-    items.value = []
-    total.value = 0
-    grandTotal.value = 0
-    totalPages.value = 0
-    loading.value = false
-    return
-  }
-  loading.value = true
-  try {
-    const params = { page: page.value, page_size: pageSize.value }
-    if (filters.subject) params.subject = filters.subject
-    if (filters.knowledge_tag) params.knowledge_tag = filters.knowledge_tag
-    if (filters.question_type) params.question_type = filters.question_type
-    if (filters.keyword) params.keyword = filters.keyword
-    if (filters.review_status) params.review_status = filters.review_status
-    if (activeQuestionProjectId.value) params.project_id = activeQuestionProjectId.value
-
-    const data = await api.fetchErrorBank(params)
-    items.value = data.items || []
-    total.value = data.total || 0
-    grandTotal.value = data.grand_total ?? data.total ?? 0
-    totalPages.value = data.total_pages || 0
-  } catch (e) {
-    pushToast('error', e instanceof Error ? e.message : String(e))
-  } finally {
-    loading.value = false
-    typesetMath()
-  }
-}
-
-/**
- * 对搜索和筛选变更做防抖查询，避免每次输入都请求后端。
- */
-const debouncedQuery = () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 300)
-}
-
-watch(() => [filters.subject, filters.knowledge_tag, filters.question_type, filters.review_status], debouncedQuery)
-watch(() => filters.keyword, () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 500)
-})
-
-/**
- * 重置所有筛选条件并回到第一页。
- */
-const resetFilters = () => {
-  Object.keys(filters).forEach(k => filters[k] = '')
-  selectedTags.clear()
-  page.value = 1
-  doQuery()
-}
-
-const goPage = (p) => {
-  if (p < 1 || p > totalPages.value) return
-  page.value = p
-  doQuery()
-}
-
-
-/**
- * 导出当前筛选条件下的错题，并触发浏览器下载。
- */
-const doExport = async () => {
-  if (!selectedIds.size) return
-  try {
-    const data = await api.exportFromDb(Array.from(selectedIds))
-    pushToast('success', '错题本导出成功')
-    let filename = 'wrongbook.md'
-    if (data.output_path) {
-      const parts = String(data.output_path).split(/[/\\]/)
-      const last = parts[parts.length - 1]; if (last) filename = last
-    }
-    let downloadHref = data.download_url || `/download/${encodeURIComponent(filename)}`
-    downloadHref += downloadHref.includes('?') ? `&t=${Date.now()}` : `?t=${Date.now()}`
-    const a = document.createElement('a')
-    a.href = downloadHref
-    a.download = filename
-    document.body.appendChild(a); a.click(); a.remove()
-  } catch (e) {
-    pushToast('error', '导出失败: ' + (e instanceof Error ? e.message : String(e)))
-  }
-}
-
-
-// ---- 内联操作 ----
-const dialogOpen = ref(false)
-const dialogField = ref('answer')
-const dialogQuestion = ref(null)
-const dialogSaving = ref(false)
-
-// hover dropdown
-const hoverMenuId = ref(null)
-const hoverMenuStyle = ref({})
-let hoverCloseTimer = null
-
-const onMenuEnter = (id, el) => {
-  clearTimeout(hoverCloseTimer)
-  const rect = el.getBoundingClientRect()
-  const menuHeight = 280
-  const spaceBelow = window.innerHeight - rect.bottom
-  const style = {
-    position: 'fixed',
-    right: (window.innerWidth - rect.right) + 'px',
-    zIndex: 9999,
-  }
-  if (spaceBelow < menuHeight) {
-    style.bottom = (window.innerHeight - rect.top + 4) + 'px'
-  } else {
-    style.top = rect.bottom + 4 + 'px'
-  }
-  hoverMenuStyle.value = style
-  hoverMenuId.value = id
-}
-
-const onMenuLeave = () => {
-  hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150)
-}
-
-const onMenuContentEnter = () => { clearTimeout(hoverCloseTimer) }
-const onMenuContentLeave = () => { hoverCloseTimer = setTimeout(() => { hoverMenuId.value = null }, 150) }
-
-/**
- * 打开答案/笔记编辑弹窗，field 决定编辑哪一类内容。
- */
-const openEditDialog = (q, field) => {
-  dialogQuestion.value = q
-  dialogField.value = field
-  dialogOpen.value = true
-}
-
-/**
- * 保存编辑弹窗中的答案或用户笔记，并同步列表项展示。
- */
-const onDialogSave = async (draft) => {
-  if (dialogSaving.value || !dialogQuestion.value) return
-  dialogSaving.value = true
-  try {
-    if (dialogField.value === 'question') {
-      await api.updateQuestion(dialogQuestion.value.id, { content: draft.content, answer: draft.answer })
-      dialogQuestion.value.content_json = [{ block_type: 'text', content: draft.content }]
-      dialogQuestion.value.answer = draft.answer
-    } else if (dialogField.value === 'answer') {
-      await api.saveQuestionAnswer(dialogQuestion.value.id, draft)
-      dialogQuestion.value.answer = draft
-    } else {
-      await api.saveAnswer(dialogQuestion.value.id, draft)
-      dialogQuestion.value.user_answer = draft
-    }
-    dialogOpen.value = false
-    pushToast('success', '已保存')
-  } catch (e) {
-    pushToast('error', '保存失败')
-  } finally {
-    dialogSaving.value = false
-  }
-}
-
-/**
- * 快速修改某道题的复习状态。
- */
-const quickMarkStatus = async (q, status) => {
-  try {
-    const data = await api.updateReviewStatus(q.id, status)
-    q.review_status = data.review_status
-    pushToast('success', `已标记为「${status}」`)
-  } catch (e) {
-    pushToast('error', '更新状态失败')
-  }
-}
-
-/**
- * 删除错题，并从当前列表和总数里同步移除。
- */
-const doDelete = async (q) => {
-  if (!window.confirm('确定要永久删除这道题吗？')) return
-  try {
-    await api.deleteQuestion(q.id)
-    items.value = items.value.filter(x => x.id !== q.id)
-    total.value = Math.max(0, total.value - 1)
-    selectedIds.delete(q.id)
-    pushToast('success', '题目已删除')
-  } catch (e) {
-    pushToast('error', '删除失败')
-  }
-}
-
-/**
- * 当前页题目更新后重新渲染数学公式。
- */
 const typesetMath = async () => {
   await nextTick()
   await _typesetMath()
 }
 
-const pageButtons = computed(() => {
-  const tp = totalPages.value; const cp = page.value
-  if (tp <= 7) return Array.from({ length: tp }, (_, i) => i + 1)
-  const pages = [1]
-  let start = Math.max(2, cp - 1); let end = Math.min(tp - 1, cp + 1)
-  if (start > 2) pages.push('...')
-  for (let i = start; i <= end; i++) pages.push(i)
-  if (end < tp - 1) pages.push('...')
-  pages.push(tp)
-  return pages
+const {
+  filters,
+  page,
+  pageSize,
+  items,
+  total,
+  grandTotal,
+  totalPages,
+  loading,
+  subjects,
+  questionTypes,
+  tagNames,
+  selectedTags,
+  activeQuestionId,
+  activeQuestion,
+  contentBlocks,
+  optionList,
+  knowledgeTags,
+  reviewStatusOptions,
+  doQuery,
+  loadFilters,
+  refreshTags,
+  debouncedQuery,
+  resetFilters,
+  goPage,
+  dispose: disposeQuery,
+} = useErrorBankQuery({ activeQuestionProjectId, pushToast, typesetMath })
+
+const { statsCards, loadStats } = useErrorBankStats({ activeQuestionProjectId, grandTotal, total })
+
+const {
+  dialogOpen,
+  dialogField,
+  dialogQuestion,
+  dialogSaving,
+  detailOpen,
+  detailQuestion,
+  aiLoading,
+  aiSummary,
+  openDetail,
+  openEditDialog,
+  onDialogSave,
+  quickMarkStatus,
+  doDelete,
+  doExport,
+  requestAnalysis,
+  startPractice,
+  clearAiAnalysis,
+} = useErrorBankActions({
+  items,
+  total,
+  grandTotal,
+  activeQuestionId,
+  selectedIds,
+  activeQuestion,
+  activeTab,
+  pushToast,
+  typesetMath,
+  loadStats,
+})
+
+const errorPatternRows = computed(() => {
+  const tags = knowledgeTags.value.slice(0, 4)
+  if (!tags.length) {
+    return [
+      { label: '基础概念不稳', percent: 48, color: 'bg-orange-400' },
+      { label: '计算过程失误', percent: 32, color: 'bg-blue-400' },
+      { label: '审题信息遗漏', percent: 20, color: 'bg-emerald-400' },
+    ]
+  }
+  return tags.map((tag, idx) => ({
+    label: tag,
+    percent: Math.max(12, 48 - idx * 10),
+    color: ['bg-orange-400', 'bg-blue-400', 'bg-emerald-400', 'bg-violet-400'][idx] || 'bg-slate-400',
+  }))
 })
 
 /**
- * 刷新知识点标签选项，用于筛选器和标签多选区域。
+ * 选择题目后同步详情和分析区域。
  */
-const refreshTags = async () => {
-  if (!activeQuestionProjectId.value) {
-    tagNames.value = []
-    return
-  }
-  const raw = await api.fetchTagNames(filters.subject || undefined, activeQuestionProjectId.value)
-  tagNames.value = [...new Set(raw)]
+const selectQuestion = async (q) => {
+  if (!q) return
+  activeQuestionId.value = q.id
+  activeTab.value = 'analysis'
+  clearAiAnalysis()
+  await nextTick()
+  await typesetMath()
 }
 
-const scrollContainerRef = ref(null)
-
-/**
- * 加载学科、题型、知识点等筛选选项。
- */
-const loadFilters = async () => {
-  if (!activeQuestionProjectId.value) {
-    subjects.value = []
-    questionTypes.value = []
-    tagNames.value = []
-    return
-  }
-  try {
-    const [s, qt] = await Promise.all([
-      api.fetchSubjects(activeQuestionProjectId.value),
-      api.fetchQuestionTypes(activeQuestionProjectId.value),
-    ])
-    subjects.value = s
-    questionTypes.value = qt
-    await refreshTags()
-  } catch (e) {
-    pushToast('error', '加载筛选项失败')
+const handleQuestionClick = async (q) => {
+  if (selectMode.value) toggleSelect(q.id)
+  else {
+    workbenchView.value = 'detail'
+    await selectQuestion(q)
   }
 }
 
-const reloadTags = async () => {
-  try {
-    await refreshTags()
-    // 清除已选中但不再属于当前学科的标签
-    const valid = new Set(tagNames.value)
-    for (const t of Array.from(selectedTags)) {
-      if (!valid.has(t)) selectedTags.delete(t)
-    }
-    filters.knowledge_tag = Array.from(selectedTags).join(',')
-  } catch (e) { /* 静默失败，loadFilters 已加载过 */ }
+const handleFinderSelect = async (q) => {
+  workbenchView.value = 'detail'
+  await selectQuestion(q)
 }
 
-watch(() => filters.subject, () => { reloadTags() })
-watch(activeQuestionProjectId, () => {
+watch(() => [filters.subject, filters.knowledge_tag, filters.question_type, filters.review_status], () => debouncedQuery())
+watch(() => filters.keyword, () => debouncedQuery(500))
+watch(() => filters.subject, async () => {
+  filters.knowledge_tag = ''
+  selectedTags.clear()
+  try { await refreshTags() } catch (_) { }
+})
+watch(activeQuestionProjectId, async () => {
+  workbenchView.value = 'list'
   resetFilters()
-  loadFilters()
+  await Promise.all([loadFilters(), loadStats()])
+})
+watch(activeQuestion, async () => {
+  await typesetMath()
+}, { flush: 'post' })
+
+onMounted(async () => {
+  await Promise.all([loadFilters(), loadStats(), doQuery()])
 })
 
-onMounted(() => { loadFilters(); doQuery() })
+onBeforeUnmount(() => {
+  disposeQuery()
+})
 
 defineExpose({
   refresh: doQuery,
   toggleSelectMode,
 })
-
-onBeforeUnmount(() => {
-  if (debounceTimer) clearTimeout(debounceTimer)
-})
 </script>
 
 <template>
-  <ContentPanel title="错题库">
-    <template #toolbar>
-      <button @click="currentView = 'workspace'"
-        class="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] px-2.5 text-xs font-medium text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0] transition-colors"
-        title="录入新题目">
-        <i class="fa-solid fa-plus text-[10px]"></i> 录入
-      </button>
+  <component
+    :is="embedded ? 'div' : ContentPanel"
+    :title="embedded ? undefined : '错题库'"
+    :class="embedded ? 'flex h-full min-h-0 flex-col overflow-hidden p-4' : ''"
+  >
+    <template v-if="!embedded" #toolbar>
+      <BaseButton size="sm" variant="primary" @click="currentView = 'workspace'">
+        <i class="fa-solid fa-plus"></i>
+        录入题目
+      </BaseButton>
     </template>
-    <div ref="scrollContainerRef" @scroll="handleScroll"
-      class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
-      <div class="relative z-10 flex-1 flex flex-col">
-        <!-- 搜索 + 操作按钮 + 已激活筛选 pills -->
-        <div class="relative z-20 mb-4 flex items-center gap-2 flex-wrap">
-          <!-- 搜索框 -->
-          <div class="relative">
-            <i
-              class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#62666d] transition-colors"></i>
-            <input v-model="filters.keyword" type="text" placeholder="搜索题目..."
-              class="h-8 w-52 rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] pl-8 pr-3 text-xs font-medium text-gray-900 dark:text-[#f7f8f8] placeholder-gray-400 dark:placeholder-[#62666d] outline-none transition-colors hover:border-gray-300 dark:hover:border-white/[0.12] focus:border-[rgb(var(--accent-rgb)/0.4)] dark:focus:border-[rgb(var(--accent-rgb)/0.4)]" />
-          </div>
 
-          <!-- 操作按钮（推到右侧） -->
-          <div class="ml-auto flex items-center gap-1 relative">
-            <button @click.stop="toggleFilterPanel"
-              class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-              :class="filterPanelOpen ? 'accent-bg-soft accent-text accent-border' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
-              title="筛选设置">
-              <i class="fa-solid fa-sliders text-xs"></i>
-            </button>
-
-            <BaseViewSettingsPopover v-model="filterPanelOpen" :filters="filters" :subjects="subjects"
-              :question-types="questionTypes" :tag-names="tagNames" :selected-tags="selectedTags"
-              @toggle-tag="toggleTagSelect" @reset="resetFilters" />
-
-            <button @click="toggleSelectMode"
-              class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-              :class="selectMode ? 'accent-bg-soft accent-text accent-border' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] text-gray-500 dark:text-[#8a8f98] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-700 dark:hover:text-[#d0d6e0]'"
-              title="导出题目">
-              <i class="fa-solid fa-file-export text-xs"></i>
-            </button>
-          </div>
-        </div>
-
-
-        <!-- 列表区 -->
-        <div class="relative flex-1 flex flex-col">
-          <!-- 首次加载：无旧数据时显示骨架 -->
-          <QuestionItemSkeleton v-if="loading && !items.length" />
-
-          <!-- 空状态 -->
-          <EmptyState v-else-if="!loading && !items.length" icon="fa-solid fa-layer-group"
-            :title="hasQuestionProject ? '暂无匹配记录' : '还没有错题库'"
-            :description="hasQuestionProject ? '调整筛选条件，或者开始新的录入' : '先在左侧创建一个错题库，再录入题目'">
-            <BaseButton @click="currentView = 'workspace'" variant="primary" size="sm">
-              <i class="fa-solid fa-plus"></i> 录入新题目
-            </BaseButton>
-          </EmptyState>
-
-          <!-- 列表（有旧数据时保留，遮罩覆盖） -->
-          <div v-else class="space-y-4">
-            <QuestionItem v-for="q in items" :key="q.id" :question="q" :selectable="selectMode"
-              :selected="selectedIds.has(q.id)" :show-status="true" @toggle-select="toggleSelect"
-              @click="openDetail">
-              <template #actions="{ question }">
-                <button @mouseenter="onMenuEnter(question.id, $event.currentTarget)" @mouseleave="onMenuLeave"
-                  class="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300">
-                  <i class="fa-solid fa-ellipsis text-sm"></i>
-                </button>
-                <Teleport to="body">
-                  <Transition enter-active-class="transition duration-150 ease-out"
-                    enter-from-class="opacity-0 scale-95 -translate-y-1"
-                    enter-to-class="opacity-100 scale-100 translate-y-0"
-                    leave-active-class="transition duration-100 ease-in"
-                    leave-from-class="opacity-100 scale-100 translate-y-0"
-                    leave-to-class="opacity-0 scale-95 -translate-y-1">
-                    <div v-if="hoverMenuId === question.id" :style="hoverMenuStyle" @mouseenter="onMenuContentEnter"
-                      @mouseleave="onMenuContentLeave"
-                      class="w-44 overflow-hidden rounded-lg border border-slate-200/70 bg-white p-1 shadow-xl shadow-black/10 dark:border-white/[0.08] dark:bg-[#151617] dark:shadow-black/30">
-                      <div
-                        class="px-3 pb-1.5 pt-1.5 text-[11px] font-medium text-slate-400 dark:text-[#777b84]">
-                        复习状态</div>
-                      <button @click.stop="quickMarkStatus(question, '待复习')"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
-                        :class="!question.review_status || question.review_status === '待复习' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/16 dark:text-rose-300' : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-500/12 dark:hover:text-rose-300'">
-                        <i class="fa-solid fa-clock text-xs"></i>待复习
-                        <i v-if="!question.review_status || question.review_status === '待复习'"
-                          class="fa-solid fa-check ml-auto text-[10px]"></i>
-                      </button>
-                      <button @click.stop="quickMarkStatus(question, '复习中')"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
-                        :class="question.review_status === '复习中' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/14 dark:text-amber-300' : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-amber-500/12 dark:hover:text-amber-300'">
-                        <i class="fa-solid fa-spinner text-xs"></i>复习中
-                        <i v-if="question.review_status === '复习中'" class="fa-solid fa-check ml-auto text-[10px]"></i>
-                      </button>
-                      <button @click.stop="quickMarkStatus(question, '已掌握')"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors"
-                        :class="question.review_status === '已掌握' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/14 dark:text-emerald-300' : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-emerald-500/12 dark:hover:text-emerald-300'">
-                        <i class="fa-solid fa-circle-check text-xs"></i>已掌握
-                        <i v-if="question.review_status === '已掌握'" class="fa-solid fa-check ml-auto text-[10px]"></i>
-                      </button>
-                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/[0.06]"></div>
-                      <div
-                        class="px-3 pb-1 text-[11px] font-medium text-slate-400 dark:text-[#777b84]">
-                        操作</div>
-                      <button @click.stop="openEditDialog(question, 'question'); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]">
-                        <i class="fa-solid fa-pen-to-square text-xs"></i>编辑
-                      </button>
-                      <button @click.stop="openEditDialog(question, 'user_answer'); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]">
-                        <i class="fa-solid fa-note-sticky text-xs"></i>记笔记
-                      </button>
-                      <button @click.stop="openChat(question); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-[rgb(var(--accent-rgb)/0.10)] hover:text-[rgb(var(--accent-rgb))] dark:text-slate-300 dark:hover:bg-[rgb(var(--accent-rgb)/0.12)]">
-                        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 辅导
-                      </button>
-                      <div class="mx-2 my-1.5 border-t border-slate-100 dark:border-white/[0.06]"></div>
-                      <button @click.stop="doDelete(question); hoverMenuId = null"
-                        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-rose-500 transition-colors hover:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/12">
-                        <i class="fa-solid fa-trash-can text-xs"></i>删除题目
-                      </button>
-                    </div>
-                  </Transition>
-                </Teleport>
-              </template>
-
-            </QuestionItem>
-          </div>
-
-          <!-- 遮罩：筛选/翻页时覆盖旧列表，布局不跳动 -->
-          <Transition enter-active-class="transition-opacity duration-150"
-            leave-active-class="transition-opacity duration-150" enter-from-class="opacity-0"
-            leave-to-class="opacity-0">
-            <div v-if="loading && items.length"
-              class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-black/30">
-              <div
-                class="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-white/20 dark:border-t-white/60">
-              </div>
-            </div>
-          </Transition>
-        </div>
-
-        <!-- 分页控制：浮动微拟物风格 -->
-        <div v-if="totalPages > 1" class="mt-12 flex items-center justify-center gap-4">
-          <button @click="goPage(page - 1)" :disabled="page <= 1"
-            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            <i class="fa-solid fa-chevron-left text-sm"></i>
-          </button>
-          <div class="flex items-center gap-2 rounded-2xl bg-white/50 p-1.5 shadow-sm dark:bg-white/5">
-            <template v-for="(p, i) in pageButtons" :key="i">
-              <span v-if="p === '...'" class="flex w-8 justify-center font-bold text-slate-400">...</span>
-              <button v-else @click="goPage(p)" class="h-9 min-w-[36px] rounded-xl text-sm font-bold transition-all"
-                :class="p === page ? 'accent-bg text-white shadow-sm' : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-white/10'">
-                {{ p }}
-              </button>
-            </template>
-          </div>
-          <button @click="goPage(page + 1)" :disabled="page >= totalPages"
-            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-700 shadow-sm transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            <i class="fa-solid fa-chevron-right text-sm"></i>
-          </button>
-        </div>
+    <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <!-- 顶部统计卡片 -->
+      <div class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+        <BaseStat
+          v-for="card in statsCards"
+          :key="card.label"
+          :label="card.label"
+          :value="card.value"
+          :suffix="card.suffix"
+          :hint="card.hint"
+          :icon="card.icon"
+          :tone="card.tone"
+        />
       </div>
 
-      <!-- 选择模式浮动面板 -->
+      <!-- 主体：列表/详情主从切换 + 右侧学习分析 -->
+      <div class="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.34fr)]">
+        <div class="flex min-h-0 flex-col gap-3">
+          <ErrorQuestionListPanel
+            v-if="workbenchView === 'list'"
+            class="h-full min-h-0"
+            :filters="filters"
+            :review-status-options="reviewStatusOptions"
+            :tag-names="tagNames"
+            :question-types="questionTypes"
+            :subjects="subjects"
+            :items="items"
+            :total="total"
+            :page="page"
+            :page-size="pageSize"
+            :total-pages="totalPages"
+            :loading="loading"
+            :active-question-id="activeQuestion?.id"
+            :select-mode="selectMode"
+            :selected-ids="selectedIds"
+            :has-question-project="hasQuestionProject"
+            @toggle-select-mode="toggleSelectMode"
+            @create-question="currentView = 'workspace'"
+            @question-click="handleQuestionClick"
+            @toggle-select="toggleSelect"
+            @mark-status="quickMarkStatus"
+            @edit-note="openEditDialog"
+            @page-change="goPage"
+          />
+
+          <ErrorQuestionDetailPanel
+            v-else
+            v-model:active-tab="activeTab"
+            class="h-full min-h-0"
+            :question="activeQuestion"
+            :content-blocks="contentBlocks"
+            :option-list="optionList"
+            :knowledge-tags="knowledgeTags"
+            :detail-tabs="detailTabs"
+            :ai-summary="aiSummary"
+            @edit="openEditDialog"
+            @delete="doDelete"
+            @open-image="openModal"
+            @open-detail="openDetail"
+            @open-chat="openChat"
+            @start-practice="startPractice"
+            @back-to-list="workbenchView = 'list'"
+          />
+        </div>
+
+        <!-- 右侧：列表态找题 / 详情态学习分析 -->
+        <ErrorQuestionFinderAside
+          v-if="workbenchView === 'list'"
+          :project-id="activeQuestionProjectId"
+          @select-question="handleFinderSelect"
+          @error="(e) => pushToast('error', e instanceof Error ? e.message : 'AI 找题失败')"
+        />
+        <ErrorLearningAside
+          v-else
+          :knowledge-tags="knowledgeTags"
+          :error-pattern-rows="errorPatternRows"
+          :ai-summary="aiSummary"
+          :ai-loading="aiLoading"
+          @request-analysis="requestAnalysis"
+        />
+      </div>
+
       <SelectionPanel :visible="selectMode" :count="selectedIds.size" @export="doExport" @clear="clearSelection" />
-
-
 
       <EditNoteDialog :open="dialogOpen" :field="dialogField" :question="dialogQuestion" :value="dialogField === 'question'
         ? (dialogQuestion?.content_json?.filter(b => b.block_type === 'text').map(b => b.content).join('\n') || '')
@@ -587,27 +291,9 @@ onBeforeUnmount(() => {
         :value-answer="dialogField === 'question' ? (dialogQuestion?.answer || '') : ''" :saving="dialogSaving"
         @close="dialogOpen = false" @save="onDialogSave" />
 
-      <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="onDetailClose"
+      <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="detailOpen = false"
         @open-image="openModal" @deleted="doQuery" @push-toast="pushToast" @start-chat="openChat"
         @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
-  </ContentPanel>
+  </component>
 </template>
-
-<style scoped>
-@keyframes tagFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.tag-fade-in {
-  animation: tagFadeIn 0.2s ease-out both;
-}
-</style>
