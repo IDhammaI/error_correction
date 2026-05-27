@@ -60,10 +60,10 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
           <button
             type="button"
             @click.stop="select('')"
-            class="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm transition-colors"
+            class="flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-left text-sm transition-colors"
             :class="modelValue === ''
-              ? 'accent-bg-soft accent-text'
-              : 'text-slate-600 hover:bg-slate-100/80 dark:text-[#d0d6e0] dark:hover:bg-white/[0.07]'"
+              ? 'accent-bg-soft accent-text accent-border'
+              : 'border-transparent text-slate-600 hover:bg-slate-100/80 dark:text-[#d0d6e0] dark:hover:bg-white/[0.07]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ placeholder }}</span>
             <i v-if="modelValue === ''" class="fa-solid fa-check shrink-0 text-[10px] accent-text"></i>
@@ -72,10 +72,10 @@ const select = (val) => { emit('update:modelValue', val); open.value = false }
             v-for="opt in options" :key="opt"
             type="button"
             @click.stop="select(opt)"
-            class="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm transition-colors"
+            class="flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-left text-sm transition-colors"
             :class="modelValue === opt
-              ? 'accent-bg-soft accent-text'
-              : 'text-slate-600 hover:bg-slate-100/80 dark:text-[#d0d6e0] dark:hover:bg-white/[0.07]'"
+              ? 'accent-bg-soft accent-text accent-border'
+              : 'border-transparent text-slate-600 hover:bg-slate-100/80 dark:text-[#d0d6e0] dark:hover:bg-white/[0.07]'"
           >
             <span class="min-w-0 flex-1 truncate">{{ opt }}</span>
             <i v-if="modelValue === opt" class="fa-solid fa-check shrink-0 text-[10px] accent-text"></i>
