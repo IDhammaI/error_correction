@@ -55,7 +55,7 @@ const onLeave = (el) => {
         v-for="toast in toasts"
         :key="toast.id"
         role="status"
-        class="pointer-events-auto flex min-h-[6.75rem] gap-3 rounded-xl border border-white/[0.09] bg-[#202022]/95 px-3.5 py-3 text-[#f7f8f8] shadow-[0_18px_50px_rgba(0,0,0,0.38)] ring-1 ring-black/20 backdrop-blur-xl"
+        class="pointer-events-auto flex gap-3 rounded-xl border border-white/[0.09] bg-[#202022]/95 px-3.5 py-3 text-[#f7f8f8] shadow-[0_18px_50px_rgba(0,0,0,0.38)] ring-1 ring-black/20 backdrop-blur-xl"
       >
         <div class="flex h-5 w-5 shrink-0 items-center justify-center pt-0.5">
           <i
