@@ -34,9 +34,9 @@ const updateIndicator = async () => {
   }
 }
 
-const selectOption = (value) => {
+const selectOption = (value, event) => {
   emit('update:modelValue', value)
-  emit('change', value)
+  emit('change', value, event)
 }
 
 watch(() => [props.modelValue, props.options.length, props.size], updateIndicator, { immediate: true })
@@ -73,7 +73,7 @@ onBeforeUnmount(() => {
           ? 'text-white'
           : 'text-gray-500 hover:text-gray-700 dark:text-[#62666d] dark:hover:text-[#8a8f98]',
       ]"
-      @click="selectOption(option.value)"
+      @click="selectOption(option.value, $event)"
     >
       <i v-if="option.icon" class="fa-solid mr-1.5" :class="option.icon"></i>
       <span class="whitespace-nowrap">{{ option.label }}</span>

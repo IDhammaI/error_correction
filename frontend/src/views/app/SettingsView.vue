@@ -18,6 +18,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import BaseListGroup from '@/components/base/BaseListGroup.vue'
 import BaseListItem from '@/components/base/BaseListItem.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
 
 const props = defineProps({
   section: { type: String, default: 'profile' },
@@ -89,8 +90,8 @@ const avatarPreviewUrl = ref('')
 const avatarUploadXhr = ref(null)
 
 const appearanceModeOptions = [
-  { id: 'dark', label: '深色', icon: 'fa-moon' },
-  { id: 'light', label: '浅色', icon: 'fa-sun' },
+  { value: 'dark', label: '深色', icon: 'fa-moon' },
+  { value: 'light', label: '浅色', icon: 'fa-sun' },
 ]
 
 const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
@@ -98,8 +99,8 @@ const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
 /**
  * 切换明暗主题模式。
  */
-const setAppearanceMode = (mode) => {
-  setTheme(mode === 'dark')
+const setAppearanceMode = (mode, event) => {
+  setTheme(mode === 'dark', event?.currentTarget)
 }
 
 /**
@@ -867,21 +868,12 @@ watch(
         <div v-else-if="isAppearanceSection" class="mx-auto max-w-2xl pb-12">
           <BaseListGroup title="界面主题" description="外观偏好保存在当前浏览器中，刷新页面后仍会保持。">
             <BaseListItem label="显示模式" description="选择浅色或深色界面">
-              <div class="grid grid-cols-2 gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-white/[0.08] dark:bg-white/[0.03]">
-                <button
-                  v-for="mode in appearanceModeOptions"
-                  :key="mode.id"
-                  type="button"
-                  class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors"
-                  :class="currentAppearanceMode === mode.id
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.1] dark:text-[#f7f8f8]'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]'"
-                  @click="setAppearanceMode(mode.id)"
-                >
-                  <i :class="['fa-solid', mode.icon, 'text-[11px]']"></i>
-                  <span>{{ mode.label }}</span>
-                </button>
-              </div>
+              <BaseSegmented
+                :model-value="currentAppearanceMode"
+                :options="appearanceModeOptions"
+                size="md"
+                @change="setAppearanceMode"
+              />
             </BaseListItem>
           </BaseListGroup>
 

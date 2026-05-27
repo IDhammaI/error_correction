@@ -101,13 +101,48 @@ function setStoredValue(key, value) {
 export function useTheme() {
   const accentColor = computed(() => getThemeColor(accentColorId.value))
 
-  /**
-   * 直接设置明暗主题，并持久化用户选择。
-   */
-  function setTheme(dark) {
+  function applyTheme(dark) {
     isDark.value = dark
     if (canUseDom) document.documentElement.classList.toggle('dark', dark)
     setStoredValue('theme', dark ? 'dark' : 'light')
+  }
+
+  /**
+   * 直接设置明暗主题，并持久化用户选择。
+   */
+  async function setTheme(dark, btnEl) {
+    const nextDark = Boolean(dark)
+    if (nextDark === isDark.value) return
+
+    const prefersReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const canTransition = !prefersReduce && typeof document.startViewTransition === 'function'
+
+    if (!canTransition || !btnEl) {
+      applyTheme(nextDark)
+      return
+    }
+
+    const rect = btnEl.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+
+    const transition = document.startViewTransition(() => applyTheme(nextDark))
+    try {
+      await transition.ready
+      const duration = 1000
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+        { duration, easing: 'cubic-bezier(0.2, 0, 0, 1)', pseudoElement: '::view-transition-new(root)' },
+      )
+      document.documentElement.animate(
+        { opacity: [1, 0.98] },
+        { duration, easing: 'linear', pseudoElement: '::view-transition-old(root)' },
+      )
+      await transition.finished
+    } catch (_) {
+      applyTheme(nextDark)
+    }
   }
 
   /**
@@ -125,37 +160,7 @@ export function useTheme() {
    * @param {HTMLElement} [btnEl] - 触发按钮元素，动画从此处扩散；不传则无动画
    */
   async function toggleTheme(btnEl) {
-    const nextDark = !isDark.value
-
-    const prefersReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const canTransition = !prefersReduce && typeof document.startViewTransition === 'function'
-
-    if (!canTransition || !btnEl) {
-      setTheme(nextDark)
-      return
-    }
-
-    const rect = btnEl.getBoundingClientRect()
-    const x = rect.left + rect.width / 2
-    const y = rect.top + rect.height / 2
-    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
-
-    const transition = document.startViewTransition(() => setTheme(nextDark))
-    try {
-      await transition.ready
-      const duration = 1000
-      document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
-        { duration, easing: 'cubic-bezier(0.2, 0, 0, 1)', pseudoElement: '::view-transition-new(root)' },
-      )
-      document.documentElement.animate(
-        { opacity: [1, 0.98] },
-        { duration, easing: 'linear', pseudoElement: '::view-transition-old(root)' },
-      )
-      await transition.finished
-    } catch (_) {
-      setTheme(nextDark)
-    }
+    await setTheme(!isDark.value, btnEl)
   }
 
   /**
@@ -164,8 +169,7 @@ export function useTheme() {
   function initTheme() {
     const saved = getStoredValue('theme', 'dark')
     const savedColor = getStoredValue(THEME_COLOR_STORAGE_KEY, defaultThemeColor.id)
-    isDark.value = saved === 'dark'
-    if (canUseDom) document.documentElement.classList.toggle('dark', isDark.value)
+    applyTheme(saved === 'dark')
     setAccentColor(savedColor)
   }
 
