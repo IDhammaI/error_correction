@@ -1,12 +1,30 @@
 <script setup>
 /**
  * BaseToastContainer.vue
- * 全局 Toast 容器，负责浮层定位、动画和消息列表渲染。
+ * Linear-like global toast stack.
  */
 defineProps({
   toasts: { type: Array, default: () => [] },
   sidebarOffset: { type: Number, default: 0 },
 })
+
+const emit = defineEmits(['dismiss'])
+
+const iconClassMap = {
+  success: 'fa-circle-check text-emerald-400',
+  error: 'fa-circle-xmark text-rose-400',
+  warning: 'fa-triangle-exclamation text-amber-400',
+  info: 'fa-circle-info accent-text',
+}
+
+const fallbackTitleMap = {
+  success: 'Success',
+  error: 'Error',
+  warning: 'Warning',
+  info: 'Information',
+}
+
+const titleOf = (toast) => toast.title || toast.message || fallbackTitleMap[toast.type] || 'Notice'
 
 const onLeave = (el) => {
   const { left, top, width, height } = el.getBoundingClientRect()
@@ -19,80 +37,72 @@ const onLeave = (el) => {
 </script>
 
 <template>
-  <div 
-    class="pointer-events-none fixed left-0 right-0 top-6 z-[200] flex flex-col items-center gap-3 px-4 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-    :style="{ left: `${sidebarOffset}px` }"
+  <div
+    class="pointer-events-none fixed bottom-5 right-5 z-[200] flex w-[calc(100vw-2.5rem)] max-w-[26.5rem] flex-col items-stretch gap-2"
+    :style="{ '--sidebar-offset': `${sidebarOffset}px` }"
   >
     <TransitionGroup
-      enter-active-class="transition duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)"
-      enter-from-class="opacity-0 -translate-y-8 scale-90"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition duration-300 ease-in"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 -translate-y-12 scale-90"
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="translate-y-3 scale-[0.98] opacity-0"
+      enter-to-class="translate-y-0 scale-100 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="translate-y-0 scale-100 opacity-100"
+      leave-to-class="translate-y-2 scale-[0.98] opacity-0"
+      move-class="transition duration-200 ease-out"
       @leave="onLeave"
     >
       <div
-        v-for="t in toasts"
-        :key="t.id"
-        class="pointer-events-auto relative flex min-w-[320px] max-w-md items-center gap-4 overflow-hidden rounded-[1.25rem] border px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
-        :class="
-          t.type === 'success'
-            ? 'border-emerald-500/20 bg-emerald-50/90 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
-            : t.type === 'error'
-              ? 'border-rose-500/20 bg-rose-50/90 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300'
-              : t.type === 'warning'
-                ? 'border-amber-500/20 bg-amber-50/90 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'
-                : 'border-[rgb(var(--accent-rgb)/0.2)] bg-[rgb(var(--accent-rgb)/0.1)] text-[rgb(var(--accent-strong-rgb))] dark:border-[rgb(var(--accent-rgb)/0.2)] dark:bg-[rgb(var(--accent-rgb)/0.1)] dark:text-[rgb(var(--accent-hover-rgb))]'
-        "
+        v-for="toast in toasts"
+        :key="toast.id"
+        role="status"
+        class="pointer-events-auto flex min-h-[6.75rem] gap-3 rounded-xl border border-white/[0.09] bg-[#202022]/95 px-3.5 py-3 text-[#f7f8f8] shadow-[0_18px_50px_rgba(0,0,0,0.38)] ring-1 ring-black/20 backdrop-blur-xl"
       >
-        <!-- 背景流体装饰 -->
-        <div 
-          class="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-10 blur-2xl"
-          :class="
-            t.type === 'success' ? 'bg-emerald-500' : 
-            t.type === 'error' ? 'bg-rose-500' : 
-            t.type === 'warning' ? 'bg-amber-500' : 'accent-bg'
-          "
-        ></div>
-
-        <!-- 图标区 -->
-        <div 
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-inner"
-          :class="
-            t.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 
-            t.type === 'error' ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' : 
-            t.type === 'warning' ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 
-            'accent-bg-soft accent-text'
-          "
-        >
-          <i 
-            class="fa-solid text-lg"
-            :class="
-              t.type === 'success' ? 'fa-circle-check' : 
-              t.type === 'error' ? 'fa-circle-xmark' : 
-              t.type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info'
-            "
+        <div class="flex h-5 w-5 shrink-0 items-center justify-center pt-0.5">
+          <i
+            class="fa-solid text-[15px]"
+            :class="iconClassMap[toast.type] || iconClassMap.info"
           ></i>
         </div>
 
-        <!-- 文本内容 -->
-        <div class="flex flex-col gap-0.5">
-          <span class="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">
-            {{ t.type === 'success' ? 'Success' : t.type === 'error' ? 'Error' : t.type === 'warning' ? 'Warning' : 'Information' }}
-          </span>
-          <p class="text-[13px] font-bold leading-tight tracking-tight">
-            {{ t.message }}
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <p class="line-clamp-2 min-w-0 text-sm font-semibold leading-5 text-[#f7f8f8]">
+              {{ titleOf(toast) }}
+            </p>
+            <button
+              type="button"
+              class="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#8a8f98] transition-colors hover:bg-white/[0.06] hover:text-[#f7f8f8]"
+              title="关闭"
+              @click="emit('dismiss', toast.id)"
+            >
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+
+          <p
+            v-if="toast.description"
+            class="line-clamp-2 text-[13px] leading-5 text-[#a8adb7]"
+          >
+            {{ toast.description }}
           </p>
+
+          <a
+            v-if="toast.action?.href"
+            :href="toast.action.href"
+            class="mt-1 inline-flex w-fit text-sm font-medium accent-text transition-colors hover:text-[rgb(var(--accent-hover-rgb))]"
+          >
+            {{ toast.action.label || '查看' }}
+          </a>
+          <button
+            v-else-if="toast.action?.label"
+            type="button"
+            class="mt-1 inline-flex w-fit text-sm font-medium accent-text transition-colors hover:text-[rgb(var(--accent-hover-rgb))]"
+            @click="toast.action.onClick?.(); emit('dismiss', toast.id)"
+          >
+            {{ toast.action.label }}
+          </button>
         </div>
       </div>
     </TransitionGroup>
   </div>
 </template>
-
-<style scoped>
-/* 确保多个 Toast 同时存在时的布局平滑移动 */
-.v-move {
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-</style>
