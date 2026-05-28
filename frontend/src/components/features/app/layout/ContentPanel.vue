@@ -75,11 +75,6 @@ onBeforeUnmount(stopSidebarResize)
     class="flex h-full flex-col overflow-hidden rounded-none brand-btn transition-colors duration-200 dark:!bg-white/[0.04] lg:rounded-lg">
     <header
       class="flex h-14 shrink-0 items-center gap-4 border-b border-gray-200 bg-white/70 px-4 transition-colors dark:border-white/[0.08] dark:bg-white/[0.065]">
-      <div v-if="$slots['header-actions']"
-        class="-ml-1 flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
-        <slot name="header-actions"></slot>
-      </div>
-
       <button
         v-if="isMobile && !mobileDrawerOpen"
         type="button"
@@ -89,6 +84,11 @@ onBeforeUnmount(stopSidebarResize)
       >
         <i class="fa-solid fa-bars text-xs"></i>
       </button>
+
+      <div v-if="$slots['header-actions']"
+        class="-ml-1 flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
+        <slot name="header-actions"></slot>
+      </div>
 
       <BaseBreadcrumb v-if="breadcrumbs.length" :items="breadcrumbs" class="min-w-0 shrink" />
       <h2 v-else class="shrink-0 text-sm font-medium text-gray-900 transition-colors dark:text-[#f7f8f8]">{{ title }}</h2>
