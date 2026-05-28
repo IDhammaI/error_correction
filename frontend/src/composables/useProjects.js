@@ -96,9 +96,9 @@ async function loadProjects() {
 /**
  * 创建项目后立即选中，供新建错题库或笔记本流程使用。
  */
-async function createAndSelectProject(name, projectType = 'question') {
+async function createAndSelectProject(name, projectType = 'question', description = '', summary = '') {
   const type = normalizeType(projectType)
-  const project = await api.createProject({ name, project_type: type })
+  const project = await api.createProject({ name, project_type: type, summary, description })
   projects.value = sortProjects([project, ...projects.value.filter(p => p.id !== project.id)])
   setActiveProject(project.id, type)
   return project
@@ -110,6 +110,13 @@ async function createAndSelectProject(name, projectType = 'question') {
 async function renameProject(projectId, name) {
   const project = await api.updateProject(projectId, { name })
   projects.value = sortProjects(projects.value.map(p => p.id === project.id ? project : p))
+  return project
+}
+
+async function updateProjectMeta(projectId, payload) {
+  const project = await api.updateProject(projectId, payload)
+  projects.value = sortProjects(projects.value.map(p => p.id === project.id ? project : p))
+  setActiveProject(project.id, project.project_type)
   return project
 }
 
@@ -148,6 +155,7 @@ export function useProjects() {
     setActiveProject,
     createAndSelectProject,
     renameProject,
+    updateProjectMeta,
     removeProject,
   }
 }

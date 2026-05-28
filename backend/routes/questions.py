@@ -351,6 +351,41 @@ def get_error_bank():
         return jsonify({'success': False, 'error': '查询失败，请稍后重试'}), 500
 
 
+@bp.route('/error-bank/find', methods=['GET'])
+def find_error_bank_questions():
+    """Use a natural language description to find likely questions."""
+    try:
+        query_text = (request.args.get('q') or request.args.get('query') or '').strip()
+        if not query_text:
+            return jsonify({'success': False, 'error': '请输入要查找的题目描述'}), 400
+        limit = min(20, max(1, request.args.get('limit', 8, type=int)))
+        project_id = _project_id_arg()
+
+        with SessionLocal() as db:
+            matches = crud.find_questions_by_natural_language(
+                db,
+                query_text=query_text,
+                limit=limit,
+                user_id=_effective_user_id(),
+                project_id=project_id,
+            )
+            items = []
+            for match in matches:
+                payload = _serialize_question_detail(match['question'])
+                payload['match_score'] = round(match['score'] * 100)
+                payload['match_reasons'] = match.get('reasons') or []
+                items.append(payload)
+
+        return jsonify({
+            'success': True,
+            'items': items,
+            'total': len(items),
+        })
+    except Exception:
+        logger.exception("AI find questions failed")
+        return jsonify({'success': False, 'error': '找题失败，请稍后重试'}), 500
+
+
 @bp.route('/subjects', methods=['GET'])
 def get_subjects():
     """获取所有科目列表"""

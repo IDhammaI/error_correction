@@ -9,10 +9,10 @@ import { useTheme } from '@/composables/useTheme.js'
 import { useToast } from '@/composables/useToast.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useProjects } from '@/composables/useProjects.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
-import StatCard from '@/components/dashboard/StatCard.vue'
+import StatCard from '@/components/features/app/dashboard/StatCard.vue'
 
 const { isDark, accentColorId } = useTheme()
 const { pushToast } = useToast()

@@ -64,6 +64,25 @@ def _migrate_schema():
         if 'project_type' not in project_columns:
             cursor.execute("ALTER TABLE projects ADD COLUMN project_type TEXT DEFAULT 'question'")
             conn.commit()
+        if 'summary' not in project_columns:
+            cursor.execute("ALTER TABLE projects ADD COLUMN summary TEXT DEFAULT ''")
+            conn.commit()
+        if 'public_id' not in project_columns:
+            cursor.execute("ALTER TABLE projects ADD COLUMN public_id TEXT")
+            conn.commit()
+
+        cursor.execute("SELECT id FROM projects WHERE public_id IS NULL OR public_id = ''")
+        missing_project_rows = cursor.fetchall()
+        for (project_id,) in missing_project_rows:
+            cursor.execute(
+                "UPDATE projects SET public_id = ? WHERE id = ?",
+                (str(uuid.uuid4()), project_id),
+            )
+        if missing_project_rows:
+            conn.commit()
+
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_public_id_unique ON projects(public_id)")
+        conn.commit()
 
         cursor.execute("PRAGMA table_info(users)")
         user_columns = {row[1] for row in cursor.fetchall()}

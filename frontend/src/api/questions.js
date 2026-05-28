@@ -10,13 +10,25 @@ export async function fetchErrorBank(params = {}) {
   const qs = new URLSearchParams()
   // 过滤空值，避免把未选择的筛选项传给后端影响查询语义。
   for (const [k, v] of Object.entries(params)) {
-    if (v !== null && v !== undefined && v !== '') qs.set(k, v)
+    if (Array.isArray(v)) {
+      if (v.length) qs.set(k, v.join(','))
+    } else if (v !== null && v !== undefined && v !== '') qs.set(k, v)
   }
   const resp = await fetch(`/api/error-bank?${qs}`)
   return assertJsonSuccess(resp, '查询错题库失败')
 }
 
 /** 获取错题库中的科目筛选项。 */
+/** 用自然语言描述查找最可能的错题。 */
+export async function findQuestionsByDescription(query, { projectId, limit = 8 } = {}) {
+  const qs = new URLSearchParams()
+  qs.set('q', query)
+  qs.set('limit', limit)
+  if (projectId) qs.set('project_id', projectId)
+  const resp = await fetch(`/api/error-bank/find?${qs}`)
+  return assertJsonSuccess(resp, 'AI 找题失败')
+}
+
 export async function fetchSubjects(projectId) {
   const qs = new URLSearchParams()
   if (projectId) qs.set('project_id', projectId)

@@ -20,7 +20,9 @@ def serialize_project(project: Project) -> dict:
         "id": project.id,
         "public_id": project.public_id,
         "name": project.name,
+        "title": project.name,
         "project_type": normalize_project_type(getattr(project, "project_type", None)),
+        "summary": getattr(project, "summary", "") or "",
         "description": project.description or "",
         "color": project.color or "#2563eb",
         "icon": project.icon or "book-open",
@@ -57,6 +59,7 @@ def create_project(
     db: Session,
     name: str,
     user_id=None,
+    summary: str = "",
     description: str = "",
     color: str = "#2563eb",
     icon: str = "book-open",
@@ -68,6 +71,7 @@ def create_project(
         user_id=user_id,
         name=(name or "").strip()[:100],
         project_type=project_type,
+        summary=(summary or "").strip()[:200],
         description=(description or "").strip()[:1000],
         color=(color or "#2563eb").strip()[:20],
         icon=(icon or "book-open").strip()[:50],
@@ -100,7 +104,14 @@ def require_project_id(db: Session, project_id, user_id=None, project_type=None)
     return project.id
 
 
-def update_project(db: Session, project_id: int, user_id=None, name: str = None) -> Optional[Project]:
+def update_project(
+    db: Session,
+    project_id: int,
+    user_id=None,
+    name: str = None,
+    summary: str = None,
+    description: str = None,
+) -> Optional[Project]:
     project = get_project(db, project_id, user_id=user_id)
     if not project:
         return None
@@ -108,6 +119,10 @@ def update_project(db: Session, project_id: int, user_id=None, name: str = None)
         raise ValueError("DEFAULT_PROJECT_IMMUTABLE")
     if name is not None:
         project.name = name.strip()[:100]
+    if summary is not None:
+        project.summary = summary.strip()[:200]
+    if description is not None:
+        project.description = description.strip()[:1000]
     db.commit()
     db.refresh(project)
     return project

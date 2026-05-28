@@ -48,6 +48,7 @@ class Project(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     name = Column(String(100), nullable=False)
     project_type = Column(String(20), default="question", nullable=False, index=True)
+    summary = Column(String(200), default="")
     description = Column(Text, default="")
     color = Column(String(20), default="#2563eb")
     icon = Column(String(50), default="book-open")
@@ -156,6 +157,22 @@ class Question(Base):
     batch = relationship("UploadBatch", back_populates="questions")
     tags = relationship("QuestionTagMapping", back_populates="question")
     chat_sessions = relationship("ChatSession", back_populates="question")
+    embedding = relationship("QuestionEmbedding", back_populates="question", uselist=False, cascade="all, delete-orphan")
+
+
+class QuestionEmbedding(Base):
+    """Cached vector representation for natural-language question search."""
+    __tablename__ = "question_embeddings"
+
+    id = Column(Integer, primary_key=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, unique=True, index=True)
+    model_name = Column(String(50), nullable=False, default="local-hash-v1")
+    text_hash = Column(String(64), nullable=False)
+    vector_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    question = relationship("Question", back_populates="embedding")
 
 
 class ChatSession(Base):

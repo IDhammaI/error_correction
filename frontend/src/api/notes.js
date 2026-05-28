@@ -31,8 +31,12 @@ export async function fetchNotes(params = {}) {
   const query = new URLSearchParams()
   if (params.page) query.set('page', params.page)
   if (params.limit) query.set('limit', params.limit)
-  if (params.subject) query.set('subject', params.subject)
-  if (params.knowledge_tag) query.set('knowledge_tag', params.knowledge_tag)
+  if (Array.isArray(params.subject) ? params.subject.length : params.subject) {
+    query.set('subject', Array.isArray(params.subject) ? params.subject.join(',') : params.subject)
+  }
+  if (Array.isArray(params.knowledge_tag) ? params.knowledge_tag.length : params.knowledge_tag) {
+    query.set('knowledge_tag', Array.isArray(params.knowledge_tag) ? params.knowledge_tag.join(',') : params.knowledge_tag)
+  }
   if (params.keyword) query.set('keyword', params.keyword)
   if (params.project_id) query.set('project_id', params.project_id)
 
