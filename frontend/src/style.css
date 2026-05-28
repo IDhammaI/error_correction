@@ -1,5 +1,5 @@
 :root {
-  --sidebar-transition-duration: 300ms;
+  --sidebar-transition-duration: 1s;
   --sidebar-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
   --mask-transition-duration: 300ms;
   --mask-transition-timing: ease-in-out;
@@ -368,6 +368,12 @@ mjx-container[jax="SVG"]>svg {
   height: 6px;
 }
 
+.dark *::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .dark *::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -384,6 +390,43 @@ mjx-container[jax="SVG"]>svg {
 .dark {
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   scrollbar-width: thin;
+}
+
+.custom-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-width: thin;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* ============================================================

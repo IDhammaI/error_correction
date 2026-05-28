@@ -5,7 +5,7 @@
  */
 import { onMounted, ref } from 'vue'
 import { Camera, Cpu, Database, BrainCircuit, Sparkles, Layers } from 'lucide-vue-next'
-import FeatureCard from '@/components/home/FeatureCard.vue'
+import FeatureCard from '@/components/features/home/FeatureCard.vue'
 
 const FEATURES = [
   {

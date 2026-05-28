@@ -10,14 +10,15 @@ import { useAuth } from '@/composables/useAuth.js'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useTheme } from '@/composables/useTheme.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import ProviderDialog from '@/components/settings/ProviderDialog.vue'
-import ProviderSection from '@/components/settings/ProviderSection.vue'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
+import ProviderDialog from '@/components/features/app/settings/ProviderDialog.vue'
+import ProviderSection from '@/components/features/app/settings/ProviderSection.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseListGroup from '@/components/base/BaseListGroup.vue'
 import BaseListItem from '@/components/base/BaseListItem.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
 
 const props = defineProps({
   section: { type: String, default: 'profile' },
@@ -49,17 +50,20 @@ const quotaResetText = computed(() => {
 
 const isProfileSection = computed(() => props.section === 'profile')
 const isQuotaSection = computed(() => props.section === 'quota')
+const isSystemProvidersSection = computed(() => props.section === 'system-providers')
 const isApiSection = computed(() => props.section === 'api')
 const isAppearanceSection = computed(() => props.section === 'appearance')
 const settingsPageTitle = computed(() => {
   if (isApiSection.value) return 'API 设置'
   if (isQuotaSection.value) return '免费额度'
+  if (isSystemProvidersSection.value) return '平台托管'
   if (isAppearanceSection.value) return '外观设置'
   return '用户资料设置'
 })
 const settingsPageDescription = computed(() => {
   if (isApiSection.value) return '集中管理 AI 与 OCR provider 的接口配置。'
   if (isQuotaSection.value) return '查看系统托管 AI / OCR 服务的免费体验额度与每日重置时间。'
+  if (isSystemProvidersSection.value) return '配置用于免费体验额度消耗的系统级 AI / OCR Provider。'
   if (isAppearanceSection.value) return '切换明暗模式和主题强调色，界面会立即应用。'
   return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
 })
@@ -86,8 +90,8 @@ const avatarPreviewUrl = ref('')
 const avatarUploadXhr = ref(null)
 
 const appearanceModeOptions = [
-  { id: 'dark', label: '深色', icon: 'fa-moon' },
-  { id: 'light', label: '浅色', icon: 'fa-sun' },
+  { value: 'dark', label: '深色', icon: 'fa-moon' },
+  { value: 'light', label: '浅色', icon: 'fa-sun' },
 ]
 
 const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
@@ -95,8 +99,8 @@ const currentAppearanceMode = computed(() => isDark.value ? 'dark' : 'light')
 /**
  * 切换明暗主题模式。
  */
-const setAppearanceMode = (mode) => {
-  setTheme(mode === 'dark')
+const setAppearanceMode = (mode, event) => {
+  setTheme(mode === 'dark', event?.currentTarget)
 }
 
 /**
@@ -786,15 +790,15 @@ const onSystemDialogConfirm = async (formData) => {
 
 onMounted(async () => {
   await loadConfig()
-  if (currentUser.value?.is_admin && isQuotaSection.value) {
+  if (currentUser.value?.is_admin && isSystemProvidersSection.value) {
     await loadSystemConfig()
   }
 })
 
 watch(
-  () => [currentUser.value?.is_admin, isQuotaSection.value],
-  ([isAdmin, quotaSection]) => {
-    if (isAdmin && quotaSection && !systemConfigLoaded.value) {
+  () => [currentUser.value?.is_admin, isSystemProvidersSection.value],
+  ([isAdmin, systemProvidersSection]) => {
+    if (isAdmin && systemProvidersSection && !systemConfigLoaded.value) {
       loadSystemConfig()
     }
   },
@@ -849,6 +853,12 @@ watch(
           <div class="h-48 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
         </div>
 
+        <div v-else-if="systemLoading && isSystemProvidersSection" class="space-y-6 animate-pulse">
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+          <div class="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08]"></div>
+        </div>
+
         <div v-else-if="loading && isApiSection" class="space-y-6 animate-pulse">
           <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
           <div class="h-32 w-full rounded-2xl bg-gray-200 dark:bg-white/[0.08]"></div>
@@ -858,21 +868,12 @@ watch(
         <div v-else-if="isAppearanceSection" class="mx-auto max-w-2xl pb-12">
           <BaseListGroup title="界面主题" description="外观偏好保存在当前浏览器中，刷新页面后仍会保持。">
             <BaseListItem label="显示模式" description="选择浅色或深色界面">
-              <div class="grid grid-cols-2 gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-white/[0.08] dark:bg-white/[0.03]">
-                <button
-                  v-for="mode in appearanceModeOptions"
-                  :key="mode.id"
-                  type="button"
-                  class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors"
-                  :class="currentAppearanceMode === mode.id
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.1] dark:text-[#f7f8f8]'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:text-[#d0d6e0]'"
-                  @click="setAppearanceMode(mode.id)"
-                >
-                  <i :class="['fa-solid', mode.icon, 'text-[11px]']"></i>
-                  <span>{{ mode.label }}</span>
-                </button>
-              </div>
+              <BaseSegmented
+                :model-value="currentAppearanceMode"
+                :options="appearanceModeOptions"
+                size="md"
+                @change="setAppearanceMode"
+              />
             </BaseListItem>
           </BaseListGroup>
 
@@ -921,7 +922,7 @@ watch(
           </section>
         </div>
 
-        <div v-else-if="isProfileSection || isQuotaSection" class="space-y-6">
+        <div v-else-if="isProfileSection || isQuotaSection || isSystemProvidersSection" class="space-y-6">
           <section v-if="isQuotaSection"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-4 flex items-start justify-between gap-4">
@@ -963,7 +964,7 @@ watch(
             </p>
           </section>
 
-          <section v-if="isQuotaSection && currentUser?.is_admin"
+          <section v-if="isSystemProvidersSection && currentUser?.is_admin"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
             <div class="mb-5 flex items-start justify-between gap-3">
               <div>

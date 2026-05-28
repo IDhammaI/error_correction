@@ -207,13 +207,15 @@ watch(() => props.modelValue, () => {
         leave-to-class="-translate-y-1 scale-[0.98] opacity-0"
       >
         <ListboxOptions
-          class="absolute right-0 z-50 mt-2 max-h-72 w-full overflow-hidden rounded-lg border border-gray-200 bg-white p-1 text-sm shadow-xl shadow-black/10 outline-none dark:border-white/[0.08] dark:bg-[#151617] dark:shadow-black/30"
+          aria-multiselectable="false"
+          data-checkmark-trailing="true"
+          class="absolute right-0 z-50 mt-2 max-h-72 w-full overflow-hidden rounded-xl border border-gray-200 bg-white p-1 text-sm text-gray-700 shadow-xl shadow-black/10 outline-none backdrop-blur-md dark:border-white/[0.08] dark:bg-[#1f1f20] dark:text-[#d7d7d8] dark:shadow-black/35"
         >
           <template v-for="(item, index) in groupedOptions" :key="item.type === 'group' ? item.key : item.optionId">
             <li
               v-if="item.type === 'group'"
-              class="select-none px-3 py-2 text-[11px] font-semibold text-gray-500 dark:text-[#777b84]"
-              :class="index > 0 ? 'mt-1 border-t border-gray-100 pt-2.5 dark:border-white/[0.06]' : ''"
+              class="select-none px-3 py-2 text-[11px] font-semibold text-gray-500 dark:text-[#8a8f98]"
+              :class="index > 0 ? 'mt-1 border-t border-gray-200 pt-2.5 dark:border-white/[0.08]' : ''"
             >
               {{ item.label }}
             </li>
@@ -226,31 +228,27 @@ watch(() => props.modelValue, () => {
               as="template"
             >
               <li
-                class="relative flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2.5 transition-colors"
+                class="relative flex h-8 cursor-pointer select-none items-center gap-3 rounded-md px-3 outline-none transition-colors"
                 :class="[
-                  active ? 'bg-gray-100 dark:bg-white/[0.045]' : '',
+                  active ? 'bg-gray-100 dark:bg-white/[0.07]' : '',
                   selected ? 'text-gray-950 dark:text-[#f7f8f8]' : 'text-gray-700 dark:text-[#cbd5e1]',
                   optionDisabled ? 'cursor-not-allowed opacity-45' : '',
                 ]"
                 :title="item.reason || item.label"
               >
-                <i
-                  class="fa-solid fa-check w-3 shrink-0 text-[11px] transition-opacity"
-                  :class="selected ? 'opacity-100 accent-text' : 'opacity-0'"
-                ></i>
                 <img
                   v-if="modelLogos[item.provider]"
                   :src="modelLogos[item.provider]"
-                  class="h-3.5 w-3.5 shrink-0 object-contain opacity-75"
+                  class="h-4 w-4 shrink-0 object-contain opacity-75"
                   alt=""
                 />
-                <i v-else class="fa-solid fa-robot h-3.5 w-3.5 shrink-0 text-[11px] text-gray-400"></i>
-                <span class="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                <i v-else class="fa-solid fa-robot w-4 shrink-0 text-center text-sm text-gray-500 dark:text-[#9aa0aa]"></i>
+                <span class="min-w-0 flex-1 truncate font-medium">
                   {{ item.label }}
                 </span>
                 <span
                   v-if="item.isDefault"
-                  class="shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:bg-white/[0.06] dark:text-[#62666d]"
+                  class="shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:bg-white/[0.06] dark:text-[#8a8f98]"
                 >
                   默认
                 </span>
@@ -258,16 +256,17 @@ watch(() => props.modelValue, () => {
             </ListboxOption>
           </template>
 
-          <div class="mt-1 border-t border-gray-100 p-1 pt-1.5 dark:border-white/[0.06]">
+          <li role="separator" class="my-1 h-px bg-gray-200 dark:bg-white/[0.08]"></li>
+          <li role="option" aria-disabled="false">
             <button
               type="button"
-              class="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-[#8a8f98] dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]"
+              class="flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium text-gray-700 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-[#d7d7d8] dark:hover:bg-white/[0.07] dark:hover:text-[#f7f8f8]"
               @click.stop="goToApiSettings"
             >
-              <i class="fa-solid fa-plug-circle-bolt text-[11px]"></i>
+              <i class="fa-solid fa-plug-circle-bolt w-4 shrink-0 text-center text-sm text-gray-500 dark:text-[#9aa0aa]"></i>
               <span>API 设置</span>
             </button>
-          </div>
+          </li>
         </ListboxOptions>
       </Transition>
     </div>

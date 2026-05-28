@@ -8,7 +8,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
+import ForgotPasswordModal from '@/components/features/auth/ForgotPasswordModal.vue'
 
 const router = useRouter()
 const { setCurrentUser } = useAuth()

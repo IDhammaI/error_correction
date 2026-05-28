@@ -4,10 +4,12 @@
  * 工作台第一页：上传与分析（模式切换 + 擦除开关 + 流程步骤 + 文件上传）
  */
 import BaseTooltip from '@/components/base/BaseTooltip.vue'
-import StatusBar from '@/components/workspace/StatusBar.vue'
-import FileUploader from '@/components/workspace/FileUploader.vue'
-import FileList from '@/components/workspace/FileList.vue'
-import ActionBar from '@/components/workspace/ActionBar.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import BaseSwitch from '@/components/base/BaseSwitch.vue'
+import StatusBar from '@/components/features/app/workspace/StatusBar.vue'
+import FileUploader from '@/components/features/app/workspace/FileUploader.vue'
+import FileList from '@/components/features/app/workspace/FileList.vue'
+import ActionBar from '@/components/features/app/workspace/ActionBar.vue'
 
 const props = defineProps({
   uploadMode: String,
@@ -39,38 +41,37 @@ const emit = defineEmits([
   'remove-file',
   'split',
 ])
+
+// 上传模式选项：试卷走分割纠错流程，笔记走整理保存流程。
+const uploadModeOptions = [
+  { value: 'exam', label: '试卷分割', icon: 'fa-file-lines' },
+  { value: 'note', label: '笔记整理', icon: 'fa-book-open' },
+]
 </script>
 
 <template>
   <!-- 工具栏：状态 + 模式切换 + 擦除开关 -->
   <div class="flex flex-wrap items-center gap-3">
     <!-- 模式切换 -->
-    <div class="flex items-center rounded-md brand-btn p-0.5 transition-colors">
-      <button @click="emit('update:upload-mode', 'exam')" class="h-7 rounded px-3 text-xs font-medium transition-all"
-        :class="uploadMode === 'exam' ? 'brand-gradient-bg text-white shadow-sm' : 'text-gray-500 dark:text-[#62666d] hover:text-gray-700 dark:hover:text-[#8a8f98]'">
-        <i class="fa-solid fa-file-lines mr-1.5"></i>试卷分割
-      </button>
-      <button @click="emit('update:upload-mode', 'note')" class="h-7 rounded px-3 text-xs font-medium transition-all"
-        :class="uploadMode === 'note' ? 'brand-gradient-bg text-white shadow-sm' : 'text-gray-500 dark:text-[#62666d] hover:text-gray-700 dark:hover:text-[#8a8f98]'">
-        <i class="fa-solid fa-book-open mr-1.5"></i>笔记整理
-      </button>
-    </div>
+    <BaseSegmented
+      :model-value="uploadMode"
+      :options="uploadModeOptions"
+      @update:model-value="(value) => emit('update:upload-mode', value)"
+    />
 
     <div class="h-4 w-px bg-gray-300 dark:bg-white/[0.08] transition-colors"></div>
 
     <!-- 擦除开关 -->
-    <label class="flex cursor-pointer items-center gap-2" @click="emit('update:erase-enabled', !eraseEnabled)">
-      <div class="relative h-4 w-7 rounded-full transition-colors"
-        :class="eraseEnabled ? 'accent-bg' : 'bg-gray-300 dark:bg-white/[0.08]'">
-        <div class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform"
-          :class="eraseEnabled ? 'translate-x-3' : 'translate-x-0.5'"></div>
-      </div>
-      <span class="text-xs text-gray-500 dark:text-[#8a8f98] transition-colors">擦除笔迹</span>
+    <BaseSwitch
+      :model-value="eraseEnabled"
+      label="擦除笔迹"
+      @update:model-value="(value) => emit('update:erase-enabled', value)"
+    >
       <BaseTooltip text="上传后自动擦除图片中的手写笔迹" placement="bottom" align="center">
         <i
           class="fa-solid fa-circle-question cursor-help text-[10px] text-gray-400 dark:text-[#62666d] transition-colors"></i>
       </BaseTooltip>
-    </label>
+    </BaseSwitch>
 
     <!-- 引擎状态 -->
     <div class="ml-auto">
@@ -85,9 +86,14 @@ const emit = defineEmits([
   <div class="flex flex-1 min-h-0 flex-col items-center justify-center gap-6 overflow-y-auto custom-scrollbar py-8">
     <!-- 引导信息 -->
     <div class="w-full max-w-2xl text-center transition-colors">
-      <h3 class="mb-2 text-base font-medium text-gray-900 dark:text-[#f7f8f8]">
-        {{ uploadMode === 'note' ? '上传手写笔记' : '上传试卷图片' }}
-      </h3>
+      <h2 class="mb-3 text-3xl font-black leading-tight text-gray-900 dark:text-[#f7f8f8] md:text-4xl">
+        <template v-if="uploadMode === 'note'">
+          智能笔记整理<span class="accent-text">工作台</span>
+        </template>
+        <template v-else>
+          智能录入与分析<span class="accent-text">工作台</span>
+        </template>
+      </h2>
       <p class="text-sm leading-relaxed text-gray-500 dark:text-[#62666d] md:whitespace-nowrap">
         {{ uploadMode === 'note'
           ? '支持拍照或扫描件，AI 将自动识别内容并整理为结构化笔记'

@@ -5,7 +5,7 @@
  */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { UploadCloud, BrainCircuit, Sparkles, FileDown } from 'lucide-vue-next'
-import WorkflowStep from '@/components/home/WorkflowStep.vue'
+import WorkflowStep from '@/components/features/home/WorkflowStep.vue'
 
 const STEPS = [
   { icon: 'upload-cloud', num: '01', title: '上传试卷',   desc: '支持PDF/多图并行处理',  delay: 0 },

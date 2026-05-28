@@ -10,13 +10,13 @@ import { useTheme } from '@/composables/useTheme.js'
 
 const { initTheme } = useTheme()
 
-import HomeHeader from '@/components/home/HomeHeader.vue'
-import HomeSideNav from '@/components/home/HomeSideNav.vue'
+import HomeHeader from '@/components/features/home/HomeHeader.vue'
+import HomeSideNav from '@/components/features/home/HomeSideNav.vue'
 import HomeHero from '@/views/home/HomeHero.vue'
 import HomeFeatures from '@/views/home/HomeFeatures.vue'
 import HomeWorkflow from '@/views/home/HomeWorkflow.vue'
 import HomeDemo from '@/views/home/HomeDemo.vue'
-import HomeFooter from '@/components/home/HomeFooter.vue'
+import HomeFooter from '@/components/features/home/HomeFooter.vue'
 
 const SECTIONS = [
   { id: 'hero', label: '首页' },
