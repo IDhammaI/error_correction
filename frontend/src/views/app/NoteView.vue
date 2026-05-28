@@ -32,6 +32,7 @@ const pageSize = ref(10)
 const loading = ref(false)
 const isDeleting = ref(false)
 const filterPanelOpen = ref(false)
+const statsCollapsed = ref(false)
 
 const selectedNote = ref(null)
 const editing = ref(false)
@@ -267,9 +268,18 @@ watch(() => filters.keyword, () => {
         :tag-names="tagNames" :selected-tags="selectedTags" :total="total" @toggle-tag="toggleTagSelect"
         @reset="resetFilters" />
 
-      <div class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
-        <BaseStat v-for="card in statsCards" :key="card.label" :label="card.label" :value="card.value"
-          :suffix="card.suffix" :hint="card.hint" :icon="card.icon" :tone="card.tone" />
+      <div>
+        <button
+          @click="statsCollapsed = !statsCollapsed"
+          class="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <i class="fa-solid text-[10px] transition-transform duration-200" :class="statsCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'"></i>
+          {{ statsCollapsed ? '展开统计' : '收起统计' }}
+        </button>
+        <div v-show="!statsCollapsed" class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <BaseStat v-for="card in statsCards" :key="card.label" :label="card.label" :value="card.value"
+            :suffix="card.suffix" :hint="card.hint" :icon="card.icon" :tone="card.tone" />
+        </div>
       </div>
 
       <div
