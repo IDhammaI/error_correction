@@ -4,7 +4,7 @@
  * 错题库左侧列表中的单道题目卡片。
  */
 import BaseTag from '@/components/base/BaseTag.vue'
-import { getQuestionSnippet } from '@/utils/index.js'
+import { calculateQuestionPriority, getQuestionSnippet } from '@/utils/index.js'
 
 const props = defineProps({
   question: { type: Object, required: true },
@@ -22,15 +22,7 @@ const statusTone = (status) => {
   return 'rose'
 }
 
-/**
- * 根据复习状态给列表项一个轻量优先级展示。
- */
-const questionPriority = (question) => {
-  if (!question) return 0
-  if ((question.review_status || '待复习') === '待复习') return 78
-  if (question.review_status === '复习中') return 65
-  return 32
-}
+const questionPriority = (question) => calculateQuestionPriority(question)
 
 const formatDate = (iso) => {
   if (!iso) return '暂无日期'
