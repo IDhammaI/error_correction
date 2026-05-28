@@ -20,7 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['step-click'])
 const slots = useSlots()
 
-const { isMobile } = useWorkspaceNav()
+const { isMobile, canHover, mobileDrawerOpen, toggleSidebar } = useWorkspaceNav()
 
 const SIDEBAR_WIDTH_KEY = 'content_panel_sidebar_width_v1'
 const SIDEBAR_MIN_WIDTH = 280
@@ -79,6 +79,16 @@ onBeforeUnmount(stopSidebarResize)
         class="-ml-1 flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
         <slot name="header-actions"></slot>
       </div>
+
+      <button
+        v-if="isMobile && !mobileDrawerOpen"
+        type="button"
+        class="-ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700 dark:border-white/10 dark:bg-[#1b1b1d] dark:text-[#8a8f98] dark:hover:bg-[#232326] dark:hover:text-[#d0d6e0]"
+        :title="canHover ? '打开侧边栏' : null"
+        @click="toggleSidebar"
+      >
+        <i class="fa-solid fa-bars text-xs"></i>
+      </button>
 
       <BaseBreadcrumb v-if="breadcrumbs.length" :items="breadcrumbs" class="min-w-0 shrink" />
       <h2 v-else class="shrink-0 text-sm font-medium text-gray-900 transition-colors dark:text-[#f7f8f8]">{{ title }}</h2>
