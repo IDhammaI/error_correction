@@ -759,7 +759,14 @@ def update_review_status(db: Session, question_id: int, review_status: str, user
 
     try:
         question.review_status = review_status
-        question.updated_at = datetime.utcnow()
+        if review_status == VALID_REVIEW_STATUSES[2]:
+            from db.crud.review import _schedule_target
+
+            _schedule_target(db, question, "question", rating="good", user_id=question.user_id)
+        else:
+            if review_status == VALID_REVIEW_STATUSES[0]:
+                question.review_due_at = datetime.utcnow()
+            question.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(question)
         return question

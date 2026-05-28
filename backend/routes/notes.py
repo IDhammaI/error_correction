@@ -77,7 +77,7 @@ def _serialize_note(note) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    return {
+    payload = {
         "id": note.id,
         "title": note.title,
         "subject": note.subject,
@@ -89,6 +89,8 @@ def _serialize_note(note) -> dict:
         "created_at": note.created_at.isoformat() if note.created_at else None,
         "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
+    payload.update(crud.serialize_review_fields(note))
+    return payload
 
 
 def _apply_provider_context(db, user_id):
@@ -421,6 +423,28 @@ def update_note_route(note_id):
     except Exception as e:
         logger.exception("更新笔记失败")
         return jsonify({"success": False, "error": "更新笔记失败"}), 500
+
+
+@bp.route("/<int:note_id>/review", methods=["POST"])
+def review_note(note_id):
+    """Record a spaced-repetition review result for a note."""
+    try:
+        data = request.get_json(silent=True) or {}
+        with SessionLocal() as db:
+            note = crud.schedule_note_review(
+                db,
+                note_id,
+                rating=data.get("rating") or data.get("quality") or "good",
+                user_id=_effective_user_id(),
+            )
+            if not note:
+                return jsonify({"success": False, "error": "笔记不存在"}), 404
+            return jsonify({"success": True, "note": _serialize_note(note)})
+    except ValueError:
+        return jsonify({"success": False, "error": "无效的复习结果"}), 400
+    except Exception as e:
+        logger.exception("记录笔记复习失败")
+        return jsonify({"success": False, "error": "记录复习失败"}), 500
 
 
 @bp.route("/<int:note_id>", methods=["DELETE"])

@@ -49,6 +49,17 @@ const daysSince = (iso) => {
  */
 export const calculateQuestionPriority = (question) => {
   if (!question) return 0
+  if (Number.isFinite(Number(question.review_priority))) {
+    return Math.round(clamp(Number(question.review_priority), 0, 100))
+  }
+  if (question.review_due_at) {
+    const due = new Date(question.review_due_at)
+    if (!Number.isNaN(due.getTime())) {
+      const overdueDays = Math.floor((Date.now() - due.getTime()) / 86400000)
+      if (overdueDays >= 0) return Math.round(clamp(82 + overdueDays * 4, 72, 99))
+      return Math.round(clamp(58 + overdueDays * 8, 12, 70))
+    }
+  }
 
   const status = question.review_status || '待复习'
   const statusScore = {

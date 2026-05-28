@@ -143,6 +143,14 @@ from db.crud.notes import (
     get_note_tag_names,
 )
 
+from db.crud.review import (
+    compute_review_priority,
+    serialize_review_fields,
+    schedule_question_review,
+    schedule_note_review,
+    get_due_reviews,
+)
+
 __all__ = [
     # shared helpers
     "_filter_by_subject",
@@ -241,4 +249,10 @@ __all__ = [
     "delete_note",
     "get_note_subjects",
     "get_note_tag_names",
+    # review
+    "compute_review_priority",
+    "serialize_review_fields",
+    "schedule_question_review",
+    "schedule_note_review",
+    "get_due_reviews",
 ]

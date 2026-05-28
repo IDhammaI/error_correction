@@ -46,6 +46,17 @@ def _migrate_schema():
         if 'project_id' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN project_id INTEGER")
             conn.commit()
+        review_columns = {
+            "review_due_at": "DATETIME",
+            "review_last_at": "DATETIME",
+            "review_interval_days": "INTEGER DEFAULT 0 NOT NULL",
+            "review_count": "INTEGER DEFAULT 0 NOT NULL",
+            "ease_factor": "FLOAT DEFAULT 2.5 NOT NULL",
+        }
+        for column, col_type in review_columns.items():
+            if column not in columns:
+                cursor.execute(f"ALTER TABLE questions ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(upload_batches)")
         batch_columns = {row[1] for row in cursor.fetchall()}
@@ -58,6 +69,10 @@ def _migrate_schema():
         if 'project_id' not in note_columns:
             cursor.execute("ALTER TABLE notes ADD COLUMN project_id INTEGER")
             conn.commit()
+        for column, col_type in review_columns.items():
+            if column not in note_columns:
+                cursor.execute(f"ALTER TABLE notes ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(projects)")
         project_columns = {row[1] for row in cursor.fetchall()}

@@ -189,7 +189,17 @@ def migrate():
         _add_column_if_missing(conn, "users", "daily_free_quota_date", "VARCHAR(10)")
         _add_column_if_missing(conn, "upload_batches", "project_id", "INTEGER")
         _add_column_if_missing(conn, "questions", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "questions", "review_due_at", "DATETIME")
+        _add_column_if_missing(conn, "questions", "review_last_at", "DATETIME")
+        _add_column_if_missing(conn, "questions", "review_interval_days", "INTEGER", 0)
+        _add_column_if_missing(conn, "questions", "review_count", "INTEGER", 0)
+        _add_column_if_missing(conn, "questions", "ease_factor", "FLOAT", 2.5)
         _add_column_if_missing(conn, "notes", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "notes", "review_due_at", "DATETIME")
+        _add_column_if_missing(conn, "notes", "review_last_at", "DATETIME")
+        _add_column_if_missing(conn, "notes", "review_interval_days", "INTEGER", 0)
+        _add_column_if_missing(conn, "notes", "review_count", "INTEGER", 0)
+        _add_column_if_missing(conn, "notes", "ease_factor", "FLOAT", 2.5)
         _add_column_if_missing(
             conn, "projects", "project_type", "VARCHAR(20)", "'question'"
         )

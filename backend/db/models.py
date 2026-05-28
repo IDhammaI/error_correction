@@ -3,7 +3,7 @@
 """
 
 import uuid
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -145,6 +145,11 @@ class Question(Base):
     user_answer = Column(Text, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     review_status = Column(String(10), nullable=True, default='待复习', index=True)
+    review_due_at = Column(DateTime, nullable=True, index=True)
+    review_last_at = Column(DateTime, nullable=True)
+    review_interval_days = Column(Integer, default=0, nullable=False)
+    review_count = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     answer = Column(Text, nullable=True)
 
@@ -283,6 +288,11 @@ class Note(Base):
     content_markdown = Column(Text, default="")           # LLM 整理后的 Markdown 内容
     source_images_json = Column(Text)                     # 原始上传图片路径列表 JSON
     ocr_text = Column(Text)                               # OCR 识别的原始文本（保留用于重新整理）
+    review_due_at = Column(DateTime, nullable=True, index=True)
+    review_last_at = Column(DateTime, nullable=True)
+    review_interval_days = Column(Integer, default=0, nullable=False)
+    review_count = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -300,6 +310,22 @@ class NoteTagMapping(Base):
 
     note = relationship("Note", back_populates="tags")
     tag = relationship("KnowledgeTag")
+
+
+class ReviewEvent(Base):
+    """Spaced-repetition review history for questions and notes."""
+    __tablename__ = "review_events"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    target_type = Column(String(20), nullable=False, index=True)
+    target_id = Column(Integer, nullable=False, index=True)
+    rating = Column(String(20), nullable=False)
+    quality = Column(Integer, default=3, nullable=False)
+    interval_days = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
+    reviewed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    next_due_at = Column(DateTime, nullable=True, index=True)
 
 
 class EmailVerification(Base):

@@ -86,6 +86,16 @@ const loadReviewItems = async () => {
     const data = await api.fetchErrorBank(params)
     reviewItems.value = data.items || []
     reviewTotal.value = data.total || 0
+    const dueData = await api.fetchDueReviews({
+      type: 'question',
+      limit: 40,
+      project_id: activeQuestionProjectId.value,
+    })
+    const dueQuestions = dueData.questions || []
+    reviewItems.value = selectedSubject.value
+      ? dueQuestions.filter(q => q.subject === selectedSubject.value)
+      : dueQuestions
+    reviewTotal.value = reviewItems.value.length
   } catch (e) {
     pushToast('error', '加载待复习题目失败')
   } finally {
