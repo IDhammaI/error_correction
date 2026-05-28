@@ -8,6 +8,9 @@ import { useToast } from '@/composables/useToast.js'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import providerOpenaiIcon from '@/assets/provider-openai.svg'
+import providerAnthropicIcon from '@/assets/provider-anthropic.svg'
+import providerPaddleocrIcon from '@/assets/provider-paddleocr.svg'
 
 const { pushToast } = useToast()
 
@@ -26,7 +29,7 @@ const typeConfig = computed(() => ({
     title: isEdit.value ? '编辑 OpenAI 兼容供应商' : '添加 OpenAI 兼容供应商',
     iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
     iconCls: 'fa-bolt text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-openai.svg',
+    imgIcon: providerOpenaiIcon,
     btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：DeepSeek / Qwen / Moonshot',
     urlPlaceholder: '留空使用 OpenAI 官方，或填入 https://api.deepseek.com 等',
@@ -40,7 +43,7 @@ const typeConfig = computed(() => ({
     title: isEdit.value ? '编辑 Anthropic 供应商' : '添加 Anthropic 供应商',
     iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
     iconCls: 'fa-brain text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-anthropic.svg',
+    imgIcon: providerAnthropicIcon,
     btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：Claude Official',
     urlPlaceholder: '留空使用 Anthropic 官方',
@@ -54,7 +57,7 @@ const typeConfig = computed(() => ({
     title: isEdit.value ? '编辑 PaddleOCR 服务' : '添加 PaddleOCR 服务',
     iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
     iconCls: 'fa-eye text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-paddleocr.svg',
+    imgIcon: providerPaddleocrIcon,
     btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：PaddleOCR 官方',
     urlPlaceholder: 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs',
@@ -231,7 +234,7 @@ const selectOption = (field, value) => {
     :blurBackdrop="false" @close="emit('close')">
     <template #icon>
       <img v-if="typeConfig.imgIcon" :src="typeConfig.imgIcon" class="h-5 w-5 object-contain"
-        :class="{ 'dark:invert': typeConfig.imgIcon.includes('provider-openai.svg') }" alt="icon" />
+        :class="{ 'dark:invert': type === 'openai' }" alt="icon" />
       <i v-else class="fa-solid text-base" :class="typeConfig.iconCls"></i>
     </template>
 

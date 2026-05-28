@@ -9,6 +9,7 @@ import BaseListItem from '@/components/base/BaseListItem.vue'
 defineProps({
   icon: { type: String, default: '' },
   imgIcon: { type: String, default: '' },
+  invertDark: { type: Boolean, default: false },
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   providers: { type: Array, default: () => [] },
@@ -24,7 +25,7 @@ const emit = defineEmits(['add', 'toggle-active', 'edit', 'remove'])
     <div class="mb-4 flex items-center justify-between pl-1">
       <div class="flex items-center gap-3">
         <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]">
-          <img v-if="imgIcon" :src="imgIcon" class="h-5 w-5 object-contain" :class="{'dark:invert': imgIcon.includes('provider-openai.svg')}" alt="icon" />
+          <img v-if="imgIcon" :src="imgIcon" class="h-5 w-5 object-contain" :class="{ 'dark:invert': invertDark }" alt="icon" />
           <i v-else-if="icon" :class="icon" class="text-lg text-slate-600 dark:text-slate-400"></i>
         </div>
         <div>

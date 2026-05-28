@@ -19,6 +19,9 @@ import BaseListGroup from '@/components/base/BaseListGroup.vue'
 import BaseListItem from '@/components/base/BaseListItem.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import providerOpenaiIcon from '@/assets/provider-openai.svg'
+import providerAnthropicIcon from '@/assets/provider-anthropic.svg'
+import providerPaddleocrIcon from '@/assets/provider-paddleocr.svg'
 
 const props = defineProps({
   section: { type: String, default: 'profile' },
@@ -983,21 +986,21 @@ watch(
             </div>
 
             <div v-else class="space-y-6">
-              <ProviderSection imgIcon="/src/assets/provider-openai.svg" title="平台托管 OpenAI 兼容 API"
+              <ProviderSection :imgIcon="providerOpenaiIcon" invertDark title="平台托管 OpenAI 兼容 API"
                 subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等" :providers="systemOpenaiProviders"
                 :active-id="currentActiveSystemLlmProviderId" @add="openSystemAddDialog('openai')"
                 @toggle-active="(id) => toggleSystemActive('openai', id)"
                 @edit="(p, idx) => openSystemEditDialog('openai', p, idx)"
                 @remove="(idx) => removeSystemProvider('openai', idx)" />
 
-              <ProviderSection imgIcon="/src/assets/provider-anthropic.svg" title="平台托管 Anthropic API"
+              <ProviderSection :imgIcon="providerAnthropicIcon" title="平台托管 Anthropic API"
                 subtitle="Claude 系列模型" :providers="systemAnthropicProviders"
                 :active-id="currentActiveSystemLlmProviderId" @add="openSystemAddDialog('anthropic')"
                 @toggle-active="(id) => toggleSystemActive('anthropic', id)"
                 @edit="(p, idx) => openSystemEditDialog('anthropic', p, idx)"
                 @remove="(idx) => removeSystemProvider('anthropic', idx)" />
 
-              <ProviderSection imgIcon="/src/assets/provider-paddleocr.svg" title="平台托管 PaddleOCR"
+              <ProviderSection :imgIcon="providerPaddleocrIcon" title="平台托管 PaddleOCR"
                 subtitle="文档 OCR 识别服务" :providers="systemPaddleocrProviders" :active-id="systemActivePaddleocrId"
                 @add="openSystemAddDialog('paddleocr')" @toggle-active="(id) => toggleSystemActive('paddleocr', id)"
                 @edit="(p, idx) => openSystemEditDialog('paddleocr', p, idx)"
@@ -1119,19 +1122,19 @@ watch(
         </div>
 
         <div v-else class="space-y-6">
-          <ProviderSection imgIcon="/src/assets/provider-openai.svg" title="OpenAI 兼容 API"
+          <ProviderSection :imgIcon="providerOpenaiIcon" invertDark title="OpenAI 兼容 API"
             subtitle="支持 OpenAI / DeepSeek / Qwen / Moonshot 等" :providers="openaiProviders"
             :active-id="currentActivePersonalLlmProviderId" @add="openAddDialog('openai')"
             @toggle-active="(id) => toggleActive('openai', id)" @edit="(p, idx) => openEditDialog('openai', p, idx)"
             @remove="(idx) => removeProvider('openai', idx)" />
 
-          <ProviderSection imgIcon="/src/assets/provider-anthropic.svg" title="Anthropic API" subtitle="Claude 系列模型"
+          <ProviderSection :imgIcon="providerAnthropicIcon" title="Anthropic API" subtitle="Claude 系列模型"
             :providers="anthropicProviders" :active-id="currentActivePersonalLlmProviderId"
             @add="openAddDialog('anthropic')" @toggle-active="(id) => toggleActive('anthropic', id)"
             @edit="(p, idx) => openEditDialog('anthropic', p, idx)"
             @remove="(idx) => removeProvider('anthropic', idx)" />
 
-          <ProviderSection imgIcon="/src/assets/provider-paddleocr.svg" title="PaddleOCR" subtitle="文档 OCR 识别服务"
+          <ProviderSection :imgIcon="providerPaddleocrIcon" title="PaddleOCR" subtitle="文档 OCR 识别服务"
             :providers="paddleocrProviders" :active-id="activePaddleocrId" @add="openAddDialog('paddleocr')"
             @toggle-active="(id) => toggleActive('paddleocr', id)"
             @edit="(p, idx) => openEditDialog('paddleocr', p, idx)"
