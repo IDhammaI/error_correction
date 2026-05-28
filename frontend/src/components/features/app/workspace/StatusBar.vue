@@ -4,7 +4,8 @@
  *
  * 汇总引擎连接状态、模型可用状态，并承载模型选择入口。
  */
-import ModelProviderSelect from '@/components/workspace/ModelProviderSelect.vue'
+import BaseStatusPill from '@/components/base/BaseStatusPill.vue'
+import ModelProviderSelect from '@/components/features/app/workspace/ModelProviderSelect.vue'
 
 const emit = defineEmits(['update:selectedLlmOptionId'])
 
@@ -38,30 +39,14 @@ defineProps({
     </span>
 
     <div v-if="!statusError" class="flex flex-wrap items-center gap-2.5">
-      <span
+      <BaseStatusPill
         v-for="p in statusPills"
         :key="p.key"
-        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-        :class="p.loading
-          ? 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400'
-          : p.isPlaceholder
-            ? 'border-gray-200 bg-gray-100 text-gray-500 dark:border-white/[0.05] dark:bg-white/[0.03] dark:text-[#62666d]'
-            : p.ok
-              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              : 'border-rose-500/20 bg-rose-500/10 text-rose-500 dark:text-rose-400'
-        "
-      >
-        <div class="relative h-2.5 w-2.5 shrink-0">
-          <Transition name="icon-pop">
-            <i
-              :key="p.loading ? 'loading' : p.isPlaceholder ? 'placeholder' : p.ok ? 'ok' : 'error'"
-              class="fa-solid absolute inset-0 flex items-center justify-center text-[10px]"
-              :class="p.loading ? 'fa-spinner animate-spin' : p.isPlaceholder ? 'fa-hourglass-start' : p.ok ? 'fa-check' : 'fa-xmark'"
-            ></i>
-          </Transition>
-        </div>
-        {{ p.label }}
-      </span>
+        :label="p.label"
+        :loading="p.loading"
+        :ok="p.ok"
+        :placeholder="p.isPlaceholder"
+      />
     </div>
 
     <div v-if="!statusError" class="ml-auto flex items-center gap-2">
@@ -76,23 +61,3 @@ defineProps({
     </div>
   </div>
 </template>
-
-<style scoped>
-.icon-pop-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.icon-pop-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.icon-pop-enter-from {
-  opacity: 0;
-  transform: scale(0.3) rotate(-180deg);
-}
-
-.icon-pop-leave-to {
-  opacity: 0;
-  transform: scale(0.3) rotate(180deg);
-}
-</style>

@@ -10,7 +10,7 @@ import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useChatSession } from '@/composables/useChatSession.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
 
 const PAGE_SIZE = 30
 

@@ -4,7 +4,7 @@
  *
  * field 决定当前编辑模式：题目会显示 HTML/公式预览，答案和笔记走普通文本编辑。
  */
-import { ref, watch, nextTick } from 'vue'
+import { onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import { typesetMath, isHtml, sanitizeHtml } from '@/utils/index.js'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -23,6 +23,9 @@ const emit = defineEmits(['close', 'save'])
 const draft = ref('')
 const draftAnswer = ref('')
 const questionContentRef = ref(null)
+const answerPhotoInput = ref(null)
+const answerUploadInput = ref(null)
+const answerImagePreviews = ref([])
 const previewMode = ref(false)
 const htmlError = ref('')
 
@@ -68,6 +71,8 @@ watch(() => props.open, async (v) => {
   if (v) {
     draft.value = props.value || ''
     draftAnswer.value = props.valueAnswer || ''
+    answerImagePreviews.value.forEach(item => URL.revokeObjectURL(item.url))
+    answerImagePreviews.value = []
     htmlError.value = validateHtml(draft.value)
     if (props.field === 'question') {
       previewMode.value = true // 默认显示预览
@@ -75,6 +80,28 @@ watch(() => props.open, async (v) => {
       typesetMath(questionContentRef.value)
     }
   }
+})
+
+const openAnswerPhoto = () => answerPhotoInput.value?.click()
+const openAnswerUpload = () => answerUploadInput.value?.click()
+
+const onAnswerImagesSelected = (event) => {
+  const files = Array.from(event.target.files || [])
+  answerImagePreviews.value.forEach(item => URL.revokeObjectURL(item.url))
+  answerImagePreviews.value = files.slice(0, 3).map(file => ({
+    name: file.name,
+    url: URL.createObjectURL(file),
+  }))
+  event.target.value = ''
+}
+
+const removeAnswerImage = (item) => {
+  URL.revokeObjectURL(item.url)
+  answerImagePreviews.value = answerImagePreviews.value.filter(preview => preview.url !== item.url)
+}
+
+onBeforeUnmount(() => {
+  answerImagePreviews.value.forEach(item => URL.revokeObjectURL(item.url))
 })
 
 /** 保存前阻止明显错误的 HTML；题目模式需要同时提交题干和答案。 */
@@ -111,8 +138,8 @@ const config = () => {
     }
   }
   return {
-    title: '我的笔记',
-    icon: 'fa-pen-to-square',
+    title: '记录答案',
+    icon: 'fa-camera',
     iconBg: 'bg-blue-50 dark:bg-blue-500/10',
     iconCls: 'text-blue-600 dark:text-blue-400',
     btnCls: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
@@ -182,9 +209,41 @@ const config = () => {
     </div>
 
     <div v-else class="px-6 py-4 border-t border-slate-100 dark:border-white/5">
+      <div v-if="field !== 'answer'" class="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/80 px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-white dark:bg-white/[0.06] dark:text-[#d0d6e0] dark:hover:bg-white/[0.09]"
+          @click="openAnswerPhoto"
+        >
+          <i class="fa-solid fa-camera"></i>
+          拍照录入
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/80 px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-white dark:bg-white/[0.06] dark:text-[#d0d6e0] dark:hover:bg-white/[0.09]"
+          @click="openAnswerUpload"
+        >
+          <i class="fa-solid fa-image"></i>
+          上传图片
+        </button>
+        <input ref="answerPhotoInput" class="hidden" type="file" accept="image/*" capture="environment" multiple @change="onAnswerImagesSelected" />
+        <input ref="answerUploadInput" class="hidden" type="file" accept="image/*" multiple @change="onAnswerImagesSelected" />
+      </div>
+      <div v-if="field !== 'answer' && answerImagePreviews.length" class="mb-4 grid grid-cols-3 gap-2">
+        <div v-for="item in answerImagePreviews" :key="item.url" class="group relative overflow-hidden rounded-xl bg-slate-100 dark:bg-white/[0.04]">
+          <img :src="item.url" :alt="item.name" class="h-24 w-full object-cover" />
+          <button
+            type="button"
+            class="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-md bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100"
+            @click="removeAnswerImage(item)"
+          >
+            <i class="fa-solid fa-xmark text-[10px]"></i>
+          </button>
+        </div>
+      </div>
       <textarea v-model="draft" rows="7"
         class="w-full resize-none rounded-xl border border-slate-200/60 bg-slate-50/60 px-4 py-3 text-sm font-medium leading-relaxed text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-200/60 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200 dark:focus:border-white/20 dark:focus:ring-white/5"
-        :placeholder="field === 'answer' ? '输入正确答案...' : '记录你的笔记...'"></textarea>
+        :placeholder="field === 'answer' ? '输入正确答案...' : '记录你的答案、错解或解题过程...'"></textarea>
     </div>
 
     <template #footer>

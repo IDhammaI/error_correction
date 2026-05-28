@@ -60,6 +60,7 @@ from db.crud.questions import (
     get_questions_by_tag,
     get_history_questions,
     search_questions,
+    find_questions_by_natural_language,
     query_questions,
     get_questions_by_ids,
     delete_question,
@@ -142,6 +143,14 @@ from db.crud.notes import (
     get_note_tag_names,
 )
 
+from db.crud.review import (
+    compute_review_priority,
+    serialize_review_fields,
+    schedule_question_review,
+    schedule_note_review,
+    get_due_reviews,
+)
+
 __all__ = [
     # shared helpers
     "_filter_by_subject",
@@ -173,6 +182,7 @@ __all__ = [
     "get_questions_by_tag",
     "get_history_questions",
     "search_questions",
+    "find_questions_by_natural_language",
     "query_questions",
     "get_questions_by_ids",
     "delete_question",
@@ -239,4 +249,10 @@ __all__ = [
     "delete_note",
     "get_note_subjects",
     "get_note_tag_names",
+    # review
+    "compute_review_priority",
+    "serialize_review_fields",
+    "schedule_question_review",
+    "schedule_note_review",
+    "get_due_reviews",
 ]

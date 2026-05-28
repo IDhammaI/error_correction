@@ -10,13 +10,25 @@ export async function fetchErrorBank(params = {}) {
   const qs = new URLSearchParams()
   // 过滤空值，避免把未选择的筛选项传给后端影响查询语义。
   for (const [k, v] of Object.entries(params)) {
-    if (v !== null && v !== undefined && v !== '') qs.set(k, v)
+    if (Array.isArray(v)) {
+      if (v.length) qs.set(k, v.join(','))
+    } else if (v !== null && v !== undefined && v !== '') qs.set(k, v)
   }
   const resp = await fetch(`/api/error-bank?${qs}`)
   return assertJsonSuccess(resp, '查询错题库失败')
 }
 
 /** 获取错题库中的科目筛选项。 */
+/** 用自然语言描述查找最可能的错题。 */
+export async function findQuestionsByDescription(query, { projectId, limit = 8 } = {}) {
+  const qs = new URLSearchParams()
+  qs.set('q', query)
+  qs.set('limit', limit)
+  if (projectId) qs.set('project_id', projectId)
+  const resp = await fetch(`/api/error-bank/find?${qs}`)
+  return assertJsonSuccess(resp, 'AI 找题失败')
+}
+
 export async function fetchSubjects(projectId) {
   const qs = new URLSearchParams()
   if (projectId) qs.set('project_id', projectId)
@@ -81,6 +93,25 @@ export async function updateReviewStatus(questionId, reviewStatus) {
 }
 
 /** 获取仪表盘统计数据。 */
+export async function recordQuestionReview(questionId, rating = 'good') {
+  const resp = await fetch(`/api/question/${questionId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating }),
+  })
+  return assertJsonSuccess(resp, 'record review failed')
+}
+
+export async function fetchDueReviews(params = {}) {
+  const qs = new URLSearchParams()
+  if (params.type) qs.set('type', params.type)
+  if (params.target_type) qs.set('target_type', params.target_type)
+  if (params.limit) qs.set('limit', params.limit)
+  if (params.project_id) qs.set('project_id', params.project_id)
+  const resp = await fetch(`/api/review/due?${qs}`)
+  return assertJsonSuccess(resp, 'load due reviews failed')
+}
+
 export async function fetchDashboardStats(subject, projectId) {
   const qs = new URLSearchParams()
   if (subject) qs.set('subject', subject)

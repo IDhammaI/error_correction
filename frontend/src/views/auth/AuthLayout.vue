@@ -6,7 +6,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
-import HomePill from '@/components/home/HomePill.vue'
+import HomePill from '@/components/features/home/HomePill.vue'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 

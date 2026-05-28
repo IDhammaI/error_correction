@@ -13,6 +13,12 @@ from db.models import Note, NoteTagMapping, KnowledgeTag
 logger = logging.getLogger(__name__)
 
 
+def _parse_filter_list(value):
+    if not value:
+        return []
+    return [item.strip() for item in str(value).split(",") if item.strip()]
+
+
 def save_note(
     db: Session,
     title: str,
@@ -90,23 +96,26 @@ def get_notes(
         query = query.filter(Note.user_id == user_id)
     if project_id is not None:
         query = query.filter(Note.project_id == project_id)
-    if subject:
-        query = query.filter(Note.subject == subject)
+    subject_list = _parse_filter_list(subject)
+    if subject_list:
+        query = query.filter(Note.subject.in_(subject_list))
     if keyword:
         query = query.filter(
             Note.title.ilike(f"%{keyword}%")
             | Note.content_markdown.ilike(f"%{keyword}%")
         )
-    if knowledge_tag:
+    tag_list = _parse_filter_list(knowledge_tag)
+    if tag_list:
         query = (
             query.join(NoteTagMapping)
             .join(KnowledgeTag)
-            .filter(KnowledgeTag.tag_name == knowledge_tag)
+            .filter(KnowledgeTag.tag_name.in_(tag_list))
         )
 
-    total = query.count()
+    total = query.distinct().count()
     notes = (
-        query.order_by(Note.updated_at.desc())
+        query.distinct()
+        .order_by(Note.updated_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()

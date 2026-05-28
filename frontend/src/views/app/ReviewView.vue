@@ -7,11 +7,11 @@ import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as api from '@/api/index.js'
 import { typesetMath as _typesetMath } from '@/utils/index.js'
 import { useSelectableList } from '@/composables/useSelectableList.js'
-import ContentPanel from '@/components/workspace/ContentPanel.vue'
-import QuestionDetailModal from '@/components/question/QuestionDetailModal.vue'
-import AiAnalysisModal from '@/components/review/AiAnalysisModal.vue'
+import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
+import QuestionDetailModal from '@/components/features/app/question/QuestionDetailModal.vue'
+import AiAnalysisModal from '@/components/features/app/review/AiAnalysisModal.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import QuestionItem from '@/components/question/QuestionItem.vue'
+import QuestionItem from '@/components/features/app/question/QuestionItem.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useImageModal } from '@/composables/useImageModal.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
@@ -86,6 +86,16 @@ const loadReviewItems = async () => {
     const data = await api.fetchErrorBank(params)
     reviewItems.value = data.items || []
     reviewTotal.value = data.total || 0
+    const dueData = await api.fetchDueReviews({
+      type: 'question',
+      limit: 40,
+      project_id: activeQuestionProjectId.value,
+    })
+    const dueQuestions = dueData.questions || []
+    reviewItems.value = selectedSubject.value
+      ? dueQuestions.filter(q => q.subject === selectedSubject.value)
+      : dueQuestions
+    reviewTotal.value = reviewItems.value.length
   } catch (e) {
     pushToast('error', '加载待复习题目失败')
   } finally {

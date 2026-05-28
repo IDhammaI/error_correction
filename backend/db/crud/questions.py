@@ -4,21 +4,297 @@ import hashlib
 import json
 import logging
 import re
+import math
+from collections import Counter
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from db.models import UploadBatch, Question, KnowledgeTag, QuestionTagMapping
+from db.models import UploadBatch, Question, QuestionEmbedding, KnowledgeTag, QuestionTagMapping
 from db.crud.tags import _parse_tag_list, get_or_create_tag
 
 logger = logging.getLogger(__name__)
+
+EMBEDDING_MODEL_NAME = "local-hash-v1"
+EMBEDDING_DIM = 256
+SEMANTIC_EXPANSIONS = {
+    "方法": ["工艺", "处理", "方案"],
+    "处理方法": ["工艺", "处理效应", "甲工艺", "乙工艺"],
+    "两个": ["两种", "甲乙"],
+    "谁更好": ["显著提高", "比较", "判断"],
+    "更好": ["显著提高", "提高", "比较"],
+    "比较": ["判断", "显著", "差异"],
+    "分工": ["工艺", "甲工艺", "乙工艺", "处理"],
+    "方差": ["样本方差", "统计", "配对试验"],
+    "均值": ["样本均值", "平均数"],
+}
+
+
+def _parse_filter_list(value: Optional[str]) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in str(value).split(",") if item.strip()]
 
 
 def _get_filters():
     """延迟导入共享过滤函数，避免循环导入"""
     from db.crud import _filter_by_subject, _filter_by_user
     return _filter_by_subject, _filter_by_user
+
+
+def _safe_json_loads(value, fallback):
+    if not value:
+        return fallback
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _content_blocks_text(content_blocks) -> str:
+    parts = []
+    for block in content_blocks or []:
+        if isinstance(block, dict):
+            content = block.get("content") or block.get("text") or ""
+            if content:
+                parts.append(str(content))
+    return " ".join(parts)
+
+
+def _question_search_text(question: Question) -> Dict[str, str]:
+    content_blocks = _safe_json_loads(question.content_json, [])
+    options = _safe_json_loads(question.options_json, [])
+    option_text = ""
+    if isinstance(options, list):
+        option_text = " ".join(str(item.get("content") if isinstance(item, dict) else item) for item in options)
+    elif isinstance(options, dict):
+        option_text = " ".join(str(v) for v in options.values())
+
+    tags = []
+    for mapping in question.tags or []:
+        if mapping.tag:
+            tags.append(mapping.tag.tag_name)
+
+    subject = question.batch.subject if question.batch else ""
+    body = _content_blocks_text(content_blocks)
+    return {
+        "body": body,
+        "options": option_text,
+        "answer": question.answer or "",
+        "subject": subject or "",
+        "type": question.question_type or "",
+        "tags": " ".join(tags),
+        "all": " ".join([
+            body,
+            option_text,
+            question.answer or "",
+            subject or "",
+            question.question_type or "",
+            " ".join(tags),
+        ]),
+    }
+
+
+def _normalize_search_text(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "").lower()).strip()
+
+
+def _expand_query_text(text: str) -> str:
+    expanded = [str(text or "")]
+    for key, values in SEMANTIC_EXPANSIONS.items():
+        if key in text:
+            expanded.extend(values)
+    return " ".join(expanded)
+
+
+def _search_tokens(text: str) -> List[str]:
+    normalized = _normalize_search_text(text)
+    words = re.findall(r"[a-z0-9]+|[\u4e00-\u9fff]", normalized)
+    tokens = []
+    latin_buffer = []
+    han_chars = []
+    for word in words:
+        if re.fullmatch(r"[\u4e00-\u9fff]", word):
+            han_chars.append(word)
+            if latin_buffer:
+                tokens.extend(latin_buffer)
+                latin_buffer = []
+        else:
+            latin_buffer.append(word)
+    tokens.extend(latin_buffer)
+    tokens.extend(han_chars)
+    tokens.extend("".join(han_chars[i:i + 2]) for i in range(max(0, len(han_chars) - 1)))
+    return [token for token in tokens if token]
+
+
+def _cosine_score(query_tokens: List[str], target_tokens: List[str]) -> float:
+    if not query_tokens or not target_tokens:
+        return 0.0
+    q_counter = Counter(query_tokens)
+    t_counter = Counter(target_tokens)
+    common = set(q_counter) & set(t_counter)
+    dot = sum(q_counter[token] * t_counter[token] for token in common)
+    q_norm = math.sqrt(sum(value * value for value in q_counter.values()))
+    t_norm = math.sqrt(sum(value * value for value in t_counter.values()))
+    if not q_norm or not t_norm:
+        return 0.0
+    return dot / (q_norm * t_norm)
+
+
+def _hash_embedding(text: str, dim: int = EMBEDDING_DIM) -> List[float]:
+    """Build a deterministic lightweight embedding via feature hashing."""
+    tokens = _search_tokens(text)
+    vector = [0.0] * dim
+    if not tokens:
+        return vector
+    for token in tokens:
+        digest = hashlib.md5(token.encode("utf-8")).digest()
+        index = int.from_bytes(digest[:4], "big") % dim
+        sign = 1.0 if digest[4] % 2 == 0 else -1.0
+        weight = 1.6 if len(token) >= 2 else 1.0
+        vector[index] += sign * weight
+    norm = math.sqrt(sum(value * value for value in vector))
+    if not norm:
+        return vector
+    return [round(value / norm, 6) for value in vector]
+
+
+def _vector_cosine(a: List[float], b: List[float]) -> float:
+    if not a or not b:
+        return 0.0
+    return sum(x * y for x, y in zip(a, b))
+
+
+def _question_embedding_text(question: Question) -> str:
+    fields = _question_search_text(question)
+    return " ".join([
+        fields["body"],
+        fields["body"],
+        fields["tags"],
+        fields["tags"],
+        fields["subject"],
+        fields["type"],
+        fields["options"],
+        fields["answer"],
+    ])
+
+
+def _embedding_text_hash(text: str) -> str:
+    return hashlib.sha256(_normalize_search_text(text).encode("utf-8")).hexdigest()
+
+
+def ensure_question_embedding(db: Session, question: Question) -> QuestionEmbedding:
+    """Create or refresh a cached vector for a question."""
+    text = _question_embedding_text(question)
+    text_hash = _embedding_text_hash(text)
+    embedding = getattr(question, "embedding", None)
+    if (
+        embedding
+        and embedding.model_name == EMBEDDING_MODEL_NAME
+        and embedding.text_hash == text_hash
+    ):
+        return embedding
+
+    vector = _hash_embedding(text)
+    if not embedding:
+        embedding = QuestionEmbedding(question_id=question.id)
+        db.add(embedding)
+    embedding.model_name = EMBEDDING_MODEL_NAME
+    embedding.text_hash = text_hash
+    embedding.vector_json = json.dumps(vector, separators=(",", ":"))
+    embedding.updated_at = datetime.utcnow()
+    return embedding
+
+
+def _question_match_score(query: str, question: Question) -> Tuple[float, List[str]]:
+    query_text = _normalize_search_text(_expand_query_text(query))
+    query_tokens = _search_tokens(query_text)
+    fields = _question_search_text(question)
+    reasons = []
+
+    field_weights = {
+        "body": 0.46,
+        "tags": 0.22,
+        "subject": 0.10,
+        "type": 0.08,
+        "answer": 0.08,
+        "options": 0.06,
+    }
+    weighted = 0.0
+    for field, weight in field_weights.items():
+        field_text = _normalize_search_text(fields[field])
+        if not field_text:
+            continue
+        field_score = _cosine_score(query_tokens, _search_tokens(field_text))
+        if query_text and query_text in field_text:
+            field_score = max(field_score, 0.95)
+        weighted += field_score * weight
+        if field_score >= 0.18:
+            labels = {
+                "body": "题干相似",
+                "tags": "知识点匹配",
+                "subject": "学科匹配",
+                "type": "题型匹配",
+                "answer": "答案/解析相似",
+                "options": "选项相似",
+            }
+            reasons.append(labels[field])
+
+    all_text = _normalize_search_text(fields["all"])
+    exact_hits = sum(1 for token in set(query_tokens) if len(token) >= 2 and token in all_text)
+    score = min(1.0, weighted + min(0.18, exact_hits * 0.035))
+    if exact_hits:
+        reasons.append("关键词命中")
+    return score, list(dict.fromkeys(reasons))[:3]
+
+
+def find_questions_by_natural_language(
+    db: Session,
+    query_text: str,
+    limit: int = 8,
+    user_id=None,
+    project_id=None,
+) -> List[Dict[str, Any]]:
+    """Find likely questions from a natural language description."""
+    query = db.query(Question).join(UploadBatch)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    if project_id is not None:
+        query = query.filter(Question.project_id == project_id)
+
+    questions = (
+        query.options(
+            selectinload(Question.batch),
+            selectinload(Question.tags).selectinload(QuestionTagMapping.tag),
+            selectinload(Question.embedding),
+        )
+        .order_by(Question.created_at.desc())
+        .limit(2000)
+        .all()
+    )
+
+    expanded_query_text = _expand_query_text(query_text)
+    query_vector = _hash_embedding(expanded_query_text)
+    matches = []
+    for question in questions:
+        embedding = ensure_question_embedding(db, question)
+        vector_score = _vector_cosine(query_vector, _safe_json_loads(embedding.vector_json, []))
+        lexical_score, reasons = _question_match_score(expanded_query_text, question)
+        score = min(1.0, vector_score * 0.78 + lexical_score * 0.22)
+        if score <= 0:
+            continue
+        if vector_score >= 0.16:
+            reasons = ["向量语义相似", *reasons]
+        matches.append({
+            "question": question,
+            "score": score,
+            "reasons": list(dict.fromkeys(reasons))[:3],
+        })
+
+    db.commit()
+    matches.sort(key=lambda item: (item["score"], item["question"].created_at or datetime.min), reverse=True)
+    return matches[:limit]
 
 
 def compute_content_hash(content_blocks: List[Dict]) -> str:
@@ -142,6 +418,11 @@ def save_questions_to_db(
             )
             db.add(mapping)
 
+        db.flush()
+        question.tags = db.query(QuestionTagMapping).filter(
+            QuestionTagMapping.question_id == question.id
+        ).all()
+        ensure_question_embedding(db, question)
         created += 1
 
     db.commit()
@@ -320,11 +601,13 @@ def query_questions(
     # 未筛选的总收录数（仅按用户隔离）
     grand_total = query.distinct().count()
 
-    if subject:
-        query = query.filter(UploadBatch.subject == subject)
+    subject_list = _parse_filter_list(subject)
+    if subject_list:
+        query = query.filter(UploadBatch.subject.in_(subject_list))
 
-    if question_type:
-        query = query.filter(Question.question_type == question_type)
+    question_type_list = _parse_filter_list(question_type)
+    if question_type_list:
+        query = query.filter(Question.question_type.in_(question_type_list))
 
     if keyword:
         escaped = re.sub(r"([%_\\])", r"\\\1", keyword)
@@ -343,8 +626,9 @@ def query_questions(
         from datetime import timedelta
         query = query.filter(Question.created_at < end_date + timedelta(days=1))
 
-    if review_status:
-        query = query.filter(Question.review_status == review_status)
+    review_status_list = _parse_filter_list(review_status)
+    if review_status_list:
+        query = query.filter(Question.review_status.in_(review_status_list))
 
     total = query.distinct().count()
 
@@ -475,7 +759,14 @@ def update_review_status(db: Session, question_id: int, review_status: str, user
 
     try:
         question.review_status = review_status
-        question.updated_at = datetime.utcnow()
+        if review_status == VALID_REVIEW_STATUSES[2]:
+            from db.crud.review import _schedule_target
+
+            _schedule_target(db, question, "question", rating="good", user_id=question.user_id)
+        else:
+            if review_status == VALID_REVIEW_STATUSES[0]:
+                question.review_due_at = datetime.utcnow()
+            question.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(question)
         return question

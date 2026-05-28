@@ -6,7 +6,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { UploadCloud, ArrowRight } from 'lucide-vue-next'
 import BaseButton from '@/components/base/BaseButton.vue'
-import HomePill from '@/components/home/HomePill.vue'
+import HomePill from '@/components/features/home/HomePill.vue'
 
 const emit = defineEmits(['scrollToSection'])
 

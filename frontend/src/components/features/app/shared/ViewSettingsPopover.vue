@@ -1,11 +1,11 @@
 <script setup>
 /**
- * BaseViewSettingsPopover.vue
- * Linear 风格视图设置弹出框
+ * ViewSettingsPopover.vue
+ * app 内通用的视图筛选与设置弹出框。
  */
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useClickOutside } from '@/composables/useClickOutside.js'
-import BaseSelect from '@/components/base/BaseSelect.vue'
+import BaseSearchableSelect from '@/components/base/BaseSearchableSelect.vue'
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -21,12 +21,23 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'toggle-tag', 'reset'])
 
 const popoverRef = ref(null)
+const tagFilterValue = computed({
+    get() {
+        return props.filters.knowledge_tag ?? props.filters.tag ?? []
+    },
+    set(value) {
+        if ('knowledge_tag' in props.filters) props.filters.knowledge_tag = value
+        else props.filters.tag = value
+    },
+})
 
 // 重置逻辑
 const handleReset = () => {
     props.filters.subject = ''
     props.filters.question_type = ''
     props.filters.review_status = ''
+    if ('knowledge_tag' in props.filters) props.filters.knowledge_tag = []
+    if ('tag' in props.filters) props.filters.tag = []
     emit('reset')
 }
 
@@ -89,7 +100,7 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
             <div class="flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors text-[13px]">
                 <span class="font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16">学科</span>
                 <div class="flex-1 max-w-[160px]">
-                    <BaseSelect v-model="filters.subject" :options="subjects" placeholder="全部学科" />
+                    <BaseSearchableSelect v-model="filters.subject" :options="subjects" placeholder="全部学科" search-placeholder="搜索学科" multiple />
                 </div>
             </div>
 
@@ -98,7 +109,7 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
                 class="flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors text-[13px]">
                 <span class="font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16">题型</span>
                 <div class="flex-1 max-w-[160px]">
-                    <BaseSelect v-model="filters.question_type" :options="questionTypes" placeholder="全部题型" />
+                    <BaseSearchableSelect v-model="filters.question_type" :options="questionTypes" placeholder="全部题型" search-placeholder="搜索题型" multiple />
                 </div>
             </div>
 
@@ -109,15 +120,14 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
             <div v-if="tagNames?.length" class="flex flex-col gap-2 py-2 px-2">
                 <span
                     class="text-[11px] font-semibold text-gray-400 dark:text-[#62666d] uppercase tracking-wider">知识点过滤</span>
-                <div class="flex flex-wrap gap-1.5">
-                    <button v-for="tag in tagNames" :key="tag" @click="emit('toggle-tag', tag)"
-                        class="rounded-[5px] px-2 py-0.5 text-[12px] font-medium transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-                        :class="selectedTags?.has(tag)
-                            ? 'accent-bg-soft accent-text border accent-border'
-                            : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 active:bg-gray-100 dark:bg-white/[0.02] dark:border-white/[0.06] dark:text-[#8a8f98] dark:hover:border-white/[0.12] dark:hover:bg-white/[0.04] dark:active:bg-white/[0.06]'">
-                        {{ tag }}
-                    </button>
-                </div>
+                <BaseSearchableSelect
+                    v-model="tagFilterValue"
+                    :options="tagNames"
+                    placeholder="全部知识点"
+                    search-placeholder="搜索知识点"
+                    width-class="w-full"
+                    multiple
+                />
             </div>
 
             <!-- 分割线 -->
