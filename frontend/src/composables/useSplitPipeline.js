@@ -1,4 +1,4 @@
-import { ref, inject } from 'vue'
+import { ref, watch, inject } from 'vue'
 import * as api from '@/api/index.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useProjects } from '@/composables/useProjects.js'
@@ -21,6 +21,11 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const ocrDone = ref(false)
   const eraseEnabled = ref(true)
   const currentRunId = ref(null)
+
+  // 笔记模式默认不启用擦除，试卷模式默认启用
+  watch(uploadMode, (mode) => {
+    eraseEnabled.value = mode !== 'note'
+  })
 
   /**
    * 从接口错误里同步额度快照，并判断是否命中免费额度耗尽。

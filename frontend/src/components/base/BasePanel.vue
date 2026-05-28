@@ -15,7 +15,7 @@ defineProps({
   <section class="flex min-h-0 flex-col overflow-hidden rounded-xl bg-white/85 shadow-sm shadow-black/[0.03] dark:bg-white/[0.04] dark:shadow-black/20">
     <header
       v-if="$slots.header"
-      class="shrink-0 overflow-hidden bg-gray-50/70 dark:bg-white/[0.025]"
+      class="shrink-0 overflow-visible bg-gray-50/70 dark:bg-white/[0.025]"
       :class="headerClass"
     >
       <slot name="header" />
