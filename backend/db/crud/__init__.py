@@ -143,6 +143,25 @@ from db.crud.notes import (
     get_note_tag_names,
 )
 
+from db.crud.review import (
+    compute_review_priority,
+    serialize_review_fields,
+    schedule_question_review,
+    schedule_note_review,
+    get_due_reviews,
+)
+
+from db.crud.devices import (
+    create_device_binding,
+    get_active_device_binding,
+    get_user_device_binding,
+    get_latest_user_device_binding,
+    deactivate_user_device_binding,
+    create_device_capture,
+    get_device_captures,
+    get_device_captures_by_ids,
+)
+
 __all__ = [
     # shared helpers
     "_filter_by_subject",
@@ -241,4 +260,19 @@ __all__ = [
     "delete_note",
     "get_note_subjects",
     "get_note_tag_names",
+    # review
+    "compute_review_priority",
+    "serialize_review_fields",
+    "schedule_question_review",
+    "schedule_note_review",
+    "get_due_reviews",
+    # devices
+    "create_device_binding",
+    "get_active_device_binding",
+    "get_user_device_binding",
+    "get_latest_user_device_binding",
+    "deactivate_user_device_binding",
+    "create_device_capture",
+    "get_device_captures",
+    "get_device_captures_by_ids",
 ]

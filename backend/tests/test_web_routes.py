@@ -14,6 +14,7 @@ Flask 路由集成测试
 
 import io
 import json
+import os
 import uuid
 import pytest
 from unittest.mock import patch, MagicMock
@@ -116,6 +117,7 @@ def client(test_db):
         patch("routes.questions.SessionLocal", fake),
         patch("routes.stats.SessionLocal", fake),
         patch("routes.upload.SessionLocal", fake),
+        patch("routes.device.SessionLocal", fake),
         patch("routes.chat.SessionLocal", fake),
         patch("routes.auth.SessionLocal", fake),
     ):
@@ -234,6 +236,70 @@ class TestModelOptionsRoute:
             and item["model_name"] == "gpt-4o-mini"
             for item in options
         )
+
+
+class TestDeviceCaptureRoutes:
+    """POST /api/device/bind and /api/device/capture"""
+
+    def test_capture_requires_bound_device(self, client):
+        resp = client.post(
+            "/api/device/capture",
+            data={
+                "device_id": "unbound-device",
+                "image": (io.BytesIO(b"jpeg-bytes"), "capture.jpg"),
+            },
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["success"] is False
+
+    def test_bound_device_capture_enters_workbench_session(
+        self, client, test_db, tmp_path, monkeypatch
+    ):
+        from core.state import clear_user_session, get_user_session
+        from db.models import DeviceCapture
+
+        clear_user_session(TEST_USER_ID)
+        monkeypatch.setattr("routes.device.settings.upload_dir", tmp_path)
+
+        bind_resp = client.post("/api/device/bind", json={})
+        assert bind_resp.status_code == 200
+        bind_data = bind_resp.get_json()
+        assert bind_data["success"] is True
+        device_uuid = bind_data["device_uuid"]
+        assert bind_data["qr_payload"].endswith(device_uuid)
+
+        capture_resp = client.post(
+            "/api/device/capture",
+            data={
+                "device_uuid": device_uuid,
+                "image": (
+                    io.BytesIO(b"\xff\xd8fake-jpeg\xff\xd9"),
+                    "capture.jpg",
+                ),
+            },
+            content_type="multipart/form-data",
+        )
+        assert capture_resp.status_code == 201
+        data = capture_resp.get_json()
+        assert data["success"] is True
+        assert data["file_key"]
+
+        us = get_user_session(TEST_USER_ID)
+        saved = us["session_files"][data["file_key"]]
+        assert saved["filename"] == "capture.jpg"
+        assert os.path.exists(saved["filepath"])
+
+        capture = test_db.query(DeviceCapture).first()
+        assert capture is not None
+        assert capture.device_uuid == device_uuid
+        assert capture.user_id == TEST_USER_ID
+
+        list_resp = client.get(f"/api/device/images?device_uuid={device_uuid}")
+        assert list_resp.status_code == 200
+        images = list_resp.get_json()["images"]
+        assert len(images) == 1
+        assert images[0]["file_key"] == data["file_key"]
 
 
 # ── /api/history ─────────────────────────────────────────

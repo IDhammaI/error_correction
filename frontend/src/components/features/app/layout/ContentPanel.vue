@@ -20,7 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['step-click'])
 const slots = useSlots()
 
-const { isMobile, canHover, mobileDrawerOpen, toggleSidebar } = useWorkspaceNav()
+const { isMobile } = useWorkspaceNav()
 
 const SIDEBAR_WIDTH_KEY = 'content_panel_sidebar_width_v1'
 const SIDEBAR_MIN_WIDTH = 280
@@ -75,16 +75,6 @@ onBeforeUnmount(stopSidebarResize)
     class="flex h-full flex-col overflow-hidden rounded-none brand-btn transition-colors duration-200 dark:!bg-white/[0.04] lg:rounded-lg">
     <header
       class="flex h-14 shrink-0 items-center gap-4 border-b border-gray-200 bg-white/70 px-4 transition-colors dark:border-white/[0.08] dark:bg-white/[0.065]">
-      <button
-        v-if="isMobile && !mobileDrawerOpen"
-        type="button"
-        class="-ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700 dark:border-white/10 dark:bg-[#1b1b1d] dark:text-[#8a8f98] dark:hover:bg-[#232326] dark:hover:text-[#d0d6e0]"
-        :title="canHover ? '打开侧边栏' : null"
-        @click="toggleSidebar"
-      >
-        <i class="fa-solid fa-bars text-xs"></i>
-      </button>
-
       <div v-if="$slots['header-actions']"
         class="-ml-1 flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
         <slot name="header-actions"></slot>

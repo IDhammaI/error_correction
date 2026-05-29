@@ -115,7 +115,11 @@ def require_login():
       - /api/status  — 系统状态查询（前端初始化时需要）
     """
     if request.path.startswith('/api/'):
-        if request.path.startswith('/api/auth/') or request.path == '/api/status':
+        if (
+            request.path.startswith('/api/auth/')
+            or request.path == '/api/status'
+            or request.path == '/api/device/capture'
+        ):
             return None
         if 'user_id' not in session:
             return jsonify({'error': '请先登录', 'code': 'UNAUTHORIZED'}), 401

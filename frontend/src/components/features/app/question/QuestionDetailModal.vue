@@ -7,7 +7,6 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { isHtml, sanitizeHtml, formatOption } from '@/utils/index.js'
 import * as api from '@/api/index.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
-import BaseModal from '@/components/base/BaseModal.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -40,7 +39,6 @@ const answerText = ref('')
 const isAnswerSaving = ref(false)
 
 // AI 分析相关
-const showDeleteConfirm = ref(false)
 const isAnalyzing = ref(false)
 const aiReport = ref(null)
 const typedText = ref('')
@@ -140,6 +138,7 @@ onBeforeUnmount(() => {
 })
 
 const doDelete = async () => {
+  if (!window.confirm('确定要从题库中永久删除这道题吗？')) return
   try {
     await api.deleteQuestion(props.question.id)
     emit('deleted', props.question.id)
@@ -206,7 +205,7 @@ const reviewStatusOptions = [
                 </button>
               </div>
               <div class="mx-1 h-6 w-px bg-slate-200 dark:bg-white/10"></div>
-              <button @click="showDeleteConfirm = true"
+              <button @click="doDelete"
                 class="h-10 w-10 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 transition-all">
                 <i class="fa-regular fa-trash-can"></i>
               </button>
@@ -354,14 +353,6 @@ const reviewStatusOptions = [
       </div>
     </Transition>
   </Teleport>
-
-  <BaseModal :open="showDeleteConfirm" @close="showDeleteConfirm = false" title="确认删除？" icon="fa-triangle-exclamation" icon-class="text-rose-500" icon-bg="bg-rose-50 dark:bg-rose-500/10">
-    <p class="text-sm text-slate-600 dark:text-slate-400">确定要从题库中永久删除这道题吗？此操作不可恢复。</p>
-    <template #footer>
-      <button @click="showDeleteConfirm = false" class="btn-secondary h-10">取消</button>
-      <button @click="doDelete(); showDeleteConfirm = false" class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-rose-500/20 transition-all hover:from-rose-400 hover:to-red-500 hover:shadow-lg h-10">删除</button>
-    </template>
-  </BaseModal>
 </template>
 
 <style scoped>

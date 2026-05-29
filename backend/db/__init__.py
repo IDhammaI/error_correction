@@ -47,6 +47,43 @@ def _migrate_schema():
     conn = sqlite3.connect(str(settings.db_path))
     try:
         cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS device_bindings (
+                id INTEGER PRIMARY KEY,
+                device_uuid VARCHAR(36) NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at DATETIME,
+                updated_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_device_uuid ON device_bindings(device_uuid)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_user_id ON device_bindings(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_is_active ON device_bindings(is_active)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS device_captures (
+                id INTEGER PRIMARY KEY,
+                device_uuid VARCHAR(36) NOT NULL,
+                user_id INTEGER NOT NULL,
+                file_key VARCHAR(32) NOT NULL,
+                original_filename VARCHAR(255) NOT NULL,
+                file_path TEXT NOT NULL,
+                content_type VARCHAR(100),
+                file_size INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME,
+                FOREIGN KEY(device_uuid) REFERENCES device_bindings(device_uuid),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_device_uuid ON device_captures(device_uuid)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_user_id ON device_captures(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_file_key ON device_captures(file_key)")
+        conn.commit()
         # 检查 questions 表是否有 answer 列
         cursor.execute("PRAGMA table_info(questions)")
         columns = {row[1] for row in cursor.fetchall()}
@@ -56,6 +93,17 @@ def _migrate_schema():
         if 'project_id' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN project_id INTEGER")
             conn.commit()
+        review_columns = {
+            "review_due_at": "DATETIME",
+            "review_last_at": "DATETIME",
+            "review_interval_days": "INTEGER DEFAULT 0 NOT NULL",
+            "review_count": "INTEGER DEFAULT 0 NOT NULL",
+            "ease_factor": "FLOAT DEFAULT 2.5 NOT NULL",
+        }
+        for column, col_type in review_columns.items():
+            if column not in columns:
+                cursor.execute(f"ALTER TABLE questions ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(upload_batches)")
         batch_columns = {row[1] for row in cursor.fetchall()}
@@ -68,6 +116,10 @@ def _migrate_schema():
         if 'project_id' not in note_columns:
             cursor.execute("ALTER TABLE notes ADD COLUMN project_id INTEGER")
             conn.commit()
+        for column, col_type in review_columns.items():
+            if column not in note_columns:
+                cursor.execute(f"ALTER TABLE notes ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(projects)")
         project_columns = {row[1] for row in cursor.fetchall()}

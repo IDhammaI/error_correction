@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * SidebarNav.vue
  * 工作台左侧边栏导航（PC 端双模式 + 移动端抽屉）+ 底部 Tab 导航（移动端）
@@ -775,7 +775,6 @@ const userQuotaSummary = computed(() => {
       </div>
     </div>
   </aside>
-
 </template>
 
 <style scoped>

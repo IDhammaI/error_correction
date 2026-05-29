@@ -41,3 +41,7 @@ def clear_user_session(user_id):
     """清除指定用户的会话状态"""
     key = user_id if user_id is not None else "anon"
     _user_sessions.pop(key, None)
+
+
+def normalize_device_id(device_id: str | None) -> str:
+    return (device_id or "").strip()

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { copyFileSync, existsSync } from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,6 +25,22 @@ export default defineConfig({
           next()
         })
       },
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url?.split('?')[0]
+          if (url === '/' || url === '/auth' || url === '/auth/login' || url === '/auth/register' || url === '/app' || url?.startsWith('/app/')) {
+            req.url = '/app.html'
+          }
+          next()
+        })
+      },
+      closeBundle() {
+        const appHtml = resolve(__dirname, 'dist/app.html')
+        const indexHtml = resolve(__dirname, 'dist/index.html')
+        if (existsSync(appHtml)) {
+          copyFileSync(appHtml, indexHtml)
+        }
+      },
     },
   ],
   // Vitest 在 jsdom 中运行，方便测试依赖 window/document 的前端逻辑。
@@ -31,7 +48,7 @@ export default defineConfig({
     environment: 'jsdom',
   },
   server: {
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     // 开发环境接口代理：前端保持相对路径请求，由 Vite 转发到 Flask API 服务。
     proxy: {
       '/api': {
@@ -55,6 +72,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 4174,
   },
   // 生产资源从站点根路径加载；若部署到子目录，需要同步调整该值。
   base: '/',

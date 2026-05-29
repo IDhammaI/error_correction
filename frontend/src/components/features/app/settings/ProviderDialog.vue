@@ -8,6 +8,9 @@ import { useToast } from '@/composables/useToast.js'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import providerOpenaiIcon from '@/assets/provider-openai.svg'
+import providerAnthropicIcon from '@/assets/provider-anthropic.svg'
+import providerPaddleocrIcon from '@/assets/provider-paddleocr.svg'
 
 const { pushToast } = useToast()
 
@@ -23,12 +26,13 @@ const isEdit = computed(() => !!props.editData)
 
 const PROVIDER_TYPE_CONFIGS = {
   openai: {
-    titleAdd: '添加 OpenAI 兼容供应商',
-    titleEdit: '编辑 OpenAI 兼容供应商',
+    titleAdd: '添加 OpenAI 兼容供应�?,
+    titleEdit: '编辑 OpenAI 兼容供应�?,
     iconCls: 'fa-bolt text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-openai.svg',
+    imgIcon: providerOpenaiIcon,
+    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：DeepSeek / Qwen / Moonshot',
-    urlPlaceholder: '留空使用 OpenAI 官方，或填入 https://api.deepseek.com 等',
+    urlPlaceholder: '留空使用 OpenAI 官方，或填入 https://api.deepseek.com �?,
     modelPlaceholder: 'gpt-4o-mini',
     defaultName: 'OpenAI Provider',
     secretLabel: 'API Key',
@@ -36,10 +40,11 @@ const PROVIDER_TYPE_CONFIGS = {
     urlLabel: 'Base URL',
   },
   anthropic: {
-    titleAdd: '添加 Anthropic 供应商',
-    titleEdit: '编辑 Anthropic 供应商',
+    titleAdd: '添加 Anthropic 供应�?,
+    titleEdit: '编辑 Anthropic 供应�?,
     iconCls: 'fa-brain text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-anthropic.svg',
+    imgIcon: providerAnthropicIcon,
+    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：Claude Official',
     urlPlaceholder: '留空使用 Anthropic 官方',
     modelPlaceholder: 'claude-sonnet-4-20250514',
@@ -52,7 +57,8 @@ const PROVIDER_TYPE_CONFIGS = {
     titleAdd: '添加 PaddleOCR 服务',
     titleEdit: '编辑 PaddleOCR 服务',
     iconCls: 'fa-eye text-slate-600 dark:text-slate-400',
-    imgIcon: '/src/assets/provider-paddleocr.svg',
+    imgIcon: providerPaddleocrIcon,
+    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：PaddleOCR 官方',
     urlPlaceholder: 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs',
     modelPlaceholder: 'PaddleOCR-VL-1.5',
@@ -95,7 +101,7 @@ const fetchModelError = ref('')
 
 const canFetchModels = computed(() => {
   if (props.type === 'paddleocr') return false
-  // 需要有 API Key（新输入或已设置）
+  // 需要有 API Key（新输入或已设置�?
   const hasKey = form.value.api_key || (props.editData?.api_key_set)
   return !!hasKey
 })
@@ -123,7 +129,7 @@ const fetchModels = async () => {
     const data = await res.json()
     const apiModels = data.models || []
     const modelSet = new Set(apiModels)
-    // 将当前表单中的模型名也加入列表（兼容废弃模型如 deepseek-chat / deepseek-reasoner）
+    // 将当前表单中的模型名也加入列表（兼容废弃模型�?deepseek-chat / deepseek-reasoner�?
     const currentModel = form.value.model_name || ''
     const currentLightModel = form.value.light_model_name || ''
     if (currentModel && !modelSet.has(currentModel)) { modelSet.add(currentModel); apiModels.push(currentModel) }
@@ -132,7 +138,7 @@ const fetchModels = async () => {
     if (modelList.value.length === 0) {
       pushToast('error', '未获取到可用模型')
     } else {
-      pushToast('success', `获取到 ${modelList.value.length} 个可用模型`)
+      pushToast('success', `获取�?${modelList.value.length} 个可用模型`)
     }
   } catch (e) {
     pushToast('error', e.message || '获取模型列表失败')
@@ -210,7 +216,7 @@ const confirm = () => {
   emit('confirm', { ...form.value })
 }
 
-// 自定义下拉
+// 自定义下�?
 const openDropdown = ref(null) // 'model_name' | 'light_model_name' | null
 const toggleDropdown = (field) => {
   openDropdown.value = openDropdown.value === field ? null : field
@@ -226,7 +232,7 @@ const selectOption = (field, value) => {
     :blurBackdrop="false" @close="emit('close')">
     <template #icon>
       <img v-if="typeConfig.imgIcon" :src="typeConfig.imgIcon" class="h-5 w-5 object-contain"
-        :class="{ 'dark:invert': typeConfig.imgIcon.includes('provider-openai.svg') }" alt="icon" />
+        :class="{ 'dark:invert': type === 'openai' }" alt="icon" />
       <i v-else class="fa-solid text-base" :class="typeConfig.iconCls"></i>
     </template>
 
@@ -234,7 +240,7 @@ const selectOption = (field, value) => {
       <div>
         <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ?
           '服务名称' :
-          '供应商名称' }}</label>
+          '供应商名�? }}</label>
         <BaseInput v-model="form.name" type="text" autocomplete="one-time-code"
           :placeholder="typeConfig.namePlaceholder" inputClass="h-10" autofocus />
       </div>
@@ -243,7 +249,7 @@ const selectOption = (field, value) => {
         <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.secretLabel
           }}</label>
         <BaseInput v-model="form.api_key" type="password" autocomplete="new-password"
-          :placeholder="isEdit && editData?.api_key_set ? `已设置 (${editData.api_key_hint})，留空则不修改` : typeConfig.secretPlaceholder"
+          :placeholder="isEdit && editData?.api_key_set ? `已设�?(${editData.api_key_hint})，留空则不修改` : typeConfig.secretPlaceholder"
           inputClass="h-10" />
       </div>
 
@@ -254,12 +260,12 @@ const selectOption = (field, value) => {
           :placeholder="typeConfig.urlPlaceholder" inputClass="h-10" />
       </div>
 
-      <!-- 获取模型列表按钮（仅 OpenAI / Anthropic） -->
+      <!-- 获取模型列表按钮（仅 OpenAI / Anthropic�?-->
       <div v-if="type !== 'paddleocr'" class="flex items-center gap-3">
         <BaseButton variant="secondary" @click="fetchModels" :disabled="!canFetchModels || fetchingModels"
           class="!h-8 !px-3 !text-[11px] !rounded-lg">
           <i class="fa-solid text-[10px]" :class="fetchingModels ? 'fa-circle-notch fa-spin' : 'fa-arrows-rotate'"></i>
-          <span class="inline-block w-[4.5rem] text-center">{{ fetchingModels ? '获取中...' : '获取模型列表' }}</span>
+          <span class="inline-block w-[4.5rem] text-center">{{ fetchingModels ? '获取�?..' : '获取模型列表' }}</span>
         </BaseButton>
         <span v-if="!canFetchModels" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Key</span>
       </div>
@@ -299,7 +305,7 @@ const selectOption = (field, value) => {
               </div>
             </Transition>
           </div>
-          <!-- 无模型列表时用 input -->
+          <!-- 无模型列表时�?input -->
           <BaseInput v-else v-model="form.model_name" type="text"
             :placeholder="type === 'paddleocr' ? 'e.g. PaddleOCR-VL-1.5' : 'e.g. gpt-4o, deepseek-chat'"
             inputClass="h-10" />
@@ -321,7 +327,7 @@ const selectOption = (field, value) => {
             <button type="button" @click.stop="toggleDropdown('light_model_name')"
               class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
               :class="form.light_model_name ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'">
-              <span class="truncate">{{ form.light_model_name || '不使用' }}</span>
+              <span class="truncate">{{ form.light_model_name || '不使�? }}</span>
               <i class="fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform"
                 :class="openDropdown === 'light_model_name' ? 'rotate-180' : ''"></i>
             </button>
@@ -333,7 +339,7 @@ const selectOption = (field, value) => {
                   :class="!form.light_model_name ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
                   <i v-if="!form.light_model_name"
                     class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                  <span :class="form.light_model_name ? 'pl-[18px]' : ''">不使用</span>
+                  <span :class="form.light_model_name ? 'pl-[18px]' : ''">不使�?/span>
                 </button>
                 <button v-for="m in modelList" :key="m" type="button" @click.stop="selectOption('light_model_name', m)"
                   class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
@@ -345,11 +351,11 @@ const selectOption = (field, value) => {
               </div>
             </Transition>
           </div>
-          <BaseInput v-else v-model="form.light_model_name" type="text" placeholder="科目识别等轻量任务使用" inputClass="h-10" />
+          <BaseInput v-else v-model="form.light_model_name" type="text" placeholder="科目识别等轻量任务使�? inputClass="h-10" />
         </div>
       </div>
 
-      <!-- Function Calling 开关（仅 OpenAI） -->
+      <!-- Function Calling 开关（�?OpenAI�?-->
       <div v-if="type === 'openai'" class="border-t border-slate-100 pt-4 dark:border-white/5">
         <label class="flex cursor-pointer items-center justify-between">
           <div>
@@ -381,17 +387,17 @@ const selectOption = (field, value) => {
           class="text-xs font-medium text-rose-500 dark:text-rose-400">
           <i class="fa-solid fa-circle-xmark mr-1"></i>{{ testResult.message }}
         </span>
-        <span v-else-if="!canTestConnection" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Token 和
+        <span v-else-if="!canTestConnection" class="text-xs text-slate-400 dark:text-slate-500">请先填写 API Token �?
           URL</span>
       </div>
 
-      <!-- PaddleOCR 功能开关 -->
+      <!-- PaddleOCR 功能开�?-->
       <div v-if="type === 'paddleocr'" class="border-t border-slate-100 pt-4 dark:border-white/5">
-        <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">功能开关</p>
+        <p class="mb-3 text-xs font-bold text-slate-600 dark:text-slate-400">功能开�?/p>
         <div class="space-y-3">
           <label v-for="toggle in [
-            { key: 'use_doc_orientation', label: '文档方向检测' },
-            { key: 'use_doc_unwarping', label: '文档去畸变' },
+            { key: 'use_doc_orientation', label: '文档方向检�? },
+            { key: 'use_doc_unwarping', label: '文档去畸�? },
             { key: 'use_chart_recognition', label: '图表识别' },
           ]" :key="toggle.key" class="flex cursor-pointer items-center justify-between">
             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>

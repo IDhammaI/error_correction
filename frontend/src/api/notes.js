@@ -70,6 +70,16 @@ export async function deleteNote(noteId) {
 }
 
 /** 获取笔记库中可筛选的科目列表。 */
+export async function recordNoteReview(noteId, rating = 'good') {
+  const resp = await fetch(`/api/notes/${noteId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating }),
+  })
+  const data = await assertJsonSuccess(resp, 'record review failed')
+  return data.note
+}
+
 export async function fetchNoteSubjects(projectId) {
   const qs = new URLSearchParams()
   if (projectId) qs.set('project_id', projectId)

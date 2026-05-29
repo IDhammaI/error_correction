@@ -23,17 +23,17 @@ const toneClass = {
 </script>
 
 <template>
-  <div class="rounded-xl bg-white/85 px-4 py-3 shadow-sm shadow-black/[0.03] transition-colors duration-200 hover:bg-white dark:bg-white/[0.04] dark:shadow-black/20 dark:hover:bg-white/[0.065]">
+  <div class="rounded-xl bg-white/85 p-4 shadow-sm shadow-black/[0.03] transition-colors duration-200 hover:bg-white dark:bg-white/[0.04] dark:shadow-black/20 dark:hover:bg-white/[0.065]">
     <div class="flex items-center gap-3">
-      <div v-if="icon || $slots.icon" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm" :class="toneClass[props.tone] || toneClass.accent">
+      <div v-if="icon || $slots.icon" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="toneClass[props.tone] || toneClass.accent">
         <slot name="icon">
           <i class="fa-solid" :class="icon"></i>
         </slot>
       </div>
       <div class="min-w-0">
         <p class="text-xs font-medium text-gray-500 dark:text-[#8a8f98]">{{ label }}</p>
-        <p class="mt-0.5 text-xl font-semibold text-gray-900 dark:text-[#f7f8f8]">
-          {{ value }}<span v-if="suffix" class="ml-1 text-xs text-gray-500 dark:text-[#8a8f98]">{{ suffix }}</span>
+        <p class="mt-0.5 text-2xl font-semibold text-gray-900 dark:text-[#f7f8f8]">
+          {{ value }}<span v-if="suffix" class="ml-1 text-sm text-gray-500 dark:text-[#8a8f98]">{{ suffix }}</span>
         </p>
         <p v-if="hint" class="mt-0.5 truncate text-xs text-gray-400 dark:text-[#62666d]">{{ hint }}</p>
       </div>

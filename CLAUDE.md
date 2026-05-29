@@ -80,20 +80,17 @@ cd frontend && npm install               # 前端（Node 18+）
 - **`backend/agents/solve/`** — 独立的解题 Agent（`invoke_solve`）
 - **`backend/agents/teach/`** — 教学讲解 Agent，流式多轮对话（`stream_teach`）
 - **`backend/agents/note/`** — 笔记整理 Agent，OCR → LLM 结构化（`invoke_note_organize`）
-- **`backend/web_app.py`** — Flask 应用工厂，注册 8 个 Blueprint，全局 session 状态在 `state.py`
-- **`backend/routes/`** — 8 个 Blueprint 模块（upload、questions、chat、stats、auth、settings、notes、projects）
+- **`backend/web_app.py`** — Flask 应用工厂，注册 7 个 Blueprint，全局 session 状态在 `state.py`
+- **`backend/routes/`** — 7 个 Blueprint 模块（upload、questions、chat、stats、auth、settings、notes）
 - **`backend/core/state.py`** — 全局会话状态（`session_files`、`session_lock`）
 - **`backend/core/mail.py`** — SMTP 邮件发送（注册验证码、找回密码）
 - **`backend/core/config.py`** — 所有运行时路径 + LLM provider 注册集中管理，`ensure_dirs()` 显式初始化
 - **`backend/core/llm.py`** — `init_model()` 统一 LLM 初始化，支持多 provider
-- **`backend/core/quota.py`** — 每日免费体验额度管理（`DEFAULT_DAILY_FREE_QUOTA=5`）
-- **`backend/core/workflow_run_store.py`** — 工作流运行状态存储适配器（路由层使用，屏蔽底层存储差异）
-- **`backend/core/model_selection.py`** — 模型选择逻辑
 - **`backend/db/`** — SQLite + SQLAlchemy ORM，错题库持久化；`db/crud/providers.py` 管理用户存储的 API key
 
 ### Flask 路由
 
-路由实现在 `backend/routes/` 的 8 个 Blueprint 模块中，`web_app.py` 仅做注册：
+路由实现在 `backend/routes/` 的 7 个 Blueprint 模块中，`web_app.py` 仅做注册：
 
 - `POST /api/upload` / `/api/erase` / `/api/ocr` / `/api/split` / `/api/export` / `/api/cancel_file` — 核心工作流 API（upload.py）
 - `GET /api/image/<filename>` — 图片资源访问（upload.py）
@@ -106,7 +103,6 @@ cd frontend && npm install               # 前端（Node 18+）
 - `/api/auth` / `/api/auth/send-code` / `/api/auth/reset-password` — 认证 + 邮箱验证码（auth.py）
 - `/api/settings` — LLM provider 配置（settings.py）
 - `/api/notes` — 笔记 CRUD（notes.py）
-- `/api/projects` — 项目管理 CRUD（projects.py）
 
 ---
 
@@ -139,39 +135,24 @@ frontend/src/
 ├── components/           # 可复用组件（55+）
 │   ├── auth/            # 认证：AuthLayout、LoginView、RegisterView、ForgotPasswordModal
 │   └── home/            # 首页：HomeNav、HomeHero、HomeFeatures 等
-├── composables/          # Vue 3 组合式函数
+├── composables/          # Vue 3 组合式函数（12 个）
 │   ├── useAuth.js       # 认证状态（currentUser、authChecked）
 │   ├── useTheme.js      # 主题切换（isDark、toggleTheme + View Transition 动画）
 │   ├── usePageTransition.js  # 全局页面过渡遮罩
 │   ├── useClickOutside.js    # 点击外部关闭
 │   ├── useImageModal.js      # 图片预览弹窗
-│   ├── useToast.js           # Toast 通知
+│   ├── useWorkspaceToast.js  # Toast 通知
 │   ├── useSystemStatus.js    # 系统状态（OCR/模型配置）
 │   ├── useSidebarIndicator.js # 侧边栏 active 指示器动画
 │   ├── useAiChatSessions.js  # AI 对话会话管理
-│   ├── useChatSession.js     # 单个聊天会话状态
 │   ├── useFileUpload.js      # 文件上传状态
 │   ├── useSplitPipeline.js   # 分割流水线（擦除→OCR→分割）
-│   ├── useQuestionList.js    # 题目列表状态
-│   ├── useWorkspaceNav.js    # 工作台导航状态
-│   ├── useProjects.js        # 项目管理状态
-│   ├── usePaginatedList.js   # 通用分页列表
-│   └── useSelectableList.js  # 通用多选列表
+│   └── useQuestionList.js    # 题目列表状态
 ├── router/index.js       # 路由配置
 ├── views/                # 页面级组件
 │   ├── HomeView.vue     # 首页（强制暗色主题）
-│   └── app/
-│       └── AppLayout.vue # 工作台主容器（侧边栏导航 + 内容区视图切换）
-├── api/                  # 集中式 API 层（按领域拆分）
-│   ├── index.js         # 统一出口
-│   ├── auth.js          # 认证 API
-│   ├── chat.js          # AI 对话 API
-│   ├── config.js        # 配置 API
-│   ├── notes.js         # 笔记 API
-│   ├── projects.js      # 项目 API
-│   ├── questions.js     # 错题库 API
-│   ├── splitRecords.js  # 分割记录 API
-│   └── upload.js        # 上传 API
+│   └── WorkspaceView.vue # 工作台主容器（侧边栏 + 内容区）
+├── api.js                # 集中式 API 层（50+ 函数）
 ├── utils.js              # 工具函数（sanitizeHtml、renderMarkdown、typesetMath）
 ├── style.css             # 全局样式 + Tailwind 自定义类
 ├── App.vue               # 根组件
@@ -183,12 +164,19 @@ frontend/src/
 | 路径 | 组件 | 说明 |
 |------|------|------|
 | `/` | HomeView | 首页 |
-| `/auth` | AuthLayout（子路由：login、register） | 认证页 |
-| `/app/:view?/:subview?` | AppLayout | 工作台（view/subview 决定渲染哪个子视图） |
+| `/auth/login` | LoginView | 登录 |
+| `/auth/register` | RegisterView | 注册 |
+| `/app/workspace` | WorkspaceView | 录入工作台 |
+| `/app/dashboard` | Dashboard | 数据统计 |
+| `/app/error-bank` | ErrorBank | 错题库 |
+| `/app/notes` | NoteView | 笔记整理 |
+| `/app/ai-chat` | ChatPage | AI 对话 |
+| `/app/review` | ReviewView | 复习计划 |
+| `/app/settings` | SettingsView | 系统设置 |
+| `/app/split-history` | SplitHistory | 分割历史 |
+| `/app/chat` | ChatView | 独立对话 |
 
 路由 meta 字段：`layout`（`'home'` / `'auth'` / `'app'`）、`requiresAuth`（boolean）
-
-AppLayout 内部通过 `currentView` ref + 路由参数切换子视图：workspace、dashboard、error-bank、notes、ai-chat、review、settings、split-history、projects 等。
 
 ### 布局
 
@@ -287,13 +275,13 @@ hover:bg-white/[0.04] transition-all
 
 - 无 Vuex/Pinia，轻量 ref 方案
 - 全局认证状态：`useAuth` composable（`currentUser`、`authChecked`）
-- 页面级状态：集中在 `AppLayout.vue`（ref/reactive/computed/watch）
+- 页面级状态：集中在 `WorkspaceView.vue`（ref/reactive/computed/watch）
 - 父子通信：props 向下，emits 向上
 - 跨组件共享通过 composable 单例 ref
 
 ### API 调用
 
-- 按领域拆分为 `api/auth.js`、`api/chat.js`、`api/config.js`、`api/notes.js`、`api/projects.js`、`api/questions.js`、`api/splitRecords.js`、`api/upload.js`，统一出口 `api/index.js`
+- 集中在 `api.js`，所有函数导出供组件调用
 - 统一错误处理：检查 `resp.ok` + `data.success`，throw 描述性错误
 - 模型请求用 `_buildModelBody(modelProvider, modelName, extra)` 构建
 - SSE 流式：`streamChat()` 支持 abort signal

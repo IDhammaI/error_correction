@@ -1,0 +1,6584 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Error Correction / 智卷系统 Backend API",
+    "version": "1.0.0",
+    "description": "基于当前 Flask 后端源码整理的 OpenAPI/Swagger 文档，供 App 端开发对接。认证采用 Flask session cookie；App 端需保留并随请求携带登录后下发的 Cookie。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001",
+      "description": "本地后端服务"
+    },
+    {
+      "url": "/",
+      "description": "同源或前端代理根路径"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "注册、登录、用户资料"
+    },
+    {
+      "name": "Projects",
+      "description": "错题库/笔记本项目"
+    },
+    {
+      "name": "Upload",
+      "description": "上传、OCR、分割、导出流程"
+    },
+    {
+      "name": "Questions",
+      "description": "错题库、复习、题目管理"
+    },
+    {
+      "name": "Notes",
+      "description": "笔记 OCR 与管理"
+    },
+    {
+      "name": "Chat",
+      "description": "AI 辅导对话"
+    },
+    {
+      "name": "Stats",
+      "description": "统计分析"
+    },
+    {
+      "name": "Settings",
+      "description": "模型和系统配置"
+    },
+    {
+      "name": "Files",
+      "description": "静态资源和下载"
+    },
+    {
+      "name": "Device",
+      "description": "硬件摄像头绑定、上传与图片查询"
+    }
+  ],
+  "security": [
+    {
+      "SessionCookie": []
+    }
+  ],
+  "paths": {
+    "/api/auth/send-code": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "发送邮箱验证码",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "student@example.com"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "register",
+                      "reset",
+                      "change_email"
+                    ],
+                    "default": "register",
+                    "example": "register"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "email": "student@example.com",
+                  "type": "register"
+                }
+              },
+              "example": {
+                "email": "student@example.com",
+                "type": "register"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "email": "student@example.com",
+                    "type": "register"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "注册并自动登录",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "username",
+                  "password",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  },
+                  "username": {
+                    "type": "string",
+                    "example": "student01"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "123456"
+                  },
+                  "code": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "email": "student@example.com",
+                  "username": "student01",
+                  "password": "123456",
+                  "code": "123456"
+                }
+              },
+              "example": {
+                "email": "student@example.com",
+                "username": "student01",
+                "password": "123456",
+                "code": "123456"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "email": "student@example.com",
+                    "username": "student01",
+                    "password": "123456",
+                    "code": "123456"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "通过验证码重置密码",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  },
+                  "code": {
+                    "type": "string",
+                    "example": "123456"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "newpass123"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "email": "student@example.com",
+                  "code": "123456",
+                  "password": "newpass123"
+                }
+              },
+              "example": {
+                "email": "student@example.com",
+                "code": "123456",
+                "password": "newpass123"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "email": "student@example.com",
+                    "code": "123456",
+                    "password": "newpass123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "账号密码登录并写入 session cookie",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "邮箱或用户名"
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "identifier": "student@example.com",
+                  "password": "123456"
+                }
+              },
+              "example": {
+                "identifier": "student@example.com",
+                "password": "123456"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "identifier": "student@example.com",
+                    "password": "123456"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "退出登录并清空 session",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "获取当前登录用户",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/check-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "检查邮箱是否可用",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "new-email@example.com"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "email": "new-email@example.com"
+                }
+              },
+              "example": {
+                "email": "new-email@example.com"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "email": "new-email@example.com"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/profile": {
+      "patch": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "更新当前用户资料",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "display_name": {
+                    "type": "string",
+                    "example": "???"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "example": "??"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "修改邮箱时填写当前邮箱验证码"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "display_name": "???",
+                  "nickname": "??"
+                }
+              },
+              "example": {
+                "display_name": "???",
+                "nickname": "??"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "display_name": "???",
+                    "nickname": "??"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/profile/avatar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "上传头像",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data ?????file=<????>??? png/jpg/jpeg/webp/bmp??? 5MB?"
+      },
+      "delete": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "删除头像",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "项目列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_type",
+            "in": "query",
+            "required": false,
+            "description": "question 或 note",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "project_type 别名",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "创建项目/错题库/笔记本",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "project": {
+                      "$ref": "#/components/schemas/Project"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "???????"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "project_type": {
+                    "type": "string",
+                    "enum": [
+                      "question",
+                      "note"
+                    ],
+                    "example": "question"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "example": "???????"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "?? App ?????"
+                  },
+                  "color": {
+                    "type": "string",
+                    "example": "#2563eb"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "example": "database"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "name": "???????",
+                  "project_type": "question",
+                  "summary": "???????",
+                  "description": "?? App ?????",
+                  "color": "#2563eb",
+                  "icon": "database"
+                }
+              },
+              "example": {
+                "name": "???????",
+                "project_type": "question",
+                "summary": "???????",
+                "description": "?? App ?????",
+                "color": "#2563eb",
+                "icon": "database"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "name": "???????",
+                    "project_type": "question",
+                    "summary": "???????",
+                    "description": "?? App ?????",
+                    "color": "#2563eb",
+                    "icon": "database"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}": {
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "更新项目名称、简介",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "???????"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "project_type": {
+                    "type": "string",
+                    "enum": [
+                      "question",
+                      "note"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "example": "??????"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "??????"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "name": "???????",
+                  "summary": "??????",
+                  "description": "??????"
+                }
+              },
+              "example": {
+                "name": "???????",
+                "summary": "??????",
+                "description": "??????"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "name": "???????",
+                    "summary": "??????",
+                    "description": "??????"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "删除空项目",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/device/bind": {
+      "post": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "创建或获取当前用户的硬件设备 UUID",
+        "description": "登录用户调用。后端生成并持久化 device_uuid -> user_id 绑定关系；App/手机端随后通过蓝牙把 device_uuid 写入硬件。",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "force_new": {
+                    "type": "boolean",
+                    "description": "???????? device_uuid??? false????????????",
+                    "default": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "force_new": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "??",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "device_uuid",
+                    "qr_payload"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "device_uuid": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "8f4b8f6e-2c7a-4e3a-9c6a-4c1f2e7b9a21"
+                    },
+                    "qr_payload": {
+                      "type": "string",
+                      "example": "aiwb://bind?device_uuid=8f4b8f6e-2c7a-4e3a-9c6a-4c1f2e7b9a21"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "???",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/device/capture": {
+      "post": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "硬件设备上传 JPEG 拍照结果",
+        "description": "固件调用，无需登录 Cookie。multipart/form-data 字段：device_uuid=<后端分配并由 App 蓝牙写入硬件的 UUID>，image=<JPEG 文件>。兼容旧字段名 device_id。",
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "device_uuid",
+                  "image"
+                ],
+                "properties": {
+                  "device_uuid": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "device_id": {
+                    "type": "string",
+                    "description": "??????????? device_uuid?"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG ??????????? image?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "??????????? HTTP 2xx ????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "device_uuid",
+                    "capture_id",
+                    "file_key",
+                    "filename"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "capture uploaded"
+                    },
+                    "device_uuid": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "capture_id": {
+                      "type": "integer"
+                    },
+                    "file_key": {
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string",
+                      "example": "capture.jpg"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "??????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "?????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/upload": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "上传题目图片/PDF",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "file": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "兼容字段"
+                  },
+                  "reset_session": {
+                    "type": "boolean"
+                  },
+                  "file_key": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "file_keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data ?????files=<????? PDF?????>?reset_session=true?file_key=file_001?"
+      }
+    },
+    "/api/cancel_file": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "撤销当前上传会话中的单个文件",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file_key"
+                ],
+                "properties": {
+                  "file_key": {
+                    "type": "string",
+                    "example": "file_001"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "file_key": "file_001"
+                }
+              },
+              "example": {
+                "file_key": "file_001"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "file_key": "file_001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/upload/reset": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "重置上传会话状态",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/erase": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "对已上传图片执行手写痕迹擦除",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ocr": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "对已上传文件执行 OCR 并返回页面预览",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/split": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "OCR/LLM 分割题目",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "run_id": {
+                      "type": "string"
+                    },
+                    "questions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Question"
+                      }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "额度不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "未分割出题目",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "model_provider": {
+                    "type": "string",
+                    "default": "openai",
+                    "example": "openai"
+                  },
+                  "model_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "gpt-4o-mini"
+                  },
+                  "provider_source": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "system"
+                  },
+                  "provider_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": null
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "model_provider": "openai",
+                  "model_name": "gpt-4o-mini",
+                  "provider_source": "system",
+                  "provider_id": null
+                }
+              },
+              "example": {
+                "model_provider": "openai",
+                "model_name": "gpt-4o-mini",
+                "provider_source": "system",
+                "provider_id": null
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "model_provider": "openai",
+                    "model_name": "gpt-4o-mini",
+                    "provider_source": "system",
+                    "provider_id": null
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/split-records": {
+      "get": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "获取最近分割记录",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 10",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SplitRecord"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/split-records/{record_id}": {
+      "get": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "获取分割记录详情",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/export": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "导出本次分割结果为 Markdown 错题本",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "selected_ids",
+                  "run_id"
+                ],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "q_0",
+                      "q_1"
+                    ]
+                  },
+                  "run_id": {
+                    "type": "string",
+                    "example": "b7b9d5e2-1111-4222-8333-abcdefabcdef"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                  "selected_ids": [
+                    "q_0",
+                    "q_1"
+                  ]
+                }
+              },
+              "example": {
+                "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                "selected_ids": [
+                  "q_0",
+                  "q_1"
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                    "selected_ids": [
+                      "q_0",
+                      "q_1"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image/{filename}": {
+      "get": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "读取上传或处理后的预览图片",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片文件",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "获取当前分割 run 的题目列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "description": "不传则取当前上传会话 run",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "分页查询历史题目",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "页码，默认 1",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "每页数量，默认 20，最大 100",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "按关键词/知识点/题型搜索题目",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "页码，默认 1",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "每页数量，默认 20，最大 100",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "knowledge_tag",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "question_type",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/error-bank": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "错题库综合查询",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "页码，默认 1",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "每页数量，默认 20，最大 100",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "科目，部分接口支持逗号分隔",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "knowledge_tag",
+            "in": "query",
+            "required": false,
+            "description": "知识点，部分接口支持逗号分隔",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "question_type",
+            "in": "query",
+            "required": false,
+            "description": "题型，部分接口支持逗号分隔",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "description": "关键词",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "项目/错题库/笔记本 ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "review_status",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/error-bank/find": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "自然语言找题",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "题目描述",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "q 的别名",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 8，最大 20",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subjects": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "获取错题库科目列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question-types": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "获取题型列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{question_id}": {
+      "patch": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "编辑题干和/或标准答案",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "maxLength": 20000,
+                    "example": "????????"
+                  },
+                  "answer": {
+                    "type": "string",
+                    "maxLength": 10000,
+                    "example": "??????? Markdown"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "content": "????????",
+                  "answer": "??????? Markdown"
+                }
+              },
+              "example": {
+                "content": "????????",
+                "answer": "??????? Markdown"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "content": "????????",
+                    "answer": "??????? Markdown"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "删除题目",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{question_id}/answer": {
+      "patch": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "保存用户作答",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_answer"
+                ],
+                "properties": {
+                  "user_answer": {
+                    "type": "string",
+                    "maxLength": 10000,
+                    "example": "??????"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "user_answer": "??????"
+                }
+              },
+              "example": {
+                "user_answer": "??????"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "user_answer": "??????"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "保存/更新题目标准答案 Markdown",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "answer"
+                ],
+                "properties": {
+                  "answer": {
+                    "type": "string",
+                    "maxLength": 50000,
+                    "example": "## ????\n???????? Markdown"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "answer": "## ????\n???????? Markdown"
+                }
+              },
+              "example": {
+                "answer": "## ????\n???????? Markdown"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "answer": "## ????\n???????? Markdown"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{question_id}/review-status": {
+      "patch": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "更新题目复习状态",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "review_status"
+                ],
+                "properties": {
+                  "review_status": {
+                    "type": "string",
+                    "description": "常见值：待复习/复习中/已掌握，实际以后端为准",
+                    "example": "???"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "review_status": "???"
+                }
+              },
+              "example": {
+                "review_status": "???"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "review_status": "???"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{question_id}/review": {
+      "post": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "记录题目间隔复习结果",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "example": "good"
+                  },
+                  "quality": {
+                    "type": "string",
+                    "description": "rating 别名"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "rating": "good"
+                }
+              },
+              "example": {
+                "rating": "good"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "rating": "good"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/due": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "获取待复习题目和笔记",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "target_type",
+            "in": "query",
+            "required": false,
+            "description": "all/question/note",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "target_type 别名",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 40",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/save-to-db": {
+      "post": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "把本次分割选中的题目导入错题库",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "selected_ids",
+                  "run_id",
+                  "project_id"
+                ],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "q_0",
+                      "q_1"
+                    ]
+                  },
+                  "run_id": {
+                    "type": "string",
+                    "example": "b7b9d5e2-1111-4222-8333-abcdefabcdef"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "example": 12
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "example": {
+                        "uid": "q_0",
+                        "answer": "????",
+                        "user_answer": "????"
+                      }
+                    },
+                    "example": [
+                      {
+                        "uid": "q_0",
+                        "answer": "????",
+                        "user_answer": "????"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                  "project_id": 12,
+                  "selected_ids": [
+                    "q_0",
+                    "q_1"
+                  ],
+                  "answers": [
+                    {
+                      "uid": "q_0",
+                      "answer": "????",
+                      "user_answer": "????"
+                    }
+                  ]
+                }
+              },
+              "example": {
+                "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                "project_id": 12,
+                "selected_ids": [
+                  "q_0",
+                  "q_1"
+                ],
+                "answers": [
+                  {
+                    "uid": "q_0",
+                    "answer": "????",
+                    "user_answer": "????"
+                  }
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "run_id": "b7b9d5e2-1111-4222-8333-abcdefabcdef",
+                    "project_id": 12,
+                    "selected_ids": [
+                      "q_0",
+                      "q_1"
+                    ],
+                    "answers": [
+                      {
+                        "uid": "q_0",
+                        "answer": "????",
+                        "user_answer": "????"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai-analysis": {
+      "post": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "AI 错题分析占位接口",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "question_ids"
+                ],
+                "properties": {
+                  "question_ids": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      101,
+                      102,
+                      103
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "question_ids": [
+                    101,
+                    102,
+                    103
+                  ]
+                }
+              },
+              "example": {
+                "question_ids": [
+                  101,
+                  102,
+                  103
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "question_ids": [
+                      101,
+                      102,
+                      103
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/export-from-db": {
+      "post": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "从数据库题目 ID 导出 Markdown 错题本",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "selected_ids"
+                ],
+                "properties": {
+                  "selected_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      101,
+                      102,
+                      103
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "selected_ids": [
+                    101,
+                    102,
+                    103
+                  ]
+                }
+              },
+              "example": {
+                "selected_ids": [
+                  101,
+                  102,
+                  103
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "selected_ids": [
+                      101,
+                      102,
+                      103
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes/": {
+      "post": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "上传笔记图片，OCR + LLM 整理并保存",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files",
+                  "project_id"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "project_id": {
+                    "type": "integer"
+                  },
+                  "model_provider": {
+                    "type": "string",
+                    "default": "openai"
+                  },
+                  "model_name": {
+                    "type": "string"
+                  },
+                  "provider_source": {
+                    "type": "string"
+                  },
+                  "provider_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data ?????files=<?????????>?project_id=12?model_provider=openai?model_name=gpt-4o-mini?"
+      },
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "分页查询笔记",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 20，最大 100",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "knowledge_tag",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes/{note_id}": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "获取笔记详情",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "更新笔记",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "??????"
+                  },
+                  "content_markdown": {
+                    "type": "string",
+                    "example": "# ????\n????????"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "example": "??"
+                  },
+                  "knowledge_tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "????",
+                      "???"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "title": "??????",
+                  "content_markdown": "# ????\n????????",
+                  "subject": "??",
+                  "knowledge_tags": [
+                    "????",
+                    "???"
+                  ]
+                }
+              },
+              "example": {
+                "title": "??????",
+                "content_markdown": "# ????\n????????",
+                "subject": "??",
+                "knowledge_tags": [
+                  "????",
+                  "???"
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "title": "??????",
+                    "content_markdown": "# ????\n????????",
+                    "subject": "??",
+                    "knowledge_tags": [
+                      "????",
+                      "???"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "删除笔记",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes/{note_id}/review": {
+      "post": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "记录笔记间隔复习结果",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "example": "good"
+                  },
+                  "quality": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "rating": "good"
+                }
+              },
+              "example": {
+                "rating": "good"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "rating": "good"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes/subjects": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "获取笔记科目列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes/tags": {
+      "get": {
+        "tags": [
+          "Notes"
+        ],
+        "summary": "获取笔记知识点标签列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/question/{question_id}/chats": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "获取某题关联对话列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "创建新对话",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "question_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "example": 101
+                  },
+                  "title": {
+                    "type": "string",
+                    "default": "新对话",
+                    "example": "? 101 ???"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "question_id": 101,
+                  "title": "? 101 ???"
+                }
+              },
+              "example": {
+                "question_id": 101,
+                "title": "? 101 ???"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "question_id": 101,
+                    "title": "? 101 ???"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/my-sessions": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "获取当前用户独立对话列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 20，最大 50",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "分页获取所有对话",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "默认 20，最大 100",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/{session_id}": {
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "修改对话标题",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "?????"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "title": "?????"
+                }
+              },
+              "example": {
+                "title": "?????"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "title": "?????"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "删除对话",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/{session_id}/messages": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "游标分页获取对话消息",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "默认 30，最大 100",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "before_id",
+            "in": "query",
+            "required": false,
+            "description": "返回此消息 ID 之前的更早消息",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/{session_id}/stream": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "SSE 流式 AI 对话",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream。data JSON 可能包含 token、reasoning、error、done 字段。",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "???????????"
+                  },
+                  "model_provider": {
+                    "type": "string",
+                    "default": "openai",
+                    "example": "openai"
+                  },
+                  "model_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "gpt-4o-mini"
+                  },
+                  "provider_source": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "provider_id": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "deep_think": {
+                    "type": "boolean",
+                    "default": false,
+                    "example": false
+                  },
+                  "context_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "example": {
+                        "type": "question",
+                        "project_id": 12,
+                        "question_ids": [
+                          101,
+                          102
+                        ]
+                      }
+                    },
+                    "example": [
+                      {
+                        "type": "question",
+                        "project_id": 12,
+                        "question_ids": [
+                          101,
+                          102
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "message": "???????????",
+                  "model_provider": "openai",
+                  "model_name": "gpt-4o-mini",
+                  "deep_think": false,
+                  "context_refs": [
+                    {
+                      "type": "question",
+                      "project_id": 12,
+                      "question_ids": [
+                        101,
+                        102
+                      ]
+                    }
+                  ]
+                }
+              },
+              "example": {
+                "message": "???????????",
+                "model_provider": "openai",
+                "model_name": "gpt-4o-mini",
+                "deep_think": false,
+                "context_refs": [
+                  {
+                    "type": "question",
+                    "project_id": 12,
+                    "question_ids": [
+                      101,
+                      102
+                    ]
+                  }
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "message": "???????????",
+                    "model_provider": "openai",
+                    "model_name": "gpt-4o-mini",
+                    "deep_think": false,
+                    "context_refs": [
+                      {
+                        "type": "question",
+                        "project_id": 12,
+                        "question_ids": [
+                          101,
+                          102
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "按科目/项目获取统计",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard-stats": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "获取仪表盘统计",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "系统状态检查",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/erase": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "测试手写擦除模型",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data ?????file=<??????????>?"
+      }
+    },
+    "/api/models/options": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "获取可选模型/供应商配置",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "获取当前用户模型配置",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "保存当前用户模型配置",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "openai": {
+                    "type": "object",
+                    "example": {
+                      "api_key": "sk-xxx",
+                      "base_url": "https://api.openai.com/v1",
+                      "model_name": "gpt-4o-mini",
+                      "supports_function_calling": true
+                    },
+                    "additionalProperties": true
+                  },
+                  "anthropic": {
+                    "type": "object"
+                  },
+                  "paddleocr": {
+                    "type": "object",
+                    "example": {
+                      "api_url": "https://your-paddleocr-api",
+                      "token": "ocr-token",
+                      "model": "PaddleOCR-VL-1.5"
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "openai": {
+                    "api_key": "sk-xxx",
+                    "base_url": "https://api.openai.com/v1",
+                    "model_name": "gpt-4o-mini",
+                    "supports_function_calling": true
+                  },
+                  "paddleocr": {
+                    "api_url": "https://your-paddleocr-api",
+                    "token": "ocr-token",
+                    "model": "PaddleOCR-VL-1.5"
+                  }
+                }
+              },
+              "example": {
+                "openai": {
+                  "api_key": "sk-xxx",
+                  "base_url": "https://api.openai.com/v1",
+                  "model_name": "gpt-4o-mini",
+                  "supports_function_calling": true
+                },
+                "paddleocr": {
+                  "api_url": "https://your-paddleocr-api",
+                  "token": "ocr-token",
+                  "model": "PaddleOCR-VL-1.5"
+                }
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "openai": {
+                      "api_key": "sk-xxx",
+                      "base_url": "https://api.openai.com/v1",
+                      "model_name": "gpt-4o-mini",
+                      "supports_function_calling": true
+                    },
+                    "paddleocr": {
+                      "api_url": "https://your-paddleocr-api",
+                      "token": "ocr-token",
+                      "model": "PaddleOCR-VL-1.5"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/system-config": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "管理员获取系统级模型配置",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要管理员权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "管理员保存系统级模型配置",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要管理员权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "openai": {
+                    "type": "object",
+                    "example": {
+                      "api_key": "sk-xxx",
+                      "base_url": "https://api.openai.com/v1",
+                      "model_name": "gpt-4o-mini",
+                      "is_active": true
+                    },
+                    "additionalProperties": true
+                  },
+                  "anthropic": {
+                    "type": "object"
+                  },
+                  "paddleocr": {
+                    "type": "object",
+                    "example": {
+                      "api_url": "https://your-paddleocr-api",
+                      "token": "ocr-token",
+                      "model": "PaddleOCR-VL-1.5",
+                      "is_active": true
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "openai": {
+                    "api_key": "sk-xxx",
+                    "base_url": "https://api.openai.com/v1",
+                    "model_name": "gpt-4o-mini",
+                    "is_active": true
+                  },
+                  "paddleocr": {
+                    "api_url": "https://your-paddleocr-api",
+                    "token": "ocr-token",
+                    "model": "PaddleOCR-VL-1.5",
+                    "is_active": true
+                  }
+                }
+              },
+              "example": {
+                "openai": {
+                  "api_key": "sk-xxx",
+                  "base_url": "https://api.openai.com/v1",
+                  "model_name": "gpt-4o-mini",
+                  "is_active": true
+                },
+                "paddleocr": {
+                  "api_url": "https://your-paddleocr-api",
+                  "token": "ocr-token",
+                  "model": "PaddleOCR-VL-1.5",
+                  "is_active": true
+                }
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "openai": {
+                      "api_key": "sk-xxx",
+                      "base_url": "https://api.openai.com/v1",
+                      "model_name": "gpt-4o-mini",
+                      "is_active": true
+                    },
+                    "paddleocr": {
+                      "api_url": "https://your-paddleocr-api",
+                      "token": "ocr-token",
+                      "model": "PaddleOCR-VL-1.5",
+                      "is_active": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/list": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "从 OpenAI/Anthropic 兼容接口拉取模型列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "provider_type"
+                ],
+                "properties": {
+                  "provider_type": {
+                    "type": "string",
+                    "enum": [
+                      "openai",
+                      "anthropic"
+                    ],
+                    "example": "openai"
+                  },
+                  "api_key": {
+                    "type": "string",
+                    "example": "sk-xxx"
+                  },
+                  "base_url": {
+                    "type": "string",
+                    "example": "https://api.openai.com/v1"
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "provider_type": "openai",
+                  "api_key": "sk-xxx",
+                  "base_url": "https://api.openai.com/v1"
+                }
+              },
+              "example": {
+                "provider_type": "openai",
+                "api_key": "sk-xxx",
+                "base_url": "https://api.openai.com/v1"
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "provider_type": "openai",
+                    "api_key": "sk-xxx",
+                    "base_url": "https://api.openai.com/v1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/paddleocr/test": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "测试 PaddleOCR API Token",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "api_url": {
+                    "type": "string",
+                    "example": "https://your-paddleocr-api"
+                  },
+                  "token": {
+                    "type": "string",
+                    "example": "ocr-token"
+                  },
+                  "model": {
+                    "type": "string",
+                    "example": "PaddleOCR-VL-1.5"
+                  },
+                  "use_doc_orientation": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "use_doc_unwarping": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "use_chart_recognition": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                },
+                "additionalProperties": true,
+                "example": {
+                  "api_url": "https://your-paddleocr-api",
+                  "token": "ocr-token",
+                  "model": "PaddleOCR-VL-1.5",
+                  "use_doc_orientation": false,
+                  "use_doc_unwarping": false,
+                  "use_chart_recognition": false
+                }
+              },
+              "example": {
+                "api_url": "https://your-paddleocr-api",
+                "token": "ocr-token",
+                "model": "PaddleOCR-VL-1.5",
+                "use_doc_orientation": false,
+                "use_doc_unwarping": false,
+                "use_chart_recognition": false
+              },
+              "examples": {
+                "default": {
+                  "summary": "????",
+                  "value": {
+                    "api_url": "https://your-paddleocr-api",
+                    "token": "ocr-token",
+                    "model": "PaddleOCR-VL-1.5",
+                    "use_doc_orientation": false,
+                    "use_doc_unwarping": false,
+                    "use_chart_recognition": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads/{filename}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "读取用户上传文件/头像",
+        "security": [],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文件内容",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/download/{filename}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "下载导出的 Markdown 文件",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markdown 下载",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/{filename}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "读取 OCR 结构化图片",
+        "security": [],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片文件",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/erased/{filename}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "读取擦除结果图片",
+        "security": [],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "图片文件",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/device/unbind": {
+      "post": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "解绑当前用户的硬件设备 UUID",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "device_uuid"
+                ],
+                "properties": {
+                  "device_uuid": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "device_id": {
+                    "type": "string",
+                    "description": "??????????? device_uuid?"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "device_uuid": "8f4b8f6e-2c7a-4e3a-9c6a-4c1f2e7b9a21"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "??",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "?????????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/device/images": {
+      "get": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "查询当前用户的硬件上传图片列表",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_uuid",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "????????????????????????????????"
+          },
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "??????????? device_uuid?"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "??",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "images"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeviceCapture"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "?????????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/device/images/use": {
+      "post": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "????????? AI ???",
+        "description": "???????? /api/device/images ???? capture_id ???? AI ??????????????? /api/ocr ? /api/split ?????????????",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "capture_ids"
+                ],
+                "properties": {
+                  "capture_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "?????? ID ???"
+                  },
+                  "reset_session": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "????????????????? true?"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "capture_ids": [
+                  1
+                ],
+                "reset_session": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "??",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "result"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "file_count": {
+                          "type": "integer"
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "capture_id": {
+                                "type": "integer"
+                              },
+                              "file_key": {
+                                "type": "string"
+                              },
+                              "filename": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "???????????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "?????????",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Flask session cookie。登录/注册成功后由后端 Set-Cookie 写入；App 端需持久化并在后续请求携带。"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "OkResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "nickname": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatar_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_admin": {
+            "type": "boolean"
+          },
+          "quota": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "project_type": {
+            "type": "string",
+            "enum": [
+              "question",
+              "note"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "question_count": {
+            "type": "integer"
+          },
+          "note_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "uid": {
+            "type": "string",
+            "description": "临时分割题目的 UID"
+          },
+          "question_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "content_json": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "content_blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "options_json": {
+            "nullable": true
+          },
+          "options": {
+            "nullable": true
+          },
+          "has_formula": {
+            "type": "boolean"
+          },
+          "has_image": {
+            "type": "boolean"
+          },
+          "needs_correction": {
+            "type": "boolean"
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true
+          },
+          "user_answer": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "knowledge_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "review_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "content_markdown": {
+            "type": "string"
+          },
+          "source_images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "knowledge_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChatSession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "public_id，用于聊天 path 参数"
+          },
+          "title": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "SplitRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "model_provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "question_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "DeviceCapture": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "device_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file_key": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string",
+            "example": "/api/image/abc123.jpg"
+          },
+          "content_type": {
+            "type": "string",
+            "example": "image/jpeg"
+          },
+          "file_size": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

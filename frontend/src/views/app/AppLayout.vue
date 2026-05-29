@@ -4,7 +4,7 @@
  * App 布局容器 — 侧边栏导航 + 内容区视图切换
  * 仅负责：导航、布局、全局状态（主题/认证/弹窗）
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, provide } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 import { usePageTransition } from '@/composables/usePageTransition.js'
@@ -204,8 +204,6 @@ const openProjectDialog = (projectType = 'question', onCreated = null) => {
     document.querySelector('[data-project-name-input] input')?.focus()
   })
 }
-
-provide('openProjectDialog', openProjectDialog)
 
 const closeProjectDialog = () => {
   if (projectDialogSaving.value) return
@@ -469,7 +467,7 @@ onBeforeUnmount(() => {
         <div class="space-y-3 text-sm text-slate-600 dark:text-[#aeb6c2]">
           <p>
             确定删除“<span class="font-semibold text-slate-900 dark:text-[#f7f8f8]">{{ deleteProjectTarget?.name
-            }}</span>”吗？
+              }}</span>”吗？
           </p>
           <p class="text-xs text-slate-400 dark:text-[#737b86]">
             项目内的所有错题将一并删除，且不可恢复。

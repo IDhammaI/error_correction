@@ -62,7 +62,7 @@ def _serialize_question(q: Question) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    return {
+    payload = {
         'id': q.id,
         'question_type': q.question_type,
         'content_json': json.loads(q.content_json) if q.content_json else [],
@@ -75,6 +75,8 @@ def _serialize_question(q: Question) -> dict:
         'knowledge_tags': knowledge_tags,
         'created_at': q.created_at.isoformat() if q.created_at else None,
     }
+    payload.update(crud.serialize_review_fields(q))
+    return payload
 
 
 def _serialize_question_detail(q: Question) -> dict:
@@ -602,6 +604,64 @@ def update_question_review_status(question_id):
     except Exception as e:
         logger.exception("更新复习状态失败")
         return jsonify({'success': False, 'error': '更新复习状态失败，请稍后重试'}), 500
+
+
+@bp.route('/question/<int:question_id>/review', methods=['POST'])
+def review_question(question_id):
+    """Record a spaced-repetition review result for a question."""
+    try:
+        data = request.get_json(silent=True) or {}
+        with SessionLocal() as db:
+            question = crud.schedule_question_review(
+                db,
+                question_id,
+                rating=data.get('rating') or data.get('quality') or 'good',
+                user_id=_effective_user_id(),
+            )
+            if not question:
+                return jsonify({'success': False, 'error': '题目不存在'}), 404
+            return jsonify({'success': True, 'question': _serialize_question_detail(question)})
+    except ValueError:
+        return jsonify({'success': False, 'error': '无效的复习结果'}), 400
+    except Exception:
+        logger.exception("record question review failed")
+        return jsonify({'success': False, 'error': '记录复习失败，请稍后重试'}), 500
+
+
+@bp.route('/review/due', methods=['GET'])
+def get_due_review_items():
+    """Return due questions and notes for the review page."""
+    try:
+        target_type = request.args.get('target_type') or request.args.get('type') or 'all'
+        limit = request.args.get('limit', 40, type=int)
+        project_id = _project_id_arg()
+        with SessionLocal() as db:
+            result = crud.get_due_reviews(
+                db,
+                user_id=_effective_user_id(),
+                target_type=target_type,
+                limit=limit,
+                project_id=project_id,
+            )
+            from routes.notes import _serialize_note
+
+            questions = [_serialize_question_detail(q) for q in result.get('questions', [])]
+            notes = [_serialize_note(n) for n in result.get('notes', [])]
+            items = (
+                [{'target_type': 'question', 'item': q, 'review_priority': q.get('review_priority', 0)} for q in questions]
+                + [{'target_type': 'note', 'item': n, 'review_priority': n.get('review_priority', 0)} for n in notes]
+            )
+            items.sort(key=lambda x: x.get('review_priority', 0), reverse=True)
+            return jsonify({
+                'success': True,
+                'items': items,
+                'questions': questions,
+                'notes': notes,
+                'total': len(items),
+            })
+    except Exception:
+        logger.exception("load due review items failed")
+        return jsonify({'success': False, 'error': '加载待复习内容失败'}), 500
 
 
 @bp.route('/save-to-db', methods=['POST'])
