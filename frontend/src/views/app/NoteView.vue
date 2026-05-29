@@ -4,7 +4,7 @@
  * 笔记库工作台：顶部筛选 + 统计卡片 + 左侧列表 + 中间详情 + 右侧信息栏。
  */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import * as api from '@/api/index.js'
 import { getNotePreviewText } from '@/utils/index.js'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -21,7 +21,6 @@ defineProps({
   embedded: { type: Boolean, default: false },
 })
 
-const route = useRoute()
 const router = useRouter()
 const { pushToast } = useToast()
 const { activeNoteProjectId, noteProjects } = useProjects()
@@ -33,6 +32,7 @@ const pageSize = ref(10)
 const loading = ref(false)
 const isDeleting = ref(false)
 const filterPanelOpen = ref(false)
+const statsCollapsed = ref(false)
 
 const selectedNote = ref(null)
 const editing = ref(false)
@@ -88,6 +88,8 @@ async function loadNotes() {
   if (!activeNoteProjectId.value) {
     notes.value = []
     total.value = 0
+    selectedNote.value = null
+    editing.value = false
     loading.value = false
     return
   }
@@ -103,7 +105,17 @@ async function loadNotes() {
     })
     notes.value = data.items
     total.value = data.total
-    if (!route.params.subview && notes.value.length) {
+
+    if (!notes.value.length) {
+      selectedNote.value = null
+      editing.value = false
+      return
+    }
+
+    const nextActiveId = selectedNote.value?.id
+    if (nextActiveId && notes.value.some(note => String(note.id) === String(nextActiveId))) {
+      loadNoteDetail(nextActiveId)
+    } else {
       openNote(notes.value[0])
     }
   } catch (e) {
@@ -134,7 +146,9 @@ async function loadTags() {
 }
 
 async function openNote(note) {
-  router.push(`/app/notes/${note.id}`)
+  if (!note?.id) return
+  editing.value = false
+  loadNoteDetail(note.id)
 }
 
 async function loadNoteDetail(id) {
@@ -152,7 +166,6 @@ async function loadNoteDetail(id) {
 function closeDetail() {
   selectedNote.value = null
   editing.value = false
-  router.push('/app/notes')
 }
 
 function startEdit() {
@@ -224,6 +237,7 @@ watch(activeNoteProjectId, () => {
   filters.tag = []
   page.value = 1
   selectedNote.value = null
+  editing.value = false
   loadNotes()
   loadFilterOptions()
   loadTags()
@@ -237,24 +251,11 @@ watch(() => filters.keyword, () => {
     loadNotes()
   }, 500)
 })
-
-watch(() => route.params.subview, (newId) => {
-  if (route.params.view !== 'notes') return
-  if (newId) {
-    loadNoteDetail(newId)
-  } else {
-    selectedNote.value = null
-    editing.value = false
-  }
-}, { immediate: true })
 </script>
 
 <template>
-  <component
-    :is="embedded ? 'div' : ContentPanel"
-    :title="embedded ? undefined : '笔记库'"
-    :class="embedded ? 'flex h-full min-h-0 flex-col overflow-hidden p-4' : ''"
-  >
+  <component :is="embedded ? 'div' : ContentPanel" :title="embedded ? undefined : '笔记库'"
+    :class="embedded ? 'flex h-full min-h-0 flex-col overflow-hidden p-4' : ''">
     <template v-if="!embedded" #toolbar>
       <BaseButton size="sm" variant="primary" @click="goToWorkspace">
         <i class="fa-solid fa-plus"></i>
@@ -263,64 +264,36 @@ watch(() => route.params.subview, (newId) => {
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <NoteToolbar
-        v-model:filter-panel-open="filterPanelOpen"
-        :filters="filters"
-        :subjects="subjects"
-        :tag-names="tagNames"
-        :selected-tags="selectedTags"
-        :total="total"
-        @toggle-tag="toggleTagSelect"
-        @reset="resetFilters"
-      />
+      <NoteToolbar v-model:filter-panel-open="filterPanelOpen" :filters="filters" :subjects="subjects"
+        :tag-names="tagNames" :selected-tags="selectedTags" :total="total" @toggle-tag="toggleTagSelect"
+        @reset="resetFilters" />
 
-      <div v-if="!embedded" class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
-        <BaseStat
-          v-for="card in statsCards"
-          :key="card.label"
-          :label="card.label"
-          :value="card.value"
-          :suffix="card.suffix"
-          :hint="card.hint"
-          :icon="card.icon"
-          :tone="card.tone"
-        />
+      <div>
+        <button
+          @click="statsCollapsed = !statsCollapsed"
+          class="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <i class="fa-solid text-[10px] transition-transform duration-200" :class="statsCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'"></i>
+          {{ statsCollapsed ? '展开统计' : '收起统计' }}
+        </button>
+        <div v-show="!statsCollapsed" class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <BaseStat v-for="card in statsCards" :key="card.label" :label="card.label" :value="card.value"
+            :suffix="card.suffix" :hint="card.hint" :icon="card.icon" :tone="card.tone" />
+        </div>
       </div>
 
-      <div class="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(24rem,0.95fr)_minmax(30rem,1.25fr)_minmax(16rem,0.55fr)]">
-        <NoteListPanel
-          :notes="notesWithPreview"
-          :total="total"
-          :page="page"
-          :page-size="pageSize"
-          :total-pages="totalPages"
-          :loading="loading"
-          :selected-note-id="selectedNote?.id"
-          :has-note-project="hasNoteProject"
-          @refresh="loadNotes"
-          @create-note="goToWorkspace"
-          @open-note="openNote"
-          @page-change="(p) => { page = p }"
-        />
+      <div
+        class="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(24rem,0.95fr)_minmax(30rem,1.25fr)_minmax(16rem,0.55fr)]">
+        <NoteListPanel :notes="notesWithPreview" :total="total" :page="page" :page-size="pageSize"
+          :total-pages="totalPages" :loading="loading" :selected-note-id="selectedNote?.id"
+          :has-note-project="hasNoteProject" @refresh="loadNotes" @create-note="goToWorkspace" @open-note="openNote"
+          @page-change="(p) => { page = p }" />
 
-        <NoteDetailPanel
-          v-model:edit-title="editTitle"
-          v-model:edit-content="editContent"
-          :note="selectedNote"
-          :knowledge-tags="activeNoteTags"
-          :editing="editing"
-          @start-edit="startEdit"
-          @save-edit="saveEdit"
-          @cancel-edit="cancelEdit"
-          @delete-note="doDelete"
-          @close-detail="closeDetail"
-        />
+        <NoteDetailPanel v-model:edit-title="editTitle" v-model:edit-content="editContent" :note="selectedNote"
+          :knowledge-tags="activeNoteTags" :editing="editing" @start-edit="startEdit" @save-edit="saveEdit"
+          @cancel-edit="cancelEdit" @delete-note="doDelete" @close-detail="closeDetail" />
 
-        <NoteInsightAside
-          :note="selectedNote"
-          :knowledge-tags="activeNoteTags"
-          :source-images="sourceImages"
-        />
+        <NoteInsightAside :note="selectedNote" :knowledge-tags="activeNoteTags" :source-images="sourceImages" />
       </div>
     </div>
   </component>

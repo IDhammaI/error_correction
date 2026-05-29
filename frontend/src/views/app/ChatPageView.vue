@@ -13,6 +13,7 @@ import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
+import { useChatSession } from '@/composables/useChatSession.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useProjects } from '@/composables/useProjects.js'
 
@@ -22,6 +23,7 @@ const { pushToast } = useToast()
 const { selectedLlmOption } = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
+const { pendingAiChatProjectId, pendingAiChatQuestionIds } = useChatSession()
 const { currentView, isMobile, canHover } = useWorkspaceNav()
 const { questionProjects } = useProjects()
 
@@ -72,6 +74,20 @@ watch(sessionId, (id, prevId) => {
   if (id) loadMessages()
   else messages.value = []
 }, { immediate: true })
+
+watch(
+  () => [sessionId.value, pendingAiChatProjectId.value, pendingAiChatQuestionIds.value.join(','), questionProjects.value.length],
+  async ([id, projectId, questionIds]) => {
+    if (!id || !projectId || !questionIds) return
+    if (!questionProjects.value.some(project => String(project.id) === String(projectId))) return
+
+    await openContextProject({ id: projectId })
+    selectedContextQuestionIds.value = pendingAiChatQuestionIds.value.slice()
+    pendingAiChatProjectId.value = null
+    pendingAiChatQuestionIds.value = []
+  },
+  { immediate: true },
+)
 
 watch(questionProjects, () => {
   if (contextProjectId.value && !selectedContextProject.value) {

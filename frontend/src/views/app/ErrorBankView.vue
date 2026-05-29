@@ -42,6 +42,7 @@ const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 const activeTab = ref('analysis')
 const workbenchView = ref('list')
+const statsCollapsed = ref(false)
 
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
@@ -201,19 +202,30 @@ defineExpose({
       </BaseButton>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <!-- 顶部统计卡片 -->
-      <div class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
-        <BaseStat
-          v-for="card in statsCards"
-          :key="card.label"
-          :label="card.label"
-          :value="card.value"
-          :suffix="card.suffix"
-          :hint="card.hint"
-          :icon="card.icon"
-          :tone="card.tone"
-        />
+      <div>
+        <button
+          @click="statsCollapsed = !statsCollapsed"
+          class="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <i class="fa-solid text-[10px] transition-transform duration-200" :class="statsCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'"></i>
+          {{ statsCollapsed ? '展开统计' : '收起统计' }}
+        </button>
+        <Transition name="collapse">
+          <div v-show="!statsCollapsed" class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <BaseStat
+              v-for="card in statsCards"
+              :key="card.label"
+              :label="card.label"
+              :value="card.value"
+              :suffix="card.suffix"
+              :hint="card.hint"
+              :icon="card.icon"
+              :tone="card.tone"
+            />
+          </div>
+        </Transition>
       </div>
 
       <!-- 主体：列表/详情主从切换 + 右侧学习分析 -->

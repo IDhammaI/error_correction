@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch, inject } from 'vue'
 import * as api from '@/api/index.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useProjects } from '@/composables/useProjects.js'
@@ -10,6 +10,7 @@ const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
  * 串联“擦除空白、OCR、AI 分割、笔记整理、导出、入库”的工作台主流程。
  */
 export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
+  const openProjectDialog = inject('openProjectDialog', null)
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
   const { activeQuestionProjectId, activeNoteProjectId, loadProjects } = useProjects()
   const eraseLoading = ref(false)
@@ -20,6 +21,11 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const ocrDone = ref(false)
   const eraseEnabled = ref(true)
   const currentRunId = ref(null)
+
+  // 笔记模式默认不启用擦除，试卷模式默认启用
+  watch(uploadMode, (mode) => {
+    eraseEnabled.value = mode !== 'note'
+  })
 
   /**
    * 从接口错误里同步额度快照，并判断是否命中免费额度耗尽。
@@ -162,7 +168,11 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
    */
   const doNoteOrganize = async () => {
     if (!activeNoteProjectId.value) {
-      pushToast('error', '请先创建并选择一个笔记本')
+      if (openProjectDialog) {
+        openProjectDialog('note')
+      } else {
+        pushToast('error', '请先创建并选择一个笔记本')
+      }
       return
     }
     splitting.value = true
