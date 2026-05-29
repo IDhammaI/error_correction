@@ -9,11 +9,17 @@ import { useTheme } from '@/composables/useTheme.js'
 import HomePill from '@/components/features/home/HomePill.vue'
 import BaseLogo from '@/components/base/BaseLogo.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
 
 const { initTheme } = useTheme()
 const route = useRoute()
 const router = useRouter()
 const transitionName = ref('auth-slide-left')
+
+const tabOptions = [
+  { label: '登录', value: '/auth/login' },
+  { label: '注册', value: '/auth/register' }
+]
 
 onMounted(() => {
   initTheme()
@@ -212,22 +218,14 @@ onMounted(() => {
         </div>
 
         <!-- Tab 切换 -->
-        <div class="flex rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] p-1 mb-6 transition-colors">
-          <RouterLink
-            to="/auth/login"
-            class="flex-1 py-2 text-sm font-medium rounded-lg text-center transition-all"
-            :class="route.path === '/auth/login'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.08] dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/60'"
-          >登录</RouterLink>
-          <RouterLink
-            to="/auth/register"
-            class="flex-1 py-2 text-sm font-medium rounded-lg text-center transition-all"
-            :class="route.path === '/auth/register'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.08] dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/60'"
-          >注册</RouterLink>
-        </div>
+        <BaseSegmented
+          :model-value="route.path"
+          :options="tabOptions"
+          full-width
+          class="mb-6"
+          size="md"
+          @change="val => router.push(val)"
+        />
 
         <!-- 表单内容（滑动过渡） -->
         <RouterView v-slot="{ Component }">

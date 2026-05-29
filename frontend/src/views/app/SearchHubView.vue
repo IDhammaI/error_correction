@@ -364,7 +364,7 @@ watch(activeLibraryProject, (project) => {
           <div
             v-for="stat in libraryStats"
             :key="stat.label"
-            class="flex min-w-0 items-center gap-3 rounded-md border border-gray-200 bg-white/50 px-3 py-2 dark:border-white/[0.06] dark:bg-white/[0.025]"
+            class="flex min-w-0 items-center gap-3 rounded-md !border-none bg-white/50 px-3 py-2 dark:bg-white/[0.025]"
           >
             <span
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm"

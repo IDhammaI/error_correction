@@ -136,7 +136,7 @@ watch(() => props.modelValue, () => {
   <Listbox :model-value="modelValue" :disabled="disabled || noModels" @update:model-value="selectModel">
     <div class="relative w-56 min-w-0">
       <ListboxButton
-        class="group flex h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white/80 px-3 text-left text-xs font-medium text-gray-900 shadow-sm shadow-black/[0.02] transition-all hover:border-gray-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.09] dark:bg-white/[0.035] dark:text-[#d0d6e0] dark:shadow-black/20 dark:hover:border-white/[0.14] dark:hover:bg-white/[0.06]"
+        class="group flex h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg !border-none bg-white/80 px-3 text-left text-xs font-medium text-gray-900 shadow-sm shadow-black/[0.02] transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/[0.035] dark:text-[#d0d6e0] dark:shadow-black/20 dark:hover:bg-white/[0.06]"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2.5">
           <div
