@@ -21,6 +21,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const ocrDone = ref(false)
   const eraseEnabled = ref(true)
   const currentRunId = ref(null)
+  const currentRecordId = ref(null)
 
   // 笔记模式默认不启用擦除，试卷模式默认启用
   watch(uploadMode, (mode) => {
@@ -268,7 +269,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       const answers = questions.value
         .filter(q => selectedIds.has(q.uid) && (q.answer || q.user_answer))
         .map(q => ({ uid: q.uid, answer: q.answer || '', user_answer: q.user_answer || '' }))
-      const data = await api.saveToDb(Array.from(selectedIds), answers, currentRunId.value, projectId)
+      const data = await api.saveToDb(Array.from(selectedIds), answers, currentRunId.value, projectId, currentRecordId.value)
       await loadProjects()
       pushToast('success', data.message || '已导入错题库')
       errorBankRef?.value?.refresh()
@@ -279,9 +280,17 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     }
   }
 
+  /**
+   * 设置当前记录 ID（用于历史记录导入场景）。
+   */
+  const setCurrentRecordId = (id) => {
+    currentRecordId.value = id
+  }
+
   return {
     eraseEnabled, eraseLoading, eraseImages, eraseDone,
     ocrLoading, ocrPages, ocrDone,
+    currentRunId, currentRecordId, setCurrentRecordId,
     startProcess, doErase, doOcr, doSplit, doExport, doSaveToDb,
   }
 }
