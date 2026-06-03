@@ -141,6 +141,7 @@ const doReset = async () => {
 const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
   ocrLoading, ocrPages, ocrDone,
+  currentRunId, currentRecordId, setCurrentRecordId,
   startProcess, doErase, doOcr, doSplit, doSaveToDb,
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
@@ -166,6 +167,10 @@ const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
   splitCompleted.value = true; step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
+  // 保存 record_id，用于后续导入错题库
+  setCurrentRecordId(record?.id || null)
+  // 清除 run_id，因为历史记录导入不依赖 WorkflowRun
+  currentRunId.value = null
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
 }
@@ -294,7 +299,7 @@ onBeforeUnmount(() => {
 
         <template #sidebar>
           <SplitHistory :theme="theme" :visible="showSplitHistory" @push-toast="pushToast" @open-image="openModal"
-            @load-record="(r) => { handleLoadRecord(r); showSplitHistory = false }"
+            @load-record="(qs, record) => { handleLoadRecord(qs, record); showSplitHistory = false }"
             @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'" />
         </template>
 
@@ -355,6 +360,14 @@ onBeforeUnmount(() => {
             <i class="fa-solid fa-database w-4 text-center text-xs"></i>
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
             <i v-if="String(importTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
+          </button>
+          <button v-if="openProjectDialog" type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
+              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
+              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
+            @click="openProjectDialog('question')">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>新建错题库</span>
           </button>
         </div>
       </div>
