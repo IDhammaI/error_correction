@@ -20,10 +20,13 @@ frontend/dist/
 frontend/package-lock.json
 frontend/uploads/
 frontend/output
+presentation-vue/
 
 # 后端运行产物
 backend/runtime_data/
 backend/output/
+backend/*.db
+backend/db/*.db
 output/
 __pycache__/
 backend/static/vue/assets
