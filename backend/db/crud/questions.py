@@ -11,13 +11,14 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from db.models import UploadBatch, Question, QuestionEmbedding, KnowledgeTag, QuestionTagMapping
+from db.models import UploadBatch, Question, QuestionEmbedding, KnowledgeTag, QuestionTagMapping, Project
 from db.crud.tags import _parse_tag_list, get_or_create_tag
 
 logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL_NAME = "local-hash-v1"
 EMBEDDING_DIM = 256
+DEFAULT_QUESTION_PROJECT_NAME = "默认错题库"
 SEMANTIC_EXPANSIONS = {
     "方法": ["工艺", "处理", "方案"],
     "处理方法": ["工艺", "处理效应", "甲工艺", "乙工艺"],
@@ -334,7 +335,64 @@ def question_exists(db, content_hash, user_id=None, project_id=None):
         q = q.filter(Question.user_id == user_id)
     if project_id is not None:
         q = q.filter(Question.project_id == project_id)
-    return q.first()
+    found = q.first()
+    if found or project_id is not None:
+        return found
+
+    # 兼容旧调用：调用方只传基础 hash 时，也能找到项目化后存储的 scoped hash。
+    candidates = db.query(Question)
+    if user_id is not None:
+        candidates = candidates.filter(Question.user_id == user_id)
+    for question in candidates.all():
+        if question.project_id is None:
+            continue
+        scoped_hash = hashlib.sha256(
+            f"{question.project_id}:{content_hash}".encode()
+        ).hexdigest()
+        if question.content_hash == scoped_hash:
+            return question
+    return None
+
+
+def _ensure_default_question_project(db: Session, user_id=None) -> Project:
+    query = db.query(Project).filter(
+        Project.project_type == "question",
+        Project.is_default == True,
+    )
+    if user_id is not None:
+        query = query.filter(Project.user_id == user_id)
+    else:
+        query = query.filter(Project.user_id == None)
+    project = query.first()
+    if project:
+        return project
+
+    query = db.query(Project).filter(
+        Project.project_type == "question",
+        Project.name == DEFAULT_QUESTION_PROJECT_NAME,
+    )
+    if user_id is not None:
+        query = query.filter(Project.user_id == user_id)
+    else:
+        query = query.filter(Project.user_id == None)
+    project = query.first()
+    if project:
+        project.is_default = True
+        db.flush()
+        return project
+
+    project = Project(
+        user_id=user_id,
+        name=DEFAULT_QUESTION_PROJECT_NAME,
+        project_type="question",
+        description="",
+        color="#2563eb",
+        icon="database",
+        is_default=True,
+    )
+    db.add(project)
+    db.flush()
+    return project
 
 
 def save_questions_to_db(
@@ -359,7 +417,7 @@ def save_questions_to_db(
     subject = batch_info.get("subject") or "未知"
     project_id = project_id or batch_info.get("project_id")
     if not project_id:
-        raise ValueError("PROJECT_REQUIRED")
+        project_id = _ensure_default_question_project(db, user_id).id
 
     # 创建批次记录
     batch = UploadBatch(

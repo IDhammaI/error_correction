@@ -748,8 +748,6 @@ def save_to_db():
                     else None
                 )
             except ValueError as exc:
-                if str(exc) == "PROJECT_REQUIRED":
-                    return jsonify({'success': False, 'error': '请先创建并选择一个错题库'}), 400
                 return jsonify({'success': False, 'error': '项目不存在'}), 404
             result = crud.save_questions_to_db(
                 db,

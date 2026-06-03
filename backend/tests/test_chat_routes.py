@@ -20,7 +20,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, ChatMessage, ProviderConfig, User
+from db.models import Base, ChatMessage, ProviderConfig, SystemProviderConfig, User
 from db import crud
 from tests.conftest import make_question
 
@@ -78,11 +78,24 @@ def client(test_db):
 
 def _ensure_test_user(test_db):
     user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
-    if user:
-        return user
+    if not user:
+        user = User(id=TEST_USER_ID, username="test", email="test@test.com", password_hash="x")
+        test_db.add(user)
 
-    user = User(id=TEST_USER_ID, username="test", email="test@test.com", password_hash="x")
-    test_db.add(user)
+    provider = test_db.query(SystemProviderConfig).filter(
+        SystemProviderConfig.id == "system-openai-test"
+    ).first()
+    if not provider:
+        test_db.add(
+            SystemProviderConfig(
+                id="system-openai-test",
+                category="openai",
+                name="测试平台 OpenAI",
+                is_active=True,
+                api_key="sk-system-test",
+                model_name="gpt-4o-mini",
+            )
+        )
     test_db.commit()
     return user
 
