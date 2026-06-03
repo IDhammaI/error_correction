@@ -210,6 +210,51 @@ def _clear_upload_runtime_state(user_id: Optional[int]) -> None:
     _clear_ocr_cache(user_id)
 
 
+def _is_pdf_file(file_path: str) -> bool:
+    return PurePath(file_path).suffix.lower() == ".pdf"
+
+
+def _expand_erase_sources(file_paths: list[str]) -> list[dict]:
+    """将擦除输入展开为按页图片，确保 PDF 擦除和扣费都按页处理。"""
+    expanded_sources = []
+    os.makedirs(str(settings.pages_dir), exist_ok=True)
+
+    for file_path in file_paths:
+        if not _is_pdf_file(file_path):
+            expanded_sources.append(
+                {
+                    "input_path": file_path,
+                    "preview_path": file_path,
+                }
+            )
+            continue
+
+        try:
+            from pdf2image import convert_from_path
+
+            page_images = convert_from_path(str(file_path), fmt="png")
+        except Exception as exc:
+            logger.warning("PDF 擦除预处理失败: %s", file_path, exc_info=True)
+            raise ValueError("PDF 擦除失败，当前环境缺少 PDF 转图片支持") from exc
+
+        if not page_images:
+            raise ValueError("PDF 不包含可处理的页面")
+
+        file_stem = PurePath(file_path).stem
+        for index, page_image in enumerate(page_images, start=1):
+            rendered_name = f"erase_source_{uuid.uuid4().hex[:8]}_{file_stem}_{index}.png"
+            rendered_path = os.path.join(str(settings.pages_dir), rendered_name)
+            page_image.save(rendered_path, format="PNG")
+            expanded_sources.append(
+                {
+                    "input_path": rendered_path,
+                    "preview_path": rendered_path,
+                }
+            )
+
+    return expanded_sources
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -443,6 +488,27 @@ def run_erase():
         if not file_paths:
             return jsonify({"success": False, "error": "请先上传文件"}), 400
 
+        erase_sources = _expand_erase_sources(file_paths)
+        required_quota_amount = len(erase_sources)
+
+        # 额度校验
+        should_consume_quota = bool(uid)
+        if should_consume_quota:
+            with SessionLocal() as db:
+                quota_user = crud.get_user_by_id(db, uid)
+                if not quota_user:
+                    session.clear()
+                    return jsonify({"success": False, "error": "用户不存在"}), 401
+                if not has_daily_free_quota(
+                    db, quota_user, amount=required_quota_amount
+                ):
+                    payload, status = quota_exceeded_response(
+                        db,
+                        quota_user,
+                        amount=required_quota_amount,
+                    )
+                    return jsonify(payload), status
+
         ensexam_configured = settings.model_path.exists()
         if not ensexam_configured:
             return jsonify({"success": False, "error": "EnsExam 模型未配置"}), 400
@@ -451,14 +517,26 @@ def run_erase():
 
         engine = InferenceEngine()
         erased_paths = []
-        for fp in file_paths:
-            with open(fp, "rb") as f:
+        for source in erase_sources:
+            with open(source["input_path"], "rb") as f:
                 img_bytes = f.read()
             result_img = engine.run(img_bytes)
-            erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.splitext(os.path.basename(fp))[0]}.png"
+            erased_name = f"auto_{uuid.uuid4().hex[:8]}_{os.path.splitext(os.path.basename(source['input_path']))[0]}.png"
             erased_path = settings.erased_dir / erased_name
             result_img.save(str(erased_path), format="PNG")
             erased_paths.append(str(erased_path))
+
+        # 扣减额度
+        if should_consume_quota:
+            with SessionLocal() as db:
+                quota_user = crud.get_user_by_id(db, uid)
+                if quota_user:
+                    consume_daily_free_quota(
+                        db,
+                        quota_user,
+                        amount=required_quota_amount,
+                        action_type="erase",
+                    )
 
         # 保存擦除后的路径到会话，供 /api/ocr 复用
         with session_lock:
@@ -468,11 +546,11 @@ def run_erase():
         _clear_ocr_cache(uid)
 
         preview = []
-        for i, (orig, erased) in enumerate(zip(file_paths, erased_paths)):
+        for i, (source, erased) in enumerate(zip(erase_sources, erased_paths)):
             preview.append(
                 {
                     "index": i,
-                    "original_url": f"/api/image/{os.path.basename(orig)}",
+                    "original_url": f"/api/image/{os.path.basename(source['preview_path'])}",
                     "erased_url": f"/api/image/{os.path.basename(erased)}",
                 }
             )
@@ -698,6 +776,7 @@ def split_questions():
     """
     run_id = None
     user_id = None
+    required_quota_amount = 1
     try:
         # 读取请求体参数（模型供应商 + 模型名称）
         data = request.get_json(silent=True) or {}
@@ -709,6 +788,7 @@ def split_questions():
         user_id = session.get("user_id")
         ocr_credentials = {}
         should_consume_quota = False
+        ocr_cache_page_count = None
         with SessionLocal() as db:
             try:
                 llm_selection = resolve_llm_selection(
@@ -738,8 +818,23 @@ def split_questions():
                     if not quota_user:
                         session.clear()
                         return jsonify({"success": False, "error": "用户不存在"}), 401
-                    if not has_daily_free_quota(db, quota_user):
-                        payload, status = quota_exceeded_response(db, quota_user)
+                    cache_path = _ocr_cache_path(user_id)
+                    if os.path.exists(cache_path):
+                        try:
+                            with open(cache_path, "r", encoding="utf-8") as f:
+                                cached_ocr_data = json.load(f)
+                            if isinstance(cached_ocr_data, list) and cached_ocr_data:
+                                ocr_cache_page_count = len(cached_ocr_data)
+                        except Exception:
+                            logger.warning("读取 OCR 缓存页数失败，将在分割完成后按实际页数校验", exc_info=True)
+                    if ocr_cache_page_count:
+                        required_quota_amount = ocr_cache_page_count
+                    if not has_daily_free_quota(db, quota_user, amount=required_quota_amount):
+                        payload, status = quota_exceeded_response(
+                            db,
+                            quota_user,
+                            amount=required_quota_amount,
+                        )
                         return jsonify(payload), status
 
                 ocr_provider = crud.get_active_provider(db, user_id, "paddleocr")
@@ -803,6 +898,10 @@ def split_questions():
 
         questions = result_state.get("questions", [])
         warnings = result_state.get("warnings", [])
+        if should_consume_quota:
+            actual_ocr_data = result_state.get("ocr_data") or []
+            if actual_ocr_data:
+                required_quota_amount = len(actual_ocr_data)
 
         if not questions:
             failure_message = (
@@ -869,7 +968,14 @@ def split_questions():
             with SessionLocal() as db:
                 quota_user = crud.get_user_by_id(db, user_id)
                 if quota_user:
-                    consume_daily_free_quota(db, quota_user)
+                    if not has_daily_free_quota(db, quota_user, amount=required_quota_amount):
+                        payload, status = quota_exceeded_response(
+                            db,
+                            quota_user,
+                            amount=required_quota_amount,
+                        )
+                        return jsonify(payload), status
+                    consume_daily_free_quota(db, quota_user, amount=required_quota_amount, action_type="split")
 
         return jsonify(
             {

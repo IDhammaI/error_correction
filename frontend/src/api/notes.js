@@ -26,6 +26,17 @@ export function createNote(formData, { onProgress, onSuccess, onError } = {}) {
   return xhr
 }
 
+/** 将已整理好的笔记结果保存到指定笔记本。 */
+export async function saveOrganizedNote(payload) {
+  const resp = await fetch('/api/notes/save-organized', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await assertJsonSuccess(resp, '保存笔记失败')
+  return data.note
+}
+
 /** 按分页、科目、知识点、关键词和项目查询笔记列表。 */
 export async function fetchNotes(params = {}) {
   const query = new URLSearchParams()

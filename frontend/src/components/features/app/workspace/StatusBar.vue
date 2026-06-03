@@ -7,7 +7,7 @@
 import BaseStatusPill from '@/components/base/BaseStatusPill.vue'
 import ModelProviderSelect from '@/components/features/app/workspace/ModelProviderSelect.vue'
 
-const emit = defineEmits(['update:selectedLlmOptionId'])
+const emit = defineEmits(['update:selected-llm-option-id'])
 
 defineProps({
   statusLoading: { type: Boolean, default: true },
@@ -56,7 +56,7 @@ defineProps({
         :disabled="disabled"
         :no-models="noModels"
         :status-loading="statusLoading"
-        @update:model-value="(value) => emit('update:selectedLlmOptionId', value)"
+        @update:model-value="(value) => emit('update:selected-llm-option-id', value)"
       />
     </div>
   </div>

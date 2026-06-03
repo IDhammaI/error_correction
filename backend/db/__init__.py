@@ -83,6 +83,24 @@ def _migrate_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_device_uuid ON device_captures(device_uuid)")
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_user_id ON device_captures(user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_file_key ON device_captures(file_key)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS quota_usage_events (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                action_type VARCHAR(32) NOT NULL,
+                amount INTEGER NOT NULL DEFAULT 1,
+                summary VARCHAR(120) NOT NULL DEFAULT '',
+                quota_date VARCHAR(10) NOT NULL,
+                created_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_user_id ON quota_usage_events(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_action_type ON quota_usage_events(action_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_quota_date ON quota_usage_events(quota_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_created_at ON quota_usage_events(created_at)")
         conn.commit()
         # 检查 questions 表是否有 answer 列
         cursor.execute("PRAGMA table_info(questions)")
@@ -161,7 +179,7 @@ def _migrate_schema():
             cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
             conn.commit()
         if 'daily_free_quota' not in user_columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota INTEGER DEFAULT 5")
+            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota INTEGER DEFAULT 100")
             conn.commit()
         if 'daily_free_used' not in user_columns:
             cursor.execute("ALTER TABLE users ADD COLUMN daily_free_used INTEGER DEFAULT 0")

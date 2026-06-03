@@ -3,9 +3,12 @@
  * BaseListGroup
  * 类 Linear 设置项分组容器
  */
+import BaseSurface from './BaseSurface.vue'
+
 defineProps({
   title: { type: String, default: '' },
   description: { type: String, default: '' },
+  borderless: { type: Boolean, default: false },
 })
 </script>
 
@@ -19,11 +22,19 @@ defineProps({
     </slot>
     
     <!-- 列表容器 -->
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-[#1b1b1d]">
-      <ul class="flex flex-col">
+    <div
+      v-if="borderless"
+      class="overflow-hidden rounded-xl bg-transparent shadow-none border-transparent"
+    >
+      <div class="flex flex-col">
         <slot />
-      </ul>
+      </div>
     </div>
+    <BaseSurface v-else>
+      <div class="flex flex-col">
+        <slot />
+      </div>
+    </BaseSurface>
 
     <!-- 分组描述/说明 -->
     <p v-if="description" class="mt-2 ml-1 text-xs text-gray-500 dark:text-[#8a8f98]">

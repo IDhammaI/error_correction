@@ -36,7 +36,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:upload-mode',
   'update:erase-enabled',
-  'update:selectedLlmOptionId',
+  'update:selected-llm-option-id',
   'upload',
   'remove-file',
   'split',
@@ -61,8 +61,9 @@ const uploadModeOptions = [
 
     <div class="h-4 w-px bg-gray-300 dark:bg-white/[0.08] transition-colors"></div>
 
-    <!-- 擦除开关 -->
+    <!-- 擦除开关仅对试卷分割开放，笔记整理固定禁用擦除 -->
     <BaseSwitch
+      v-if="uploadMode !== 'note'"
       :model-value="eraseEnabled"
       label="擦除笔迹"
       @update:model-value="(value) => emit('update:erase-enabled', value)"
@@ -78,7 +79,7 @@ const uploadModeOptions = [
       <StatusBar :status-loading="statusLoading" :status-error="statusError" :status-pills="statusPills"
         :model-options-data="modelOptionsData" :selected-llm-option-id="selectedLlmOptionId"
         :disabled="splitting || splitCompleted" :no-models="!hasConfiguredModel"
-        @update:selected-llm-option-id="(v) => emit('update:selectedLlmOptionId', v)" />
+        @update:selected-llm-option-id="(v) => emit('update:selected-llm-option-id', v)" />
     </div>
   </div>
 

@@ -46,7 +46,7 @@ const backdropStyle = computed(() => ({
           :class="maxWidth"
         >
           <slot name="header" :close="close">
-            <div class="flex items-center justify-between px-6 pt-5 pb-4">
+            <div class="flex items-center justify-between border-b border-slate-200/60 px-6 pt-5 pb-4 dark:border-[#2f3336]">
               <div class="flex items-center gap-3">
                 <div v-if="$slots.icon || icon" class="flex h-9 w-9 items-center justify-center rounded-lg" :class="iconBg">
                   <slot name="icon">

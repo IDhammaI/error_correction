@@ -25,7 +25,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
     session_version = Column(Integer, default=0, nullable=False)
-    daily_free_quota = Column(Integer, default=5, nullable=False)
+    daily_free_quota = Column(Integer, default=100, nullable=False)
     daily_free_used = Column(Integer, default=0, nullable=False)
     daily_free_quota_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -39,6 +39,22 @@ class User(Base):
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
     device_bindings = relationship("DeviceBinding", back_populates="user")
     device_captures = relationship("DeviceCapture", back_populates="user")
+    quota_usage_events = relationship("QuotaUsageEvent", back_populates="user", cascade="all, delete-orphan")
+
+
+class QuotaUsageEvent(Base):
+    """额度消费事件，用于前端展示今日拆分和最近活动。"""
+    __tablename__ = "quota_usage_events"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action_type = Column(String(32), nullable=False, index=True)
+    amount = Column(Integer, default=1, nullable=False)
+    summary = Column(String(120), default="", nullable=False)
+    quota_date = Column(String(10), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", back_populates="quota_usage_events")
 
 
 class DeviceBinding(Base):

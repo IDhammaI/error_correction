@@ -220,7 +220,7 @@ class Settings(BaseSettings):
     # 上传 & 请求限制
     max_file_size_mb: int = 50
     allowed_extensions: set[str] = {"pdf", "png", "jpg", "jpeg", "bmp", "tiff", "webp"}
-    daily_free_quota: int = 5
+    daily_free_quota: int = 100
     trust_env: bool = (
         True  # 是否信任系统代理环境变量，Windows 下设为 False 可解 WinError 10054
     )
