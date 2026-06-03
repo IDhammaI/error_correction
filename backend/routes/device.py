@@ -154,6 +154,36 @@ def bind_device():
     )
 
 
+@bp.route("/binding", methods=["GET"])
+def get_device_binding():
+    """Return the current user's active hardware camera binding, if any."""
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+
+    with SessionLocal() as db:
+        binding = crud.get_latest_user_device_binding(db, user_id)
+
+    if binding is None:
+        return jsonify(
+            {
+                "success": True,
+                "bound": False,
+                "device_uuid": None,
+                "qr_payload": None,
+            }
+        )
+
+    return jsonify(
+        {
+            "success": True,
+            "bound": True,
+            "device_uuid": binding.device_uuid,
+            "qr_payload": _device_qr_payload(binding.device_uuid),
+        }
+    )
+
+
 @bp.route("/unbind", methods=["POST"])
 def unbind_device():
     data = request.get_json(silent=True) or {}

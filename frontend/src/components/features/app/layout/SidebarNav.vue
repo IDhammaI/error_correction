@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 /**
  * SidebarNav.vue
  * 工作台左侧边栏导航（PC 端双模式 + 移动端抽屉）+ 底部 Tab 导航（移动端）
@@ -64,6 +64,15 @@ const isSettingsView = computed(() => props.currentView === 'settings')
 const isNarrow = computed(() => !props.isMobile && props.sidebarMode === 'collapsed-icon')
 const topNavGroups = computed(() => props.navGroups.filter(group => !group.label))
 const lowerNavGroups = computed(() => props.navGroups.filter(group => group.label))
+const settingsApiItemIds = new Set(['system-providers', 'api'])
+const settingsNavGroups = computed(() => {
+  const apiItems = props.settingsNavItems.filter(item => settingsApiItemIds.has(item.id))
+  const basicItems = props.settingsNavItems.filter(item => !settingsApiItemIds.has(item.id))
+  return [
+    { label: null, items: basicItems },
+    { label: 'API', items: apiItems },
+  ].filter(group => group.items.length)
+})
 const errorBankProjects = computed(() => props.projects.filter(p => !p.is_default && (p.project_type || 'question') === 'question'))
 const noteProjects = computed(() => props.projects.filter(p => !p.is_default && p.project_type === 'note'))
 const projectGroupsCollapsed = ref({
@@ -329,7 +338,7 @@ const userQuotaSummary = computed(() => {
   const remaining = userQuota.value?.remaining
   const total = userQuota.value?.daily_free_quota
   if (remaining == null || total == null) return ''
-  return `今日剩余 ${remaining} / ${total} 次`
+  return `今日剩余 ${remaining} / ${total} 额度`
 })
 </script>
 
@@ -365,24 +374,35 @@ const userQuotaSummary = computed(() => {
               :class="useNarrowLayout ? 'max-h-0 pt-0 pb-0 opacity-0' : 'max-h-8 pt-2 pb-1 opacity-100'">
               设置
             </div>
-            <div class="flex flex-col gap-1.5">
-              <template v-for="item in settingsNavItems" :key="item.id">
-                <BaseTooltip :text="item.label" :placement="useNarrowLayout ? 'right' : 'bottom'" :disabled="!useNarrowLayout">
-                  <button @click="setSettingsEntry(item.id)"
-                    class="sidebar-active-fade group relative z-10 flex h-10 items-center rounded-lg border px-3 py-0 text-sm font-medium transition-all duration-300 ease-[var(--sidebar-transition-timing)] w-full"
-                    :class="[
-                      currentSettingsSubView === item.id
-                        ? 'sidebar-active-fade--active text-white shadow-sm border-transparent'
-                        : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
-                      'gap-3'
-                    ]">
-                    <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
-                    <span v-if="renderExpandedContent"
-                      class="overflow-hidden whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
-                      :class="useNarrowLayout ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[128px] translate-x-0 opacity-100'">{{
-                        item.label }}</span>
-                  </button>
-                </BaseTooltip>
+            <div class="flex flex-col gap-3">
+              <template v-for="(group, groupIndex) in settingsNavGroups" :key="`settings-${groupIndex}`">
+                <div class="flex flex-col gap-1.5">
+                  <div
+                    v-if="group.label && renderExpandedContent"
+                    class="overflow-hidden px-3 text-[11px] font-medium uppercase tracking-[0.15em] text-gray-400 transition-all duration-300 ease-[var(--sidebar-transition-timing)] dark:text-[#62666d]"
+                    :class="useNarrowLayout ? 'max-h-0 pt-0 pb-0 opacity-0' : 'max-h-8 pt-2 pb-1 opacity-100'"
+                  >
+                    {{ group.label }}
+                  </div>
+                  <template v-for="item in group.items" :key="item.id">
+                    <BaseTooltip :text="item.label" :placement="useNarrowLayout ? 'right' : 'bottom'" :disabled="!useNarrowLayout">
+                      <button @click="setSettingsEntry(item.id)"
+                        class="sidebar-active-fade group relative z-10 flex h-10 items-center rounded-lg border px-3 py-0 text-sm font-medium transition-all duration-300 ease-[var(--sidebar-transition-timing)] w-full"
+                        :class="[
+                          currentSettingsSubView === item.id
+                            ? 'sidebar-active-fade--active text-white shadow-sm border-transparent'
+                            : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#8a8f98] dark:hover:bg-white/[0.04] dark:hover:text-[#d0d6e0]',
+                          'gap-3'
+                        ]">
+                        <i class="fa-solid w-4 text-center text-sm" :class="item.icon"></i>
+                        <span v-if="renderExpandedContent"
+                          class="overflow-hidden whitespace-nowrap transition-all duration-300 ease-[var(--sidebar-transition-timing)]"
+                          :class="useNarrowLayout ? 'max-w-0 -translate-x-1 opacity-0' : 'max-w-[128px] translate-x-0 opacity-100'">{{
+                            item.label }}</span>
+                      </button>
+                    </BaseTooltip>
+                  </template>
+                </div>
               </template>
             </div>
           </nav>
