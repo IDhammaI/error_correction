@@ -5,6 +5,7 @@
  */
 import BaseListGroup from '@/components/base/BaseListGroup.vue'
 import BaseListItem from '@/components/base/BaseListItem.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 
 defineProps({
   icon: { type: String, default: '' },
@@ -20,7 +21,7 @@ const emit = defineEmits(['add', 'toggle-active', 'edit', 'remove'])
 </script>
 
 <template>
-  <div class="mb-10 last:mb-0">
+  <div class="mb-8 last:mb-0">
     <!-- 区块标题 -->
     <div class="mb-4 flex items-center justify-between pl-1">
       <div class="flex items-center gap-3">
@@ -33,75 +34,67 @@ const emit = defineEmits(['add', 'toggle-active', 'edit', 'remove'])
           <p v-if="subtitle" class="text-xs text-slate-500 dark:text-slate-400">{{ subtitle }}</p>
         </div>
       </div>
-      <button
+      <BaseButton
         @click="emit('add')"
-        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-400 dark:hover:bg-white/[0.08] dark:hover:text-[#f7f8f8]"
+        variant="primary"
+        size="sm"
+        class="!h-8 !px-3 !rounded-lg !text-xs !font-bold"
       >
         <i class="fa-solid fa-plus text-[10px]"></i>
         添加
-      </button>
+      </BaseButton>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="providers.length === 0" class="flex min-h-[56px] items-center justify-center rounded-2xl border border-dashed border-gray-200 dark:border-white/[0.08]">
-      <div class="flex items-center gap-2">
-        <i class="fa-solid fa-plug text-sm text-slate-300 dark:text-slate-600"></i>
-        <span class="text-xs font-medium text-slate-400 dark:text-slate-500">尚未配置，点击右侧按钮添加</span>
+    <div
+      v-if="providers.length === 0"
+      @click="emit('add')"
+      class="group flex min-h-[56px] cursor-pointer items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/80 transition-all hover:border-gray-300 hover:bg-gray-100 dark:border-white/[0.08] dark:bg-white/[0.035] dark:hover:border-white/[0.15] dark:hover:bg-white/[0.06]"
+    >
+      <div class="flex items-center gap-2 text-slate-400 transition-colors group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400">
+        <i class="fa-solid fa-plus-circle text-sm"></i>
+        <span class="text-xs font-medium">尚未配置，点击此处快速添加</span>
       </div>
     </div>
 
     <!-- Provider 列表 -->
-    <BaseListGroup v-else>
-      <BaseListItem
-        v-for="(provider, idx) in providers" 
+    <div v-else class="flex flex-col gap-3">
+      <div
+        v-for="(provider, idx) in providers"
         :key="provider.id"
-        :label="provider.name || '未命名'"
-        class="group"
-        @click="emit('toggle-active', provider.id)"
+        class="group relative flex min-h-[56px] items-center justify-between rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-2 transition-all hover:bg-gray-100 dark:border-white/[0.08] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
       >
-        <template #icon>
-          <div
-            class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all"
-            :class="activeId === provider.id
-              ? 'border-slate-900 bg-slate-900 dark:border-[#f7f8f8] dark:bg-[#f7f8f8]'
-              : 'border-gray-300 dark:border-white/20'"
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 dark:bg-white/[0.04]">
+            <i class="fa-solid fa-plug text-sm text-slate-500 dark:text-slate-400"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h4 class="truncate text-[15px] font-bold text-slate-900 dark:text-[#f7f8f8]">
+              {{ provider.name || '未命名' }}
+            </h4>
+            <p v-if="provider.model_name" class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+              {{ provider.model_name }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 pl-4 border-l border-gray-50 dark:border-white/[0.04]">
+          <button
+            @click.stop="emit('edit', provider, idx)"
+            class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+            title="编辑"
           >
-            <i v-if="activeId === provider.id" class="fa-solid fa-check text-[8px] text-white dark:text-[#1b1b1d]"></i>
-          </div>
-        </template>
-
-        <template #right>
-          <div class="ml-auto flex items-center justify-end gap-4 px-3 py-1.5">
-            <!-- 状态标签 -->
-            <div class="flex items-center gap-2">
-              <span v-if="activeId === provider.id" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 ring-1 ring-inset ring-gray-500/10 dark:bg-white/10 dark:text-[#f7f8f8] dark:ring-white/20">
-                使用中
-              </span>
-              <span v-else-if="provider.api_key_set" class="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-bold text-gray-500 ring-1 ring-inset ring-gray-500/20 dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
-                已配置
-              </span>
-            </div>
-
-            <!-- 操作按钮 -->
-            <div class="flex items-center gap-1">
-              <button
-                @click.stop="emit('edit', provider, idx)"
-                class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-gray-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-300"
-                title="设置"
-              >
-                <i class="fa-solid fa-gear text-xs"></i>
-              </button>
-              <button
-                @click.stop="emit('remove', idx)"
-                class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
-                title="删除"
-              >
-                <i class="fa-solid fa-trash-can text-xs"></i>
-              </button>
-            </div>
-          </div>
-        </template>
-      </BaseListItem>
-    </BaseListGroup>
+            <i class="fa-regular fa-pen-to-square text-[13px]"></i>
+          </button>
+          <button
+            @click.stop="emit('remove', idx)"
+            class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:text-rose-500"
+            title="删除"
+          >
+            <i class="fa-regular fa-trash-can text-[13px]"></i>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

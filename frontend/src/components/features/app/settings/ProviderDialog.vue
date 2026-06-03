@@ -8,6 +8,9 @@ import { useToast } from '@/composables/useToast.js'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import BaseSearchableSelect from '@/components/base/BaseSearchableSelect.vue'
+import BaseSwitch from '@/components/base/BaseSwitch.vue'
 import providerOpenaiIcon from '@/assets/provider-openai.svg'
 import providerAnthropicIcon from '@/assets/provider-anthropic.svg'
 import providerPaddleocrIcon from '@/assets/provider-paddleocr.svg'
@@ -93,6 +96,47 @@ const defaultForm = () => ({
 })
 
 const form = ref(defaultForm())
+const CUSTOM_BASE_URL_PRESET = '__custom__'
+
+const OPENAI_BASE_URL_PRESETS = [
+  { label: 'OpenAI 官方', value: 'openai_official', url: '' },
+  { label: 'DeepSeek', value: 'deepseek', url: 'https://api.deepseek.com' },
+  { label: '阿里百炼', value: 'dashscope', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { label: 'Moonshot', value: 'moonshot', url: 'https://api.moonshot.cn/v1' },
+  { label: '自定义', value: CUSTOM_BASE_URL_PRESET, url: null },
+]
+
+const baseUrlPreset = ref('openai_official')
+
+const normalizeUrl = (value) => (value || '').trim().replace(/\/+$/, '')
+
+const resolveBaseUrlPreset = (type, baseUrl) => {
+  if (type !== 'openai') return CUSTOM_BASE_URL_PRESET
+  const normalized = normalizeUrl(baseUrl)
+  if (!normalized) return 'openai_official'
+  const matchedPreset = OPENAI_BASE_URL_PRESETS.find((preset) => {
+    if (preset.url === null) return false
+    return normalizeUrl(preset.url) === normalized
+  })
+  return matchedPreset?.value || CUSTOM_BASE_URL_PRESET
+}
+
+const selectBaseUrlPreset = (presetValue) => {
+  baseUrlPreset.value = presetValue
+  if (props.type !== 'openai') return
+  const preset = OPENAI_BASE_URL_PRESETS.find(item => item.value === presetValue)
+  if (!preset) return
+  if (preset.url !== null) form.value.base_url = preset.url
+}
+
+const selectedModels = computed({
+  get: () => (form.value.model_name || '').split(',').map(s => s.trim()).filter(Boolean),
+  set: (values) => {
+    form.value.model_name = Array.isArray(values) ? values.join(', ') : ''
+  },
+})
+
+const selectableModelOptions = computed(() => Array.from(new Set(modelList.value.filter(Boolean))))
 
 // 模型列表相关
 const modelList = ref([])
@@ -152,7 +196,6 @@ watch(() => props.open, (v) => {
   if (!v) return
   modelList.value = []
   fetchModelError.value = ''
-  openDropdown.value = null
   testResult.value = null
   if (props.editData) {
     form.value = {
@@ -169,6 +212,12 @@ watch(() => props.open, (v) => {
     }
   } else {
     form.value = defaultForm()
+  }
+  baseUrlPreset.value = resolveBaseUrlPreset(props.type, form.value.base_url)
+
+  // 编辑已配置的 LLM provider 时，打开弹窗后自动同步一次模型列表。
+  if (props.type !== 'paddleocr' && props.editData?.api_key_set) {
+    fetchModels()
   }
 })
 
@@ -216,6 +265,7 @@ const confirm = () => {
   emit('confirm', { ...form.value })
 }
 
+<<<<<<< HEAD
 // 自定义下�?
 const openDropdown = ref(null) // 'model_name' | 'light_model_name' | null
 const toggleDropdown = (field) => {
@@ -225,6 +275,8 @@ const selectOption = (field, value) => {
   form.value[field] = value
   openDropdown.value = null
 }
+=======
+>>>>>>> 5b6b409 (feat(chat): 支持 DeepSeek 深度思考与模型选择优化)
 </script>
 
 <template>
@@ -236,7 +288,7 @@ const selectOption = (field, value) => {
       <i v-else class="fa-solid text-base" :class="typeConfig.iconCls"></i>
     </template>
 
-    <form autocomplete="off" class="space-y-4" @submit.prevent="confirm" @click="openDropdown = null">
+    <form autocomplete="off" class="space-y-4" @submit.prevent="confirm">
       <div>
         <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ type === 'paddleocr' ?
           '服务名称' :
@@ -256,7 +308,28 @@ const selectOption = (field, value) => {
       <div>
         <label class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-400">{{ typeConfig.urlLabel
           }}</label>
-        <BaseInput v-model="form.base_url" type="text" autocomplete="one-time-code"
+        <div v-if="type === 'openai'" class="space-y-3">
+          <BaseSegmented
+            :model-value="baseUrlPreset"
+            :options="OPENAI_BASE_URL_PRESETS"
+            full-width
+            @change="selectBaseUrlPreset"
+          />
+          <BaseInput
+            v-if="baseUrlPreset === CUSTOM_BASE_URL_PRESET"
+            v-model="form.base_url"
+            type="text"
+            autocomplete="one-time-code"
+            placeholder="输入自定义 OpenAI 兼容 Base URL"
+            inputClass="h-10"
+          />
+          <p v-else class="text-[11px] text-slate-400 dark:text-slate-500">
+            {{ baseUrlPreset === 'openai_official'
+              ? '将使用 OpenAI 官方默认地址'
+              : `已自动填入 ${form.base_url}` }}
+          </p>
+        </div>
+        <BaseInput v-else v-model="form.base_url" type="text" autocomplete="one-time-code"
           :placeholder="typeConfig.urlPlaceholder" inputClass="h-10" />
       </div>
 
@@ -283,6 +356,7 @@ const selectOption = (field, value) => {
               </span>
             </span>
           </label>
+<<<<<<< HEAD
           <!-- 有模型列表时用自定义下拉 -->
           <div v-if="modelList.length > 0 && type !== 'paddleocr'" class="relative">
             <button type="button" @click.stop="toggleDropdown('model_name')"
@@ -306,6 +380,18 @@ const selectOption = (field, value) => {
             </Transition>
           </div>
           <!-- 无模型列表时�?input -->
+=======
+          <BaseSearchableSelect
+            v-if="modelList.length > 0 && type !== 'paddleocr'"
+            v-model="selectedModels"
+            :options="selectableModelOptions"
+            placeholder="请选择模型"
+            search-placeholder="搜索模型"
+            empty-text="没有匹配模型"
+            multiple
+          />
+          <!-- 无模型列表时用 input -->
+>>>>>>> 5b6b409 (feat(chat): 支持 DeepSeek 深度思考与模型选择优化)
           <BaseInput v-else v-model="form.model_name" type="text"
             :placeholder="type === 'paddleocr' ? 'e.g. PaddleOCR-VL-1.5' : 'e.g. gpt-4o, deepseek-chat'"
             inputClass="h-10" />
@@ -323,6 +409,7 @@ const selectOption = (field, value) => {
               </span>
             </span>
           </label>
+<<<<<<< HEAD
           <div v-if="modelList.length > 0" class="relative">
             <button type="button" @click.stop="toggleDropdown('light_model_name')"
               class="flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-white/70 px-4 py-2.5 text-left text-sm transition-colors dark:border-white/10 dark:bg-slate-800/60"
@@ -352,6 +439,17 @@ const selectOption = (field, value) => {
             </Transition>
           </div>
           <BaseInput v-else v-model="form.light_model_name" type="text" placeholder="科目识别等轻量任务使�? inputClass="h-10" />
+=======
+          <BaseSearchableSelect
+            v-if="modelList.length > 0"
+            v-model="form.light_model_name"
+            :options="selectableModelOptions"
+            placeholder="不使用"
+            search-placeholder="搜索模型"
+            empty-text="没有匹配模型"
+          />
+          <BaseInput v-else v-model="form.light_model_name" type="text" placeholder="科目识别等轻量任务使用" inputClass="h-10" />
+>>>>>>> 5b6b409 (feat(chat): 支持 DeepSeek 深度思考与模型选择优化)
         </div>
       </div>
 
@@ -362,13 +460,7 @@ const selectOption = (field, value) => {
             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">支持 Function Calling</span>
             <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">文心一言、通义千问等不支持时需关闭</p>
           </div>
-          <button type="button" @click="form.supports_function_calling = !form.supports_function_calling"
-            class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-            :class="form.supports_function_calling ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'">
-            <span
-              class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
-              :class="form.supports_function_calling ? 'translate-x-5' : 'translate-x-0'"></span>
-          </button>
+          <BaseSwitch v-model="form.supports_function_calling" />
         </label>
       </div>
 
@@ -401,13 +493,10 @@ const selectOption = (field, value) => {
             { key: 'use_chart_recognition', label: '图表识别' },
           ]" :key="toggle.key" class="flex cursor-pointer items-center justify-between">
             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ toggle.label }}</span>
-            <button type="button" @click="form[toggle.key] = !form[toggle.key]"
-              class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-              :class="form[toggle.key] ? 'bg-slate-900 dark:bg-[#f7f8f8]' : 'bg-slate-200 dark:bg-white/10'">
-              <span
-                class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out dark:bg-[#0A0A0F]"
-                :class="form[toggle.key] ? 'translate-x-5' : 'translate-x-0'"></span>
-            </button>
+            <BaseSwitch
+              :model-value="form[toggle.key]"
+              @update:model-value="value => form[toggle.key] = value"
+            />
           </label>
         </div>
       </div>

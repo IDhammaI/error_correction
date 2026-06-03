@@ -3,7 +3,7 @@
  * ChatPageView.vue
  * 独立 AI 对话页面，支持多轮流式对话、深度思考展示和错题上下文引用。
  */
-import { ref, watch, nextTick, computed, onUnmounted } from 'vue'
+import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue'
 import { MessageSquarePlus } from 'lucide-vue-next'
 import * as api from '@/api/index.js'
 import { getQuestionSnippet, renderMarkdown, typesetMath } from '@/utils/index.js'
@@ -15,14 +15,24 @@ import { useAuth } from '@/composables/useAuth.js'
 import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import { useProjects } from '@/composables/useProjects.js'
+import deepseekLogo from '@/assets/deepseek.svg'
+import ernieLogo from '@/assets/ernie.svg'
 
 const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
+const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
+const sourceLabelMap = { system: '平台托管', personal: '自己设置' }
 
 const { pushToast } = useToast()
-const { selectedLlmOption } = useSystemStatus()
+const {
+  modelOptionsLoading,
+  modelOptionsData,
+  selectedLlmOptionId,
+  selectedLlmOption,
+  doFetchModelOptions,
+} = useSystemStatus()
 const { currentUser, setQuotaSnapshot, refreshCurrentUser } = useAuth()
 const { activeAiChatId, createAiChat, onAiChatTitleUpdated } = useAiChatSessions(pushToast)
-const { currentView, isMobile, canHover } = useWorkspaceNav()
+const { currentView, isMobile, canHover, setSettingsSubView } = useWorkspaceNav()
 const { questionProjects } = useProjects()
 
 const sessionId = computed(() => activeAiChatId.value)
@@ -36,6 +46,7 @@ const username = computed(() => currentUser.value?.username || '')
 const messages = ref([])
 const inputText = ref('')
 const streaming = ref(false)
+const modelMenuOpen = ref(false)
 const messagesContainer = ref(null)
 const contextQuestionsEl = ref(null)
 const streamRenderTimer = ref(null)
@@ -57,6 +68,63 @@ const selectedContextLabel = computed(() => {
   if (!selectedContextProject.value || selectedContextQuestionIds.value.length === 0) return ''
   return `${selectedContextProject.value.name} · ${selectedContextQuestionIds.value.length} 题`
 })
+const availableModelOptions = computed(() =>
+  (modelOptionsData.value?.options || []).filter((option) => option.available !== false),
+)
+const selectedModelLabel = computed(() => selectedLlmOption.value?.model_name || '选择模型')
+const selectedModelSourceLabel = computed(() => {
+  if (!selectedLlmOption.value) return modelOptionsLoading.value ? '加载中' : '未配置'
+  return sourceLabelMap[selectedLlmOption.value.source] || selectedLlmOption.value.source || '模型'
+})
+const canSwitchModel = computed(() => !streaming.value && availableModelOptions.value.length > 0)
+const groupedChatModelOptions = computed(() => {
+  const groups = modelOptionsData.value?.groups || []
+  const groupLabels = new Map(groups.map((group) => [group.key, group.label]))
+  const sources = []
+  const seen = new Set()
+
+  for (const option of availableModelOptions.value) {
+    const source = option.source || 'other'
+    if (!seen.has(source)) {
+      seen.add(source)
+      sources.push(source)
+    }
+  }
+
+  return sources.map((source) => ({
+    key: source,
+    label: groupLabels.get(source) || sourceLabelMap[source] || '模型',
+    options: availableModelOptions.value.filter((option) => (option.source || 'other') === source),
+  }))
+})
+
+const isSelectedChatModel = (option) => selectedLlmOptionId.value === option.option_id
+
+const goToApiSettings = () => {
+  modelMenuOpen.value = false
+  const target = currentUser.value?.is_admin && selectedLlmOption.value?.source === 'system'
+    ? 'system-providers'
+    : 'api'
+  setSettingsSubView(target)
+}
+
+const toggleModelMenu = async () => {
+  if (streaming.value) return
+  if (!modelOptionsData.value && !modelOptionsLoading.value) {
+    await doFetchModelOptions()
+  }
+  if (!availableModelOptions.value.length) {
+    pushToast('error', '暂无可用模型，请先在设置中配置')
+    return
+  }
+  modelMenuOpen.value = !modelMenuOpen.value
+}
+
+const selectChatModel = (option) => {
+  if (!option || streaming.value) return
+  selectedLlmOptionId.value = option.option_id
+  modelMenuOpen.value = false
+}
 
 /**
  * 创建新独立对话，并保持当前工作台视图为 AI 对话。
@@ -84,6 +152,16 @@ watch([contextDialogOpen, contextQuestions], async () => {
   await nextTick()
   typesetMath(contextQuestionsEl.value)
 }, { flush: 'post' })
+
+onMounted(() => {
+  if (!modelOptionsData.value && !modelOptionsLoading.value) {
+    doFetchModelOptions()
+  }
+})
+
+watch(streaming, (value) => {
+  if (value) modelMenuOpen.value = false
+})
 
 /**
  * 加载当前独立对话的历史消息。
@@ -414,7 +492,7 @@ function questionContextSnippet(question) {
                 <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed"
                   :class="msg.role === 'user'
                     ? 'max-w-[85%] accent-bg text-white rounded-br-lg shadow-sm dark:text-white dark:border-none'
-                    : 'w-full bg-white border border-gray-200 text-gray-800 rounded-bl-lg shadow-sm dark:bg-white/[0.05] dark:text-[#d0d6e0] dark:border-white/[0.08]'">
+                    : 'w-full bg-transparent text-gray-800 rounded-bl-lg dark:text-[#d0d6e0]'">
                   <!-- 思考过程折叠面板 -->
                   <div v-if="msg.role === 'assistant' && msg.reasoning" class="mb-3">
                     <button @click="msg.reasoningOpen = !msg.reasoningOpen"
@@ -458,7 +536,7 @@ function questionContextSnippet(question) {
         <div class="shrink-0 px-4 pt-2 sm:px-8">
           <div class="mx-auto max-w-5xl">
             <div
-              class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+              class="rounded-xl bg-white shadow-sm dark:bg-white/[0.03]">
               <!-- 文本输入 -->
               <textarea ref="textareaRef" v-model="inputText" @keydown="handleKeydown" @input="autoResize"
                 :disabled="streaming || !sessionId" rows="1"
@@ -469,7 +547,76 @@ function questionContextSnippet(question) {
               <!-- 底部工具栏 -->
               <div class="flex items-center justify-between px-3 pb-2.5 pt-1">
                 <!-- 左侧功能按钮 -->
-                <div class="flex items-center gap-0.5">
+                <div class="flex items-center gap-2">
+                  <div class="relative">
+                    <button data-chat-model-selector type="button" :disabled="streaming || modelOptionsLoading"
+                      class="group flex h-9 w-[min(18rem,calc(100vw-9rem))] items-center gap-2 rounded-lg bg-gray-100/80 px-2.5 text-xs font-bold shadow-sm shadow-black/[0.02] transition-colors sm:w-64 dark:bg-white/[0.04] dark:shadow-black/20"
+                      :class="canSwitchModel
+                        ? 'text-gray-700 hover:bg-white hover:text-gray-950 dark:text-[#d0d6e0] dark:hover:bg-white/[0.07] dark:hover:text-[#f7f8f8]'
+                        : 'cursor-not-allowed text-gray-400 dark:text-[#62666d]'"
+                      :title="canHover ? '切换对话模型' : null" @click="toggleModelMenu">
+                      <span
+                        class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500 dark:bg-white/[0.06] dark:text-[#8a8f98]">
+                        <img v-if="selectedLlmOption && modelLogos[selectedLlmOption.category]"
+                          :src="modelLogos[selectedLlmOption.category]" class="h-3.5 w-3.5 object-contain" alt="" />
+                        <i v-else class="fa-solid fa-robot text-[10px]"></i>
+                        <span
+                          class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500 dark:border-[#171719]"></span>
+                      </span>
+                      <span class="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                        {{ modelOptionsLoading ? '加载模型...' : selectedModelLabel }}
+                      </span>
+                      <span
+                        class="hidden shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-white/[0.06] dark:text-[#8a8f98] md:inline-flex">
+                        {{ selectedModelSourceLabel }}
+                      </span>
+                      <i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-gray-400 transition-transform dark:text-[#62666d]"
+                        :class="modelMenuOpen ? 'rotate-180' : ''"></i>
+                    </button>
+
+                    <Transition enter-active-class="transition duration-150 ease-out"
+                      enter-from-class="translate-y-1 opacity-0" enter-to-class="translate-y-0 opacity-100"
+                      leave-active-class="transition duration-100 ease-in" leave-from-class="translate-y-0 opacity-100"
+                      leave-to-class="translate-y-1 opacity-0">
+                      <div v-if="modelMenuOpen"
+                        class="absolute bottom-11 left-0 z-30 w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 text-sm text-gray-700 shadow-xl shadow-black/10 outline-none dark:border-white/[0.08] dark:bg-[#1f1f20] dark:text-[#d7d7d8] dark:shadow-black/35">
+                        <template v-for="group in groupedChatModelOptions" :key="group.key">
+                          <div
+                            class="select-none px-3 py-2 text-[11px] font-semibold text-gray-500 first:pt-1.5 dark:text-[#8a8f98]">
+                            {{ group.label }}
+                          </div>
+                          <button v-for="option in group.options" :key="option.option_id" type="button"
+                            :data-chat-model-option="option.option_id"
+                            class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left outline-none transition-colors"
+                            :class="isSelectedChatModel(option)
+                              ? 'bg-gray-100 text-gray-950 dark:bg-white/[0.07] dark:text-[#f7f8f8]'
+                              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-[#cbd5e1] dark:hover:bg-white/[0.07] dark:hover:text-[#f7f8f8]'"
+                            @click="selectChatModel(option)">
+                            <img v-if="modelLogos[option.category]" :src="modelLogos[option.category]"
+                              class="h-4 w-4 shrink-0 object-contain opacity-80" alt="" />
+                            <i v-else
+                              class="fa-solid fa-robot w-4 shrink-0 text-center text-sm text-gray-500 dark:text-[#9aa0aa]"></i>
+                            <span class="min-w-0 flex-1 truncate font-semibold">{{ option.model_name || option.label }}</span>
+                            <span v-if="option.is_default"
+                              class="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:bg-white/[0.06] dark:text-[#8a8f98]">
+                              默认
+                            </span>
+                            <i v-if="isSelectedChatModel(option)"
+                              class="fa-solid fa-check shrink-0 text-[10px] text-emerald-500"></i>
+                          </button>
+                        </template>
+
+                        <div class="my-1 h-px bg-gray-200 dark:bg-white/[0.08]"></div>
+                        <button type="button"
+                          class="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-gray-700 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-[#d7d7d8] dark:hover:bg-white/[0.07] dark:hover:text-[#f7f8f8]"
+                          @click.stop="goToApiSettings">
+                          <i
+                            class="fa-solid fa-plug-circle-bolt w-4 shrink-0 text-center text-sm text-gray-500 dark:text-[#9aa0aa]"></i>
+                          <span>API 设置</span>
+                        </button>
+                      </div>
+                    </Transition>
+                  </div>
                   <button @click="deepThink = !deepThink"
                     class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
                     :class="deepThink
@@ -477,12 +624,6 @@ function questionContextSnippet(question) {
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-[#62666d] dark:hover:text-[#8a8f98] dark:hover:bg-transparent'" :title="canHover ? '深度思考' : null">
                     <i class="fa-solid fa-brain text-sm"></i>
                     <span class="hidden sm:inline">深度思考</span>
-                  </button>
-                  <button disabled
-                    class="h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 text-gray-400 dark:text-[#62666d] cursor-not-allowed"
-                    :title="canHover ? '联网搜索（敬请期待）' : null">
-                    <i class="fa-solid fa-globe text-sm"></i>
-                    <span class="hidden sm:inline">联网搜索</span>
                   </button>
                 </div>
 
@@ -679,13 +820,13 @@ function questionContextSnippet(question) {
   overflow-x: auto;
   margin: 0.9rem 0;
   padding: 0.9rem 1rem;
-  border: 1px solid rgb(226 232 240 / 0.75);
+  border: none;
   border-radius: 0.75rem;
   background: rgb(248 250 252 / 0.72);
 }
 
 :global(.dark .prose mjx-container[display="true"]) {
-  border: 1px solid #4b4747bf;
+  border: none;
   border-radius: 0.75rem;
   background: #43434347;
   color: #d0d6e0;

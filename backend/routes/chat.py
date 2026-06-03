@@ -403,10 +403,6 @@ def stream_chat(session_id):
         deep_think = data.get("deep_think", False)
         context_refs = data.get("context_refs") or []
 
-        # 深度思考模式：切换到 reasoner 模型
-        if deep_think and model_provider == "openai":
-            model_name = "deepseek-reasoner"
-
         if not message:
             return jsonify({"success": False, "error": "消息不能为空"}), 400
 
@@ -492,6 +488,7 @@ def stream_chat(session_id):
                     messages=history,
                     provider=model_provider,
                     model_name=selection["model_name"],
+                    deep_think=deep_think,
                     context_prompt=context_prompt,
                 ):
                     # stream_teach 现在 yield dict: {"type": "reasoning"|"content", "content": "..."}
@@ -521,7 +518,7 @@ def stream_chat(session_id):
                         if should_consume_quota and quota_user_id:
                             quota_user = crud.get_user_by_id(db, quota_user_id)
                             if quota_user:
-                                consume_daily_free_quota(db, quota_user)
+                                consume_daily_free_quota(db, quota_user, action_type="chat")
                 except Exception as e:
                     logger.error(f"保存 assistant 回复失败: {e}")
 
