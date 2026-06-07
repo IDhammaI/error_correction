@@ -18,6 +18,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseStat from '@/components/base/BaseStat.vue'
 import ErrorLearningAside from '@/components/features/app/error-bank/ErrorLearningAside.vue'
 import ErrorQuestionFinderAside from '@/components/features/app/error-bank/ErrorQuestionFinderAside.vue'
+import ErrorQuestionRecommendAside from '@/components/features/app/error-bank/ErrorQuestionRecommendAside.vue'
 import ErrorQuestionDetailPanel from '@/components/features/app/error-bank/ErrorQuestionDetailPanel.vue'
 import ErrorQuestionListPanel from '@/components/features/app/error-bank/ErrorQuestionListPanel.vue'
 import EditNoteDialog from '@/components/features/app/question/EditNoteDialog.vue'
@@ -43,6 +44,7 @@ const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 const activeTab = ref('analysis')
 const workbenchView = ref('list')
 const statsCollapsed = ref(false)
+const showRecommend = ref(false)
 
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
@@ -155,6 +157,15 @@ const handleQuestionClick = async (q) => {
 }
 
 const handleFinderSelect = async (q) => {
+  workbenchView.value = 'detail'
+  await selectQuestion(q)
+}
+
+const toggleRecommendPanel = () => {
+  showRecommend.value = !showRecommend.value
+}
+
+const handleRecommendSelect = async (q) => {
   workbenchView.value = 'detail'
   await selectQuestion(q)
 }
@@ -275,6 +286,7 @@ defineExpose({
             @open-chat="openChat"
             @start-practice="startPractice"
             @back-to-list="workbenchView = 'list'"
+            @open-recommend="toggleRecommendPanel"
           />
         </div>
 
@@ -286,12 +298,18 @@ defineExpose({
           @error="(e) => pushToast('error', e instanceof Error ? e.message : 'AI 找题失败')"
         />
         <ErrorLearningAside
-          v-else
+          v-if="workbenchView === 'detail' && !showRecommend"
           :knowledge-tags="knowledgeTags"
           :error-pattern-rows="errorPatternRows"
           :ai-summary="aiSummary"
           :ai-loading="aiLoading"
           @request-analysis="requestAnalysis"
+        />
+        <ErrorQuestionRecommendAside
+          v-else-if="workbenchView === 'detail' && showRecommend"
+          :current-question="activeQuestion"
+          :all-items="items"
+          @select-question="handleRecommendSelect"
         />
       </div>
 

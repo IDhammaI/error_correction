@@ -32,6 +32,7 @@ const emit = defineEmits([
   'open-chat',
   'start-practice',
   'back-to-list',
+  'open-recommend',
 ])
 
 const statusTone = (status) => {
@@ -152,7 +153,7 @@ const setActiveTab = (value) => emit('update:activeTab', value)
           <i class="fa-solid fa-calendar-plus"></i>
           加入复习
         </BaseButton>
-        <BaseButton size="sm" variant="secondary" disabled title="需要后端同类题生成接口">
+        <BaseButton size="sm" variant="secondary" @click="emit('open-recommend')">
           <i class="fa-solid fa-shuffle"></i>
           同类题
         </BaseButton>
