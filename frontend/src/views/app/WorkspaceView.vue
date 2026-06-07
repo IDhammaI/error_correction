@@ -403,6 +403,14 @@ onBeforeUnmount(() => {
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
             <i v-if="String(noteTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
           </button>
+          <button v-if="openProjectDialog" type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
+              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
+              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
+            @click="openProjectDialog('note')">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>新建笔记本</span>
+          </button>
         </div>
       </div>
       <template #footer>
