@@ -291,9 +291,12 @@ async function confirmDelete() {
 }
 
 onMounted(() => {
-  loadProjects().catch((error) => {
-    pushToast('error', error instanceof Error ? error.message : '加载项目失败')
-  })
+  // 如果全局项目列表已有数据，不重新拉取，避免覆盖刚创建的项目
+  if (!projects.value.length) {
+    loadProjects().catch((error) => {
+      pushToast('error', error instanceof Error ? error.message : '加载项目失败')
+    })
+  }
 })
 
 watch(activeLibraryProject, (project) => {

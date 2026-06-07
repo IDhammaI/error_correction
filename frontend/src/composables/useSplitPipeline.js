@@ -12,7 +12,7 @@ const QUOTA_EXCEEDED_CODE = 'DAILY_FREE_QUOTA_EXCEEDED'
 export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath) {
   const openProjectDialog = inject('openProjectDialog', null)
   const { setQuotaSnapshot, refreshCurrentUser } = useAuth()
-  const { activeQuestionProjectId, activeNoteProjectId, loadProjects } = useProjects()
+  const { activeQuestionProjectId, activeNoteProjectId, noteProjects, setActiveProject, loadProjects } = useProjects()
   const eraseLoading = ref(false)
   const eraseImages = ref([])
   const eraseDone = ref(false)
@@ -22,6 +22,11 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const eraseEnabled = ref(true)
   const currentRunId = ref(null)
   const currentRecordId = ref(null)
+
+  // ── 笔记本项目选择弹窗 ────────────────────────────────
+  const noteProjectDialogOpen = ref(false)
+  const noteTargetProjectId = ref(null)
+  const noteProjectSaving = ref(false)
 
   // 笔记模式默认不启用擦除，试卷模式默认启用
   watch(uploadMode, (mode) => {
@@ -165,17 +170,44 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   }
 
   /**
-   * 将上传文件提交给笔记整理接口，生成笔记后切换到笔记视图。
+   * 打开笔记本项目选择弹窗。
    */
-  const doNoteOrganize = async () => {
-    if (!activeNoteProjectId.value) {
+  const openNoteProjectDialog = () => {
+    if (!noteProjects.value.length) {
       if (openProjectDialog) {
         openProjectDialog('note')
       } else {
-        pushToast('error', '请先创建并选择一个笔记本')
+        pushToast('error', '请先创建一个笔记本')
       }
       return
     }
+    noteTargetProjectId.value = activeNoteProjectId.value || noteProjects.value[0]?.id || null
+    noteProjectDialogOpen.value = true
+  }
+
+  const closeNoteProjectDialog = () => {
+    if (noteProjectSaving.value) return
+    noteProjectDialogOpen.value = false
+  }
+
+  /**
+   * 确认选择笔记本后执行笔记整理。
+   */
+  const confirmNoteOrganize = async () => {
+    if (!noteTargetProjectId.value || noteProjectSaving.value) return
+    noteProjectSaving.value = true
+    try {
+      await _doNoteOrganize(noteTargetProjectId.value)
+      noteProjectDialogOpen.value = false
+    } finally {
+      noteProjectSaving.value = false
+    }
+  }
+
+  /**
+   * 将上传文件提交给笔记整理接口，生成笔记后切换到笔记视图。
+   */
+  const _doNoteOrganize = async (targetProjectId) => {
     splitting.value = true
     currentRunId.value = null
     step.value = S.value.SPLIT
@@ -184,8 +216,6 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       const formData = new FormData()
       for (const pf of pendingFiles) {
         if (pf.file) {
-          // 由于部分浏览器/上传库会锁定最初选中的 File 对象导致 ERR_UPLOAD_FILE_CHANGED 错误
-          // 在提交给笔记整理前，我们将其重新拷贝为一个新的 File 对象
           const newFile = new File([pf.file], pf.file.name, { type: pf.file.type, lastModified: pf.file.lastModified })
           formData.append('files', newFile)
         }
@@ -200,7 +230,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
       if (selectedLlmOption.value?.provider_id) {
         formData.append('provider_id', selectedLlmOption.value.provider_id)
       }
-      formData.append('project_id', activeNoteProjectId.value)
+      formData.append('project_id', targetProjectId)
 
       await new Promise((resolve, reject) => {
         api.createNote(formData, {
@@ -227,6 +257,13 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     } finally {
       splitting.value = false
     }
+  }
+
+  /**
+   * 笔记整理入口：打开项目选择弹窗。
+   */
+  const doNoteOrganize = () => {
+    openNoteProjectDialog()
   }
 
   /**
@@ -292,5 +329,8 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     ocrLoading, ocrPages, ocrDone,
     currentRunId, currentRecordId, setCurrentRecordId,
     startProcess, doErase, doOcr, doSplit, doExport, doSaveToDb,
+    // 笔记本项目选择弹窗
+    noteProjectDialogOpen, noteTargetProjectId, noteProjectSaving,
+    noteProjects, closeNoteProjectDialog, confirmNoteOrganize,
   }
 }
