@@ -213,6 +213,26 @@ const closeImportDialog = () => {
 }
 
 /**
+ * 新建错题库后自动选中并重新打开导入弹窗。
+ */
+const onQuestionProjectCreated = (newId) => {
+  if (newId) {
+    importTargetProjectId.value = newId
+    importDialogOpen.value = true
+  }
+}
+
+/**
+ * 新建笔记本后自动选中并重新打开笔记选择弹窗。
+ */
+const onNoteProjectCreated = (newId) => {
+  if (newId) {
+    noteTargetProjectId.value = newId
+    noteProjectDialogOpen.value = true
+  }
+}
+
+/**
  * 将选中题目保存到目标错题库，成功后切换当前错题库。
  */
 const confirmImportToProject = async () => {
@@ -367,7 +387,7 @@ onBeforeUnmount(() => {
             class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
               border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
               dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
-            @click="openProjectDialog('question')">
+            @click="openProjectDialog('question', onQuestionProjectCreated)">
             <i class="fa-solid fa-plus text-xs"></i>
             <span>新建错题库</span>
           </button>
@@ -407,7 +427,7 @@ onBeforeUnmount(() => {
             class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
               border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
               dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
-            @click="openProjectDialog('note')">
+            @click="openProjectDialog('note', onNoteProjectCreated)">
             <i class="fa-solid fa-plus text-xs"></i>
             <span>新建笔记本</span>
           </button>

@@ -189,8 +189,12 @@ const updateChatListRef = createRefSetter(chatListRef)
 
 /**
  * 打开新建项目弹窗，projectType 区分错题库和笔记本。
+ * 支持 onCreated 回调，创建完成后触发，参数为新建项目的 id。
  */
-const openProjectDialog = (projectType = 'question') => {
+let _projectDialogOnCreated = null
+
+const openProjectDialog = (projectType = 'question', onCreated = null) => {
+  _projectDialogOnCreated = typeof onCreated === 'function' ? onCreated : null
   projectDialogMode.value = 'create'
   projectDialogTarget.value = null
   projectDialogType.value = projectType === 'note' ? 'note' : 'question'
@@ -239,8 +243,12 @@ const handleCreateProject = async () => {
       await renameProject(projectDialogTarget.value.id, name)
       pushToast('success', '项目已重命名')
     } else {
-      await createAndSelectProject(name, projectDialogType.value)
+      const newProject = await createAndSelectProject(name, projectDialogType.value)
       pushToast('success', '项目已创建')
+      if (_projectDialogOnCreated) {
+        _projectDialogOnCreated(newProject?.id || null)
+        _projectDialogOnCreated = null
+      }
     }
     projectDialogOpen.value = false
     projectDialogName.value = ''
@@ -424,7 +432,7 @@ onBeforeUnmount(() => {
         @select-chat="selectAiChatFromSearch"
       />
       <BaseModal :open="projectDialogOpen" :title="projectDialogTitle" icon="fa-folder-plus" iconBg="accent-bg-soft"
-        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeProjectDialog">
+        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" :z-index="110" @close="closeProjectDialog">
         <form class="space-y-4" @submit.prevent="handleCreateProject">
           <BaseInput v-model="projectDialogName" label="名称" :placeholder="projectDialogPlaceholder" maxlength="100"
             data-project-name-input />

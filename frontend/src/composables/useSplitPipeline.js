@@ -196,9 +196,9 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
   const confirmNoteOrganize = async () => {
     if (!noteTargetProjectId.value || noteProjectSaving.value) return
     noteProjectSaving.value = true
+    noteProjectDialogOpen.value = false
     try {
       await _doNoteOrganize(noteTargetProjectId.value)
-      noteProjectDialogOpen.value = false
     } finally {
       noteProjectSaving.value = false
     }
