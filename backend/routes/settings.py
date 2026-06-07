@@ -109,11 +109,7 @@ def get_status():
                     crud.get_active_provider(db, user_id, category) if user_id else None
                 )
                 if provider and provider.api_key:
-                    models = (
-                        [m.strip() for m in provider.model_name.split(",")]
-                        if provider.model_name
-                        else []
-                    )
+                    models = [provider.model_name] if provider.model_name else []
                     available_models.append(
                         {
                             "value": category,
@@ -128,7 +124,7 @@ def get_status():
                 else:
                     managed_cfg = managed_llm.get(category)
                     managed_models = (
-                        [m.strip() for m in managed_cfg.model_name.split(",")]
+                        [managed_cfg.model_name]
                         if managed_cfg
                         and managed_cfg.configured
                         and managed_cfg.model_name

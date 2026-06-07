@@ -26,7 +26,7 @@ const props = defineProps({
 
 const { currentUser, quota, setCurrentUser } = useAuth()
 const { pushToast } = useToast()
-const { doFetchStatus, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
+const { doFetchStatus, doFetchModelOptions, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
 const { isDark, setTheme, themeColors, accentColorId, setAccentColor } = useTheme()
 
 // 计算当前设置页各分类应显示的“使用中” ID
@@ -565,6 +565,7 @@ const saveConfig = async () => {
 
     await updateAppConfig(payload)
     doFetchStatus()
+    doFetchModelOptions()
   } catch (e) {
     pushToast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -623,6 +624,7 @@ const saveSystemConfig = async () => {
 
     await updateAdminSystemConfig(payload)
     doFetchStatus()
+    doFetchModelOptions()
   } catch (e) {
     pushToast('error', '保存系统托管配置失败: ' + (e instanceof Error ? e.message : String(e)))
     throw e

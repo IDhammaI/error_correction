@@ -117,9 +117,9 @@ const fetchModels = async () => {
     const apiModels = data.models || []
     const modelSet = new Set(apiModels)
     // 将当前表单中的模型名也加入列表（兼容废弃模型如 deepseek-chat / deepseek-reasoner）
-    const currentModels = (form.value.model_name || '').split(',').map(s => s.trim()).filter(Boolean)
+    const currentModel = form.value.model_name || ''
     const currentLightModel = form.value.light_model_name || ''
-    for (const m of currentModels) { if (!modelSet.has(m)) { modelSet.add(m); apiModels.push(m) } }
+    if (currentModel && !modelSet.has(currentModel)) { modelSet.add(currentModel); apiModels.push(currentModel) }
     if (currentLightModel && !modelSet.has(currentLightModel)) { modelSet.add(currentLightModel); apiModels.push(currentLightModel) }
     modelList.value = apiModels
     if (modelList.value.length === 0) {
@@ -211,18 +211,8 @@ const toggleDropdown = (field) => {
   openDropdown.value = openDropdown.value === field ? null : field
 }
 const selectOption = (field, value) => {
-  if (field === 'model_name') {
-    let current = form.value.model_name ? form.value.model_name.split(',').map(s => s.trim()).filter(Boolean) : []
-    if (current.includes(value)) {
-      current = current.filter(m => m !== value)
-    } else {
-      current.push(value)
-    }
-    form.value.model_name = current.join(', ')
-  } else {
-    form.value[field] = value
-    openDropdown.value = null
-  }
+  form.value[field] = value
+  openDropdown.value = null
 }
 </script>
 
@@ -272,7 +262,7 @@ const selectOption = (field, value) => {
       <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
         <div>
           <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-            {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}
+            {{ type === 'paddleocr' ? 'OCR 模型' : '模型' }}
             <span v-if="type !== 'paddleocr'" class="group relative">
               <i
                 class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
@@ -296,12 +286,10 @@ const selectOption = (field, value) => {
                 class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
                 <button v-for="m in modelList" :key="m" type="button" @click.stop="selectOption('model_name', m)"
                   class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-                  :class="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
-                  <i v-if="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m)"
+                  :class="form.model_name === m ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
+                  <i v-if="form.model_name === m"
                     class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                  <span
-                    :class="!(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'pl-[18px]' : ''">{{
-                    m }}</span>
+                  <span :class="form.model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
                 </button>
               </div>
             </Transition>
