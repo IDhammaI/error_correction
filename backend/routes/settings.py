@@ -298,7 +298,7 @@ def list_models():
                     else:
                         provider = crud.get_active_provider(db, user_id, provider_type)
                     if provider:
-                        api_key = api_key or provider.api_key or ""
+                        api_key = provider.api_key or ""
                         base_url = base_url or provider.base_url or ""
                 if not api_key and provider_type in ("openai", "anthropic"):
                     system_provider = crud.get_active_system_provider(db, provider_type)
@@ -409,7 +409,7 @@ def test_paddleocr():
                     else:
                         provider = crud.get_active_provider(db, user_id, "paddleocr")
                     if provider:
-                        api_token = api_token or provider.api_key or ""
+                        api_token = provider.api_key or ""
                         api_url = api_url or provider.base_url or ""
                 if not api_token or not api_url:
                     system_provider = crud.get_active_system_provider(db, "paddleocr")

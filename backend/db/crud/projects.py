@@ -5,8 +5,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from db.models import (
-    ChatSession, Note, Project, Question, QuestionEmbedding,
-    QuestionTagMapping, UploadBatch,
+    ChatSession, Note, NoteTagMapping, Project, Question,
+    QuestionEmbedding, QuestionTagMapping, UploadBatch,
 )
 
 
@@ -146,7 +146,10 @@ def delete_project(db: Session, project_id: int, user_id=None) -> bool:
         db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id.in_(question_ids)).delete(synchronize_session=False)
         db.query(Question).filter(Question.id.in_(question_ids)).delete(synchronize_session=False)
 
-    db.query(Note).filter(Note.project_id == project.id).delete()
+    note_ids = [n.id for n in db.query(Note.id).filter(Note.project_id == project.id).all()]
+    if note_ids:
+        db.query(NoteTagMapping).filter(NoteTagMapping.note_id.in_(note_ids)).delete(synchronize_session=False)
+        db.query(Note).filter(Note.id.in_(note_ids)).delete(synchronize_session=False)
     db.query(UploadBatch).filter(UploadBatch.project_id == project.id).delete()
 
     db.delete(project)

@@ -176,9 +176,7 @@ const createRefSetter = (target) => (value) => {
   target.value = value
 }
 
-const updateCurrentSettingsSubView = (v) => {
-  setSettingsSubView(v)
-}
+const updateCurrentSettingsSubView = setSettingsSubView
 
 const updateCollapsedGroups = createRefSetter(collapsedGroups)
 const updateChatCollapsed = createRefSetter(chatCollapsed)

@@ -3,7 +3,7 @@
  * WorkspaceView.vue
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch, inject } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
@@ -152,15 +152,10 @@ const restoringWorkspaceState = ref(true)
 const importDialogOpen = ref(false)
 const importTargetProjectId = ref(null)
 const importSaving = ref(false)
-const hasReviewContent = computed(() => {
-  if (eraseLoading.value) return true
-  if (eraseDone.value) return true
-  if (ocrLoading.value) return true
-  if (ocrDone.value) return true
-  if (splitting.value) return true
-  if (splitCompleted.value && questions.value.length > 0) return true
-  return false
-})
+const hasReviewContent = computed(() =>
+  eraseLoading.value || eraseDone.value || ocrLoading.value || ocrDone.value
+  || splitting.value || (splitCompleted.value && questions.value.length > 0)
+)
 
 /**
  * 把分割历史中的题目载入当前工作台核对页。
@@ -279,7 +274,6 @@ watch(
 )
 
 // ── 生命周期 ────────────────────────────────────────────
-import { onMounted } from 'vue'
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
   // 检查 URL 参数，设置上传模式

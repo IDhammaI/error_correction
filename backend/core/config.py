@@ -504,7 +504,7 @@ class Settings(BaseSettings):
         if owns_db:
             db = SessionLocal()
         try:
-            for category in [("openai"), ("anthropic")]:
+            for category in ("openai", "anthropic"):
                 provider = get_active_provider(db, user_id, category)
                 if provider and provider.api_key:
                     cfg = self.build_provider_config(

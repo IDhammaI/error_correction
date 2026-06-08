@@ -122,7 +122,7 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     if (!uploadReady.value || splitting.value || splitCompleted.value) return
 
     if (uploadMode.value === 'note') {
-      await doNoteOrganize()
+      openNoteProjectDialog()
       return
     }
 
@@ -257,13 +257,6 @@ export function useSplitPipeline(pushToast, currentView, step, S, uploadReady, s
     } finally {
       splitting.value = false
     }
-  }
-
-  /**
-   * 笔记整理入口：打开项目选择弹窗。
-   */
-  const doNoteOrganize = () => {
-    openNoteProjectDialog()
   }
 
   /**

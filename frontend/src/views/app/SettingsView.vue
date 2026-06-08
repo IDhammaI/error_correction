@@ -67,13 +67,6 @@ const settingsPageDescription = computed(() => {
   if (isAppearanceSection.value) return '切换明暗模式和主题强调色，界面会立即应用。'
   return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
 })
-const pageTitle = computed(() => isApiSection.value ? 'API 设置' : '用户资料设置')
-const pageDescription = computed(() => {
-  return isApiSection.value
-    ? '管理 AI 模型供应商与 OCR 服务连接参数，修改即时生效。'
-    : '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
-})
-
 const loading = ref(true)
 const saving = ref(false)
 const profileSaving = ref(false)
@@ -384,6 +377,7 @@ const removeAvatar = async () => {
 onBeforeUnmount(() => {
   if (avatarUploadXhr.value) avatarUploadXhr.value.abort()
   clearAvatarPreview()
+  if (emailCodeTimer) { clearInterval(emailCodeTimer); emailCodeTimer = null }
 })
 
 // ---------- 多 Provider 数据结构 ----------
