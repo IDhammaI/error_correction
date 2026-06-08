@@ -38,7 +38,7 @@ const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
-const { activeQuestionProjectId, questionProjects } = useProjects()
+const { activeQuestionProjectId, questionProjects, loadProjects } = useProjects()
 const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 const activeTab = ref('analysis')
@@ -115,6 +115,7 @@ const {
   selectedIds,
   activeQuestion,
   activeTab,
+  workbenchView,
   pushToast,
   typesetMath,
   loadStats,
@@ -193,6 +194,11 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposeQuery()
 })
+
+const onDetailDeleted = () => {
+  doQuery()
+  loadProjects()
+}
 
 defineExpose({
   refresh: doQuery,
@@ -322,7 +328,7 @@ defineExpose({
         @close="dialogOpen = false" @save="onDialogSave" />
 
       <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="detailOpen = false"
-        @open-image="openModal" @deleted="doQuery" @push-toast="pushToast" @start-chat="openChat"
+        @open-image="openModal" @deleted="onDetailDeleted" @push-toast="pushToast" @start-chat="openChat"
         @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
   </component>

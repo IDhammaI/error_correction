@@ -113,8 +113,6 @@ def delete_project(project_id):
             except ValueError as exc:
                 if str(exc) == "DEFAULT_PROJECT_IMMUTABLE":
                     return jsonify({"success": False, "error": "默认项目不能删除"}), 400
-                if str(exc) == "PROJECT_NOT_EMPTY":
-                    return jsonify({"success": False, "error": "项目里还有内容，暂时不能删除"}), 400
                 raise
             if not deleted:
                 return jsonify({"success": False, "error": "项目不存在"}), 404

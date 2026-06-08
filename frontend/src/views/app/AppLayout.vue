@@ -106,6 +106,8 @@ const projectDialogSaving = ref(false)
 const deleteProjectDialogOpen = ref(false)
 const deleteProjectTarget = ref(null)
 const deleteProjectSaving = ref(false)
+const deleteCountdown = ref(0)
+let deleteTimer = null
 const projectDialogTitle = computed(() => {
   if (projectDialogMode.value === 'rename') return '重命名'
   return projectDialogType.value === 'note' ? '新建笔记本' : '新建错题库'
@@ -261,16 +263,31 @@ const handleCreateProject = async () => {
 }
 
 /**
- * 打开删除项目确认弹窗。
+ * 打开删除项目确认弹窗。有内容时启动 5 秒倒计时，无内容可直接删除。
  */
 const handleDeleteProject = async (project) => {
   if (!project || project.is_default) return
   deleteProjectTarget.value = project
   deleteProjectDialogOpen.value = true
+  const hasContent = (project.question_count || 0) > 0 || (project.note_count || 0) > 0
+  if (hasContent) {
+    deleteCountdown.value = 5
+    deleteTimer = setInterval(() => {
+      deleteCountdown.value--
+      if (deleteCountdown.value <= 0) {
+        clearInterval(deleteTimer)
+        deleteTimer = null
+      }
+    }, 1000)
+  } else {
+    deleteCountdown.value = 0
+  }
 }
 
 const closeDeleteProjectDialog = () => {
   if (deleteProjectSaving.value) return
+  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
+  deleteCountdown.value = 0
   deleteProjectDialogOpen.value = false
   deleteProjectTarget.value = null
 }
@@ -280,7 +297,7 @@ const closeDeleteProjectDialog = () => {
  */
 const confirmDeleteProject = async () => {
   const project = deleteProjectTarget.value
-  if (!project || project.is_default || deleteProjectSaving.value) return
+  if (!project || project.is_default || deleteProjectSaving.value || deleteCountdown.value > 0) return
   deleteProjectSaving.value = true
   try {
     await removeProject(project.id)
@@ -339,6 +356,7 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
   document.removeEventListener('keydown', onKeydown)
   document.removeEventListener('click', closeChatMenu)
+  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
 })
 </script>
 
@@ -456,15 +474,15 @@ onBeforeUnmount(() => {
             }}</span>”吗？
           </p>
           <p class="text-xs text-slate-400 dark:text-[#737b86]">
-            默认项目不能删除；已有内容的项目会被系统阻止删除。
+            项目内的所有错题将一并删除，且不可恢复。
           </p>
         </div>
         <template #footer>
           <BaseButton variant="secondary" size="sm" :disabled="deleteProjectSaving" @click="closeDeleteProjectDialog">
             取消
           </BaseButton>
-          <BaseButton variant="primary" size="sm" :disabled="deleteProjectSaving" @click="confirmDeleteProject">
-            {{ deleteProjectSaving ? '删除中...' : '删除' }}
+          <BaseButton variant="primary" size="sm" :disabled="deleteProjectSaving || deleteCountdown > 0" @click="confirmDeleteProject">
+            {{ deleteProjectSaving ? '删除中...' : deleteCountdown > 0 ? `删除 (${deleteCountdown}s)` : '删除' }}
           </BaseButton>
         </template>
       </BaseModal>
