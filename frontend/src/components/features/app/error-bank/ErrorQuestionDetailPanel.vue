@@ -97,7 +97,7 @@ const setActiveTab = (value) => emit('update:activeTab', value)
               class="rounded-xl bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-700 dark:bg-white/[0.035] dark:text-[#d0d6e0]"
             >
               <span class="mr-2 text-gray-400">{{ String.fromCharCode(65 + index) }}.</span>
-              {{ formatOption(option).replace(/^[A-Da-d][.、．]\s*/, '') }}
+              <span v-html="'<span>' + formatOption(option).replace(/^[A-Da-d][.、．]\s*/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>'"></span>
             </div>
           </div>
 

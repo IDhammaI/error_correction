@@ -2,6 +2,7 @@
 /**
  * ErrorQuestionRecommendAside.vue
  * 错题库右侧同类题推荐栏。
+ * ⚠️ 纯前端模拟实现，仅用于演示展示，后续将接入后端推荐算法。
  * 基于知识点重叠、学科、题型和内容相似度，纯前端筛选推荐相似题目。
  */
 import { computed } from 'vue'
@@ -109,36 +110,43 @@ const similarityBadgeClass = (similarity) => {
 </script>
 
 <template>
-  <aside class="hidden min-h-0 flex-col gap-4 overflow-y-auto custom-scrollbar xl:flex">
-    <BasePanel :scroll-body="false" body-class="p-4">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <h3 class="text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">
-          <i class="fa-solid fa-shuffle mr-1.5 text-blue-400"></i>
-          同类题推荐
-        </h3>
-        <span class="text-xs text-gray-500 dark:text-[#8a8f98]">{{ recommended.length }} 道</span>
+  <aside class="hidden min-h-0 flex-col xl:flex">
+    <div class="shrink-0">
+      <BasePanel :scroll-body="false" body-class="p-4">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h3 class="text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">
+            <i class="fa-solid fa-shuffle mr-1.5 text-blue-400"></i>
+            同类题推荐
+          </h3>
+          <span class="text-xs text-gray-500 dark:text-[#8a8f98]">{{ recommended.length }} 道</span>
+        </div>
+        <p class="text-xs leading-5 text-gray-500 dark:text-[#8a8f98]">
+          基于当前题目的知识点、学科和题型，智能推荐相似题目。
+        </p>
+        <p class="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
+          <i class="fa-solid fa-flask"></i>
+          纯前端模拟，仅展示
+        </p>
+      </BasePanel>
+    </div>
+
+    <div class="min-h-0 flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3">
+      <div v-if="!currentQuestion" class="rounded-xl bg-white/85 p-4 text-sm leading-6 text-gray-500 shadow-sm shadow-black/[0.03] dark:bg-white/[0.04] dark:text-[#8a8f98] dark:shadow-black/20">
+        请先选择一道题目，这里会展示相似的题目推荐。
       </div>
-      <p class="text-xs leading-5 text-gray-500 dark:text-[#8a8f98]">
-        基于当前题目的知识点、学科和题型，智能推荐相似题目。
-      </p>
-    </BasePanel>
 
-    <div v-if="!currentQuestion" class="rounded-xl bg-white/85 p-4 text-sm leading-6 text-gray-500 shadow-sm shadow-black/[0.03] dark:bg-white/[0.04] dark:text-[#8a8f98] dark:shadow-black/20">
-      请先选择一道题目，这里会展示相似的题目推荐。
-    </div>
+      <div v-else-if="!recommended.length" class="rounded-xl bg-white/85 p-4 shadow-sm shadow-black/[0.03] dark:bg-white/[0.04] dark:shadow-black/20">
+        <BaseEmptyState
+          icon="fa-regular fa-face-meh"
+          title="暂无同类题"
+          description="当前错题库中没有找到相似的题目，可以继续录入更多题目。"
+        />
+      </div>
 
-    <div v-else-if="!recommended.length" class="rounded-xl bg-white/85 p-4 shadow-sm shadow-black/[0.03] dark:bg-white/[0.04] dark:shadow-black/20">
-      <BaseEmptyState
-        icon="fa-regular fa-face-meh"
-        title="暂无同类题"
-        description="当前错题库中没有找到相似的题目，可以继续录入更多题目。"
-      />
-    </div>
-
-    <div v-else class="space-y-3">
       <button
         v-for="item in recommended"
         :key="item.question.id"
+        v-else
         type="button"
         class="w-full rounded-xl bg-white/85 p-4 text-left shadow-sm shadow-black/[0.03] transition-colors hover:bg-white hover:shadow-md dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:shadow-black/20"
         @click="emit('select-question', item.question)"

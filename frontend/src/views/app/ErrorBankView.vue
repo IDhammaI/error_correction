@@ -54,9 +54,10 @@ const detailTabs = [
   { value: 'note', label: '作答记录', icon: 'fa-camera' },
 ]
 
+const rootEl = ref(null)
 const typesetMath = async () => {
   await nextTick()
-  await _typesetMath()
+  await _typesetMath(rootEl.value || undefined)
 }
 
 const {
@@ -207,6 +208,7 @@ defineExpose({
 </script>
 
 <template>
+  <div ref="rootEl" class="contents">
   <component
     :is="embedded ? 'div' : ContentPanel"
     :title="embedded ? undefined : '错题库'"
@@ -332,4 +334,5 @@ defineExpose({
         @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
   </component>
+  </div>
 </template>
