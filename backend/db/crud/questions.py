@@ -422,7 +422,15 @@ def save_questions_to_db(
         question.tags = db.query(QuestionTagMapping).filter(
             QuestionTagMapping.question_id == question.id
         ).all()
+
+        # 同时更新本地 Hash 向量和 RAG 语义索引
         ensure_question_embedding(db, question)
+        try:
+            from core.rag import index_question
+            index_question(db, question.id)
+        except Exception as e:
+            logger.warning("Failed to auto-index question %d: %s", question.id, e)
+
         created += 1
 
     db.commit()
@@ -585,7 +593,8 @@ def query_questions(
     page_size: int = 20,
     user_id=None,
     project_id=None,
-) -> Tuple[List[Question], int]:
+    include_grand_total: bool = False,
+) -> Tuple[List[Question], int, Optional[int]]:
     """
     统一查询题目（合并 get_history_questions 和 search_questions 的能力）
 
@@ -599,7 +608,9 @@ def query_questions(
         query = query.filter(Question.project_id == project_id)
 
     # 未筛选的总收录数（仅按用户隔离）
-    grand_total = query.distinct().count()
+    grand_total = 0
+    if include_grand_total:
+        grand_total = query.distinct().count()
 
     subject_list = _parse_filter_list(subject)
     if subject_list:
@@ -642,7 +653,9 @@ def query_questions(
         .all()
     )
 
-    return questions, total, grand_total
+    if include_grand_total:
+        return questions, total, grand_total
+    return questions, total
 
 
 def get_questions_by_ids(db: Session, question_ids: List[int], user_id=None) -> List[Question]:

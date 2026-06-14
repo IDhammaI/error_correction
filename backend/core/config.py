@@ -21,7 +21,10 @@ _request_provider_context: ContextVar[dict[str, "LLMProviderConfig"] | None] = (
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent  # backend/core/ → backend/
 _PROJECT_ROOT = _BACKEND_ROOT.parent
-_ENV_FILE = _PROJECT_ROOT / ".env"
+_ENV_FILES = (
+    _BACKEND_ROOT / ".env",
+    _PROJECT_ROOT / ".env",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +190,7 @@ class AnthropicCompatibleConfig(LLMProviderConfig):
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="APP_",
-        env_file=_ENV_FILE,
+        env_file=_ENV_FILES,
         extra="ignore",
     )
 
@@ -200,6 +203,8 @@ class Settings(BaseSettings):
 
     # 错题库数据库路径，可通过 APP_DB_PATH 覆盖
     db_path: Path | None = None
+    database_url: str = ""
+    database_echo: bool = False
 
     # 各类子目录（由 validator 从 runtime_dir 派生，可独立覆盖以便测试）
     upload_dir: Path | None = None
@@ -219,6 +224,10 @@ class Settings(BaseSettings):
     trust_env: bool = (
         True  # 是否信任系统代理环境变量，Windows 下设为 False 可解 WinError 10054
     )
+
+    rag_embedding_model: str = "text-embedding-v3"
+    rag_embedding_api_key: str = ""
+    rag_embedding_base_url: str = ""
 
     # 注册验证码邮件（SMTP，环境变量前缀仍为 APP_，如 APP_SMTP_HOST）
     smtp_host: str = ""
@@ -258,6 +267,8 @@ class Settings(BaseSettings):
     def _resolve_defaults(self):
         if self.db_path is None:
             self.db_path = self.runtime_dir / "error_book.db"
+        if not self.database_url:
+            self.database_url = f"sqlite:///{self.db_path}"
         if self.upload_dir is None:
             self.upload_dir = self.runtime_dir / "uploads"
         if self.pages_dir is None:
