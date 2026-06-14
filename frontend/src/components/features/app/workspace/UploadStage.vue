@@ -13,6 +13,7 @@ import ActionBar from '@/components/features/app/workspace/ActionBar.vue'
 
 const props = defineProps({
   uploadMode: String,
+  workflowMode: { type: String, default: 'manual' },
   eraseEnabled: Boolean,
   // StatusBar
   statusLoading: Boolean,
@@ -35,6 +36,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:upload-mode',
+  'update:workflow-mode',
   'update:erase-enabled',
   'update:selected-llm-option-id',
   'upload',
@@ -47,6 +49,11 @@ const uploadModeOptions = [
   { value: 'exam', label: '试卷分割', icon: 'fa-file-lines' },
   { value: 'note', label: '笔记整理', icon: 'fa-book-open' },
 ]
+
+const workflowModeOptions = [
+  { value: 'manual', label: '流程模式', icon: 'fa-list-check' },
+  { value: 'auto', label: '自动模式', icon: 'fa-bolt' },
+]
 </script>
 
 <template>
@@ -57,6 +64,14 @@ const uploadModeOptions = [
       :model-value="uploadMode"
       :options="uploadModeOptions"
       @update:model-value="(value) => emit('update:upload-mode', value)"
+    />
+
+    <div class="h-4 w-px bg-gray-300 dark:bg-white/[0.08] transition-colors"></div>
+
+    <BaseSegmented
+      :model-value="workflowMode"
+      :options="workflowModeOptions"
+      @update:model-value="(value) => emit('update:workflow-mode', value)"
     />
 
     <div class="h-4 w-px bg-gray-300 dark:bg-white/[0.08] transition-colors"></div>
@@ -76,10 +91,7 @@ const uploadModeOptions = [
 
     <!-- 引擎状态 -->
     <div class="ml-auto">
-      <StatusBar :status-loading="statusLoading" :status-error="statusError" :status-pills="statusPills"
-        :model-options-data="modelOptionsData" :selected-llm-option-id="selectedLlmOptionId"
-        :disabled="splitting || splitCompleted" :no-models="!hasConfiguredModel"
-        @update:selected-llm-option-id="(v) => emit('update:selected-llm-option-id', v)" />
+      <StatusBar :status-loading="statusLoading" :status-error="statusError" :status-pills="statusPills" />
     </div>
   </div>
 
@@ -136,7 +148,11 @@ const uploadModeOptions = [
     <!-- 拖拽上传 -->
     <FileUploader :pending-files="pendingFiles" :file-progress="fileProgress" :waiting-keys="waitingKeys"
       :upload-busy="uploadBusy" :upload-ready="uploadReady" :splitting="splitting" :split-completed="splitCompleted"
-      :expand="false" :disabled="!hasConfiguredModel" @upload="(f) => emit('upload', f)"
+      :expand="false" :disabled="!hasConfiguredModel"
+      :model-options-data="modelOptionsData" :selected-llm-option-id="selectedLlmOptionId"
+      :status-loading="statusLoading" :no-models="!hasConfiguredModel"
+      @update:selected-llm-option-id="(v) => emit('update:selected-llm-option-id', v)"
+      @upload="(f) => emit('upload', f)"
       @remove-file="(f) => emit('remove-file', f)" class="w-full max-w-2xl" />
 
     <!-- 已上传文件 -->
@@ -145,8 +161,9 @@ const uploadModeOptions = [
       :split-completed="splitCompleted" @remove-file="(f) => emit('remove-file', f)" />
 
     <!-- 操作按钮 -->
-    <ActionBar class="mt-4" :split-enabled="splitEnabled" :export-enabled="false" :splitting="splitting"
-      :split-completed="splitCompleted" :upload-mode="uploadMode" :erase-enabled="eraseEnabled"
+    <ActionBar class="mt-4" :split-enabled="splitEnabled" :export-enabled="false"
+      :splitting="splitting" :split-completed="splitCompleted" :upload-mode="uploadMode"
+      :workflow-mode="workflowMode" :erase-enabled="eraseEnabled"
       @split="emit('split')" />
   </div>
 </template>

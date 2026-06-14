@@ -32,7 +32,6 @@ const emit = defineEmits([
   'open-chat',
   'start-practice',
   'back-to-list',
-  'open-recommend',
 ])
 
 const statusTone = (status) => {
@@ -97,7 +96,7 @@ const setActiveTab = (value) => emit('update:activeTab', value)
               class="rounded-xl bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-700 dark:bg-white/[0.035] dark:text-[#d0d6e0]"
             >
               <span class="mr-2 text-gray-400">{{ String.fromCharCode(65 + index) }}.</span>
-              <span v-html="'<span>' + formatOption(option).replace(/^[A-Da-d][.、．]\s*/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>'"></span>
+              {{ formatOption(option).replace(/^[A-Da-d][.、．]\s*/, '') }}
             </div>
           </div>
 
@@ -153,7 +152,7 @@ const setActiveTab = (value) => emit('update:activeTab', value)
           <i class="fa-solid fa-calendar-plus"></i>
           加入复习
         </BaseButton>
-        <BaseButton size="sm" variant="secondary" @click="emit('open-recommend')">
+        <BaseButton size="sm" variant="secondary" disabled title="需要后端同类题生成接口">
           <i class="fa-solid fa-shuffle"></i>
           同类题
         </BaseButton>

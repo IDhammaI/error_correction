@@ -12,7 +12,6 @@ from urllib.parse import urlsplit, urlunsplit
 import requests
 import aiohttp
 from rich.console import Console
-from requests.utils import get_environ_proxies, should_bypass_proxies
 
 console = Console()
 
@@ -61,14 +60,7 @@ class PaddleOCRClient:
         from core.config import settings
         kwargs = {"headers": self._headers}
         if not settings.trust_env:
-            kwargs["proxies"] = {}
-            return kwargs
-        try:
-            proxies = get_environ_proxies(self.api_url) or {}
-            if proxies and not should_bypass_proxies(self.api_url, proxies):
-                kwargs["proxies"] = proxies
-        except Exception:
-            pass
+            kwargs["proxies"] = {"http": None, "https": None}
         return kwargs
 
     @property
@@ -76,8 +68,7 @@ class PaddleOCRClient:
         from core.config import settings
         kwargs: Dict[str, Any] = {}
         if not settings.trust_env:
-            kwargs["proxies"] = {}
-            return kwargs
+            kwargs["proxies"] = {"http": None, "https": None}
         return kwargs
 
     @staticmethod

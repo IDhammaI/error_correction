@@ -14,23 +14,6 @@
 import os
 import sys
 import logging
-from dotenv import load_dotenv
-
-# ============================================================
-# Monkeypatch: 修复 langgraph 依赖冲突
-# ============================================================
-# 部分版本的 langchain.agents 依赖 langgraph.runtime.ExecutionInfo / ServerInfo，
-# 若当前环境的 langgraph 版本缺失这些类，手动补齐以防止导入阶段崩溃。
-try:
-    import langgraph.runtime
-    if not hasattr(langgraph.runtime, 'ExecutionInfo'):
-        class ExecutionInfo: pass
-        langgraph.runtime.ExecutionInfo = ExecutionInfo
-    if not hasattr(langgraph.runtime, 'ServerInfo'):
-        class ServerInfo: pass
-        langgraph.runtime.ServerInfo = ServerInfo
-except ImportError:
-    pass
 
 # 无论从项目根目录执行 `python backend/web_app.py` 还是在 `backend` 下执行 `python web_app.py`，
 # 都把 backend 目录加入 sys.path，保证 `core`、`routes`、`db` 等包解析一致。
@@ -38,17 +21,18 @@ _BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
 if _BACKEND_ROOT not in sys.path:
     sys.path.insert(0, _BACKEND_ROOT)
 
-# 加载 backend/.env（无论从哪个目录启动都指向同一文件）
-load_dotenv(os.path.join(_BACKEND_ROOT, ".env"))
-
 from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
+from dotenv import load_dotenv
 
 from core.config import settings
 from core import workflow_run_store as run_store
 from db import init_db, SessionLocal
 from db import crud
 from routes import register_routes
+
+# 加载 backend/.env（无论从哪个目录启动都指向同一文件）
+load_dotenv(os.path.join(_BACKEND_ROOT, ".env"))
 
 # 模块级日志记录器，日志名称为 'web_app'
 logger = logging.getLogger(__name__)

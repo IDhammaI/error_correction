@@ -62,7 +62,7 @@ def _serialize_question(q: Question) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    payload = {
+    return {
         'id': q.id,
         'question_type': q.question_type,
         'content_json': json.loads(q.content_json) if q.content_json else [],
@@ -75,8 +75,6 @@ def _serialize_question(q: Question) -> dict:
         'knowledge_tags': knowledge_tags,
         'created_at': q.created_at.isoformat() if q.created_at else None,
     }
-    payload.update(crud.serialize_review_fields(q))
-    return payload
 
 
 def _serialize_question_detail(q: Question) -> dict:
@@ -331,7 +329,6 @@ def get_error_bank():
                 page=page,
                 page_size=page_size,
                 project_id=project_id,
-                include_grand_total=True,
             )
 
             total_pages = (total + page_size - 1) // page_size
@@ -356,64 +353,20 @@ def get_error_bank():
 
 @bp.route('/error-bank/find', methods=['GET'])
 def find_error_bank_questions():
-    """Use a natural language description to find likely questions.
-
-    优先使用真实 embedding（RAG），降级到 hash 向量。
-    Query参数:
-        q / query: 自然语言描述
-        limit: 返回数量（默认8，最大20）
-        project_id: 项目ID
-    """
+    """Use a natural language description to find likely questions."""
     try:
         query_text = (request.args.get('q') or request.args.get('query') or '').strip()
         if not query_text:
             return jsonify({'success': False, 'error': '请输入要查找的题目描述'}), 400
         limit = min(20, max(1, request.args.get('limit', 8, type=int)))
         project_id = _project_id_arg()
-        user_id = _effective_user_id()
 
-        search_mode = "hash"  # 默认降级模式
-
-        # 尝试真实 embedding 语义检索
-        try:
-            from core.rag import retrieve_context
-            with SessionLocal() as db:
-                rag_results = retrieve_context(
-                    db,
-                    query=query_text,
-                    user_id=user_id,
-                    project_id=project_id,
-                    top_k=limit,
-                )
-                if rag_results:
-                    source_ids = [r["source_id"] for r in rag_results]
-                    questions = crud.get_questions_by_ids(db, source_ids, user_id=user_id)
-                    q_map = {q.id: q for q in questions}
-                    items = []
-                    for r in rag_results:
-                        q = q_map.get(r["source_id"])
-                        if q:
-                            payload = _serialize_question_detail(q)
-                            payload['match_score'] = round(r["score"] * 100)
-                            payload['match_reasons'] = ["向量语义相似"]
-                            items.append(payload)
-                    if items:
-                        return jsonify({
-                            'success': True,
-                            'items': items,
-                            'total': len(items),
-                            'search_mode': 'pgvector' if db.bind and db.bind.dialect.name.startswith('postgresql') else 'embedding',
-                        })
-        except Exception as e:
-            logger.debug("RAG 语义检索不可用，降级到 hash: %s", e)
-
-        # 降级到 hash 向量检索
         with SessionLocal() as db:
             matches = crud.find_questions_by_natural_language(
                 db,
                 query_text=query_text,
                 limit=limit,
-                user_id=user_id,
+                user_id=_effective_user_id(),
                 project_id=project_id,
             )
             items = []
@@ -427,56 +380,10 @@ def find_error_bank_questions():
             'success': True,
             'items': items,
             'total': len(items),
-            'search_mode': search_mode,
         })
     except Exception:
         logger.exception("AI find questions failed")
         return jsonify({'success': False, 'error': '找题失败，请稍后重试'}), 500
-
-
-@bp.route('/rag/reindex', methods=['POST'])
-def rag_reindex():
-    """重建当前用户的 RAG 索引"""
-    try:
-        from core.rag import index_question
-
-        user_id = session.get('user_id')
-        project_id = _project_id_body(request.get_json(silent=True) or {})
-
-        with SessionLocal() as db:
-            query = db.query(Question.id).filter(Question.user_id == user_id)
-            if project_id is not None:
-                query = query.filter(Question.project_id == project_id)
-            question_ids = [row[0] for row in query.all()]
-
-        indexed = 0
-        skipped = 0
-        errors = 0
-
-        for qid in question_ids:
-            try:
-                with SessionLocal() as db:
-                    success = index_question(db, qid)
-                    if success:
-                        indexed += 1
-                    else:
-                        skipped += 1
-            except Exception as e:
-                logger.warning("索引题目 %d 失败: %s", qid, e)
-                errors += 1
-
-        return jsonify({
-            'success': True,
-            'message': f'索引完成：成功 {indexed}，跳过 {skipped}，失败 {errors}',
-            'indexed': indexed,
-            'skipped': skipped,
-            'errors': errors,
-            'total': len(question_ids),
-        })
-
-    except Exception as e:
-        logger.exception("重建 RAG 索引失败")
-        return jsonify({'success': False, 'error': '重建索引失败，请稍后重试'}), 500
 
 
 @bp.route('/subjects', methods=['GET'])
@@ -525,19 +432,10 @@ def update_question(question_id):
                     question.answer = str(data['answer'])[:10000] if data['answer'] else None
                 question.updated_at = datetime.utcnow()
                 db.commit()
+                return jsonify({'success': True})
             except Exception:
                 db.rollback()
                 raise
-
-        # 内容更新后重新建立 RAG 索引
-        try:
-            from core.rag import index_question
-            with SessionLocal() as db:
-                index_question(db, question_id)
-        except Exception as e:
-            logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
-
-        return jsonify({'success': True})
     except Exception:
         logger.exception("编辑题目失败")
         return jsonify({'success': False, 'error': '保存失败，请稍后重试'}), 500
@@ -559,19 +457,12 @@ def update_question_answer(question_id):
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
-        try:
-            from core.rag import index_question
-            with SessionLocal() as db:
-                index_question(db, question_id)
-        except Exception as e:
-            logger.warning(f"更新题目 {question_id} 的用户作答索引失败: {e}")
-
-        return jsonify({
-            'success': True,
-            'message': '答案已保存',
-            'user_answer': question.user_answer,
-            'updated_at': question.updated_at.isoformat() if question.updated_at else None,
-        })
+            return jsonify({
+                'success': True,
+                'message': '答案已保存',
+                'user_answer': question.user_answer,
+                'updated_at': question.updated_at.isoformat() if question.updated_at else None,
+            })
 
     except Exception as e:
         logger.exception("保存答案失败")
@@ -606,64 +497,6 @@ def update_question_review_status(question_id):
         return jsonify({'success': False, 'error': '更新复习状态失败，请稍后重试'}), 500
 
 
-@bp.route('/question/<int:question_id>/review', methods=['POST'])
-def review_question(question_id):
-    """Record a spaced-repetition review result for a question."""
-    try:
-        data = request.get_json(silent=True) or {}
-        with SessionLocal() as db:
-            question = crud.schedule_question_review(
-                db,
-                question_id,
-                rating=data.get('rating') or data.get('quality') or 'good',
-                user_id=_effective_user_id(),
-            )
-            if not question:
-                return jsonify({'success': False, 'error': '题目不存在'}), 404
-            return jsonify({'success': True, 'question': _serialize_question_detail(question)})
-    except ValueError:
-        return jsonify({'success': False, 'error': '无效的复习结果'}), 400
-    except Exception:
-        logger.exception("record question review failed")
-        return jsonify({'success': False, 'error': '记录复习失败，请稍后重试'}), 500
-
-
-@bp.route('/review/due', methods=['GET'])
-def get_due_review_items():
-    """Return due questions and notes for the review page."""
-    try:
-        target_type = request.args.get('target_type') or request.args.get('type') or 'all'
-        limit = request.args.get('limit', 40, type=int)
-        project_id = _project_id_arg()
-        with SessionLocal() as db:
-            result = crud.get_due_reviews(
-                db,
-                user_id=_effective_user_id(),
-                target_type=target_type,
-                limit=limit,
-                project_id=project_id,
-            )
-            from routes.notes import _serialize_note
-
-            questions = [_serialize_question_detail(q) for q in result.get('questions', [])]
-            notes = [_serialize_note(n) for n in result.get('notes', [])]
-            items = (
-                [{'target_type': 'question', 'item': q, 'review_priority': q.get('review_priority', 0)} for q in questions]
-                + [{'target_type': 'note', 'item': n, 'review_priority': n.get('review_priority', 0)} for n in notes]
-            )
-            items.sort(key=lambda x: x.get('review_priority', 0), reverse=True)
-            return jsonify({
-                'success': True,
-                'items': items,
-                'questions': questions,
-                'notes': notes,
-                'total': len(items),
-            })
-    except Exception:
-        logger.exception("load due review items failed")
-        return jsonify({'success': False, 'error': '加载待复习内容失败'}), 500
-
-
 @bp.route('/save-to-db', methods=['POST'])
 def save_to_db():
     """
@@ -671,10 +504,7 @@ def save_to_db():
 
     Request Body:
         {
-            "selected_ids": ["q_0", "q_1", ...],  # 选中的题目 ID 列表
-            "run_id": "xxx",                       # 可选，从 WorkflowRun 读取题目
-            "record_id": 123,                      # 可选，从 SplitRecord 读取题目（历史记录导入）
-            "project_id": 456                      # 目标错题库 ID
+            "selected_ids": ["q_0", "q_1", ...]   # 选中的题目 ID 列表
         }
     """
     try:
@@ -686,39 +516,14 @@ def save_to_db():
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
         run_id = data.get('run_id')
-        record_id = data.get('record_id') or data.get('split_record_id')
+        if not run_id:
+            return jsonify({'success': False, 'code': 'MISSING_RUN_ID', 'error': '缺少 run_id，请重新分割题目'}), 400
         user_id = session.get('user_id')
-
-        # 优先从 SplitRecord 读取（历史记录导入场景）
-        if record_id:
-            with SessionLocal() as db:
-                record = crud.get_split_record_by_id(db, record_id, user_id=user_id)
-                if not record:
-                    return jsonify({'success': False, 'error': '分割记录不存在'}), 404
-                questions = json.loads(record.questions_json) if record.questions_json else []
-                subject = record.subject or ''
-                file_names = json.loads(record.file_names_json) if record.file_names_json else []
-                batch_info = {
-                    "original_filename": ", ".join(file_names) or "Unknown",
-                    "subject": subject,
-                    "file_path": "",
-                }
-        # 从 WorkflowRun 读取（正常分割后导入场景）
-        elif run_id:
-            with SessionLocal() as db:
-                run = run_store.get_split_run(db, run_id, user_id=user_id)
-                if not run or run.status != run_store.STATUS_SUCCEEDED:
-                    return jsonify({'success': False, 'error': '请先分割题目'}), 400
-                questions = run_store.read_questions(run)
-                subject = run_store.read_subject(run)
-                file_names = json.loads(run.file_names_json) if run.file_names_json else []
-                batch_info = {
-                    "original_filename": ", ".join(file_names) or "Unknown",
-                    "subject": subject,
-                    "file_path": run.result_dir,
-                }
-        else:
-            return jsonify({'success': False, 'code': 'MISSING_SOURCE', 'error': '缺少 run_id 或 record_id'}), 400
+        with SessionLocal() as db:
+            run = run_store.get_split_run(db, run_id, user_id=user_id)
+            if not run or run.status != run_store.STATUS_SUCCEEDED:
+                return jsonify({'success': False, 'error': '请先分割题目'}), 400
+            questions = run_store.read_questions(run)
 
         uid_set = set(selected_uids)
         selected_questions = [q for q in questions if q.get('uid') in uid_set]
@@ -735,19 +540,26 @@ def save_to_db():
                 if 'user_answer' in answers_map[uid]:
                     sq['user_answer'] = answers_map[uid]['user_answer']
 
+        # 读取科目信息
+        subject = run_store.read_subject(run)
+
+        file_names = json.loads(run.file_names_json) if run.file_names_json else []
+        batch_info = {
+            "original_filename": ", ".join(file_names) or "Unknown",
+            "subject": subject,
+            "file_path": run.result_dir,
+        }
+
         with SessionLocal() as db:
             try:
                 project_id = (
-                    crud.require_project_id(
-                        db,
-                        project_id,
-                        user_id=session.get('user_id'),
-                        project_type="question",
-                    )
+                    crud.require_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
                     if project_id
-                    else None
+                    else crud.resolve_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
                 )
             except ValueError as exc:
+                if str(exc) == "PROJECT_REQUIRED":
+                    return jsonify({'success': False, 'error': '请先创建并选择一个错题库'}), 400
                 return jsonify({'success': False, 'error': '项目不存在'}), 404
             result = crud.save_questions_to_db(
                 db,
@@ -760,9 +572,7 @@ def save_to_db():
         return jsonify({
             'success': True,
             'message': f'已导入 {result["created"]} 道题目（跳过 {result["duplicates"]} 道重复）',
-            'run_id': run_id,
-            'record_id': record_id,
-            'split_record_id': record_id,
+            'run_id': run.public_id,
             'created': result['created'],
             'duplicates': result['duplicates'],
         })
@@ -934,19 +744,11 @@ def save_question_answer(question_id):
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
-        # 答案更新后重新建立 RAG 索引
-        try:
-            from core.rag import index_question
-            with SessionLocal() as db:
-                index_question(db, question_id)
-        except Exception as e:
-            logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
-
-        return jsonify({
-            'success': True,
-            'message': '答案已保存',
-            'answer': question.answer,
-        })
+            return jsonify({
+                'success': True,
+                'message': '答案已保存',
+                'answer': question.answer,
+            })
 
     except Exception as e:
         logger.exception("保存答案失败")

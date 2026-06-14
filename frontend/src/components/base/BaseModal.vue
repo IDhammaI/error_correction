@@ -11,7 +11,6 @@ const props = defineProps({
   bodyClass: { type: String, default: 'px-6 py-5' },
   blurBackdrop: { type: Boolean, default: true },
   sidebarOffset: { type: Number, default: null },
-  zIndex: { type: Number, default: null },
 })
 
 const emit = defineEmits(['close'])
@@ -29,7 +28,7 @@ const backdropStyle = computed(() => ({
       <div
         v-if="open"
         class="dialog-backdrop fixed inset-0 z-[100] bg-black/40 transition-all duration-300"
-        :style="{ ...backdropStyle, ...(zIndex ? { zIndex: zIndex - 1 } : {}) }"
+        :style="backdropStyle"
         @click="emit('close')"
       ></div>
     </Transition>
@@ -38,7 +37,6 @@ const backdropStyle = computed(() => ({
       <div
         v-if="open"
         class="fixed inset-0 z-[101] flex items-center justify-center p-4 transition-all duration-300"
-        :style="zIndex ? { zIndex } : undefined"
         @click.self="emit('close')"
       >
         <div

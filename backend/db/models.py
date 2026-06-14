@@ -391,22 +391,3 @@ class EmailVerification(Base):
     last_sent_at = Column(DateTime, nullable=True)
     attempts = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class RagDocumentChunk(Base):
-    """RAG 文档分块（用于错题库语义检索）"""
-    __tablename__ = "rag_document_chunks"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
-    source_type = Column(String(20), nullable=False, index=True)
-    source_id = Column(Integer, nullable=False, index=True)
-    chunk_index = Column(Integer, default=0, nullable=False)
-    content = Column(Text, nullable=False)
-    metadata_json = Column(Text, default="")
-    content_hash = Column(String(64), default="", index=True)
-    embedding_model = Column(String(100), nullable=True)
-    vector_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

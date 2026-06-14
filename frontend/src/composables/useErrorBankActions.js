@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
 import * as api from '@/api/index.js'
-import { useProjects } from '@/composables/useProjects.js'
 
 /**
  * useErrorBankActions
@@ -14,12 +13,10 @@ export function useErrorBankActions({
   selectedIds,
   activeQuestion,
   activeTab,
-  workbenchView,
   pushToast,
   typesetMath,
   loadStats,
 }) {
-  const { loadProjects } = useProjects()
   const dialogOpen = ref(false)
   const dialogField = ref('answer')
   const dialogQuestion = ref(null)
@@ -101,12 +98,10 @@ export function useErrorBankActions({
       grandTotal.value = Math.max(0, grandTotal.value - 1)
       selectedIds.delete(question.id)
       if (String(activeQuestionId.value) === String(question.id)) {
-        activeQuestionId.value = null
-        if (workbenchView) workbenchView.value = 'list'
+        activeQuestionId.value = items.value[0]?.id || null
       }
       pushToast('success', '题目已删除')
       await loadStats()
-      await loadProjects()
     } catch (_) {
       pushToast('error', '删除失败')
     }

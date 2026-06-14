@@ -28,128 +28,22 @@ let resizeObserver = null
 
 const cloudColors = ['#34d399', '#60a5fa', '#facc15', '#a78bfa', '#fb7185', '#22d3ee', '#fb923c', '#cbd5e1']
 
-/**
- * 错因类型模板库
- * 每种错因类型包含症状和修正建议的模板，支持 {tag}/{tag1}/{tag2} 占位符
- */
-const ERROR_TYPE_PROFILES = [
-  {
-    type: '概念混淆',
-    symptoms: [
-      '将 {tag1} 与 {tag2} 的定义条件混淆，未区分两者的适用范围。',
-      '对 {tag} 的核心概念理解偏差，套用了错误的解题框架。',
-    ],
-    suggestions: [
-      '对比整理 {tag} 与易混淆概念的定义差异，制作对照表。',
-      '重做 2-3 道以 {tag} 为核心的选择题，重点识别概念边界。',
-    ],
-    confidenceRange: [0.72, 0.88],
-  },
-  {
-    type: '公式误用',
-    symptoms: [
-      '{tag} 相关公式记混或用错，代入了不匹配的变量。',
-      '在 {tag} 的计算中，未注意公式的前提条件。',
-    ],
-    suggestions: [
-      '整理 {tag} 涉及的核心公式，标注每个公式的适用条件。',
-      '做 3 道变形题，训练识别题目条件与公式的对应关系。',
-    ],
-    confidenceRange: [0.68, 0.85],
-  },
-  {
-    type: '审题遗漏',
-    symptoms: [
-      '忽略了题干中关于 {tag} 的关键限定条件。',
-      '跳读导致遗漏了题目中的隐含条件或单位换算。',
-    ],
-    suggestions: [
-      '审题时逐句圈画关键词，尤其是限定词、单位和否定词。',
-      '训练"读题-画关键信息-列条件"的三步审题习惯。',
-    ],
-    confidenceRange: [0.75, 0.92],
-  },
-  {
-    type: '计算错误',
-    symptoms: [
-      '{tag} 的推导过程正确，但在中间步骤出现计算失误。',
-      '运算过程中符号处理不当，导致最终结果偏离。',
-    ],
-    suggestions: [
-      '分步书写计算过程，每步结果单独验算。',
-      '整理易错运算类型（如正负号、括号展开），建立个人检查清单。',
-    ],
-    confidenceRange: [0.82, 0.95],
-  },
-  {
-    type: '知识点遗忘',
-    symptoms: [
-      '对 {tag} 的基础定理/公式记忆模糊，解题时无法快速调用。',
-      '缺乏对 {tag} 相关知识体系的整体回顾。',
-    ],
-    suggestions: [
-      '针对 {tag} 做一次完整知识点回顾，重新推导核心公式。',
-      '制作 {tag} 的思维导图，建立知识脉络。',
-    ],
-    confidenceRange: [0.65, 0.80],
-  },
-  {
-    type: '解题思路错误',
-    symptoms: [
-      '面对 {tag} 相关问题时，选择了低效或错误的切入点。',
-      '缺乏从题目条件到 {tag} 解法的逻辑推演能力。',
-    ],
-    suggestions: [
-      '总结 {tag} 常见题型的解题模板，归纳通用思路。',
-      '对比正确解法和自己的思路，分析偏差产生的环节。',
-    ],
-    confidenceRange: [0.60, 0.78],
-  },
-]
-
-/**
- * 根据知识点标签确定性生成错因分析
- * 使用标签字符串长度作为哈希种子，确保同一题目每次生成相同的分析
- */
-const generateMockAnalysis = (tags) => {
-  const safeTags = tags.length ? tags : ['基础知识']
-  const tagHash = safeTags.join('').length
-
-  // 根据哈希值确定错因类型数量（2-3种）
-  const typeCount = 2 + (tagHash % 2)
-
-  // 确定性洗牌选择错因类型
-  const shuffled = [...ERROR_TYPE_PROFILES].sort((a, b) => {
-    return (a.type.length + tagHash) % 3 - (b.type.length + tagHash) % 3
-  })
-  const selectedTypes = shuffled.slice(0, typeCount)
-
-  // 填充模板占位符
-  const fillTemplate = (template) => {
-    return template
-      .replace('{tag}', safeTags[0])
-      .replace('{tag1}', safeTags[0])
-      .replace('{tag2}', safeTags[1] || safeTags[0])
-  }
-
-  const primary = selectedTypes[0]
-  const confidence = primary.confidenceRange[0] +
-    (tagHash % 100) / 100 * (primary.confidenceRange[1] - primary.confidenceRange[0])
-
-  return {
-    knowledge_points: safeTags,
-    error_types: selectedTypes.map(t => t.type),
-    error_symptoms: selectedTypes.map(t =>
-      fillTemplate(t.symptoms[tagHash % t.symptoms.length])
-    ),
-    correction_suggestions: selectedTypes.slice(0, 2).map(t =>
-      fillTemplate(t.suggestions[0])
-    ),
-    confidence: Math.round(confidence * 100) / 100,
-  }
+const mockMistakeAnalysis = {
+  knowledge_points: ['圆锥体积', '立体几何', '统计', '样本方差', '假设检验'],
+  error_types: ['概念混淆', '公式误用', '审题遗漏'],
+  error_symptoms: ['把题目中的处理效应与样本差异混在一起判断。'],
+  correction_suggestions: [
+    '先复习统计量、样本方差和假设检验的适用条件。',
+    '补做 3-5 道同类统计推断题，重点训练变量含义识别。',
+    '解题时先圈出实验对象、处理方式和待比较指标。',
+  ],
+  confidence: 0.82,
 }
 
-const mistakeAnalysis = computed(() => generateMockAnalysis(props.knowledgeTags))
+const mistakeAnalysis = computed(() => ({
+  ...mockMistakeAnalysis,
+  knowledge_points: props.knowledgeTags.length ? props.knowledgeTags : mockMistakeAnalysis.knowledge_points,
+}))
 
 const wordCloudData = computed(() => mistakeAnalysis.value.knowledge_points.slice(0, 12).map((tag, index) => ({
   name: tag,
@@ -261,15 +155,8 @@ onBeforeUnmount(() => {
 
         <div>
           <p class="mb-2 text-xs font-medium text-gray-500 dark:text-[#8a8f98]">错误表现</p>
-          <div class="space-y-2">
-            <div
-              v-for="(symptom, idx) in mistakeAnalysis.error_symptoms"
-              :key="idx"
-              class="rounded-xl bg-white/70 p-3 text-sm leading-6 text-gray-600 shadow-inner shadow-black/[0.03] dark:bg-white/[0.035] dark:text-[#b8bec8] dark:shadow-black/20"
-            >
-              <span class="mr-1 font-bold text-rose-400">{{ idx + 1 }}.</span>
-              {{ symptom }}
-            </div>
+          <div class="rounded-xl bg-white/70 p-3 text-sm leading-6 text-gray-600 shadow-inner shadow-black/[0.03] dark:bg-white/[0.035] dark:text-[#b8bec8] dark:shadow-black/20">
+            {{ mistakeAnalysis.error_symptoms[0] }}
           </div>
         </div>
 

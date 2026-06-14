@@ -24,7 +24,7 @@ defineProps({
 const route = useRoute()
 const router = useRouter()
 const { pushToast } = useToast()
-const { activeNoteProjectId, noteProjects, loadProjects } = useProjects()
+const { activeNoteProjectId, noteProjects } = useProjects()
 
 const notes = ref([])
 const total = ref(0)
@@ -188,12 +188,10 @@ async function doDelete(noteId) {
     pushToast('success', '笔记删除成功')
     closeDetail()
     loadNotes()
-    loadProjects()
   } catch (e) {
     if (e.status === 404 || e.message?.includes('不存在')) {
       closeDetail()
       loadNotes()
-      loadProjects()
     } else {
       pushToast('error', e.message)
     }

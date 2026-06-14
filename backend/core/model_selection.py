@@ -22,9 +22,7 @@ class LLMSelectionError(Exception):
 
 
 def split_models(model_name: str | None) -> list[str]:
-    """返回模型名称列表。现在只支持单个模型，但保留列表形式以兼容调用方。"""
-    name = (model_name or "").strip()
-    return [name] if name else []
+    return [item.strip() for item in (model_name or "").split(",") if item.strip()]
 
 
 def build_managed_provider_context(db):

@@ -4,17 +4,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from db.models import (
-    ChatSession,
-    Note,
-    NoteTagMapping,
-    Project,
-    Question,
-    QuestionEmbedding,
-    QuestionTagMapping,
-    ReviewEvent,
-    UploadBatch,
-)
+from db.models import Note, Project, Question, UploadBatch
 
 
 VALID_PROJECT_TYPES = {"question", "note"}
@@ -145,45 +135,14 @@ def delete_project(db: Session, project_id: int, user_id=None) -> bool:
     if project.is_default:
         raise ValueError("DEFAULT_PROJECT_IMMUTABLE")
 
-    question_ids = [
-        row[0]
-        for row in db.query(Question.id).filter(Question.project_id == project.id).all()
-    ]
-    note_ids = [
-        row[0]
-        for row in db.query(Note.id).filter(Note.project_id == project.id).all()
-    ]
+    # 检查是否有题目或笔记
+    has_questions = db.query(Question.id).filter(Question.project_id == project.id).first()
+    has_notes = db.query(Note.id).filter(Note.project_id == project.id).first()
 
-    if question_ids:
-        db.query(QuestionTagMapping).filter(
-            QuestionTagMapping.question_id.in_(question_ids)
-        ).delete(synchronize_session=False)
-        db.query(QuestionEmbedding).filter(
-            QuestionEmbedding.question_id.in_(question_ids)
-        ).delete(synchronize_session=False)
-        db.query(ReviewEvent).filter(
-            ReviewEvent.target_type == "question",
-            ReviewEvent.target_id.in_(question_ids),
-        ).delete(synchronize_session=False)
-        db.query(ChatSession).filter(
-            ChatSession.question_id.in_(question_ids)
-        ).update({"question_id": None}, synchronize_session=False)
-        db.query(Question).filter(
-            Question.id.in_(question_ids)
-        ).delete(synchronize_session=False)
+    if has_questions or has_notes:
+        raise ValueError("PROJECT_NOT_EMPTY")
 
-    if note_ids:
-        db.query(NoteTagMapping).filter(
-            NoteTagMapping.note_id.in_(note_ids)
-        ).delete(synchronize_session=False)
-        db.query(ReviewEvent).filter(
-            ReviewEvent.target_type == "note",
-            ReviewEvent.target_id.in_(note_ids),
-        ).delete(synchronize_session=False)
-        db.query(Note).filter(
-            Note.id.in_(note_ids)
-        ).delete(synchronize_session=False)
-
+    # 如果没有题目和笔记了，自动清理关联的空批次（UploadBatch）
     db.query(UploadBatch).filter(UploadBatch.project_id == project.id).delete()
 
     db.delete(project)

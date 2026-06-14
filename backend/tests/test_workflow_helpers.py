@@ -19,7 +19,6 @@ from src.workflow import (
     _build_overlapping_batches,
     _run_ocr_and_simplify,
     _dedup_questions,
-    _fix_leading_images,
     _question_richness,
     _sort_key,
     _extract_text_sample,
@@ -408,17 +407,17 @@ class TestDedupQuestions:
         assert len(result) == 1
 
     def test_sorted_output(self):
-        """输出应保留原始出现顺序，避免无 section 题被排到错误位置"""
+        """输出应按题号排序"""
         qs = [
             {"question_id": "3", "content_blocks": []},
             {"question_id": "1", "content_blocks": []},
             {"question_id": "2", "content_blocks": []},
         ]
         result = _dedup_questions(qs)
-        assert [q["question_id"] for q in result] == ["3", "1", "2"]
+        assert [q["question_id"] for q in result] == ["1", "2", "3"]
 
     def test_mixed_id_types_sorted(self):
-        """数字和字母 id 混合时也保留原始出现顺序"""
+        """数字和字母 id 混合排序"""
         qs = [
             {"question_id": "B", "content_blocks": []},
             {"question_id": "2", "content_blocks": []},
@@ -426,7 +425,7 @@ class TestDedupQuestions:
             {"question_id": "1", "content_blocks": []},
         ]
         result = _dedup_questions(qs)
-        assert [q["question_id"] for q in result] == ["B", "2", "A", "1"]
+        assert [q["question_id"] for q in result] == ["1", "2", "A", "B"]
 
     def test_richness_with_options(self):
         """options 也计入 richness"""
@@ -440,77 +439,6 @@ class TestDedupQuestions:
         assert len(result) == 1
         # q_with_opt: 2 + 19 = 21 > q_no_opt: 3
         assert result[0].get("options") is not None
-
-    def test_same_id_unsectioned_different_content_is_kept(self):
-        """同题号但内容明显不同，即使一个没有 section_title 也不能直接删除"""
-        qs = [
-            {
-                "question_id": "3",
-                "section_title": None,
-                "content_blocks": [
-                    {"block_type": "text", "content": "3. 解方程。(6分)"},
-                    {"block_type": "text", "content": r"$$\frac{3}{4}x-40\%x=1.4$$"},
-                ],
-            },
-            {
-                "question_id": "3",
-                "section_title": "六、解决问题。(共27分)",
-                "content_blocks": [
-                    {"block_type": "text", "content": "3. 建一座污水处理池用了 48 万元，原计划投资多少万元？"},
-                ],
-            },
-        ]
-        result = _dedup_questions(qs)
-        assert len(result) == 2
-        assert any(q.get("section_title") is None for q in result)
-
-
-class TestFixLeadingImages:
-    """_fix_leading_images 测试"""
-
-    def test_does_not_move_image_across_sections(self):
-        questions = [
-            {
-                "question_id": "3",
-                "section_title": None,
-                "content_blocks": [{"block_type": "text", "content": "3. 解方程"}],
-            },
-            {
-                "question_id": "1",
-                "section_title": "五、看图列式",
-                "content_blocks": [
-                    {"block_type": "image", "content": "/images/q1.jpg"},
-                    {"block_type": "text", "content": "2."},
-                ],
-            },
-        ]
-
-        _fix_leading_images(questions)
-
-        assert questions[0]["content_blocks"] == [{"block_type": "text", "content": "3. 解方程"}]
-        assert questions[1]["content_blocks"][0] == {"block_type": "image", "content": "/images/q1.jpg"}
-
-    def test_moves_image_within_same_section(self):
-        questions = [
-            {
-                "question_id": "1",
-                "section_title": "六、解决问题",
-                "content_blocks": [{"block_type": "text", "content": "1. 上一题"}],
-            },
-            {
-                "question_id": "2",
-                "section_title": "六、解决问题",
-                "content_blocks": [
-                    {"block_type": "image", "content": "/images/prev.jpg"},
-                    {"block_type": "text", "content": "2. 下一题"},
-                ],
-            },
-        ]
-
-        _fix_leading_images(questions)
-
-        assert questions[0]["content_blocks"][-1] == {"block_type": "image", "content": "/images/prev.jpg"}
-        assert questions[1]["content_blocks"] == [{"block_type": "text", "content": "2. 下一题"}]
 
 
 # ═══════════════════════════════════════════════════════════

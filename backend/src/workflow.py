@@ -428,13 +428,6 @@ def _fix_leading_images(questions: List[Dict[str, Any]]) -> None:
 
         # 移到前一道题末尾
         prev_q = questions[i - 1]
-        if q.get("section_title") != prev_q.get("section_title"):
-            logger.info(
-                f"跳过 leading image 跨 section 移动: 题目 {q.get('question_id')} "
-                f"section={repr(q.get('section_title'))} 前题 {prev_q.get('question_id')} "
-                f"section={repr(prev_q.get('section_title'))}"
-            )
-            continue
         prev_blocks = prev_q.get("content_blocks") or []
         prev_q["content_blocks"] = prev_blocks + leading_images
         q["content_blocks"] = rest
@@ -546,7 +539,6 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         qid = q.get("question_id")
         if qid is not None:
             q["question_id"] = str(qid).strip()
-    original_order = {id(q): idx for idx, q in enumerate(questions)}
 
     # ── 第一轮：按 (section, qid) 复合键去重 ──────────────────
     groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
@@ -566,8 +558,10 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     # ── 第二轮：结构优先 + 内容相似度去重 ───────────────────────
     # 策略：
-    #   同一 qid 下不再因 section_title 是否存在直接丢弃候选。
-    #   只有内容相似度 ≥ 0.75 才视为重复；否则视为不同大题/不同区域下的同号题，全部保留。
+    #   1. 同一 qid 下同时存在有 section 和无 section 版本 → 直接丢弃所有 section=None 版本
+    #      （section=None 说明该批次只捕获到选项/部分内容，有 section 的是完整版本）
+    #   2. 同一 qid 下均有 section（不同 section）→ difflib 相似度 ≥ 0.75 视为重复，保留最优
+    #   3. 同一 qid 下均无 section → 保留内容最丰富的一份
     by_qid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for q in after_round1:
         by_qid[q.get("question_id", "")].append(q)
@@ -583,11 +577,24 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             final.extend(entries)
             continue
 
+        sectioned = [q for q in entries if q.get("section_title")]
+        unsectioned = [q for q in entries if not q.get("section_title")]
+
+        # 策略1：有 section 版本存在时，丢弃全部 section=None 版本
+        if sectioned and unsectioned:
+            round2_removed += len(unsectioned)
+            for q in unsectioned:
+                logger.debug(
+                    f"二次去重剔除(结构): qid={qid} "
+                    f"section=None，保留有大题标题的版本，richness={_question_richness(q)}"
+                )
+            entries = sectioned
+
         if len(entries) == 1:
             final.extend(entries)
             continue
 
-        # 同题号候选统一进入相似度去重；不同内容即使 section_title 缺失也保留。
+        # 策略2/3：全部有 section 或全部无 section → difflib 去重
         entries.sort(key=lambda q: (
             0 if q.get("section_title") else 1,
             -_question_richness(q)
@@ -611,21 +618,20 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         final.extend(kept)
 
     if round2_removed:
-        logger.info(f"二次去重: 剔除 {round2_removed} 道重复题目（相似度阈值={SIMILARITY_THRESHOLD}）")
+        logger.info(f"二次去重: 剔除 {round2_removed} 道重复题目（结构优先 + 相似度阈值={SIMILARITY_THRESHOLD}）")
         console.print(f"[yellow]二次去重: 剔除 {round2_removed} 道重复题目[/yellow]")
 
-    # ── 排序：按原始出现位置排列；同一 section 内按题号稳定排序 ──
+    # ── 排序：有 section 的题按首次出现顺序 + 题号，section=None 的题排最后 ──
     section_order: Dict[str, int] = {}
-    for idx, q in enumerate(questions):
+    for q in questions:
         s = q.get("section_title")
         if s and s not in section_order:
-            section_order[s] = idx
+            section_order[s] = len(section_order)
 
     final.sort(key=lambda q: (
-        section_order.get(q.get("section_title") or "", original_order.get(id(q), 999999)),
-        0 if q.get("section_title") else 1,
-        _sort_key(q.get("question_id", "")),
-        original_order.get(id(q), 999999),
+        0 if q.get("section_title") else 1,          # 有 section 的排前，None 排后
+        section_order.get(q.get("section_title") or "", 999),
+        _sort_key(q.get("question_id", ""))
     ))
     return final
 
@@ -809,22 +815,12 @@ def split_questions_node(state: WorkflowState) -> dict:
     split_elapsed = time.time() - split_start
     logger.info(f"并行分割完成, 耗时 {split_elapsed:.2f}s")
 
-    raw_agent_output_path = os.path.join(results_dir, "questions_agent_raw.json")
-    with open(raw_agent_output_path, 'w', encoding='utf-8') as f:
-        json.dump(batch_results, f, ensure_ascii=False, indent=2)
-    logger.info(f"已保存 split agent 原始输出: {raw_agent_output_path}")
-
     # ── Step 6: 跨批次 section 传播 + 合并 + 去重 ──
     _propagate_section_between_batches(batch_results)
 
     all_questions = []
     for questions in batch_results:
         all_questions.extend(questions)
-
-    before_dedup_path = os.path.join(results_dir, "questions_before_dedup.json")
-    with open(before_dedup_path, 'w', encoding='utf-8') as f:
-        json.dump(all_questions, f, ensure_ascii=False, indent=2)
-    logger.info(f"已保存去重前题目列表: {before_dedup_path}")
 
     before_dedup = len(all_questions)
     deduped = _dedup_questions(all_questions)
