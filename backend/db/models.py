@@ -40,6 +40,24 @@ class User(Base):
     device_bindings = relationship("DeviceBinding", back_populates="user")
     device_captures = relationship("DeviceCapture", back_populates="user")
     quota_usage_events = relationship("QuotaUsageEvent", back_populates="user", cascade="all, delete-orphan")
+    model_selections = relationship("UserModelSelection", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserModelSelection(Base):
+    """User-level selected LLM model option."""
+    __tablename__ = "user_model_selections"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_model_selection_category"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(20), nullable=False, index=True)
+    source = Column(String(20), nullable=False)
+    provider_id = Column(String(36), nullable=False)
+    model_name = Column(String(100), nullable=False)
+    option_id = Column(String(255), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="model_selections")
 
 
 class QuotaUsageEvent(Base):

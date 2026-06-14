@@ -91,6 +91,24 @@ def _migrate_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_action_type ON quota_usage_events(action_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_quota_date ON quota_usage_events(quota_date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_created_at ON quota_usage_events(created_at)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_model_selections (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                category VARCHAR(20) NOT NULL,
+                source VARCHAR(20) NOT NULL,
+                provider_id VARCHAR(36) NOT NULL,
+                model_name VARCHAR(100) NOT NULL,
+                option_id VARCHAR(255) NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                UNIQUE(user_id, category)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_user_model_selections_user_id ON user_model_selections(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_user_model_selections_category ON user_model_selections(category)")
         conn.commit()
         # 检查 questions 表是否有 answer 列
         cursor.execute("PRAGMA table_info(questions)")

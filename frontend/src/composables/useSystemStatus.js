@@ -40,6 +40,48 @@ const modelOptionsLoading = ref(false)
 const modelOptionsData = ref(null)
 const selectedLlmOptionId = ref(safeLocalStorage.getItem('selected_llm_option_id', ''))
 
+const splitModelNames = (value) => String(value || '')
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean)
+
+const normalizeModelOptions = (data) => {
+  const normalizedOptions = []
+  let normalizedDefaultId = data?.default_option_id || ''
+
+  for (const option of (data?.options || [])) {
+    const models = splitModelNames(option.model_name)
+    if (models.length <= 1) {
+      normalizedOptions.push({
+        ...option,
+        model_name: models[0] || option.model_name || '',
+        label: models[0] || option.model_name || option.label || '',
+      })
+      continue
+    }
+
+    models.forEach((model, index) => {
+      const optionId = `${option.source}:${option.category}:${option.provider_id}:${model}`
+      if (option.option_id === data.default_option_id && index === 0) {
+        normalizedDefaultId = optionId
+      }
+      normalizedOptions.push({
+        ...option,
+        option_id: optionId,
+        model_name: model,
+        label: model,
+        is_default: Boolean(option.is_default && index === 0),
+      })
+    })
+  }
+
+  return {
+    ...data,
+    options: normalizedOptions,
+    default_option_id: normalizedDefaultId,
+  }
+}
+
 const providerOptions = computed(() => {
   const s = systemStatus.value
   return s && s.available_models ? s.available_models : []
@@ -104,13 +146,17 @@ const doFetchStatus = async () => {
 const doFetchModelOptions = async () => {
   modelOptionsLoading.value = true
   try {
-    const data = await api.fetchModelOptions()
+    const data = normalizeModelOptions(await api.fetchModelOptions())
     modelOptionsData.value = data
 
     // 如果没有选中项，或者选中项不在当前可用列表中，则使用默认选项
     const options = data.options || []
+    const serverSelectedId = data.selected_option_id || ''
+    const isServerSelectionValid = serverSelectedId && options.some(o => o.option_id === serverSelectedId && o.available)
     const isValidSelection = selectedLlmOptionId.value && options.some(o => o.option_id === selectedLlmOptionId.value && o.available)
-    if (!isValidSelection) {
+    if (isServerSelectionValid && serverSelectedId !== selectedLlmOptionId.value) {
+      selectedLlmOptionId.value = serverSelectedId
+    } else if (!isValidSelection) {
       selectedLlmOptionId.value = data.default_option_id || (options[0]?.option_id || '')
       if (selectedLlmOptionId.value) {
         try {
@@ -133,7 +179,7 @@ const doFetchModelOptions = async () => {
 }
 
 // 用户切换模型时持久化选项，同时同步旧的 selectedModel 字段。
-watch(selectedLlmOptionId, (newId) => {
+watch(selectedLlmOptionId, async (newId) => {
   if (newId) {
     try {
       safeLocalStorage.setItem('selected_llm_option_id', newId)
@@ -144,6 +190,12 @@ watch(selectedLlmOptionId, (newId) => {
     // 同步更新旧的 selectedModel 状态，以兼容设置页等旧逻辑
     if (selectedLlmOption.value) {
       selectedModel.value = selectedLlmOption.value.model_name
+    }
+
+    try {
+      await api.updateModelSelection(newId)
+    } catch (e) {
+      console.warn('[useSystemStatus] 保存服务端模型选择失败:', e)
     }
   }
 })

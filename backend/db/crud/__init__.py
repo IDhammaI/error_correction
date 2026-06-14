@@ -119,6 +119,8 @@ from db.crud.providers import (
     save_system_providers,
     get_active_provider,
     get_active_system_provider,
+    get_user_model_selection,
+    save_user_model_selection,
 )
 
 from db.crud.projects import (
@@ -242,6 +244,8 @@ __all__ = [
     "save_system_providers",
     "get_active_provider",
     "get_active_system_provider",
+    "get_user_model_selection",
+    "save_user_model_selection",
     # projects
     "normalize_project_type",
     "serialize_project",
