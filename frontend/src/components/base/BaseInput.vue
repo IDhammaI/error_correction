@@ -77,7 +77,7 @@ const inputType = computed(() => {
           :spellcheck="spellcheck"
           data-gramm="false"
           :class="[
-            'w-full h-10 px-4 rounded-xl border bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all text-sm outline-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
+            'w-full h-10 px-4 rounded-lg border bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all text-sm outline-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
             error ? 'border-rose-500/50 focus:border-rose-500/50' : 'border-gray-200 dark:border-white/[0.08] focus:border-[rgb(var(--accent-rgb)/0.4)] dark:focus:border-[rgb(var(--accent-rgb)/0.4)]',
             type === 'password' ? 'pr-11' : '',
             inputClass

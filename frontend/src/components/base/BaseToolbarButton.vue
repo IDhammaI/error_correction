@@ -19,7 +19,7 @@ const emit = defineEmits(['click'])
     type="button"
     :title="title"
     :disabled="disabled"
-    class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+    class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
     :class="[
       active
         ? 'bg-gray-200 text-gray-900 dark:bg-white/[0.08] dark:text-[#f7f8f8]'

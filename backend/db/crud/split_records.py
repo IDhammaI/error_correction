@@ -21,6 +21,7 @@ def save_split_record(
     model_provider: str,
     file_names: List[str],
     questions: List[Dict],
+    original_images: Optional[List[Dict]] = None,
     user_id=None,
 ) -> SplitRecord:
     """保存一次分割操作的完整结果，超过上限自动清理最旧记录"""
@@ -29,6 +30,7 @@ def save_split_record(
         subject=subject,
         model_provider=model_provider,
         file_names_json=json.dumps(file_names, ensure_ascii=False),
+        original_images_json=json.dumps(original_images or [], ensure_ascii=False),
         questions_json=json.dumps(questions, ensure_ascii=False),
         question_count=len(questions),
     )

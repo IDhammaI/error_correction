@@ -655,7 +655,7 @@ watch(activeLibraryProject, (project) => {
   width: 100%;
   align-items: center;
   gap: 0.625rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   padding: 0.5rem 0.625rem;
   text-align: left;
   font-size: 0.8125rem;

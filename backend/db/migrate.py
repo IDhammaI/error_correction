@@ -190,6 +190,7 @@ def migrate():
         _add_column_if_missing(conn, "upload_batches", "project_id", "INTEGER")
         _add_column_if_missing(conn, "questions", "project_id", "INTEGER")
         _add_column_if_missing(conn, "notes", "project_id", "INTEGER")
+        _add_column_if_missing(conn, "split_records", "original_images_json", "TEXT")
         _add_column_if_missing(
             conn, "projects", "project_type", "VARCHAR(20)", "'question'"
         )

@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
         <!-- 统计卡片骨架：精确复刻 StatCard 内部结构 -->
         <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div v-for="i in 4" :key="i"
-            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+            class="animate-pulse rounded-xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="flex items-center gap-4">
               <div class="size-12 shrink-0 rounded-lg bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="flex flex-col gap-2">
@@ -280,7 +280,7 @@ onBeforeUnmount(() => {
         <!-- 图表骨架：精确复刻 BaseCard + 标题行 + canvas 区域 -->
         <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div v-for="i in 2" :key="i"
-            class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+            class="animate-pulse rounded-xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
@@ -289,14 +289,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+          <div class="animate-pulse rounded-xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
             </div>
             <div class="h-[360px] w-full rounded-xl bg-slate-100/80 dark:bg-white/[0.04]"></div>
           </div>
-          <div class="animate-pulse rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+          <div class="animate-pulse rounded-xl border border-slate-200/60 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
             <div class="mb-4 flex items-center gap-2">
               <div class="h-4 w-4 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>
               <div class="h-4 w-28 rounded bg-slate-200/80 dark:bg-white/[0.07]"></div>

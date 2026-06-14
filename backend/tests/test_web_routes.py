@@ -595,6 +595,45 @@ class TestMultiUserWorkflowRunIsolation:
         assert saved[0].user_id == TEST_USER_ID
         assert "import me" in saved[0].content_json
 
+    def test_save_to_db_imports_split_record_without_run_id(self, client, test_db):
+        project = crud.create_project(test_db, "History Bank", user_id=TEST_USER_ID)
+        record = crud.save_split_record(
+            test_db,
+            subject="数学",
+            model_provider="openai",
+            file_names=["history.jpg"],
+            questions=[
+                {
+                    "uid": "hist_0",
+                    "question_id": "1",
+                    "question_type": "选择题",
+                    "content_blocks": [{"block_type": "text", "content": "from history"}],
+                    "has_formula": False,
+                    "has_image": False,
+                }
+            ],
+            user_id=TEST_USER_ID,
+        )
+
+        resp = client.post(
+            "/api/save-to-db",
+            json={
+                "split_record_id": record.id,
+                "selected_ids": ["hist_0"],
+                "project_id": project.id,
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["split_record_id"] == record.id
+
+        saved = test_db.query(Question).all()
+        assert len(saved) == 1
+        assert saved[0].user_id == TEST_USER_ID
+        assert "from history" in saved[0].content_json
+
 
 # ── PATCH /api/question/<id>/review-status ────────────
 

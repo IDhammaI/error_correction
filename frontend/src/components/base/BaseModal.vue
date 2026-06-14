@@ -42,13 +42,13 @@ const backdropStyle = computed(() => ({
         @click.self="emit('close')"
       >
         <div
-          class="relative w-full rounded-2xl border border-slate-200/60 bg-white shadow-2xl dark:border-[#2f3336] dark:bg-[#1b1b1d]"
+          class="relative w-full rounded-xl border border-slate-200/60 bg-white shadow-2xl dark:border-[#2f3336] dark:bg-[#1b1b1d]"
           :class="maxWidth"
         >
           <slot name="header" :close="close">
             <div class="flex items-center justify-between px-6 pt-5 pb-4">
               <div class="flex items-center gap-3">
-                <div v-if="$slots.icon || icon" class="flex h-9 w-9 items-center justify-center rounded-xl" :class="iconBg">
+                <div v-if="$slots.icon || icon" class="flex h-9 w-9 items-center justify-center rounded-lg" :class="iconBg">
                   <slot name="icon">
                     <i class="fa-solid text-base" :class="[icon, iconClass]"></i>
                   </slot>
@@ -70,7 +70,7 @@ const backdropStyle = computed(() => ({
             <slot />
           </div>
 
-          <div v-if="$slots.footer" class="flex min-h-16 items-center justify-end gap-2 rounded-b-2xl border-t border-slate-200/60 px-6 py-3 dark:border-[#2f3336]">
+          <div v-if="$slots.footer" class="flex min-h-16 items-center justify-end gap-2 rounded-b-xl border-t border-slate-200/60 px-6 py-3 dark:border-[#2f3336]">
             <slot name="footer" />
           </div>
         </div>

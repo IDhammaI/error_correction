@@ -17,7 +17,7 @@ defineProps({
       {
         'p-1.5 rounded-lg': size === 'sm',
         'p-2 rounded-xl': size === 'md',
-        'p-3 rounded-2xl': size === 'lg',
+        'p-3 rounded-xl': size === 'lg',
       },
     ]"
   >

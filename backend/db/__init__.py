@@ -110,6 +110,12 @@ def _migrate_schema():
 
         # chat_sessions 表：question_id 需要改为 nullable
         # SQLite 不支持 ALTER COLUMN，需要重建表
+        cursor.execute("PRAGMA table_info(split_records)")
+        split_record_columns = {row[1] for row in cursor.fetchall()}
+        if 'original_images_json' not in split_record_columns:
+            cursor.execute("ALTER TABLE split_records ADD COLUMN original_images_json TEXT")
+            conn.commit()
+
         cursor.execute("PRAGMA table_info(chat_sessions)")
         cs_columns = {row[1]: row for row in cursor.fetchall()}
         if 'title' not in cs_columns:

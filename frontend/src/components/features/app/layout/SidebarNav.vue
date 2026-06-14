@@ -904,7 +904,7 @@ const userQuotaSummary = computed(() => {
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {

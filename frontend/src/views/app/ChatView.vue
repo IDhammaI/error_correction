@@ -289,7 +289,7 @@ onBeforeUnmount(() => {
 
         <!-- 空状态 -->
         <div v-if="!messages.length && !streaming" class="flex h-full flex-col items-center justify-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl accent-bg-soft">
+          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-xl accent-bg-soft">
             <i class="fa-solid fa-chalkboard-user text-2xl accent-text"></i>
           </div>
           <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">向 AI 老师提问吧</h3>
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
               <i class="fa-solid fa-graduation-cap"></i>
             </div>
 
-            <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm" :class="msg.role === 'user'
+            <div class="max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed shadow-sm" :class="msg.role === 'user'
               ? 'accent-bg text-white'
               : 'border border-slate-200/60 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200'
               ">

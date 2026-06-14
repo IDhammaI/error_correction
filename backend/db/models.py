@@ -214,6 +214,7 @@ class SplitRecord(Base):
     subject = Column(String(50))
     model_provider = Column(String(20))
     file_names_json = Column(Text)
+    original_images_json = Column(Text)
     questions_json = Column(Text)
     question_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)

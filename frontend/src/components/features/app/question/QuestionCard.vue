@@ -75,7 +75,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
 
 <template>
   <BaseCard class="question-card group relative overflow-hidden transition-shadow hover:shadow-md cursor-pointer"
-    padding="p-6" rounded="rounded-2xl" :class="selected
+    padding="p-6" rounded="rounded-xl" :class="selected
       ? 'accent-border shadow-[rgb(var(--accent-rgb)/0.1)] dark:shadow-[rgb(var(--accent-rgb)/0.2)]'
       : 'hover:border-[rgb(var(--accent-rgb)/0.4)] dark:hover:!border-white/15'
       " @click="emit('toggle', question.uid)">
@@ -130,7 +130,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
             class="my-4 text-base font-medium leading-relaxed text-gray-800 dark:text-[#d0d6e0] whitespace-pre-wrap">{{
               b.content }}</p>
           <img v-else-if="b.block_type === 'image' && b.content" :src="b.content"
-            class="my-6 max-h-[400px] cursor-zoom-in rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm transition-transform hover:scale-[1.01]"
+            class="my-6 max-h-[400px] cursor-zoom-in rounded-xl border border-gray-100 dark:border-white/5 shadow-sm transition-transform hover:scale-[1.01]"
             @click.stop="() => emit('open-image', b.content)" />
         </div>
       </template>
@@ -138,7 +138,7 @@ const cancelUserAnswer = () => { editingUserAnswer.value = false }
       <!-- 兜底渲染：无选项配对时独立展示 -->
       <div v-if="extraImages.length && !optionImages" class="my-4 flex flex-wrap gap-2">
         <img v-for="(src, i) in extraImages" :key="'extra-' + i" :src="src"
-          class="max-h-[200px] cursor-zoom-in rounded-2xl border border-gray-100 dark:border-white/5 object-contain shadow-sm transition-transform hover:scale-[1.01]"
+          class="max-h-[200px] cursor-zoom-in rounded-xl border border-gray-100 dark:border-white/5 object-contain shadow-sm transition-transform hover:scale-[1.01]"
           @click.stop="() => emit('open-image', src)" />
       </div>
 
