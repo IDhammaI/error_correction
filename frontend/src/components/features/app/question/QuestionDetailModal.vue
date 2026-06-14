@@ -179,7 +179,7 @@ const reviewStatusOptions = [
         @click.self="emit('close')">
         <!-- 弹窗主体 -->
         <div
-          class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-2xl transition-all dark:border-[#2f3336] dark:bg-[#1b1b1d]">
+          class="relative flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-2xl transition-all dark:border-[#2f3336] dark:bg-[#1b1b1d]">
 
           <!-- 头部控制栏 -->
           <div
@@ -234,21 +234,21 @@ const reviewStatusOptions = [
                     }}
                   </p>
                   <img v-else-if="b.block_type === 'image'" :src="b.content"
-                    class="mb-6 max-w-full cursor-zoom-in rounded-2xl border border-slate-200 shadow-sm dark:border-white/10"
+                    class="mb-6 max-w-full cursor-zoom-in rounded-xl border border-slate-200 shadow-sm dark:border-white/10"
                     @click="emit('open-image', b.content)" />
                 </template>
 
                 <!-- 兜底渲染 image_refs 中未嵌入 content_json 的图片 -->
                 <div v-if="extraImages.length" class="mb-6 flex flex-wrap gap-3">
                   <img v-for="(src, i) in extraImages" :key="'extra-' + i" :src="src"
-                    class="max-h-[240px] cursor-zoom-in rounded-2xl border border-slate-200 object-contain shadow-sm dark:border-white/10"
+                    class="max-h-[240px] cursor-zoom-in rounded-xl border border-slate-200 object-contain shadow-sm dark:border-white/10"
                     @click="emit('open-image', src)" />
                 </div>
 
                 <!-- 选项 -->
                 <div v-if="question?.options_json" class="mt-8 grid gap-3">
                   <div v-for="(opt, idx) in question.options_json" :key="idx"
-                    class="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-[15px] font-medium text-slate-700 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
+                    class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 text-[15px] font-medium text-slate-700 dark:border-white/5 dark:bg-white/5 dark:text-slate-300">
                     {{ formatOption(opt) }}
                   </div>
                 </div>
@@ -278,7 +278,7 @@ const reviewStatusOptions = [
                       <i class="fa-solid fa-circle-check mr-1"></i>正确答案/解析
                     </label>
                     <textarea v-model="answerText" rows="4" placeholder="录入正确答案或标准解析…（支持 Markdown / LaTeX）"
-                      class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
+                      class="w-full rounded-lg border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
                   </div>
                   <button @click="saveCorrectAnswer" :disabled="isAnswerSaving" class="btn-success w-full h-12">
                     <i class="fa-solid" :class="isAnswerSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
@@ -293,18 +293,18 @@ const reviewStatusOptions = [
                       <i class="fa-solid fa-pen-to-square mr-1"></i>我的错因/心得笔记
                     </label>
                     <textarea v-model="userAnswer" rows="4" placeholder="记录下当时的解题思路，或者标记这里错在哪里了..."
-                      class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-[rgb(var(--accent-rgb)/0.4)] focus:ring-4 focus:ring-[rgb(var(--accent-rgb)/0.05)] dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
+                      class="w-full rounded-lg border border-slate-200 bg-white p-4 text-sm font-medium outline-none transition-all focus:border-[rgb(var(--accent-rgb)/0.4)] focus:ring-4 focus:ring-[rgb(var(--accent-rgb)/0.05)] dark:border-white/5 dark:bg-white/5 dark:text-white"></textarea>
                   </div>
                   <button @click="saveAnswer" :disabled="isSaving" class="btn-primary w-full h-12">
                     <i class="fa-solid" :class="isSaving ? 'fa-circle-notch fa-spin' : 'fa-save'"></i>
                     {{ isSaving ? '同步中...' : '保存学习笔记' }}
                   </button>
                   <button @click="triggerAiAnalysis"
-                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
+                    class="group flex w-full items-center justify-center gap-2 rounded-lg border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
                     <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i> 召唤 AI 助教分析
                   </button>
                   <button @click="emit('start-chat', question); emit('close')"
-                    class="group flex w-full items-center justify-center gap-2 rounded-2xl border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
+                    class="group flex w-full items-center justify-center gap-2 rounded-lg border accent-border accent-bg-muted py-4 text-sm font-black accent-text transition-all hover:bg-[rgb(var(--accent-rgb)/0.12)]">
                     <i class="fa-solid fa-comments"></i> AI 辅导对话
                   </button>
                 </div>
@@ -319,7 +319,7 @@ const reviewStatusOptions = [
                     <p class="text-xs font-black uppercase tracking-widest accent-text animate-pulse">分析中...</p>
                   </div>
                   <div v-else-if="aiReport" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                    <div class="rounded-2xl border accent-border accent-bg-soft p-5">
+                    <div class="rounded-xl border accent-border accent-bg-soft p-5">
                       <h4 class="mb-3 flex items-center gap-2 text-xs font-black uppercase accent-text">
                         <i class="fa-solid fa-microchip"></i> 认知诊断报告
                       </h4>

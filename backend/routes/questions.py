@@ -626,7 +626,7 @@ def save_to_db():
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
         run_id = data.get('run_id')
-        record_id = data.get('record_id')
+        record_id = data.get('record_id') or data.get('split_record_id')
         user_id = session.get('user_id')
 
         # 优先从 SplitRecord 读取（历史记录导入场景）
@@ -703,6 +703,8 @@ def save_to_db():
             'success': True,
             'message': f'已导入 {result["created"]} 道题目（跳过 {result["duplicates"]} 道重复）',
             'run_id': run_id,
+            'record_id': record_id,
+            'split_record_id': record_id,
             'created': result['created'],
             'duplicates': result['duplicates'],
         })

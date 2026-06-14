@@ -106,7 +106,7 @@ onBeforeUnmount(stopSidebarResize)
     </header>
 
     <div class="flex flex-1 overflow-hidden p-3">
-      <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div class="flex min-h-0 flex-1 flex-col overflow-y-auto pr-2">
         <slot></slot>
       </div>
 

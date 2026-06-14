@@ -85,7 +85,7 @@ watch(() => props.open, async (open) => {
         @keydown.esc="close"
       >
         <section
-          class="flex max-h-[min(42rem,calc(100vh-3rem))] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white text-slate-900 shadow-2xl shadow-slate-950/20 dark:border-white/[0.08] dark:bg-[#2f2f2f] dark:text-[#f4f4f4] dark:shadow-black/40"
+          class="flex max-h-[min(42rem,calc(100vh-3rem))] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-xl border border-slate-200/70 bg-white text-slate-900 shadow-2xl shadow-slate-950/20 dark:border-white/[0.08] dark:bg-[#2f2f2f] dark:text-[#f4f4f4] dark:shadow-black/40"
           role="dialog"
           aria-modal="true"
           aria-label="搜索聊天"

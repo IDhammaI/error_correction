@@ -27,7 +27,7 @@ const props = defineProps({
 
 <template>
   <div
-    class="reveal feature-card group relative flex flex-col rounded-[20px] p-[1px] overflow-hidden"
+    class="reveal feature-card group relative flex flex-col rounded-xl p-[1px] overflow-hidden"
     :class="spanClass"
     :style="{ transitionDelay: delay }"
   >
@@ -38,7 +38,7 @@ const props = defineProps({
     <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-[rgb(var(--accent-rgb)/0.15)] via-[rgb(var(--accent-hover-rgb)/0.05)] to-transparent dark:from-[rgb(var(--accent-rgb)/0.1)] dark:via-[rgb(var(--accent-hover-rgb)/0.05)] dark:to-transparent z-0"></div>
 
     <!-- 卡片主体背景层 — brand-btn 风格白玻璃 -->
-    <div class="feature-card-inner relative h-full w-full rounded-[19px] p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden">
+    <div class="feature-card-inner relative h-full w-full rounded-xl p-6 flex flex-col items-start text-left transition-all duration-500 overflow-hidden">
 
       <!-- 图标容器（BaseLogo 风格） -->
       <div class="feature-icon relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">

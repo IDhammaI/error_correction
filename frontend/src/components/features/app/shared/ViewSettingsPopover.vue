@@ -84,7 +84,7 @@ const labelClass = "font-medium text-gray-500 dark:text-[#8a8f98] shrink-0 w-16"
                         v-for="status in [{ v: '', l: '全部' }, { v: '待复习', l: '待复习' }, { v: '复习中', l: '复习中' }, { v: '已掌握', l: '已掌握' }]"
                         :key="status.v" role="tab" :aria-selected="filters.review_status === status.v"
                         @click="filters.review_status = status.v"
-                        class="flex-1 flex items-center justify-center py-1 rounded-[6px] text-[12px] font-medium transition-all duration-200"
+                        class="flex-1 flex items-center justify-center py-1 rounded-md text-[12px] font-medium transition-all duration-200"
                         :class="filters.review_status === status.v
                             ? 'bg-white dark:bg-white/[0.08] accent-text dark:text-[#f7f8f8] shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-none border border-gray-200/50 dark:border-white/[0.1]'
                             : 'text-gray-500 dark:text-[#8a8f98] hover:text-gray-700 dark:hover:text-[#d0d6e0] border border-transparent'">

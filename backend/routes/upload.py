@@ -62,13 +62,49 @@ def _isoformat_utc(dt) -> Optional[str]:
     return dt.isoformat().replace("+00:00", "Z")
 
 
+def _is_image_file(path: str) -> bool:
+    return PurePath(path).suffix.lower().lstrip(".") in {
+        "jpg",
+        "jpeg",
+        "png",
+        "webp",
+        "bmp",
+    }
+
+
+def _build_original_image_payload(session_files: list[dict]) -> list[dict]:
+    images = []
+    for item in session_files:
+        filename = item.get("filename") or "Unknown"
+        filepath = item.get("filepath") or ""
+        stored_name = os.path.basename(filepath) if filepath else ""
+        is_image = bool(filepath and _is_image_file(filepath))
+        image_url = f"/api/image/{stored_name}" if is_image and stored_name else None
+        images.append(
+            {
+                "filename": filename,
+                "stored_name": stored_name,
+                "url": image_url,
+                "image_url": image_url,
+                "is_image": is_image,
+            }
+        )
+    return images
+
+
 def _serialize_split_record(r) -> dict:
     """将 SplitRecord ORM 对象序列化为前端 JSON 格式"""
+    original_images = (
+        json.loads(r.original_images_json)
+        if getattr(r, "original_images_json", None)
+        else []
+    )
     return {
         "id": r.id,
         "subject": r.subject,
         "model_provider": r.model_provider,
         "file_names": json.loads(r.file_names_json) if r.file_names_json else [],
+        "original_images": original_images,
         "question_count": r.question_count,
         "created_at": _isoformat_utc(r.created_at),
     }
@@ -801,10 +837,13 @@ def split_questions():
 
             with session_lock:
                 us = get_user_session(user_id)
-                file_names = [
-                    us["session_files"].get(k, {}).get("filename", "Unknown")
-                    for k in us["session_file_order"]
+                session_files = [
+                    us["session_files"].get(k, {}) for k in us["session_file_order"]
                 ]
+                file_names = [
+                    item.get("filename", "Unknown") for item in session_files
+                ]
+                original_images = _build_original_image_payload(session_files)
 
             with SessionLocal() as db:
                 run_store.mark_succeeded(
@@ -815,7 +854,13 @@ def split_questions():
                     question_count=len(questions),
                 )
                 crud.save_split_record(
-                    db, subject, model_provider, file_names, questions, user_id=user_id
+                    db,
+                    subject,
+                    model_provider,
+                    file_names,
+                    questions,
+                    original_images=original_images,
+                    user_id=user_id,
                 )
         except Exception:
             logger.warning("保存分割记录失败，不影响主流程", exc_info=True)

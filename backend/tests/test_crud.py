@@ -39,12 +39,41 @@ from db.crud import (
     update_review_status,
     get_review_status_stats,
     get_daily_counts,
+    save_split_record,
+    get_recent_split_records,
     create_workflow_run,
     get_workflow_run,
     get_latest_workflow_run,
     update_workflow_run,
 )
 from db.models import ProviderConfig, User
+from routes.upload import _serialize_split_record
+
+
+class TestSplitRecords:
+    def test_recent_records_include_original_uploaded_image(self, db):
+        original_images = [
+            {
+                "filename": "note.jpg",
+                "stored_name": "stored-note.jpg",
+                "url": "/api/image/stored-note.jpg",
+                "image_url": "/api/image/stored-note.jpg",
+                "is_image": True,
+            }
+        ]
+        save_split_record(
+            db,
+            subject="math",
+            model_provider="openai",
+            file_names=["note.jpg"],
+            questions=[{"question_id": "1"}],
+            original_images=original_images,
+        )
+
+        record = get_recent_split_records(db, limit=1)[0]
+        payload = _serialize_split_record(record)
+
+        assert payload["original_images"] == original_images
 
 
 # ═══════════════════════════════════════════════════════════

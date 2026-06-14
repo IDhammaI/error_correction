@@ -10,6 +10,7 @@ const props = defineProps({
   splitting: { type: Boolean, default: false },
   splitCompleted: { type: Boolean, default: false },
   uploadMode: { type: String, default: 'exam' },
+  workflowMode: { type: String, default: 'manual' },
   eraseEnabled: { type: Boolean, default: false },
 })
 
@@ -24,12 +25,26 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
     <button
       type="button"
       class="group relative inline-flex h-14 items-center justify-center sm:w-auto w-full disabled:cursor-not-allowed disabled:opacity-50"
-      :disabled="!splitEnabled"
+      :disabled="workflowMode === 'manual' ? !splitEnabled : true"
       @click="emit('split')"
     >
       <!-- 按钮本体 -->
-      <span class="relative overflow-hidden inline-flex h-full w-full items-center justify-center gap-2 rounded-md px-8 text-sm font-medium text-white brand-btn transition-colors">
-        <template v-if="splitting">
+      <span class="relative overflow-hidden inline-flex h-full w-full items-center justify-center gap-2 rounded-lg px-8 text-sm font-medium text-white brand-btn transition-colors">
+        <template v-if="workflowMode === 'auto'">
+          <template v-if="splitting">
+            <i class="fa-solid fa-spinner fa-spin text-gray-600 dark:text-white/80"></i>
+            <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '正在自动整理笔记...' : '正在自动处理...' }}</span>
+          </template>
+          <template v-else-if="splitCompleted">
+            <i class="fa-solid fa-check-double text-emerald-500 dark:text-emerald-400"></i>
+            <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '整理已完成' : '解析已完成' }}</span>
+          </template>
+          <template v-else>
+            <i class="fa-solid fa-bolt text-gray-600 dark:text-white/80"></i>
+            <span class="text-gray-900 dark:text-white">上传后自动处理到导出阶段</span>
+          </template>
+        </template>
+        <template v-else-if="splitting">
           <i class="fa-solid fa-spinner fa-spin" :class="uploadMode === 'note' ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-600 dark:text-white/80'"></i>
           <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '正在整理笔记...' : '正在智能分割...' }}</span>
         </template>

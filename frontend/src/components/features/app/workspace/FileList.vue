@@ -29,7 +29,7 @@ const emit = defineEmits(['remove-file'])
         <div
           v-for="item in pendingFiles"
           :key="item.key"
-          class="relative flex items-center gap-2.5 overflow-hidden rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-2 transition-colors"
+          class="relative flex items-center gap-2.5 overflow-hidden rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] px-3 py-2 transition-colors"
         >
           <!-- 进度条背景 -->
           <div
@@ -56,7 +56,7 @@ const emit = defineEmits(['remove-file'])
 
           <button
             type="button"
-            class="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded text-gray-400 dark:text-[#62666d] transition-colors hover:text-rose-500 dark:hover:text-rose-400"
+            class="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-md text-gray-400 dark:text-[#62666d] transition-colors hover:text-rose-500 dark:hover:text-rose-400"
             :disabled="splitting || splitCompleted"
             @click.stop="() => emit('remove-file', item.key)"
           >

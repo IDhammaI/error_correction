@@ -133,7 +133,7 @@ async function resetPassword() {
     <Transition name="fp-content" appear>
       <div v-if="open" class="fixed inset-0 z-[51] flex items-center justify-center p-4">
         <div
-          class="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white/95 p-6 shadow-xl transition-colors duration-200 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#0A0A0F]/95"
+          class="relative w-full max-w-sm rounded-xl border border-gray-200 bg-white/95 p-6 shadow-xl transition-colors duration-200 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#0A0A0F]/95"
           @click.stop
         >
           <button

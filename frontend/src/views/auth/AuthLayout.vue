@@ -157,7 +157,7 @@ onMounted(() => {
               <div class="pointer-events-none absolute inset-0"
                 style="background: radial-gradient(80px circle at var(--ix, -500px) var(--iy, -500px), rgb(var(--accent-hover-rgb) / 0.7), transparent 50%);"></div>
               <!-- 图标内部 -->
-              <div class="relative h-full w-full bg-white dark:bg-[#15151e] rounded-[11px] flex items-center justify-center transition-colors">
+              <div class="relative h-full w-full bg-white dark:bg-[#15151e] rounded-lg flex items-center justify-center transition-colors">
                 <!-- 白色底层图标 -->
                 <i :class="`fas ${f.icon} text-xs text-gray-400 dark:text-white/50 absolute transition-colors`"></i>
                 <!-- 鼠标跟随染色图标 -->

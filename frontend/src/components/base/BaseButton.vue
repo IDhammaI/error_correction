@@ -33,7 +33,7 @@ const bindProps = computed(() => {
     v-bind="bindProps"
     :class="[
       'base-button relative overflow-hidden inline-flex items-center justify-center font-medium gap-2 disabled:opacity-50 disabled:cursor-not-allowed',
-      size === 'sm' ? 'h-8 px-4 text-xs rounded-lg' : 'h-10 px-6 text-sm rounded-xl',
+      size === 'sm' ? 'h-8 px-4 text-xs rounded-md' : 'h-10 px-6 text-sm rounded-lg',
       {
         'base-button--primary': variant === 'primary',
         'base-button--secondary': variant === 'secondary',
