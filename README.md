@@ -2,6 +2,22 @@
 
 基于 PaddleOCR + LangChain Agent 的智能错题本生成系统。上传试卷 PDF 或图片，自动识别文档结构、智能分割题目、OCR 纠错，导出为 Markdown 错题本并存入错题库。支持 AI 解题与教学讲解、笔记整理、独立 AI 对话、错题复习计划与数据统计。
 
+## 界面预览
+
+| 首页 | 错题工作台 |
+|------|------------|
+| ![登录过程](assets/readme/登录过程.gif) | ![错题工作台](assets/readme/错题工作台.png) |
+
+| 笔记整理 | 主题切换 |
+|----------|----------|
+| ![笔记分割过程](assets/readme/笔记分割过程.gif) | ![主题切换](assets/readme/主题切换.gif) |
+
+## 功能演示
+
+| AI 找题 | Provider 配置 |
+|---------|---------------|
+| ![AI 找题](assets/readme/AI找题.gif) | ![Provider 配置](assets/readme/Provider配置.gif) |
+
 ## 功能
 
 - **智能分割**：LLM Agent 自动识别题目边界，支持批次并行处理，跨页去重
@@ -27,7 +43,7 @@
 │   │   ├── state.py                 # 全局会话状态（session_files、锁）
 │   │   └── mail.py                  # SMTP 邮件发送
 │   ├── web_app.py                   # Flask 应用工厂 + Blueprint 注册
-│   ├── routes/                      # 7 个 Blueprint（upload、questions、chat、stats、auth、settings、notes）
+│   ├── routes/                      # Flask Blueprint 路由（auth、chat、device、notes、projects 等）
 │   ├── src/                         # 核心模块（LangGraph workflow、OCR 客户端、工具函数）
 │   ├── agents/                      # LangChain Agent
 │   │   ├── error_correction/        # 题目分割 + OCR 纠错
@@ -44,15 +60,14 @@
 │   ├── app.html                     # SPA 入口
 │   └── src/
 │       ├── views/                   # 页面级组件（HomeView、WorkspaceView）
-│       ├── components/              # 55+ 功能组件
-│       │   ├── auth/               # 认证（登录、注册、找回密码）
-│       │   └── home/               # 首页组件
+│       ├── components/              # 基础组件与业务组件
 │       ├── composables/             # 组合式函数（useAuth、useTheme 等）
 │       ├── router/                  # Vue Router 路由配置
-│       ├── api.js                   # 集中式 API 层
-│       ├── utils.js                 # 工具函数（Markdown 渲染、MathJax、DOMPurify）
+│       ├── api/                     # 按领域拆分的 API 调用层
+│       ├── utils/                   # 工具函数（Markdown 渲染、MathJax、DOMPurify）
 │       └── __tests__/               # 前端测试（Vitest）
 ├── example_uploads/                 # 示例测试文件
+├── rules/                           # 项目规则、协作流程和开发规范
 ├── backend/.env.example             # 环境变量模板
 └── requirements.txt                 # Python 依赖
 ```
@@ -102,6 +117,8 @@ cd frontend && npm run dev
 
 > **注意**：后端已重构为纯 API 服务器，不提供前端页面。直接访问 `:5001` 只会得到 JSON 404。
 
+更完整的启动说明见 [rules/workflow/开发启动规则.md](rules/workflow/开发启动规则.md)，测试与构建说明见 [rules/workflow/测试构建规则.md](rules/workflow/测试构建规则.md)。
+
 ## 支持的文件格式
 
 PDF(`.pdf`)、图片(`.jpg` `.jpeg` `.png` `.bmp` `.tiff` `.webp`)，单次上传限制 50 MB。
@@ -117,6 +134,24 @@ cd frontend && npm test
 ```
 
 详见 [backend/tests/README.md](backend/tests/README.md) 和 [frontend/src/__tests__/README.md](frontend/src/__tests__/README.md)。
+
+## 项目规则
+
+项目规则集中维护在 [rules/项目规则索引.md](rules/项目规则索引.md)。
+
+- `rules/development/`：架构、前端、后端、测试和代码注释规则
+- `rules/workflow/`：提交、协作、同步、启动、环境和测试构建规则
+
+团队协作采用 fork-based workflow：开发者先 fork 主仓库，将分支推送到自己的 fork 仓库，再通过 Pull Request 提交到主仓库 review。
+
+## 相关文档
+
+本仓库不再维护 LangChain / LangGraph 本地文档快照。开发 Agent、工作流、流式输出或 LangGraph 编排相关功能时，优先查阅官方文档：
+
+- [LangChain Python 文档](https://docs.langchain.com/oss/python/langchain/overview)
+- [LangGraph Python 文档](https://docs.langchain.com/oss/python/langgraph/overview)
+- [LangChain / LangGraph API Reference](https://reference.langchain.com/python/)
+- [LangChain 文档索引 llms.txt](https://docs.langchain.com/llms.txt)
 
 ## 许可证
 
