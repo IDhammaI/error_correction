@@ -316,10 +316,6 @@ class Settings(BaseSettings):
     ) -> LLMProviderConfig:
         key = self._normalize_provider(name)
 
-        # 处理可能包含多个模型的字符串（取第一个作为默认）
-        if model_name and "," in model_name:
-            model_name = [m.strip() for m in model_name.split(",") if m.strip()][0]
-
         if key == "openai":
             return OpenAICompatibleConfig(
                 api_key=api_key,
@@ -508,7 +504,7 @@ class Settings(BaseSettings):
         if owns_db:
             db = SessionLocal()
         try:
-            for category in [("openai"), ("anthropic")]:
+            for category in ("openai", "anthropic"):
                 provider = get_active_provider(db, user_id, category)
                 if provider and provider.api_key:
                     cfg = self.build_provider_config(

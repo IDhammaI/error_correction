@@ -26,7 +26,7 @@ const props = defineProps({
 
 const { currentUser, quota, setCurrentUser } = useAuth()
 const { pushToast } = useToast()
-const { doFetchStatus, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
+const { doFetchStatus, doFetchModelOptions, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
 const { isDark, setTheme, themeColors, accentColorId, setAccentColor } = useTheme()
 
 // 计算当前设置页各分类应显示的“使用中” ID
@@ -67,13 +67,6 @@ const settingsPageDescription = computed(() => {
   if (isAppearanceSection.value) return '切换明暗模式和主题强调色，界面会立即应用。'
   return '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
 })
-const pageTitle = computed(() => isApiSection.value ? 'API 设置' : '用户资料设置')
-const pageDescription = computed(() => {
-  return isApiSection.value
-    ? '管理 AI 模型供应商与 OCR 服务连接参数，修改即时生效。'
-    : '配置显示名称、昵称与头像，侧边栏会立即同步展示。'
-})
-
 const loading = ref(true)
 const saving = ref(false)
 const profileSaving = ref(false)
@@ -384,6 +377,7 @@ const removeAvatar = async () => {
 onBeforeUnmount(() => {
   if (avatarUploadXhr.value) avatarUploadXhr.value.abort()
   clearAvatarPreview()
+  if (emailCodeTimer) { clearInterval(emailCodeTimer); emailCodeTimer = null }
 })
 
 // ---------- 多 Provider 数据结构 ----------
@@ -565,6 +559,7 @@ const saveConfig = async () => {
 
     await updateAppConfig(payload)
     doFetchStatus()
+    doFetchModelOptions()
   } catch (e) {
     pushToast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -623,6 +618,7 @@ const saveSystemConfig = async () => {
 
     await updateAdminSystemConfig(payload)
     doFetchStatus()
+    doFetchModelOptions()
   } catch (e) {
     pushToast('error', '保存系统托管配置失败: ' + (e instanceof Error ? e.message : String(e)))
     throw e

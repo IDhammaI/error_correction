@@ -3,7 +3,7 @@
  * WorkspaceView.vue
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch, inject } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
@@ -141,7 +141,10 @@ const doReset = async () => {
 const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
   ocrLoading, ocrPages, ocrDone,
+  currentRunId, currentRecordId, setCurrentRecordId,
   startProcess, doErase, doOcr, doSplit, doSaveToDb,
+  noteProjectDialogOpen, noteTargetProjectId, noteProjectSaving,
+  noteProjects, closeNoteProjectDialog, confirmNoteOrganize,
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
@@ -149,15 +152,10 @@ const restoringWorkspaceState = ref(true)
 const importDialogOpen = ref(false)
 const importTargetProjectId = ref(null)
 const importSaving = ref(false)
-const hasReviewContent = computed(() => {
-  if (eraseLoading.value) return true
-  if (eraseDone.value) return true
-  if (ocrLoading.value) return true
-  if (ocrDone.value) return true
-  if (splitting.value) return true
-  if (splitCompleted.value && questions.value.length > 0) return true
-  return false
-})
+const hasReviewContent = computed(() =>
+  eraseLoading.value || eraseDone.value || ocrLoading.value || ocrDone.value
+  || splitting.value || (splitCompleted.value && questions.value.length > 0)
+)
 
 /**
  * 把分割历史中的题目载入当前工作台核对页。
@@ -166,6 +164,10 @@ const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
   splitCompleted.value = true; step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
+  // 保存 record_id，用于后续导入错题库
+  setCurrentRecordId(record?.id || null)
+  // 清除 run_id，因为历史记录导入不依赖 WorkflowRun
+  currentRunId.value = null
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
 }
@@ -203,6 +205,26 @@ const openImportDialog = () => {
 const closeImportDialog = () => {
   if (importSaving.value) return
   importDialogOpen.value = false
+}
+
+/**
+ * 新建错题库后自动选中并重新打开导入弹窗。
+ */
+const onQuestionProjectCreated = (newId) => {
+  if (newId) {
+    importTargetProjectId.value = newId
+    importDialogOpen.value = true
+  }
+}
+
+/**
+ * 新建笔记本后自动选中并重新打开笔记选择弹窗。
+ */
+const onNoteProjectCreated = (newId) => {
+  if (newId) {
+    noteTargetProjectId.value = newId
+    noteProjectDialogOpen.value = true
+  }
 }
 
 /**
@@ -252,7 +274,6 @@ watch(
 )
 
 // ── 生命周期 ────────────────────────────────────────────
-import { onMounted } from 'vue'
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
   // 检查 URL 参数，设置上传模式
@@ -294,7 +315,7 @@ onBeforeUnmount(() => {
 
         <template #sidebar>
           <SplitHistory :theme="theme" :visible="showSplitHistory" @push-toast="pushToast" @open-image="openModal"
-            @load-record="(r) => { handleLoadRecord(r); showSplitHistory = false }"
+            @load-record="(qs, record) => { handleLoadRecord(qs, record); showSplitHistory = false }"
             @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'" />
         </template>
 
@@ -356,6 +377,14 @@ onBeforeUnmount(() => {
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
             <i v-if="String(importTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
           </button>
+          <button v-if="openProjectDialog" type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
+              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
+              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
+            @click="openProjectDialog('question', onQuestionProjectCreated)">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>新建错题库</span>
+          </button>
         </div>
       </div>
       <template #footer>
@@ -365,6 +394,46 @@ onBeforeUnmount(() => {
         <BaseButton variant="primary" size="sm" :disabled="importSaving || !importTargetProjectId"
           @click="confirmImportToProject">
           {{ importSaving ? '导入中...' : '确认导入' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
+
+    <!-- 笔记本项目选择弹窗 -->
+    <BaseModal :open="noteProjectDialogOpen" title="选择笔记本" icon="fa-book-open" iconBg="emerald-bg-soft"
+      iconClass="text-emerald-500" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1"
+      @close="closeNoteProjectDialog">
+      <div class="space-y-3">
+        <p class="text-sm text-slate-500 dark:text-[#8a8f98]">
+          将整理后的笔记保存到：
+        </p>
+        <div class="max-h-64 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+          <button v-for="project in noteProjects" :key="project.id" type="button"
+            class="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors"
+            :class="String(noteTargetProjectId) === String(project.id)
+              ? 'border-[rgb(var(--accent-rgb)/0.35)] bg-[rgb(var(--accent-rgb)/0.12)] text-[rgb(var(--accent-strong-rgb))] dark:text-[rgb(var(--accent-hover-rgb))]'
+              : 'border-slate-200/70 bg-white/50 text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-[#aeb6c2] dark:hover:bg-white/[0.05]'"
+            @click="noteTargetProjectId = project.id">
+            <i class="fa-solid fa-book-open w-4 text-center text-xs"></i>
+            <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
+            <i v-if="String(noteTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
+          </button>
+          <button v-if="openProjectDialog" type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
+              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
+              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
+            @click="openProjectDialog('note', onNoteProjectCreated)">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>新建笔记本</span>
+          </button>
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" :disabled="noteProjectSaving" @click="closeNoteProjectDialog">
+          取消
+        </BaseButton>
+        <BaseButton variant="primary" size="sm" :disabled="noteProjectSaving || !noteTargetProjectId"
+          @click="confirmNoteOrganize">
+          {{ noteProjectSaving ? '整理中...' : '确认整理' }}
         </BaseButton>
       </template>
     </BaseModal>

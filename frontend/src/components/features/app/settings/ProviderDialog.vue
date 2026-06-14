@@ -21,13 +21,12 @@ const emit = defineEmits(['close', 'confirm'])
 
 const isEdit = computed(() => !!props.editData)
 
-const typeConfig = computed(() => ({
+const PROVIDER_TYPE_CONFIGS = {
   openai: {
-    title: isEdit.value ? '编辑 OpenAI 兼容供应商' : '添加 OpenAI 兼容供应商',
-    iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
+    titleAdd: '添加 OpenAI 兼容供应商',
+    titleEdit: '编辑 OpenAI 兼容供应商',
     iconCls: 'fa-bolt text-slate-600 dark:text-slate-400',
     imgIcon: '/src/assets/provider-openai.svg',
-    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：DeepSeek / Qwen / Moonshot',
     urlPlaceholder: '留空使用 OpenAI 官方，或填入 https://api.deepseek.com 等',
     modelPlaceholder: 'gpt-4o-mini',
@@ -37,11 +36,10 @@ const typeConfig = computed(() => ({
     urlLabel: 'Base URL',
   },
   anthropic: {
-    title: isEdit.value ? '编辑 Anthropic 供应商' : '添加 Anthropic 供应商',
-    iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
+    titleAdd: '添加 Anthropic 供应商',
+    titleEdit: '编辑 Anthropic 供应商',
     iconCls: 'fa-brain text-slate-600 dark:text-slate-400',
     imgIcon: '/src/assets/provider-anthropic.svg',
-    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：Claude Official',
     urlPlaceholder: '留空使用 Anthropic 官方',
     modelPlaceholder: 'claude-sonnet-4-20250514',
@@ -51,11 +49,10 @@ const typeConfig = computed(() => ({
     urlLabel: 'Base URL',
   },
   paddleocr: {
-    title: isEdit.value ? '编辑 PaddleOCR 服务' : '添加 PaddleOCR 服务',
-    iconBg: 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]',
+    titleAdd: '添加 PaddleOCR 服务',
+    titleEdit: '编辑 PaddleOCR 服务',
     iconCls: 'fa-eye text-slate-600 dark:text-slate-400',
     imgIcon: '/src/assets/provider-paddleocr.svg',
-    btnCls: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]',
     namePlaceholder: '例如：PaddleOCR 官方',
     urlPlaceholder: 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs',
     modelPlaceholder: 'PaddleOCR-VL-1.5',
@@ -64,7 +61,17 @@ const typeConfig = computed(() => ({
     secretPlaceholder: '输入 API Token',
     urlLabel: 'API URL',
   },
-}[props.type]))
+}
+
+const SHARED_ICON_BG = 'bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08]'
+const SHARED_BTN_CLS = 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#f7f8f8] dark:hover:bg-white dark:text-[#1b1b1d]'
+
+const typeConfig = computed(() => ({
+  ...PROVIDER_TYPE_CONFIGS[props.type],
+  title: isEdit.value ? PROVIDER_TYPE_CONFIGS[props.type].titleEdit : PROVIDER_TYPE_CONFIGS[props.type].titleAdd,
+  iconBg: SHARED_ICON_BG,
+  btnCls: SHARED_BTN_CLS,
+}))
 
 const defaultForm = () => ({
   name: '',
@@ -117,9 +124,9 @@ const fetchModels = async () => {
     const apiModels = data.models || []
     const modelSet = new Set(apiModels)
     // 将当前表单中的模型名也加入列表（兼容废弃模型如 deepseek-chat / deepseek-reasoner）
-    const currentModels = (form.value.model_name || '').split(',').map(s => s.trim()).filter(Boolean)
+    const currentModel = form.value.model_name || ''
     const currentLightModel = form.value.light_model_name || ''
-    for (const m of currentModels) { if (!modelSet.has(m)) { modelSet.add(m); apiModels.push(m) } }
+    if (currentModel && !modelSet.has(currentModel)) { modelSet.add(currentModel); apiModels.push(currentModel) }
     if (currentLightModel && !modelSet.has(currentLightModel)) { modelSet.add(currentLightModel); apiModels.push(currentLightModel) }
     modelList.value = apiModels
     if (modelList.value.length === 0) {
@@ -203,26 +210,14 @@ const confirm = () => {
   emit('confirm', { ...form.value })
 }
 
-const inputCls = 'w-full rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500'
-
 // 自定义下拉
 const openDropdown = ref(null) // 'model_name' | 'light_model_name' | null
 const toggleDropdown = (field) => {
   openDropdown.value = openDropdown.value === field ? null : field
 }
 const selectOption = (field, value) => {
-  if (field === 'model_name') {
-    let current = form.value.model_name ? form.value.model_name.split(',').map(s => s.trim()).filter(Boolean) : []
-    if (current.includes(value)) {
-      current = current.filter(m => m !== value)
-    } else {
-      current.push(value)
-    }
-    form.value.model_name = current.join(', ')
-  } else {
-    form.value[field] = value
-    openDropdown.value = null
-  }
+  form.value[field] = value
+  openDropdown.value = null
 }
 </script>
 
@@ -272,7 +267,7 @@ const selectOption = (field, value) => {
       <div class="grid gap-4" :class="type === 'openai' ? 'sm:grid-cols-2' : ''">
         <div>
           <label class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-            {{ type === 'paddleocr' ? 'OCR 模型' : '模型(可多选)' }}
+            {{ type === 'paddleocr' ? 'OCR 模型' : '模型' }}
             <span v-if="type !== 'paddleocr'" class="group relative">
               <i
                 class="fa-solid fa-circle-info cursor-help text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500"></i>
@@ -296,12 +291,10 @@ const selectOption = (field, value) => {
                 class="absolute z-50 mt-1.5 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200/60 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-[#0A0A0F]">
                 <button v-for="m in modelList" :key="m" type="button" @click.stop="selectOption('model_name', m)"
                   class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-                  :class="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
-                  <i v-if="(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m)"
+                  :class="form.model_name === m ? 'font-bold text-slate-900 dark:text-[#f7f8f8]' : 'text-slate-600 dark:text-slate-400'">
+                  <i v-if="form.model_name === m"
                     class="fa-solid fa-check text-[10px] text-slate-900 dark:text-[#f7f8f8]"></i>
-                  <span
-                    :class="!(form.model_name ? form.model_name.split(',').map(s => s.trim()) : []).includes(m) ? 'pl-[18px]' : ''">{{
-                    m }}</span>
+                  <span :class="form.model_name !== m ? 'pl-[18px]' : ''">{{ m }}</span>
                 </button>
               </div>
             </Transition>
@@ -426,20 +419,6 @@ const selectOption = (field, value) => {
 </template>
 
 <style scoped>
-.dialog-fade-enter-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.dialog-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.dialog-fade-enter-from,
-.dialog-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.96);
-}
-
 .dropdown-enter-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }

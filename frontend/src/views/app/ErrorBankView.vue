@@ -18,6 +18,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseStat from '@/components/base/BaseStat.vue'
 import ErrorLearningAside from '@/components/features/app/error-bank/ErrorLearningAside.vue'
 import ErrorQuestionFinderAside from '@/components/features/app/error-bank/ErrorQuestionFinderAside.vue'
+import ErrorQuestionRecommendAside from '@/components/features/app/error-bank/ErrorQuestionRecommendAside.vue'
 import ErrorQuestionDetailPanel from '@/components/features/app/error-bank/ErrorQuestionDetailPanel.vue'
 import ErrorQuestionListPanel from '@/components/features/app/error-bank/ErrorQuestionListPanel.vue'
 import EditNoteDialog from '@/components/features/app/question/EditNoteDialog.vue'
@@ -37,12 +38,13 @@ const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
-const { activeQuestionProjectId, questionProjects } = useProjects()
+const { activeQuestionProjectId, questionProjects, loadProjects } = useProjects()
 const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 const activeTab = ref('analysis')
 const workbenchView = ref('list')
 const statsCollapsed = ref(false)
+const showRecommend = ref(false)
 
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
@@ -52,9 +54,10 @@ const detailTabs = [
   { value: 'note', label: '作答记录', icon: 'fa-camera' },
 ]
 
+const rootEl = ref(null)
 const typesetMath = async () => {
   await nextTick()
-  await _typesetMath()
+  await _typesetMath(rootEl.value || undefined)
 }
 
 const {
@@ -113,6 +116,7 @@ const {
   selectedIds,
   activeQuestion,
   activeTab,
+  workbenchView,
   pushToast,
   typesetMath,
   loadStats,
@@ -159,6 +163,15 @@ const handleFinderSelect = async (q) => {
   await selectQuestion(q)
 }
 
+const toggleRecommendPanel = () => {
+  showRecommend.value = !showRecommend.value
+}
+
+const handleRecommendSelect = async (q) => {
+  workbenchView.value = 'detail'
+  await selectQuestion(q)
+}
+
 watch(() => [filters.subject, filters.knowledge_tag, filters.question_type, filters.review_status], () => debouncedQuery())
 watch(() => filters.keyword, () => debouncedQuery(500))
 watch(() => filters.subject, async () => {
@@ -183,6 +196,11 @@ onBeforeUnmount(() => {
   disposeQuery()
 })
 
+const onDetailDeleted = () => {
+  doQuery()
+  loadProjects()
+}
+
 defineExpose({
   refresh: doQuery,
   toggleSelectMode,
@@ -190,6 +208,7 @@ defineExpose({
 </script>
 
 <template>
+  <div ref="rootEl" class="contents">
   <component
     :is="embedded ? 'div' : ContentPanel"
     :title="embedded ? undefined : '错题库'"
@@ -275,6 +294,7 @@ defineExpose({
             @open-chat="openChat"
             @start-practice="startPractice"
             @back-to-list="workbenchView = 'list'"
+            @open-recommend="toggleRecommendPanel"
           />
         </div>
 
@@ -286,12 +306,18 @@ defineExpose({
           @error="(e) => pushToast('error', e instanceof Error ? e.message : 'AI 找题失败')"
         />
         <ErrorLearningAside
-          v-else
+          v-if="workbenchView === 'detail' && !showRecommend"
           :knowledge-tags="knowledgeTags"
           :error-pattern-rows="errorPatternRows"
           :ai-summary="aiSummary"
           :ai-loading="aiLoading"
           @request-analysis="requestAnalysis"
+        />
+        <ErrorQuestionRecommendAside
+          v-else-if="workbenchView === 'detail' && showRecommend"
+          :current-question="activeQuestion"
+          :all-items="items"
+          @select-question="handleRecommendSelect"
         />
       </div>
 
@@ -304,8 +330,9 @@ defineExpose({
         @close="dialogOpen = false" @save="onDialogSave" />
 
       <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="detailOpen = false"
-        @open-image="openModal" @deleted="doQuery" @push-toast="pushToast" @start-chat="openChat"
+        @open-image="openModal" @deleted="onDetailDeleted" @push-toast="pushToast" @start-chat="openChat"
         @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
   </component>
+  </div>
 </template>
