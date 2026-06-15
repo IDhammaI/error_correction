@@ -8,8 +8,7 @@ const bgStars = (() => {
   for (let i = 0; i < 50; i++) {
     list.push({
       left: Math.random() * 100, top: Math.random() * 100,
-      size: 0.5 + Math.random() * 2, opacity: 0.1 + Math.random() * 0.4,
-      duration: 2 + Math.random() * 4, delay: Math.random() * 5,
+      size: 0.5 + Math.random() * 1.4, opacity: 0.06 + Math.random() * 0.18,
     })
   }
   return list
@@ -23,27 +22,22 @@ const bgStars = (() => {
     <div
       v-for="(s, i) in bgStars"
       :key="i"
-      class="absolute rounded-full bg-[rgb(var(--accent-hover-rgb))] dark:bg-white ws-star transition-colors duration-200"
+      class="absolute rounded-full bg-[rgb(var(--accent-hover-rgb))] dark:bg-white ws-star"
       :style="{
         left: s.left + '%',
         top: s.top + '%',
         width: s.size + 'px',
         height: s.size + 'px',
         '--star-opacity': s.opacity,
-        animationDuration: s.duration + 's',
-        animationDelay: s.delay + 's',
       }"
     ></div>
   </div>
 </template>
 
 <style>
-@keyframes ws-star-twinkle {
-  0%, 100% { opacity: var(--star-opacity); }
-  50% { opacity: 0.02; }
-}
 .ws-star {
-  animation: ws-star-twinkle ease-in-out infinite;
+  opacity: var(--star-opacity);
+  contain: paint;
 }
 .ws-bg-glow {
   position: absolute;
