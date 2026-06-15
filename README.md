@@ -54,7 +54,6 @@
 │   │   ├── models.py               # 数据模型（User、Question、Note、Chat 等）
 │   │   ├── crud/                    # CRUD 模块化包
 │   │   └── migrate.py              # 数据库自动迁移
-│   ├── benchmark/                   # 模型评测
 │   └── tests/                       # 后端测试
 ├── frontend/                        # Vue 3 + Vite + Tailwind CSS
 │   ├── app.html                     # SPA 入口
@@ -146,7 +145,7 @@ cd frontend && npm test
 
 ## 相关文档
 
-本仓库不再维护 LangChain / LangGraph 本地文档快照。开发 Agent、工作流、流式输出或 LangGraph 编排相关功能时，优先查阅官方文档：
+开发 Agent、工作流、流式输出或 LangGraph 编排相关功能时，优先查阅官方文档：
 
 - [LangChain Python 文档](https://docs.langchain.com/oss/python/langchain/overview)
 - [LangGraph Python 文档](https://docs.langchain.com/oss/python/langgraph/overview)
