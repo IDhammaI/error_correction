@@ -1,4 +1,4 @@
-"""
+﻿"""
 错题本生成工作流 - LangGraph 实现
 使用 StateGraph 将每个处理步骤定义为图节点
 """
@@ -93,7 +93,7 @@ def _run_ocr_and_simplify(
     Returns:
         简化后的 OCR 数据列表，每项包含 page_index 和 blocks
     """
-    from src.paddleocr_client import PaddleOCRClient
+    from pipeline.paddleocr_client import PaddleOCRClient
 
     creds = ocr_credentials or {}
     client = PaddleOCRClient(

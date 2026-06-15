@@ -1,4 +1,4 @@
-"""
+﻿"""
 workflow.py 中纯函数的单元测试
 
 覆盖函数：
@@ -13,9 +13,9 @@ workflow.py 中纯函数的单元测试
 
 import pytest
 from unittest.mock import patch, MagicMock
-from src.utils import simplify_ocr_results as _simplify_ocr_results
-from src.paddleocr_client import PaddleOCRClient
-from src.workflow import (
+from pipeline.utils import simplify_ocr_results as _simplify_ocr_results
+from pipeline.paddleocr_client import PaddleOCRClient
+from pipeline.workflow import (
     _build_overlapping_batches,
     _run_ocr_and_simplify,
     _dedup_questions,
@@ -744,7 +744,7 @@ class TestPaddleOCRResultDownload:
         response.text = '{"result": {"layoutParsingResults": []}}\n'
         response.raise_for_status.return_value = None
 
-        with patch("src.paddleocr_client.requests.get", return_value=response) as mock_get:
+        with patch("pipeline.paddleocr_client.requests.get", return_value=response) as mock_get:
             result = client._download_result("https://bj.bcebos.com/result.json?authorization=signed")
 
         assert result == [{"layoutParsingResults": []}]
@@ -756,7 +756,7 @@ class TestPaddleOCRResultDownload:
         response = MagicMock(status_code=400)
         response.text = "bad request"
 
-        with patch("src.paddleocr_client.requests.get", return_value=response):
+        with patch("pipeline.paddleocr_client.requests.get", return_value=response):
             with pytest.raises(RuntimeError) as exc_info:
                 client._download_result("https://bj.bcebos.com/result.json?authorization=secret")
 
@@ -796,7 +796,7 @@ class TestRunOcrAndSimplifyFileTypes:
             }]
         }
 
-    @patch("src.workflow.run_async")
+    @patch("pipeline.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
     def test_only_images(self, mock_init, mock_pdf, mock_run_async):
@@ -810,7 +810,7 @@ class TestRunOcrAndSimplifyFileTypes:
         mock_run_async.assert_called_once()
         assert len(result) >= 1
 
-    @patch("src.workflow.run_async")
+    @patch("pipeline.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
     def test_only_pdfs(self, mock_init, mock_pdf, mock_run_async):
@@ -823,7 +823,7 @@ class TestRunOcrAndSimplifyFileTypes:
         mock_run_async.assert_not_called()
         assert len(result) >= 1
 
-    @patch("src.workflow.run_async")
+    @patch("pipeline.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
     def test_mixed_files(self, mock_init, mock_pdf, mock_run_async):
@@ -838,7 +838,7 @@ class TestRunOcrAndSimplifyFileTypes:
         # PDF 3 blocks + 图片 2 blocks = 2 pages
         assert len(result) == 2
 
-    @patch("src.workflow.run_async")
+    @patch("pipeline.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
     def test_pdf_case_insensitive(self, mock_init, mock_pdf, mock_run_async):
@@ -850,7 +850,7 @@ class TestRunOcrAndSimplifyFileTypes:
         assert mock_pdf.call_count == 2
         mock_run_async.assert_not_called()
 
-    @patch("src.workflow.run_async")
+    @patch("pipeline.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
     def test_empty_input(self, mock_init, mock_pdf, mock_run_async):

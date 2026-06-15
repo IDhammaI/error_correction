@@ -355,7 +355,7 @@ class TestSplitQuotaRules:
 
         monkeypatch.setitem(
             sys.modules,
-            "models.inference",
+            "text_eraser_model.inference",
             types.SimpleNamespace(InferenceEngine=DummyInferenceEngine),
         )
 

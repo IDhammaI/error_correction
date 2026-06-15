@@ -1,4 +1,4 @@
-"""
+﻿"""
 笔记模块 API 路由
 
 流程：上传笔记图片 → PaddleOCR 识别 → LLM 整理 → 保存到数据库
@@ -247,8 +247,8 @@ def create_note():
             return jsonify({"success": False, "error": "没有有效的图片文件"}), 400
 
         # 2. OCR 识别
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results, run_async
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results, run_async
 
         # 从数据库加载用户 OCR 凭据
         ocr_kwargs = {}

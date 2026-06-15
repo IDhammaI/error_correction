@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import uuid
 import logging
@@ -26,7 +26,7 @@ from core.quota import (
     uses_server_llm_selection,
     uses_server_ocr,
 )
-from src.utils import export_wrongbook as export_wrongbook_md
+from pipeline.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +513,7 @@ def run_erase():
         if not ensexam_configured:
             return jsonify({"success": False, "error": "EnsExam 模型未配置"}), 400
 
-        from models.inference import InferenceEngine
+        from text_eraser_model.inference import InferenceEngine
 
         engine = InferenceEngine()
         erased_paths = []
@@ -618,16 +618,16 @@ def run_ocr():
             return jsonify({"success": False, "error": "请先上传文件"}), 400
 
         # 标准化输入（PDF → 图片）
-        from src.utils import prepare_input
+        from pipeline.utils import prepare_input
 
         all_image_paths = []
         for fp in file_paths:
             all_image_paths.extend(prepare_input(fp))
 
         # 执行 OCR（获取原始结果用于预览 bbox，简化结果用于后续分割）
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results
-        from src.workflow import run_async
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results
+        from pipeline.workflow import run_async
 
         creds = ocr_credentials or {}
         client = PaddleOCRClient(

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import logging
 import uuid
@@ -12,7 +12,7 @@ from db.models import Question, UploadBatch, KnowledgeTag
 from core.config import settings
 from core import workflow_run_store as run_store
 from core.state import session_lock, get_user_session
-from src.utils import export_wrongbook as export_wrongbook_md
+from pipeline.utils import export_wrongbook as export_wrongbook_md
 
 logger = logging.getLogger(__name__)
 

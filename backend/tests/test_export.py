@@ -1,4 +1,4 @@
-"""
+﻿"""
 export_wrongbook() 单元测试
 
 使用 tmp_path fixture 避免写入真实文件系统。
@@ -7,7 +7,7 @@ export_wrongbook() 单元测试
 import os
 import pytest
 from unittest.mock import patch
-from src.utils import export_wrongbook
+from pipeline.utils import export_wrongbook
 
 
 class TestExportWrongbook:

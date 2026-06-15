@@ -1,4 +1,4 @@
-"""
+﻿"""
 全局会话状态 — 供各 Blueprint 模块共享
 
 所有需要跨路由访问的运行时变量集中在此模块，
@@ -9,7 +9,7 @@
 
 import threading
 
-from src.workflow import build_workflow
+from pipeline.workflow import build_workflow
 
 # 全局工作流图（无状态，可安全共享）
 workflow_graph = build_workflow()

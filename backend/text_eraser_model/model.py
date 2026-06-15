@@ -12,8 +12,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.blocks import (DownSample, UpSample, DilatedConvBlock,
-                            ResBlock, LateralConnection)
+from text_eraser_model.blocks import (DownSample, UpSample, DilatedConvBlock,
+                                      ResBlock, LateralConnection)
 
 
 class CoarseNet(nn.Module):

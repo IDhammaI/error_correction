@@ -271,7 +271,7 @@ class Settings(BaseSettings):
         if self.runs_dir is None:
             self.runs_dir = self.runtime_dir / "runs"
         if self.model_path is None:
-            self.model_path = _BACKEND_ROOT / "models" / "weight" / "best.pth"
+            self.model_path = _BACKEND_ROOT / "text_eraser_model" / "weight" / "best.pth"
 
         # 初始化系统级托管 provider（默认先读环境变量，启动后可被数据库覆盖）
         if self.managed_llm_providers is None:

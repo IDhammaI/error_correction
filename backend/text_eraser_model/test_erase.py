@@ -1,11 +1,11 @@
 """
 文字擦除推理测试脚本
-运行方式：cd backend/models && python test_erase.py <图片路径>
+运行方式：cd backend/text_eraser_model && python test_erase.py <图片路径>
 示例：python test_erase.py E:/code/python/error_correction/dataset/初中数学/图片/xxx.jpg
 """
 import sys
 import os
-# backend/models/ → backend/
+# backend/text_eraser_model/ → backend/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
@@ -43,7 +43,7 @@ print("=" * 50)
 print(f"\n[1] 加载权重: {MODEL_PATH}")
 assert MODEL_PATH.exists(), f"找不到权重文件: {MODEL_PATH}"
 
-from models.model import Generator
+from text_eraser_model.model import Generator
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 G = Generator().to(device)
 ckpt = torch.load(MODEL_PATH, map_location=device, weights_only=False)

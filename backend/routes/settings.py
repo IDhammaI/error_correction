@@ -58,7 +58,7 @@ def erase_text():
         return jsonify({"success": False, "error": "读取文件失败"}), 400
 
     try:
-        from models.inference import InferenceEngine
+        from text_eraser_model.inference import InferenceEngine
 
         result_img = InferenceEngine().run(image_bytes)
 

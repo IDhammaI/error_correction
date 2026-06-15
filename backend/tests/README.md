@@ -70,7 +70,7 @@ backend/tests/
 
 ### test_utils.py
 
-测试 `backend/src/utils.py` 中的通用工具函数：
+测试 `backend/pipeline/utils.py` 中的通用工具函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
@@ -78,7 +78,7 @@ backend/tests/
 
 ### test_workflow_helpers.py
 
-测试 `backend/src/workflow.py` 和 `backend/src/utils.py` 中不依赖外部服务的纯函数：
+测试 `backend/pipeline/workflow.py` 和 `backend/pipeline/utils.py` 中不依赖外部服务的纯函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
@@ -93,7 +93,7 @@ backend/tests/
 
 ### test_export.py
 
-测试 `backend/src/utils.py` 中的 `export_wrongbook` 函数：
+测试 `backend/pipeline/utils.py` 中的 `export_wrongbook` 函数：
 
 | 测试方法 | 说明 |
 |----------|------|
@@ -158,7 +158,7 @@ backend/tests/
 
 ### test_correct_node.py
 
-测试 `backend/src/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
+测试 `backend/pipeline/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
 
 | 测试方法 | 说明 |
 |----------|------|

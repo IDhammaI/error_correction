@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from models.model import Generator
+from text_eraser_model.model import Generator
 
 # cuDNN v8 frontend 与 A30+PyTorch2.1 不兼容
 torch.backends.cudnn.enabled = False

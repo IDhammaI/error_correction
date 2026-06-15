@@ -1,4 +1,4 @@
-"""
+﻿"""
 集成测试 — 验证 PaddleOCR V2 异步任务 API 的连通性与结果格式
 
 用法:
@@ -324,7 +324,7 @@ class TestOcrClientImage:
 
     def test_parse_image_returns_result(self, tmp_path):
         """parse_image 应返回包含 layoutParsingResults 的结果"""
-        from src.paddleocr_client import PaddleOCRClient
+        from pipeline.paddleocr_client import PaddleOCRClient
 
         client = PaddleOCRClient(**_DB_CREDS)
         result = client.parse_image(TEST_IMAGE, save_output=True, output_dir=str(tmp_path))
@@ -334,7 +334,7 @@ class TestOcrClientImage:
 
     def test_saves_struct_json(self, tmp_path):
         """parse_image 应在 output_dir 下保存 _struct.json"""
-        from src.paddleocr_client import PaddleOCRClient
+        from pipeline.paddleocr_client import PaddleOCRClient
         from pathlib import Path
 
         client = PaddleOCRClient(**_DB_CREDS)
@@ -350,8 +350,8 @@ class TestOcrClientImage:
 
     def test_simplify_ocr_results_compatible(self):
         """parse_image 的返回值应能被 simplify_ocr_results 正常处理"""
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results
 
         client = PaddleOCRClient(**_DB_CREDS)
         result = client.parse_image(TEST_IMAGE, save_output=False)
@@ -371,7 +371,7 @@ class TestOcrClientPdf:
 
     def test_parse_pdf_returns_result(self, tmp_path):
         """parse_pdf 应返回包含 layoutParsingResults 的结果"""
-        from src.paddleocr_client import PaddleOCRClient
+        from pipeline.paddleocr_client import PaddleOCRClient
 
         client = PaddleOCRClient(**_DB_CREDS)
         result = client.parse_pdf(TEST_PDF, save_output=True, output_dir=str(tmp_path))
@@ -381,8 +381,8 @@ class TestOcrClientPdf:
 
     def test_pdf_simplify_compatible(self):
         """parse_pdf 的返回值应能被 simplify_ocr_results 正常处理"""
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results
 
         client = PaddleOCRClient(**_DB_CREDS)
         result = client.parse_pdf(TEST_PDF, save_output=False)
@@ -395,8 +395,8 @@ class TestOcrClientPdf:
 
     def test_pdf_multipage_index_continuity(self):
         """PDF 多页经 simplify 后 page_index 应连续递增（0, 1, 2...）"""
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results
 
         client = PaddleOCRClient(**_DB_CREDS)
         result = client.parse_pdf(TEST_PDF, save_output=False)
