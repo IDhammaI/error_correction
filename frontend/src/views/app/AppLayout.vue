@@ -111,6 +111,29 @@ const projectDialogTitle = computed(() => {
   return projectDialogType.value === 'note' ? '新建笔记本' : '新建错题库'
 })
 const projectDialogPlaceholder = computed(() => projectDialogType.value === 'note' ? '比如：语文笔记、数学公式' : '比如：数学错题、语文错题')
+const activeViewComponent = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return WorkspaceView
+  if (currentView.value === 'review') return ReviewView
+  if (currentView.value === 'dashboard') return Dashboard
+  if (currentView.value === 'error-bank') return ErrorBank
+  if (currentView.value === 'settings') return SettingsView
+  if (currentView.value === 'search-chat' || currentView.value === 'library') return SearchHubView
+  if (currentView.value === 'chat') return ChatView
+  if (currentView.value === 'notes') return NoteView
+  if (currentView.value === 'ai-chat') return ChatPage
+  return WorkspaceView
+})
+const activeViewKey = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return 'workspace'
+  return currentView.value
+})
+const activeViewProps = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return { theme: theme.value }
+  if (currentView.value === 'settings') return { section: currentSettingsSubView.value }
+  if (currentView.value === 'search-chat') return { mode: 'chat' }
+  if (currentView.value === 'library') return { mode: 'library' }
+  return {}
+})
 const sidebarActiveProjectId = computed(() =>
   currentView.value === 'notes' ? activeNoteProjectId.value : activeQuestionProjectId.value
 )
@@ -373,24 +396,16 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:py-3 lg:pr-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
+      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:pt-3 lg:pr-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
       :class="[
         isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'lg:ml-16' : 'lg:ml-64')
       ]">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">
-          <WorkspaceView v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace"
-            :theme="theme" />
-          <ReviewView v-else-if="currentView === 'review'" key="review" />
-          <Dashboard v-else-if="currentView === 'dashboard'" key="dashboard" />
-          <ErrorBank v-else-if="currentView === 'error-bank'" key="error-bank" />
-          <SettingsView v-else-if="currentView === 'settings'" key="settings" :section="currentSettingsSubView" />
-          <SearchHubView v-else-if="currentView === 'search-chat'" key="search-chat" mode="chat" />
-          <SearchHubView v-else-if="currentView === 'library'" key="library" mode="library" />
-          <ChatView v-else-if="currentView === 'chat'" key="chat" />
-          <NoteView v-else-if="currentView === 'notes'" key="notes" />
-          <ChatPage v-else-if="currentView === 'ai-chat'" key="ai-chat" />
+          <KeepAlive include="WorkspaceView">
+            <component :is="activeViewComponent" :key="activeViewKey" v-bind="activeViewProps" />
+          </KeepAlive>
         </Transition>
       </div>
 
@@ -440,7 +455,7 @@ onBeforeUnmount(() => {
         </template>
       </BaseModal>
       <BaseModal :open="deleteProjectDialogOpen" title="删除项目" icon="fa-trash" iconBg="bg-rose-50 dark:bg-rose-500/10"
-        iconClass="text-rose-600 dark:text-rose-300" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1"
+        iconClass="text-rose-600 dark:text-rose-300" maxWidth="max-w-[28rem]" bodyClass="px-6 py-3"
         @close="closeDeleteProjectDialog">
         <div class="space-y-3 text-sm text-slate-600 dark:text-[#aeb6c2]">
           <p>
@@ -448,7 +463,7 @@ onBeforeUnmount(() => {
             }}</span>”吗？
           </p>
           <p class="text-xs text-slate-400 dark:text-[#737b86]">
-            默认项目不能删除；已有内容的项目会被系统阻止删除。
+            删除后会一并删除项目里的题目、笔记和复习记录；默认项目不能删除。
           </p>
         </div>
         <template #footer>

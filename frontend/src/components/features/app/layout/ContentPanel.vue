@@ -5,6 +5,7 @@
  * and an optional resizable right sidebar.
  */
 import { computed, onBeforeUnmount, onMounted, ref, useSlots } from 'vue'
+import { PanelLeft } from 'lucide-vue-next'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import PanelStepTabs from '@/components/features/app/layout/PanelStepTabs.vue'
@@ -20,7 +21,7 @@ const props = defineProps({
 const emit = defineEmits(['step-click'])
 const slots = useSlots()
 
-const { isMobile } = useWorkspaceNav()
+const { isMobile, canHover, mobileDrawerOpen, toggleSidebar } = useWorkspaceNav()
 
 const SIDEBAR_WIDTH_KEY = 'content_panel_sidebar_width_v1'
 const SIDEBAR_MIN_WIDTH = 280
@@ -75,10 +76,14 @@ onBeforeUnmount(stopSidebarResize)
     class="flex h-full flex-col overflow-hidden rounded-none brand-btn transition-colors duration-200 dark:!bg-white/[0.04] lg:rounded-lg">
     <header
       class="flex h-14 shrink-0 items-center gap-4 border-b border-gray-200 bg-white/70 px-4 transition-colors dark:border-white/[0.08] dark:bg-white/[0.065]">
-      <div v-if="$slots['header-actions']"
-        class="-ml-1 flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
-        <slot name="header-actions"></slot>
-      </div>
+      <button v-if="isMobile" @click="toggleSidebar"
+        class="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-[#62666d] dark:hover:bg-white/[0.04] dark:hover:text-[#8a8f98]"
+        :title="canHover ? (mobileDrawerOpen ? '关闭侧边栏' : '打开侧边栏') : null">
+        <PanelLeft
+          class="h-4 w-4 transition-transform"
+          :class="mobileDrawerOpen ? 'rotate-180' : ''"
+        />
+      </button>
 
       <BaseBreadcrumb v-if="breadcrumbs.length" :items="breadcrumbs" class="min-w-0 shrink" />
       <h2 v-else class="shrink-0 text-sm font-medium text-gray-900 transition-colors dark:text-[#f7f8f8]">{{ title }}</h2>
@@ -90,6 +95,10 @@ onBeforeUnmount(stopSidebarResize)
       </div>
 
       <div class="ml-auto flex shrink-0 items-center gap-3">
+        <div v-if="$slots['header-actions']"
+          class="flex items-center gap-0.5 rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
+          <slot name="header-actions"></slot>
+        </div>
         <div :id="'panel-toolbar-' + title" class="flex items-center gap-3"></div>
         <slot name="toolbar"></slot>
       </div>

@@ -3,7 +3,11 @@
  * SettingsView.vue
  * 设置页面，包含用户资料、免费额度、外观主题、个人 API 和系统 API 配置。
  */
-import { computed, ref, onMounted, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, watch, onBeforeUnmount, nextTick } from 'vue'
+import * as echarts from 'echarts/core'
+import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
+import { BarChart } from 'echarts/charts'
+import { CanvasRenderer } from 'echarts/renderers'
 import { fetchAppConfig, updateAppConfig, fetchAdminSystemConfig, updateAdminSystemConfig, updateProfile, uploadProfileAvatar, deleteProfileAvatar } from '@/api/index.js'
 import { genId } from '@/utils/index.js'
 import { useAuth } from '@/composables/useAuth.js'
@@ -23,12 +27,15 @@ import providerOpenaiIcon from '@/assets/provider-openai.svg'
 import providerAnthropicIcon from '@/assets/provider-anthropic.svg'
 import providerPaddleocrIcon from '@/assets/provider-paddleocr.svg'
 
+echarts.use([TooltipComponent, LegendComponent, GridComponent, BarChart, CanvasRenderer])
+
 const props = defineProps({
   section: { type: String, default: 'profile' },
 })
 
-const { currentUser, quota, setCurrentUser } = useAuth()
+const { currentUser, quota, setCurrentUser, refreshCurrentUser } = useAuth()
 const { pushToast } = useToast()
+const quotaRefreshing = ref(false)
 const { doFetchStatus, selectedLlmOptionId, selectedLlmOption, modelOptionsData } = useSystemStatus()
 const { isDark, setTheme, themeColors, accentColorId, setAccentColor } = useTheme()
 
@@ -50,6 +57,168 @@ const quotaResetText = computed(() => {
   if (Number.isNaN(date.getTime())) return '每日凌晨自动重置免费体验次数'
   return `下次重置时间：${date.toLocaleString('zh-CN', { hour12: false })}`
 })
+
+const quotaUsagePercent = computed(() => {
+  if (!quota.value?.daily_free_quota) return 0
+  return Math.min(100, Math.round((quota.value.daily_free_used / quota.value.daily_free_quota) * 100))
+})
+
+const quotaUsageStats = computed(() => quota.value?.usage_stats || { breakdown: [], recent_events: [] })
+const quotaDailyChart = computed(() => quotaUsageStats.value?.daily_chart || { days: [], range_days: 14, actions: [] })
+const quotaDailyChartRef = ref(null)
+let quotaDailyBarChart = null
+let quotaChartResizeObserver = null
+
+const getQuotaActionColor = (actionType) => {
+  if (actionType === 'chat') return '#60a5fa'
+  if (actionType === 'erase') return '#f59e0b'
+  if (actionType === 'split') return '#34d399'
+  if (actionType === 'note') return '#a78bfa'
+  return '#94a3b8'
+}
+
+const refreshQuotaSectionData = async (silent = true) => {
+  if (quotaRefreshing.value) return
+  quotaRefreshing.value = true
+  try {
+    await refreshCurrentUser()
+    await nextTick()
+    renderQuotaCharts()
+    if (!silent) pushToast('success', '额度记录已刷新')
+  } catch (e) {
+    if (!silent) {
+      pushToast('error', e instanceof Error ? e.message : '刷新额度数据失败')
+    }
+  } finally {
+    quotaRefreshing.value = false
+  }
+}
+
+const bindQuotaChartObserver = () => {
+  quotaChartResizeObserver?.disconnect()
+  if (typeof ResizeObserver === 'undefined' || !isQuotaSection.value) return
+  quotaChartResizeObserver = new ResizeObserver(() => {
+    quotaDailyBarChart?.resize()
+  })
+  if (quotaDailyChartRef.value) quotaChartResizeObserver.observe(quotaDailyChartRef.value)
+}
+
+const renderQuotaCharts = async () => {
+  if (!isQuotaSection.value) return
+  await nextTick()
+
+  if (!quotaDailyChartRef.value) return
+
+  if (!quotaDailyBarChart) quotaDailyBarChart = echarts.init(quotaDailyChartRef.value)
+  const chartDays = quotaDailyChart.value.days || []
+  const xAxisData = chartDays.map((item) => item.label)
+  const hasAnyUsage = chartDays.some((item) => item.total > 0)
+  const seriesMeta = [
+    { key: 'chat', label: 'AI 对话' },
+    { key: 'erase', label: '擦除笔记' },
+    { key: 'split', label: '分割题目' },
+  ]
+  const getStackedBarData = (seriesKey) => chartDays.map((day) => {
+    const activeKeys = seriesMeta
+      .map((item) => item.key)
+      .filter((key) => (day[key] || 0) > 0)
+    const value = day[seriesKey] || 0
+    if (!value) return 0
+    const firstKey = activeKeys[0]
+    const lastKey = activeKeys[activeKeys.length - 1]
+    const radius = 4
+
+    return {
+      value,
+      itemStyle: {
+        borderRadius: [
+          seriesKey === lastKey ? radius : 0,
+          seriesKey === lastKey ? radius : 0,
+          seriesKey === firstKey ? radius : 0,
+          seriesKey === firstKey ? radius : 0,
+        ],
+      },
+    }
+  })
+
+  quotaDailyBarChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      borderWidth: 0,
+      backgroundColor: isDark.value ? 'rgba(20,20,24,0.94)' : 'rgba(15,23,42,0.92)',
+      textStyle: { color: '#f8fafc', fontSize: 12 },
+      formatter: (items) => {
+        if (!items?.length) return '暂无数据'
+        const day = chartDays[items[0].dataIndex]
+        const lines = [`${day?.date || items[0].axisValue}`]
+        if (day?.total) lines.push(`总消耗：${day.total}`)
+        items.forEach((item) => {
+          const rawValue = day?.[item.seriesId] || 0
+          if (!rawValue) return
+          const pct = day?.total ? ((rawValue / day.total) * 100).toFixed(1) : '0.0'
+          lines.push(`${item.marker}${item.seriesName}：${rawValue} (${pct}%)`)
+        })
+        if (!day?.total) lines.push('暂无消耗')
+        return lines.join('<br/>')
+      },
+    },
+    legend: {
+      bottom: 0,
+      left: 0,
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: {
+        color: isDark.value ? '#94a3b8' : '#64748b',
+        fontSize: 12,
+      },
+    },
+    graphic: hasAnyUsage
+      ? []
+      : [
+          {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: '最近 14 天暂无额度消耗',
+              fill: isDark.value ? '#64748b' : '#94a3b8',
+              fontSize: 14,
+              fontWeight: 500,
+            },
+          },
+        ],
+    grid: { left: 8, right: 8, top: 12, bottom: 36, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: xAxisData,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: isDark.value ? 'rgba(255,255,255,0.08)' : '#e5e7eb' } },
+      axisLabel: { color: isDark.value ? '#64748b' : '#94a3b8', fontSize: 11 },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      splitLine: { lineStyle: { color: isDark.value ? 'rgba(255,255,255,0.06)' : '#f1f5f9' } },
+      axisLabel: { color: isDark.value ? '#64748b' : '#94a3b8', fontSize: 11 },
+    },
+    series: seriesMeta.map((item) => ({
+      name: item.label,
+      id: item.key,
+      type: 'bar',
+      stack: 'usage',
+      barMaxWidth: 22,
+      itemStyle: {
+        color: getQuotaActionColor(item.key),
+      },
+      emphasis: { focus: 'series' },
+      data: getStackedBarData(item.key),
+    })),
+  }, true)
+
+  bindQuotaChartObserver()
+}
 
 const isProfileSection = computed(() => props.section === 'profile')
 const isQuotaSection = computed(() => props.section === 'quota')
@@ -387,6 +556,9 @@ const removeAvatar = async () => {
 onBeforeUnmount(() => {
   if (avatarUploadXhr.value) avatarUploadXhr.value.abort()
   clearAvatarPreview()
+  quotaChartResizeObserver?.disconnect()
+  quotaDailyBarChart?.dispose()
+  quotaDailyBarChart = null
 })
 
 // ---------- 多 Provider 数据结构 ----------
@@ -793,9 +965,13 @@ const onSystemDialogConfirm = async (formData) => {
 
 onMounted(async () => {
   await loadConfig()
+  if (isQuotaSection.value) {
+    await refreshQuotaSectionData()
+  }
   if (currentUser.value?.is_admin && isSystemProvidersSection.value) {
     await loadSystemConfig()
   }
+  renderQuotaCharts()
 })
 
 watch(
@@ -806,12 +982,34 @@ watch(
     }
   },
 )
+
+watch(
+  isQuotaSection,
+  (active) => {
+    if (active) refreshQuotaSectionData()
+  },
+)
+
+watch(
+  [isQuotaSection, isDark, quotaUsagePercent],
+  () => {
+    renderQuotaCharts()
+  },
+)
+
+watch(
+  quotaDailyChart,
+  () => {
+    renderQuotaCharts()
+  },
+  { deep: true },
+)
 </script>
 
 <template>
   <ContentPanel :title="settingsPageTitle">
     <div class="relative h-full overflow-y-auto">
-      <div class="container relative z-10 mx-auto max-w-3xl pt-6">
+      <div class="container relative z-10 mx-auto pt-6" :class="isQuotaSection ? 'max-w-5xl' : 'max-w-3xl'">
 
         <div v-if="loading && isProfileSection" class="mx-auto max-w-2xl animate-pulse">
           <!-- 骨架屏：头像区域 -->
@@ -926,11 +1124,21 @@ watch(
         </div>
 
         <div v-else-if="isProfileSection || isQuotaSection || isSystemProvidersSection" class="space-y-6">
-          <section v-if="isQuotaSection"
-            class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">
+          <template v-if="isQuotaSection">
             <div class="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 class="text-lg font-bold text-slate-900 dark:text-[#f7f8f8]">免费体验额度</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                  <h2 class="text-lg font-bold text-slate-900 dark:text-[#f7f8f8]">免费体验额度</h2>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
+                    :disabled="quotaRefreshing"
+                    @click="refreshQuotaSectionData(false)"
+                  >
+                    <i class="fa-solid" :class="quotaRefreshing ? 'fa-rotate fa-spin' : 'fa-rotate'"></i>
+                    {{ quotaRefreshing ? '刷新中' : '刷新记录' }}
+                  </button>
+                </div>
                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">使用平台托管的 AI / OCR 服务时会消耗每日免费次数；使用您自己的已配置
                   Provider
                   不会扣减。</p>
@@ -941,18 +1149,19 @@ watch(
               </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-3">
+            <div class="grid gap-4 md:grid-cols-2">
               <div
                 class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400">每日额度</p>
                 <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_quota ?? '--'
                   }}</p>
-              </div>
-              <div
-                class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">今日已用</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_used ?? '--'
-                  }}</p>
+                <div class="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                  <div
+                    class="h-full transition-all duration-500 ease-out"
+                    :class="quotaUsagePercent >= 100 ? 'bg-red-500' : (quotaUsagePercent >= 80 ? 'bg-orange-500' : 'bg-[rgb(var(--accent-rgb))]')"
+                    :style="{ width: `${quotaUsagePercent}%` }"
+                  ></div>
+                </div>
               </div>
               <div
                 class="rounded-xl border border-[rgb(var(--accent-rgb)/0.24)] bg-[rgb(var(--accent-rgb)/0.10)] p-4 dark:border-[rgb(var(--accent-rgb)/0.28)] dark:bg-[rgb(var(--accent-rgb)/0.12)]">
@@ -965,7 +1174,22 @@ watch(
               <i class="fa-regular fa-clock mr-1.5 opacity-70"></i>
               {{ quotaResetText }}
             </p>
-          </section>
+
+            <div class="mt-6">
+              <div class="rounded-xl border border-gray-100 bg-white/50 p-4 dark:border-white/[0.04] dark:bg-white/[0.02]">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-[#f7f8f8]">
+                      <i class="fa-solid fa-chart-column mr-2 text-[rgb(var(--accent-rgb))]"></i>
+                      每日额度占比
+                    </h3>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-500">近 {{ quotaDailyChart.range_days }} 天每天一根柱，显示 AI 对话、擦除和分割的消耗占比。</p>
+                  </div>
+                </div>
+                <div ref="quotaDailyChartRef" class="h-[320px] w-full"></div>
+              </div>
+            </div>
+          </template>
 
           <section v-if="isSystemProvidersSection && currentUser?.is_admin"
             class="rounded-2xl border border-white/[0.06] border-t-white/[0.15] border-b-white/[0.03] bg-white/[0.02] p-6 backdrop-blur-xl">

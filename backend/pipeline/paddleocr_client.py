@@ -189,7 +189,7 @@ class PaddleOCRClient:
 
         # 合并所有页面到一个 result（保持与下游兼容）
         result = self._merge_pages(result_pages)
-        console.print(f"[green]✓ 解析成功: {file_path}[/green]")
+        console.print(f"[green][OK] 解析成功: {file_path}[/green]")
 
         if save_output:
             os.makedirs(output_dir, exist_ok=True)
@@ -344,7 +344,7 @@ class PaddleOCRClient:
         result_pages = await self._async_download_result(session, jsonl_url)
 
         result = self._merge_pages(result_pages)
-        console.print(f"[green]✓ 解析成功: {image_path}[/green]")
+        console.print(f"[green][OK] 解析成功: {image_path}[/green]")
 
         if save_output:
             os.makedirs(output_dir, exist_ok=True)
@@ -435,7 +435,7 @@ class PaddleOCRClient:
             ]
             results = await asyncio.gather(*tasks)
 
-        console.print(f"[bold green]✓ 全部 {len(results)} 张图片解析完成[/bold green]")
+        console.print(f"[bold green][OK] 全部 {len(results)} 张图片解析完成[/bold green]")
         return list(results)
 
 

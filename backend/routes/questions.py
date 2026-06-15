@@ -516,14 +516,32 @@ def save_to_db():
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
 
         run_id = data.get('run_id')
-        if not run_id:
-            return jsonify({'success': False, 'code': 'MISSING_RUN_ID', 'error': '缺少 run_id，请重新分割题目'}), 400
+        split_record_id = data.get('split_record_id')
         user_id = session.get('user_id')
+        run = None
+        split_record = None
+        questions = []
+        subject = None
+        file_names = []
+        source_path = ""
         with SessionLocal() as db:
-            run = run_store.get_split_run(db, run_id, user_id=user_id)
-            if not run or run.status != run_store.STATUS_SUCCEEDED:
-                return jsonify({'success': False, 'error': '请先分割题目'}), 400
-            questions = run_store.read_questions(run)
+            if run_id:
+                run = run_store.get_split_run(db, run_id, user_id=user_id)
+                if not run or run.status != run_store.STATUS_SUCCEEDED:
+                    return jsonify({'success': False, 'error': '请先分割题目'}), 400
+                questions = run_store.read_questions(run)
+                subject = run_store.read_subject(run)
+                file_names = json.loads(run.file_names_json) if run.file_names_json else []
+                source_path = run.result_dir
+            elif split_record_id:
+                split_record = crud.get_split_record_by_id(db, int(split_record_id), user_id=user_id)
+                if not split_record:
+                    return jsonify({'success': False, 'error': '分割历史不存在'}), 404
+                questions = json.loads(split_record.questions_json or '[]')
+                subject = split_record.subject
+                file_names = json.loads(split_record.file_names_json or '[]')
+            else:
+                return jsonify({'success': False, 'code': 'MISSING_RUN_ID', 'error': '缺少 run_id，请重新分割题目'}), 400
 
         uid_set = set(selected_uids)
         selected_questions = [q for q in questions if q.get('uid') in uid_set]
@@ -540,14 +558,10 @@ def save_to_db():
                 if 'user_answer' in answers_map[uid]:
                     sq['user_answer'] = answers_map[uid]['user_answer']
 
-        # 读取科目信息
-        subject = run_store.read_subject(run)
-
-        file_names = json.loads(run.file_names_json) if run.file_names_json else []
         batch_info = {
             "original_filename": ", ".join(file_names) or "Unknown",
             "subject": subject,
-            "file_path": run.result_dir,
+            "file_path": source_path,
         }
 
         with SessionLocal() as db:
@@ -572,7 +586,8 @@ def save_to_db():
         return jsonify({
             'success': True,
             'message': f'已导入 {result["created"]} 道题目（跳过 {result["duplicates"]} 道重复）',
-            'run_id': run.public_id,
+            'run_id': run.public_id if run else None,
+            'split_record_id': split_record.id if split_record else None,
             'created': result['created'],
             'duplicates': result['duplicates'],
         })

@@ -691,7 +691,7 @@ def split_questions_node(state: WorkflowState) -> dict:
         try:
             with open(ocr_cache_path, 'r', encoding='utf-8') as f:
                 ocr_data = json.load(f)
-            console.print(f"[green]✓ 使用 OCR 缓存: {len(ocr_data)} 页[/green]")
+            console.print(f"[green][OK] 使用 OCR 缓存: {len(ocr_data)} 页[/green]")
             logger.info(f"使用 OCR 缓存: {len(ocr_data)} 页")
             os.remove(ocr_cache_path)  # 用完即删，避免下次误用
         except Exception as e:
@@ -709,7 +709,7 @@ def split_questions_node(state: WorkflowState) -> dict:
 
         if not ocr_data:
             logger.error("OCR 解析失败，无数据返回")
-            console.print("[red]⚠ OCR 解析失败[/red]")
+            console.print("[red][WARN] OCR 解析失败[/red]")
             return {
                 "questions": [],
                 "warnings": ["步骤 2（OCR 解析）失败：无法解析图片内容，请检查 PaddleOCR API Token 配置"],
@@ -718,7 +718,7 @@ def split_questions_node(state: WorkflowState) -> dict:
         total_blocks = sum(len(p.get("blocks", [])) for p in ocr_data)
         ocr_elapsed = time.time() - ocr_start
         logger.info(f"OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block, 耗时 {ocr_elapsed:.2f}s")
-        console.print(f"[green]✓ OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block ({ocr_elapsed:.1f}s)[/green]")
+        console.print(f"[green][OK] OCR 完成: {len(ocr_data)} 页, {total_blocks} 个 block ({ocr_elapsed:.1f}s)[/green]")
 
     # 保存 agent_input.json（供纠错节点使用）
     agent_input_path = os.path.join(results_dir, "agent_input.json")
@@ -788,16 +788,16 @@ def split_questions_node(state: WorkflowState) -> dict:
                 questions = json.loads(result_str)
                 batch_results[batch_idx] = questions
                 logger.info(f"批次 {batch_idx} 完成: {len(questions)} 道题目")
-                console.print(f"[green]  ✓ 批次 {batch_idx} 完成: {len(questions)} 道题目[/green]")
+                console.print(f"[green]  [OK] 批次 {batch_idx} 完成: {len(questions)} 道题目[/green]")
                 return
             except Exception as e:
                 if attempt < max_batch_retries:
                     logger.warning(f"批次 {batch_idx} 第 {attempt} 次失败 ({e})，重试中...")
-                    console.print(f"[yellow]  ⚠ 批次 {batch_idx} 第 {attempt} 次失败，重试...[/yellow]")
+                    console.print(f"[yellow]  [WARN] 批次 {batch_idx} 第 {attempt} 次失败，重试...[/yellow]")
                     time.sleep(2)
                 else:
                     logger.error(f"批次 {batch_idx} 分割失败（已重试 {max_batch_retries} 次）: {e}")
-                    console.print(f"[red]  ✗ 批次 {batch_idx} 失败: {e}[/red]")
+                    console.print(f"[red]  [ERROR] 批次 {batch_idx} 失败: {e}[/red]")
                     batch_errors.append(str(e))
 
     if len(batches) == 1:
@@ -852,11 +852,11 @@ def split_questions_node(state: WorkflowState) -> dict:
     total_elapsed = time.time() - step_start
     if deduped:
         logger.info(f"分割完成: 共 {len(deduped)} 道题目, 总耗时 {total_elapsed:.2f}s")
-        console.print(f"[bold green]✓ 成功分割 {len(deduped)} 道题目 (总耗时 {total_elapsed:.1f}s)[/bold green]")
+        console.print(f"[bold green][OK] 成功分割 {len(deduped)} 道题目 (总耗时 {total_elapsed:.1f}s)[/bold green]")
         return {"questions": deduped}
     else:
         logger.warning("未生成任何题目，请检查执行日志")
-        console.print("[yellow]⚠ 未生成任何题目[/yellow]")
+        console.print("[yellow][WARN] 未生成任何题目[/yellow]")
         err_str = " ".join(batch_errors).lower()
         if "401" in err_str or "authentication" in err_str or "invalid" in err_str and "api key" in err_str:
             warning_msg = f"步骤 3（分割题目）失败：LLM API Key 认证错误，请检查 {model_provider.upper()} API Key 配置"
@@ -891,7 +891,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
 
     if not flagged:
         logger.info("纠错跳过: 无需纠错的题目")
-        console.print("[green]✓ 所有题目均无 OCR 错误标记，跳过纠错[/green]")
+        console.print("[green][OK] 所有题目均无 OCR 错误标记，跳过纠错[/green]")
         return {"questions": questions}
 
     console.print(f"[cyan]发现 {len(flagged)} 道题目需要纠错（共 {len(questions)} 道）[/cyan]")
@@ -939,7 +939,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
         corrected = json.loads(result_str)
     except (json.JSONDecodeError, TypeError):
         logger.error(f"纠错结果解析失败: {result_str[:200]}")
-        console.print("[red]⚠ 纠错结果解析失败，保留原始题目[/red]")
+        console.print("[red][WARN] 纠错结果解析失败，保留原始题目[/red]")
         return {"questions": questions}
 
     # 按 (section_title, question_id) 复合键合并纠错结果，避免不同大题同号题互相覆盖
@@ -970,7 +970,7 @@ def correct_questions_node(state: WorkflowState) -> dict:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 
     logger.info(f"纠错完成: {len(corrected)}/{len(flagged)} 道题目已修复，耗时 {time.time() - step_start:.2f}s")
-    console.print(f"[green]✓ 纠错完成: {len(corrected)} 道题目已修复[/green]")
+    console.print(f"[green][OK] 纠错完成: {len(corrected)} 道题目已修复[/green]")
 
     return {"questions": merged}
 

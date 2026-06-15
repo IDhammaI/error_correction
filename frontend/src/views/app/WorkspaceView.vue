@@ -22,6 +22,8 @@ import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseToolbarButton from '@/components/base/BaseToolbarButton.vue'
 
+defineOptions({ name: 'WorkspaceView' })
+
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
 const route = useRoute()

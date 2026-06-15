@@ -319,6 +319,17 @@ def create_note():
                     ),
                     400,
                 )
+            if "Error code: 400" in msg or "BadRequest" in msg:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "code": "MODEL_REQUEST_FAILED",
+                            "error": "笔记整理失败：当前模型拒绝了结构化整理请求，请检查模型名称或更换支持 JSON 输出的模型。",
+                        }
+                    ),
+                    400,
+                )
             raise
 
         note_preview = _build_note_preview_payload(result, saved_paths, ocr_text)

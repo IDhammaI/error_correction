@@ -282,7 +282,8 @@ async function confirmDelete() {
   try {
     await removeProject(deleteTarget.value.id)
     pushToast('success', '项目已删除')
-    closeDeleteDialog()
+    deleteDialogOpen.value = false
+    deleteTarget.value = null
   } catch (error) {
     pushToast('error', error instanceof Error ? error.message : '删除项目失败')
   } finally {
@@ -597,11 +598,11 @@ watch(activeLibraryProject, (project) => {
       iconBg="bg-rose-500/10"
       iconClass="text-rose-400"
       maxWidth="max-w-[28rem]"
-      bodyClass="px-6 pb-3 pt-1"
+      bodyClass="px-6 py-3"
       @close="closeDeleteDialog"
     >
       <p class="text-sm leading-6 text-gray-600 dark:text-[#aeb6c2]">
-        确定删除“<span class="font-semibold text-gray-900 dark:text-[#f7f8f8]">{{ deleteTarget?.name }}</span>”吗？如果项目里已有题目或笔记，后端会阻止删除。
+        确定删除“<span class="font-semibold text-gray-900 dark:text-[#f7f8f8]">{{ deleteTarget?.name }}</span>”吗？项目里的题目、笔记和复习记录会一并删除。
       </p>
       <template #footer>
         <BaseButton variant="secondary" size="sm" :disabled="deleteSaving" @click="closeDeleteDialog">

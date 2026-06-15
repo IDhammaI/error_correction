@@ -30,17 +30,13 @@ def _invoke_once(
     supports_function_calling: bool = True,
 ) -> OrganizedNote:
     """单次 LLM 调用，返回结构化笔记"""
-    from core.config import settings
-
-    # 百度千帆等特殊平台/模型，即使 supports_function_calling=False
-    # 如果直接用 with_structured_output 仍可能报错 "暂不支持该模型"（如果 Langchain 默认使用了 JSON Schema mode）
-    # 为保证最大兼容性，我们通过 prompt 要求输出 JSON，并手动解析
-    if not supports_function_calling:
+    def invoke_json_mode() -> OrganizedNote:
+        # 部分 OpenAI 兼容模型不支持 function calling。此路径只要求模型输出 JSON，
+        # 再由本地 Pydantic 解析，兼容性更好。
         from langchain_core.output_parsers import PydanticOutputParser
 
         parser = PydanticOutputParser(pydantic_object=OrganizedNote)
         format_instructions = parser.get_format_instructions()
-
         response = model.invoke(
             [
                 SystemMessage(
@@ -53,7 +49,11 @@ def _invoke_once(
             ]
         )
         return parser.parse(response.content)
-    else:
+
+    if not supports_function_calling:
+        return invoke_json_mode()
+
+    try:
         structured_model = model.with_structured_output(
             OrganizedNote, method="function_calling"
         )
@@ -65,6 +65,17 @@ def _invoke_once(
                 ),
             ]
         )
+    except Exception as exc:
+        msg = str(exc)
+        if (
+            "400" in msg
+            or "tool" in msg.lower()
+            or "function" in msg.lower()
+            or "structured" in msg.lower()
+        ):
+            logger.info("笔记整理: 结构化调用失败，降级为 JSON 输出解析: %s", msg)
+            return invoke_json_mode()
+        raise
 
 
 def _invoke_with_retry(

@@ -190,7 +190,7 @@ onMounted(() => {
 
       <!-- 返回主页 -->
       <div class="absolute top-6 right-6 z-10">
-        <BaseButton href="/" variant="secondary" size="sm" class="flex items-center gap-2 !px-4 !py-2 !h-auto !rounded-lg">
+        <BaseButton to="/" variant="secondary" size="sm" class="flex items-center gap-2 !px-4 !py-2 !h-auto !rounded-lg">
           <i class="fas fa-arrow-left text-xs"></i>
           返回主页
         </BaseButton>

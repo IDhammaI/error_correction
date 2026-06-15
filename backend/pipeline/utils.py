@@ -56,7 +56,7 @@ def prepare_input(file_path: str) -> List[str]:
 
     output_path = os.path.join(pages_dir, f"{file_stem}{file_ext}")
     shutil.copy2(file_path, output_path)
-    console.print(f"[green]  ✓ 文件已复制: {output_path}[/green]")
+    console.print(f"[green]  [OK] 文件已复制: {output_path}[/green]")
 
     return [output_path]
 
@@ -195,7 +195,7 @@ def export_wrongbook(
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(md_content)
 
-    console.print(f"[green]✓ 错题本已导出: {output_path}[/green]")
+    console.print(f"[green][OK] 错题本已导出: {output_path}[/green]")
 
     return output_path
 

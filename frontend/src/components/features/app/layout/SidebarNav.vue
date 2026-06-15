@@ -345,7 +345,7 @@ const userQuotaSummary = computed(() => {
 <template>
   <!-- ================== 侧边栏容器 ================== -->
   <aside
-    class="sidebar-3d-stage flex min-h-0 flex-col z-20 transition-[width,transform] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[width,transform]"
+    class="sidebar-3d-stage flex min-h-0 flex-col z-20 pt-3 transition-[width,transform] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[width,transform]"
     :class="[
       isMobile
         ? 'fixed inset-y-0 left-0 w-64 transform bg-white dark:bg-[#1b1b1d] shadow-2xl ' + (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
@@ -416,7 +416,7 @@ const userQuotaSummary = computed(() => {
             isSettingsView ? 'sidebar-3d-face-inactive' : 'sidebar-3d-face-active',
             useNarrowLayout ? 'overflow-visible' : 'overflow-hidden',
           ]" :aria-hidden="isSettingsView">
-          <div class="flex min-h-0 flex-1 flex-col px-3">
+          <div class="flex min-h-0 flex-1 flex-col px-4">
           <!-- Logo 标题区 -->
           <div
             class="flex h-14 shrink-0 items-center justify-start transition-[gap] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)]"
@@ -452,7 +452,7 @@ const userQuotaSummary = computed(() => {
             <nav
               v-if="renderExpandedContent || isNarrow"
               :ref="(el) => $emit('update:navRef', el)"
-              class="relative flex min-h-0 flex-1 flex-col gap-1.5 pt-2 transition-opacity duration-300 ease-[var(--sidebar-transition-timing)]"
+              class="relative flex min-h-0 flex-1 flex-col gap-1.5 pt-3 transition-opacity duration-300 ease-[var(--sidebar-transition-timing)]"
             >
 
               <template v-for="(group, gi) in topNavGroups" :key="`top-${gi}`">

@@ -462,12 +462,14 @@ function questionContextSnippet(question) {
 <template>
   <div class="h-full min-h-0">
     <ContentPanel title="AI 对话">
-      <template #header-actions>
-        <button @click="createCurrentAiChat"
-          class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white transition-all"
-          :title="canHover ? '新对话' : null">
-          <MessageSquarePlus class="w-4 h-4" />
-        </button>
+      <template #toolbar>
+        <div class="flex items-center rounded-full bg-gray-100/50 p-1 dark:bg-white/[0.04]">
+          <button @click="createCurrentAiChat"
+            class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-all hover:bg-white dark:text-[#8a8f98] dark:hover:bg-white/[0.08] dark:hover:text-white"
+            :title="canHover ? '新对话' : null">
+            <MessageSquarePlus class="h-4 w-4" />
+          </button>
+        </div>
       </template>
       <div class="flex h-full min-h-0 flex-col overflow-hidden">
         <!-- 消息区域（含空状态） -->
@@ -662,7 +664,7 @@ function questionContextSnippet(question) {
     <BaseModal :open="contextDialogOpen" title="引用错题回答" icon="fa-database" iconBg="accent-bg-soft"
       iconClass="accent-text" maxWidth="max-w-4xl sm:w-[58rem]" bodyClass="px-0 py-0"
       @close="contextDialogOpen = false">
-      <div v-if="questionProjects.length === 0" class="px-6 pb-8 pt-2">
+      <div v-if="questionProjects.length === 0" class="px-6 py-6">
         <div class="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-white/[0.08]">
           <div
             class="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-white/[0.05] dark:text-[#62666d]">

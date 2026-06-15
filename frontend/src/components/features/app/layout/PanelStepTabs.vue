@@ -12,7 +12,7 @@ const emit = defineEmits(['step-click'])
 </script>
 
 <template>
-  <div v-if="steps.length" class="ml-2 flex items-center gap-1">
+  <div v-if="steps.length" class="ml-2 hidden items-center gap-1 lg:flex">
     <button
       v-for="(step, index) in steps"
       :key="index"
