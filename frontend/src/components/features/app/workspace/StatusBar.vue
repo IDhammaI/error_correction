@@ -2,21 +2,14 @@
 /**
  * 工作台顶部状态栏。
  *
- * 汇总引擎连接状态、模型可用状态，并承载模型选择入口。
+ * 汇总引擎连接状态和模型可用状态。
  */
 import BaseStatusPill from '@/components/base/BaseStatusPill.vue'
-import ModelProviderSelect from '@/components/features/app/workspace/ModelProviderSelect.vue'
-
-const emit = defineEmits(['update:selected-llm-option-id'])
 
 defineProps({
   statusLoading: { type: Boolean, default: true },
   statusError: { type: String, default: '' },
   statusPills: { type: Array, default: () => [] },
-  modelOptionsData: { type: Object, default: null },
-  selectedLlmOptionId: { type: String, default: '' },
-  disabled: { type: Boolean, default: false },
-  noModels: { type: Boolean, default: false },
 })
 </script>
 
@@ -49,15 +42,5 @@ defineProps({
       />
     </div>
 
-    <div v-if="!statusError" class="ml-auto flex items-center gap-2">
-      <ModelProviderSelect
-        :model-value="selectedLlmOptionId"
-        :model-options-data="modelOptionsData"
-        :disabled="disabled"
-        :no-models="noModels"
-        :status-loading="statusLoading"
-        @update:model-value="(value) => emit('update:selected-llm-option-id', value)"
-      />
-    </div>
   </div>
 </template>
