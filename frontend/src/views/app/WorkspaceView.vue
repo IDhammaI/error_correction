@@ -30,7 +30,7 @@ const route = useRoute()
 const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
-const { questionProjects, noteProjects, activeQuestionProjectId, activeNoteProjectId, setActiveProject } = useProjects()
+const { questionProjects, noteProjects, activeQuestionProjectId, activeNoteProjectId, loadProjects, setActiveProject } = useProjects()
 const {
   statusLoading, statusError,
   providerOptions, hasConfiguredModel, statusPills,
@@ -214,9 +214,15 @@ const closeImportDialog = () => {
   importDialogOpen.value = false
 }
 
-const openNoteSaveDialog = () => {
+const openNoteSaveDialog = async () => {
   if (!notePreview.value) {
     pushToast('error', '暂无可保存的笔记结果')
+    return
+  }
+  try {
+    await loadProjects()
+  } catch (error) {
+    pushToast('error', error instanceof Error ? error.message : '刷新笔记本列表失败')
     return
   }
   if (!noteProjects.value.length) {
