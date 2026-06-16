@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useOverlay } from '@/composables/useOverlay.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -16,9 +17,14 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const close = () => emit('close')
+const { overlayRef, overlayStyle, backdropStyle: overlayBackdropStyle } = useOverlay(
+  computed(() => props.open),
+  { onClose: close },
+)
 
 const backdropStyle = computed(() => ({
   '--dialog-backdrop-blur': props.blurBackdrop ? '8px' : '0px',
+  ...overlayBackdropStyle.value,
 }))
 </script>
 
@@ -36,10 +42,13 @@ const backdropStyle = computed(() => ({
     <Transition name="dialog-content" appear>
       <div
         v-if="open"
-        class="fixed inset-0 z-[101] flex items-center justify-center p-4 transition-all duration-300"
+        class="fixed inset-0 flex items-center justify-center p-4 transition-all duration-300"
+        :style="overlayStyle"
         @click.self="emit('close')"
       >
         <div
+          ref="overlayRef"
+          tabindex="-1"
           class="relative w-full rounded-xl border border-slate-200/60 bg-white shadow-2xl dark:border-[#2f3336] dark:bg-[#1b1b1d]"
           :class="maxWidth"
         >

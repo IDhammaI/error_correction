@@ -86,14 +86,17 @@ def _invoke_with_retry(
 ) -> OrganizedNote:
     """带指数退避的重试调用"""
     last_error = None
+    use_function_calling = bool(supports_function_calling)
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            result = _invoke_once(model, ocr_text, provider, supports_function_calling)
+            result = _invoke_once(model, ocr_text, provider, use_function_calling)
             if result:
                 return result
             last_error = "LLM 未返回有效结果"
         except Exception as e:
             last_error = str(e)
+            if "tool_choice" in last_error or "Thinking mode" in last_error:
+                use_function_calling = False
             logger.warning(f"笔记整理: 第 {attempt}/{MAX_RETRIES} 次失败: {last_error}")
 
         if attempt < MAX_RETRIES:
@@ -183,10 +186,14 @@ def invoke_note_organize(
         base_url=base_url,
         supports_function_calling=supports_function_calling,
     )
+    use_function_calling = bool(supports_function_calling)
+    normalized_model = (model_name or "").strip().lower()
+    if "deepseek-v4" in normalized_model:
+        use_function_calling = False
 
     # 短文本：直接整理
     if len(ocr_text) <= BATCH_CHAR_LIMIT:
-        return _invoke_with_retry(model, ocr_text, provider, supports_function_calling)
+        return _invoke_with_retry(model, ocr_text, provider, use_function_calling)
 
     # 长文本：分批处理
     batches = _split_text_into_batches(ocr_text)
@@ -195,7 +202,7 @@ def invoke_note_organize(
     results = []
     for i, batch in enumerate(batches):
         logger.info(f"处理第 {i + 1}/{len(batches)} 批（{len(batch)} 字符）")
-        result = _invoke_with_retry(model, batch, provider, supports_function_calling)
+        result = _invoke_with_retry(model, batch, provider, use_function_calling)
         results.append(result)
 
     return _merge_notes(results)

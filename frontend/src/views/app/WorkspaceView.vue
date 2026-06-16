@@ -265,6 +265,15 @@ const confirmSaveNoteToProject = async () => {
 }
 
 // ── 键盘事件 ────────────────────────────────────────────
+const handleStartProcess = () => {
+  if (!splitEnabled.value || autoProcessing.value) return
+  if (workflowMode.value === 'auto') {
+    runAutoProcess()
+    return
+  }
+  startProcess()
+}
+
 const onKeydown = (e) => {
   if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
     e.preventDefault(); selectAll()
@@ -304,17 +313,6 @@ watch(notePreview, (value) => {
     openNoteSaveDialog()
   }
 })
-
-watch(
-  [workflowMode, uploadReady, uploadBusy, splitCompleted, splitting, autoProcessing],
-  ([mode, ready, busy, completed, isSplitting, isAutoProcessing]) => {
-    if (restoringWorkspaceState.value) return
-    if (mode !== 'auto') return
-    if (!ready || busy || completed || isSplitting || isAutoProcessing) return
-    if (!hasConfiguredModel.value) return
-    runAutoProcess()
-  },
-)
 
 // ── 生命周期 ────────────────────────────────────────────
 import { onMounted } from 'vue'
@@ -372,7 +370,7 @@ onBeforeUnmount(() => {
           @update:workflow-mode="(v) => workflowMode = v"
           @update:erase-enabled="(v) => eraseEnabled = v"
           @update:selected-llm-option-id="updateSelectedLlmOption" @upload="enqueueUpload"
-          @remove-file="removePendingFile" @split="startProcess" />
+          @remove-file="removePendingFile" @split="handleStartProcess" />
       </ContentPanel>
 
       <!-- 第二页：解析结果核对 -->

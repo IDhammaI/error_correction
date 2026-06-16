@@ -34,6 +34,7 @@ import SettingsView from '@/views/app/SettingsView.vue'
 import NoteView from '@/views/app/NoteView.vue'
 import ChatPage from '@/views/app/ChatPageView.vue'
 import SearchHubView from '@/views/app/SearchHubView.vue'
+import ComponentPreviewView from '@/views/app/ComponentPreviewView.vue'
 
 // ── 全局 Composables ────────────────────────────────────
 const router = useRouter()
@@ -121,6 +122,7 @@ const activeViewComponent = computed(() => {
   if (currentView.value === 'chat') return ChatView
   if (currentView.value === 'notes') return NoteView
   if (currentView.value === 'ai-chat') return ChatPage
+  if (currentView.value === 'component-preview') return ComponentPreviewView
   return WorkspaceView
 })
 const activeViewKey = computed(() => {

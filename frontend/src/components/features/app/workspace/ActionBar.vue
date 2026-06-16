@@ -25,7 +25,7 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
     <button
       type="button"
       class="group relative inline-flex h-14 items-center justify-center sm:w-auto w-full disabled:cursor-not-allowed disabled:opacity-50"
-      :disabled="workflowMode === 'manual' ? !splitEnabled : true"
+      :disabled="!splitEnabled || splitting"
       @click="emit('split')"
     >
       <!-- 按钮本体 -->
@@ -41,7 +41,7 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
           </template>
           <template v-else>
             <i class="fa-solid fa-bolt text-gray-600 dark:text-white/80"></i>
-            <span class="text-gray-900 dark:text-white">上传后自动处理到导出阶段</span>
+            <span class="text-gray-900 dark:text-white">{{ uploadMode === 'note' ? '开始自动整理笔记' : '开始自动处理到导出阶段' }}</span>
           </template>
         </template>
         <template v-else-if="splitting">

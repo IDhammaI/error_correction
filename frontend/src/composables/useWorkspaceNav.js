@@ -22,6 +22,7 @@ const VIEW_TO_PATH = {
   'error-bank': '/app/error-bank',
   notes: '/app/notes',
   'ai-chat': '/app/ai-chat',
+  'component-preview': '/app/component-preview',
   settings: `/app/settings/${DEFAULT_SETTINGS_SUBVIEW}`,
   'split-history': '/app/split-history',
   chat: '/app/chat',
@@ -44,6 +45,7 @@ const NAV_GROUPS = [
       { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
       { id: 'search-chat', label: '搜索聊天', icon: 'fa-magnifying-glass', match: (v) => v === 'search-chat' },
       { id: 'library', label: '库', icon: 'fa-box-archive', match: (v) => v === 'library' },
+      { id: 'component-preview', label: '组件预览', icon: 'fa-cubes', match: (v) => v === 'component-preview' },
     ],
   },
 ]
