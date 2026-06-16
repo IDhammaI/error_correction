@@ -513,7 +513,17 @@ def run_erase():
         if not ensexam_configured:
             return jsonify({"success": False, "error": "EnsExam 模型未配置"}), 400
 
-        from text_eraser_model.inference import InferenceEngine
+        try:
+            from text_eraser_model.inference import InferenceEngine
+        except ModuleNotFoundError as exc:
+            if exc.name == "torch":
+                logger.exception("EnsExam 擦除模型依赖缺失")
+                return jsonify({
+                    "success": False,
+                    "code": "ERASER_DEPENDENCY_MISSING",
+                    "error": "擦除模型依赖缺失：请在后端环境安装 PyTorch 后重试",
+                }), 503
+            raise
 
         engine = InferenceEngine()
         erased_paths = []
