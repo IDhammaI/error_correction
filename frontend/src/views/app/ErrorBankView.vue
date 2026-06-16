@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 /**
  * ErrorBankView.vue
  * 閿欓搴撳伐浣滃彴锛氬乏渚ч鐩垪琛?+ 涓棿棰樼洰璇︽儏 + 鍙充晶瀛︿範鍒嗘瀽銆?
@@ -47,9 +47,9 @@ const statsCollapsed = ref(false)
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
 const detailTabs = [
-  { value: 'analysis', label: 'AI 瑙ｆ瀽', icon: 'fa-wand-magic-sparkles' },
-  { value: 'answer', label: '绛旀瑙ｆ瀽', icon: 'fa-circle-check' },
-  { value: 'note', label: '浣滅瓟璁板綍', icon: 'fa-camera' },
+  { value: 'analysis', label: 'AI 解析', icon: 'fa-wand-magic-sparkles' },
+  { value: 'answer', label: '答案解析', icon: 'fa-circle-check' },
+  { value: 'note', label: '作答记录', icon: 'fa-camera' },
 ]
 
 const typesetMath = async () => {

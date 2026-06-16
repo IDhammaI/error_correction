@@ -10,6 +10,7 @@ echarts.use([TooltipComponent, LegendComponent, RadarComponent, RadarChart, Canv
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
+  themeMode: { type: String, default: 'auto' },
 })
 
 const chartRef = ref(null)
@@ -17,7 +18,11 @@ let chart = null
 let resizeObserver = null
 let themeObserver = null
 
-const isDark = () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+const isDark = () => {
+  if (props.themeMode === 'dark') return true
+  if (props.themeMode === 'light') return false
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+}
 
 const indicatorMax = computed(() => {
   const max = Math.max(100, ...props.items.flatMap(item => [item.score || 0, item.average || 0]))

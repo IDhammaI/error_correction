@@ -46,7 +46,6 @@ const NAV_GROUPS = [
       { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
       { id: 'search-chat', label: '搜索聊天', icon: 'fa-magnifying-glass', match: (v) => v === 'search-chat' },
       { id: 'library', label: '库', icon: 'fa-box-archive', match: (v) => v === 'library' },
-      { id: 'component-preview', label: '组件预览', icon: 'fa-cubes', match: (v) => v === 'component-preview' },
     ],
   },
 ]

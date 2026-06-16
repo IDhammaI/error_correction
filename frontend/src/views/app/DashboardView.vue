@@ -3,8 +3,9 @@
  * DashboardView.vue
  * 纯前端 mock 数据面板，不依赖后端接口。
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import ContentPanel from '@/components/features/app/layout/ContentPanel.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import KnowledgeRadarCard from '@/components/features/app/dashboard/KnowledgeRadarCard.vue'
@@ -13,9 +14,13 @@ import PriorityBarCard from '@/components/features/app/dashboard/PriorityBarCard
 import LearningTrendCard from '@/components/features/app/dashboard/LearningTrendCard.vue'
 import KnowledgeCompareCard from '@/components/features/app/dashboard/KnowledgeCompareCard.vue'
 import SummaryStatsChartCard from '@/components/features/app/dashboard/SummaryStatsChartCard.vue'
+import { useToast } from '@/composables/useToast.js'
 
 const subjectOptions = ['数学', '物理']
 const selectedSubject = ref('数学')
+const { pushToast } = useToast()
+const exportSheetRef = ref(null)
+const isExporting = ref(false)
 
 const MOCK_DASHBOARDS = {
   数学: {
@@ -176,6 +181,58 @@ const trendPoints = computed(() => {
   }).join(' ')
 })
 
+const waitForExportLayout = async () => {
+  await nextTick()
+  await nextTick()
+  await new Promise(resolve => window.setTimeout(resolve, 600))
+}
+
+const handleExportPdf = async () => {
+  if (isExporting.value) return
+
+  try {
+    isExporting.value = true
+    await waitForExportLayout()
+
+    if (!exportSheetRef.value) {
+      throw new Error('PDF 导出区域尚未准备好')
+    }
+
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ])
+
+    const target = exportSheetRef.value
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      width: target.scrollWidth,
+      height: target.scrollHeight,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    })
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    })
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST')
+
+    const fileName = `学习画像面板-${selectedSubject.value}-六图.pdf`
+    pdf.save(fileName)
+    pushToast('success', `已导出 ${fileName}`)
+  } catch (error) {
+    pushToast('error', error instanceof Error ? error.message : '导出 PDF 失败')
+  } finally {
+    isExporting.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -187,6 +244,10 @@ const trendPoints = computed(() => {
         placeholder="选择学科"
         width-class="min-w-[140px]"
       />
+      <BaseButton variant="primary" size="sm" :disabled="isExporting" @click="handleExportPdf">
+        <i class="fa-regular fa-file-pdf"></i>
+        {{ isExporting ? '导出中...' : '导出为 PDF' }}
+      </BaseButton>
     </template>
 
     <div class="mx-auto flex w-full max-w-[1480px] flex-col gap-4 pb-4">
@@ -262,6 +323,30 @@ const trendPoints = computed(() => {
       </div>
 
     </div>
+
+    <div class="pdf-export-stage" aria-hidden="true">
+      <div ref="exportSheetRef" class="pdf-export-sheet">
+        <div class="pdf-export-head">
+          <div>
+            <p class="pdf-export-eyebrow">Learning Portrait</p>
+            <h2 class="pdf-export-title">学习画像面板</h2>
+          </div>
+          <div class="pdf-export-meta">
+            <span><span class="pdf-export-meta-text">{{ selectedSubject }}</span></span>
+            <span><span class="pdf-export-meta-text">{{ panelData.student.name }}</span></span>
+          </div>
+        </div>
+
+        <div class="pdf-export-grid">
+          <KnowledgeRadarCard :items="panelData.radar" theme-mode="light" />
+          <ErrorDistributionCard :items="panelData.errorDistribution" :total="panelData.errorTotal" theme-mode="light" />
+          <PriorityBarCard :items="panelData.priorities" theme-mode="light" compact />
+          <LearningTrendCard :trend="panelData.trend" theme-mode="light" />
+          <KnowledgeCompareCard :items="panelData.radar" theme-mode="light" />
+          <SummaryStatsChartCard :items="panelData.summaryStats" theme-mode="light" />
+        </div>
+      </div>
+    </div>
   </ContentPanel>
 </template>
 
@@ -276,4 +361,151 @@ const trendPoints = computed(() => {
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.035));
 }
 
+.pdf-export-stage {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.pdf-export-sheet {
+  width: 210mm;
+  height: 297mm;
+  padding: 6mm 6mm 5mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.pdf-export-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4mm;
+}
+
+.pdf-export-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.pdf-export-title {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.pdf-export-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pdf-export-meta span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pdf-export-meta-text {
+  display: block;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pdf-export-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 3mm;
+  height: calc(100% - 23mm);
+  align-items: stretch;
+}
+
+.pdf-export-grid :deep(.rounded-lg) {
+  border-radius: 12px;
+}
+
+.pdf-export-grid :deep(.h-full) {
+  height: 100% !important;
+}
+
+.pdf-export-grid :deep(.bg-white\/85),
+.pdf-export-grid :deep(.dark\:bg-white\/\[0\.04\]) {
+  background: #ffffff !important;
+}
+
+.pdf-export-grid :deep(.shadow-sm),
+.pdf-export-grid :deep(.dark\:shadow-black\/20) {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+.pdf-export-grid :deep(.hover\:bg-white),
+.pdf-export-grid :deep(.dark\:hover\:bg-white\/\[0\.065\]) {
+  background: #ffffff !important;
+}
+
+.pdf-export-grid :deep(.h-\[360px\]) {
+  height: 228px !important;
+  min-height: 228px !important;
+}
+
+.pdf-export-grid :deep(.min-h-\[360px\]) {
+  min-height: 228px !important;
+}
+
+.pdf-export-grid :deep(.p-5) {
+  padding: 14px !important;
+}
+
+.pdf-export-grid :deep(.mb-5) {
+  margin-bottom: 10px !important;
+}
+
+.pdf-export-grid :deep(h3) {
+  font-size: 14px !important;
+}
+
+.pdf-export-grid :deep(.text-base) {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+.pdf-export-grid :deep(.text-xs) {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+
+.pdf-export-grid :deep(.text-\[11px\]) {
+  font-size: 10px !important;
+}
+
+.pdf-export-grid :deep(.text-slate-900),
+.pdf-export-grid :deep(.dark\:text-white) {
+  color: #0f172a !important;
+}
+
+.pdf-export-grid :deep(.text-slate-500),
+.pdf-export-grid :deep(.text-slate-400),
+.pdf-export-grid :deep(.dark\:text-\[\#8a8f98\]),
+.pdf-export-grid :deep(.dark\:text-\[\#707783\]) {
+  color: #64748b !important;
+}
 </style>
+

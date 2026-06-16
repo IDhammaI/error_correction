@@ -10,6 +10,7 @@ echarts.use([TooltipComponent, LegendComponent, GridComponent, BarChart, CanvasR
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
+  themeMode: { type: String, default: 'auto' },
 })
 
 const chartRef = ref(null)
@@ -18,7 +19,13 @@ let resizeObserver = null
 let themeObserver = null
 let renderRetryTimer = null
 
-const isDark = () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+const isDark = () => {
+  if (props.themeMode === 'dark') return true
+  if (props.themeMode === 'light') return false
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+}
+
+const formatAxisLabel = (label) => String(label || '').replace(/(.{4})/g, '$1\n').trim()
 
 const getOption = () => ({
   backgroundColor: 'transparent',
@@ -50,9 +57,10 @@ const getOption = () => ({
     data: props.items.map(item => item.label),
     axisLabel: {
       color: isDark() ? '#94a3b8' : '#64748b',
-      fontSize: 11,
+      fontSize: props.themeMode === 'light' ? 10 : 11,
       interval: 0,
-      rotate: 20,
+      rotate: props.themeMode === 'light' ? 0 : 18,
+      formatter: formatAxisLabel,
     },
     axisTick: { show: false },
   },

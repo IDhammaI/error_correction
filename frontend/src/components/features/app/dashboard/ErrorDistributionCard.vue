@@ -11,6 +11,7 @@ echarts.use([TooltipComponent, LegendComponent, GraphicComponent, PieChart, Canv
 const props = defineProps({
   items: { type: Array, default: () => [] },
   total: { type: Number, default: 0 },
+  themeMode: { type: String, default: 'auto' },
 })
 
 const chartRef = ref(null)
@@ -18,7 +19,11 @@ let chart = null
 let resizeObserver = null
 let themeObserver = null
 
-const isDark = () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+const isDark = () => {
+  if (props.themeMode === 'dark') return true
+  if (props.themeMode === 'light') return false
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+}
 
 const getOption = () => ({
   backgroundColor: 'transparent',
@@ -42,44 +47,6 @@ const getOption = () => ({
     },
     data: props.items.map(item => item.label),
   },
-  graphic: [
-    {
-      type: 'text',
-      left: 'center',
-      top: '39%',
-      style: {
-        text: '错题总数',
-        textAlign: 'center',
-        fill: isDark() ? '#94a3b8' : '#94a3b8',
-        fontSize: 12,
-        fontWeight: 600,
-      },
-    },
-    {
-      type: 'text',
-      left: 'center',
-      top: '46%',
-      style: {
-        text: String(props.total || 0),
-        textAlign: 'center',
-        fill: isDark() ? '#f8fafc' : '#0f172a',
-        fontSize: 30,
-        fontWeight: 800,
-      },
-    },
-    {
-      type: 'text',
-      left: 'center',
-      top: '57%',
-      style: {
-        text: '题',
-        textAlign: 'center',
-        fill: isDark() ? '#94a3b8' : '#94a3b8',
-        fontSize: 12,
-        fontWeight: 600,
-      },
-    },
-  ],
   series: [
     {
       type: 'pie',
@@ -91,12 +58,39 @@ const getOption = () => ({
         borderColor: isDark() ? '#121214' : '#ffffff',
         borderWidth: 3,
       },
+      labelLine: { show: false },
       label: {
-        show: false,
+        show: true,
+        position: 'center',
+        formatter: `{label|错题总数}\n{value|${String(props.total || 0)}}\n{unit|题}`,
+        rich: {
+          label: {
+            color: '#94a3b8',
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: 18,
+            align: 'center',
+          },
+          value: {
+            color: isDark() ? '#f8fafc' : '#0f172a',
+            fontSize: 30,
+            fontWeight: 800,
+            lineHeight: 36,
+            align: 'center',
+          },
+          unit: {
+            color: '#94a3b8',
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: 18,
+            align: 'center',
+          },
+        },
       },
       emphasis: {
         scale: true,
         scaleSize: 6,
+        label: { show: true },
       },
       data: props.items.map(item => ({
         name: item.label,

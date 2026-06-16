@@ -123,7 +123,7 @@ onBeforeUnmount(() => {
 
 <template>
   <aside class="hidden min-h-0 flex-col gap-4 overflow-y-auto custom-scrollbar xl:flex">
-    <BasePanel :scroll-body="false" body-class="p-4">
+    <BasePanel body-class="max-h-72 p-4">
       <h3 class="mb-4 text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">错题知识点</h3>
       <div v-if="wordCloudData.length" class="relative h-32 overflow-hidden rounded-xl bg-white/70 shadow-inner shadow-black/[0.03] dark:bg-white/[0.035] dark:shadow-black/20">
         <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.16),transparent_58%)]"></div>
@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
       </div>
     </BasePanel>
 
-    <BasePanel :scroll-body="false" body-class="p-4">
+    <BasePanel body-class="max-h-72 p-4">
       <h3 class="mb-4 text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">错因分析</h3>
       <div class="space-y-4">
         <div>
@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
       </div>
     </BasePanel>
 
-    <BasePanel :scroll-body="false" body-class="p-4">
+    <BasePanel body-class="max-h-72 p-4">
       <h3 class="mb-3 text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">修正建议</h3>
       <div class="space-y-2 text-sm text-gray-600 dark:text-[#b8bec8]">
         <div

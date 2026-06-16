@@ -10,6 +10,8 @@ echarts.use([TooltipComponent, GridComponent, BarChart, CanvasRenderer])
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
+  themeMode: { type: String, default: 'auto' },
+  compact: { type: Boolean, default: false },
 })
 
 const chartRef = ref(null)
@@ -17,7 +19,11 @@ let chart = null
 let resizeObserver = null
 let themeObserver = null
 
-const isDark = () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+const isDark = () => {
+  if (props.themeMode === 'dark') return true
+  if (props.themeMode === 'light') return false
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+}
 
 const toneColor = (tone) => {
   if (tone === 'rose') return '#f43f5e'
@@ -42,20 +48,35 @@ const getOption = () => ({
     },
   },
   grid: {
-    left: 90,
-    right: 20,
-    top: 16,
-    bottom: 10,
+    left: props.compact ? 78 : 90,
+    right: props.compact ? 8 : 20,
+    top: props.compact ? 6 : 16,
+    bottom: props.compact ? 0 : 10,
+    containLabel: !props.compact,
   },
   xAxis: {
     type: 'value',
-    axisLabel: { color: isDark() ? '#94a3b8' : '#64748b', fontSize: 11 },
+    axisLabel: {
+      show: !props.compact,
+      color: isDark() ? '#94a3b8' : '#64748b',
+      fontSize: 11,
+    },
+    axisTick: { show: false },
+    axisLine: { show: !props.compact },
     splitLine: { lineStyle: { color: isDark() ? 'rgba(148,163,184,0.10)' : 'rgba(148,163,184,0.18)' } },
   },
   yAxis: {
     type: 'category',
     data: props.items.map(item => item.title),
-    axisLabel: { color: isDark() ? '#cbd5e1' : '#334155', fontSize: 12, fontWeight: 600 },
+    axisLabel: {
+      color: isDark() ? '#cbd5e1' : '#334155',
+      fontSize: props.compact ? 11 : 12,
+      fontWeight: 600,
+      width: props.compact ? 72 : undefined,
+      align: 'right',
+      margin: props.compact ? 6 : 12,
+      overflow: props.compact ? 'truncate' : undefined,
+    },
     axisLine: { show: false },
     axisTick: { show: false },
   },
@@ -69,7 +90,8 @@ const getOption = () => ({
           borderRadius: [0, 6, 6, 0],
         },
       })),
-      barWidth: 16,
+      barWidth: props.compact ? 12 : 16,
+      barCategoryGap: props.compact ? '34%' : '42%',
       showBackground: true,
       backgroundStyle: {
         color: isDark() ? 'rgba(255,255,255,0.05)' : 'rgba(148,163,184,0.10)',
@@ -80,6 +102,7 @@ const getOption = () => ({
         position: 'right',
         color: isDark() ? '#e2e8f0' : '#0f172a',
         fontWeight: 700,
+        fontSize: props.compact ? 11 : 12,
         formatter: ({ value, dataIndex }) => `${value}${props.items[dataIndex]?.unit || ''}`,
       },
     },
