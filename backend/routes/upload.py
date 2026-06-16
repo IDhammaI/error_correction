@@ -573,6 +573,16 @@ def run_erase():
             }
         )
 
+    except RuntimeError as exc:
+        if "Git LFS 指针文件" in str(exc):
+            logger.exception("EnsExam 擦除模型权重未下载")
+            return jsonify({
+                "success": False,
+                "code": "ERASER_MODEL_WEIGHT_POINTER",
+                "error": "擦除模型权重未下载：请在构建或部署环境执行 git lfs pull 后重试",
+            }), 503
+        logger.exception("擦除手写笔迹失败")
+        return jsonify({"success": False, "error": "擦除失败，请稍后重试"}), 500
     except Exception:
         logger.exception("擦除手写笔迹失败")
         return jsonify({"success": False, "error": "擦除失败，请稍后重试"}), 500

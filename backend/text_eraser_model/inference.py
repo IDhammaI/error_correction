@@ -64,6 +64,13 @@ class InferenceEngine:
                     f"模型权重不存在，请将 best.pth 放到: {model_path}"
                 )
 
+            header = model_path.read_bytes()[:128]
+            if header.startswith(b"version https://git-lfs.github.com/spec/v1"):
+                raise RuntimeError(
+                    "EnsExam 模型权重仍是 Git LFS 指针文件，请在构建或部署环境执行 git lfs pull，"
+                    f"确保真实 best.pth 已下载到: {model_path}"
+                )
+
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             generator = Generator().to(device)
 
