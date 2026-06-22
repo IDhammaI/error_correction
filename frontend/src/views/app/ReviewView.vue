@@ -86,6 +86,16 @@ const loadReviewItems = async () => {
     const data = await api.fetchErrorBank(params)
     reviewItems.value = data.items || []
     reviewTotal.value = data.total || 0
+    const dueData = await api.fetchDueReviews({
+      type: 'question',
+      limit: 40,
+      project_id: activeQuestionProjectId.value,
+    })
+    const dueQuestions = dueData.questions || []
+    reviewItems.value = selectedSubject.value
+      ? dueQuestions.filter(q => q.subject === selectedSubject.value)
+      : dueQuestions
+    reviewTotal.value = reviewItems.value.length
   } catch (e) {
     pushToast('error', '加载待复习题目失败')
   } finally {
@@ -267,7 +277,7 @@ onMounted(() => { loadAll() })
 
         <!-- 空状态 -->
         <div v-else-if="!reviewItems.length"
-          class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-20 dark:border-white/5 dark:bg-white/5">
+          class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-20 dark:border-white/5 dark:bg-white/5">
           <i class="fa-solid fa-circle-check mb-4 text-4xl text-emerald-400"></i>
           <p class="text-base font-black text-slate-900 dark:text-white">全部搞定了</p>
           <p class="mt-1 text-sm text-slate-500">没有待复习的题目，继续保持</p>

@@ -1,4 +1,4 @@
-"""
+﻿"""
 correct_questions_node 合并逻辑的单元测试
 
 不调用真实 LLM，只测试标记筛选 + 结果合并逻辑。
@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
-from src.workflow import correct_questions_node
+from pipeline.workflow import correct_questions_node
 
 
 def _q(qid, text="内容", needs_correction=False, ocr_issues=None):

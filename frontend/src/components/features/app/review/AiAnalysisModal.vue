@@ -20,7 +20,7 @@ const emit = defineEmits(['close'])
         <div class="absolute inset-0 bg-slate-950/60" @click="emit('close')"></div>
 
         <!-- 弹窗主体 -->
-        <div class="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl dark:bg-[#0F111A]">
+        <div class="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-white/10 bg-white shadow-2xl dark:bg-[#0F111A]">
 
           <!-- 头部 -->
           <div class="flex items-center justify-between border-b border-slate-100 bg-[rgb(var(--accent-rgb)/0.08)] px-8 py-5 dark:border-white/5 dark:bg-[rgb(var(--accent-rgb)/0.06)]">
@@ -52,7 +52,7 @@ const emit = defineEmits(['close'])
             <!-- 分析结果 -->
             <div v-else-if="analysis" class="space-y-8">
               <!-- 综合诊断 -->
-              <div class="rounded-2xl border accent-border accent-bg-muted p-6">
+              <div class="rounded-xl border accent-border accent-bg-muted p-6">
                 <h4 class="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest accent-text">
                   <i class="fa-solid fa-stethoscope"></i> 综合诊断
                 </h4>

@@ -130,7 +130,7 @@ defineProps({
 .core-pulse {
   position: absolute;
   inset: -4px;
-  border-radius: 1.25rem;
+  border-radius: 0.75rem;
   background: rgb(var(--accent-rgb) / 0.2);
   animation: pulse 2s ease-out infinite;
 }
@@ -172,7 +172,7 @@ defineProps({
   width: 100%;
   height: 4px;
   background: rgb(var(--accent-rgb) / 0.05);
-  border-radius: 10px;
+  border-radius: 999px;
   overflow: hidden;
 }
 
@@ -180,7 +180,7 @@ defineProps({
   width: 40%;
   height: 100%;
   background: linear-gradient(90deg, rgb(var(--accent-rgb)), rgb(var(--accent-hover-rgb)));
-  border-radius: 10px;
+  border-radius: 999px;
   position: relative;
   animation: progress-move 2.5s ease-in-out infinite;
 }

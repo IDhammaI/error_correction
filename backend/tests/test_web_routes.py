@@ -14,13 +14,18 @@ Flask 路由集成测试
 
 import io
 import json
+import os
+import sys
+import types
 import uuid
+from datetime import datetime, timedelta
 import pytest
 from unittest.mock import patch, MagicMock
+from PIL import Image
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, User, ProviderConfig, SystemProviderConfig, Question
+from db.models import Base, User, ProviderConfig, SystemProviderConfig, Question, QuotaUsageEvent
 from db import crud
 
 # 测试用户 ID，与 client fixture 中的 session['user_id'] 一致
@@ -116,6 +121,8 @@ def client(test_db):
         patch("routes.questions.SessionLocal", fake),
         patch("routes.stats.SessionLocal", fake),
         patch("routes.upload.SessionLocal", fake),
+        patch("routes.notes.SessionLocal", fake),
+        patch("routes.device.SessionLocal", fake),
         patch("routes.chat.SessionLocal", fake),
         patch("routes.auth.SessionLocal", fake),
     ):
@@ -234,6 +241,326 @@ class TestModelOptionsRoute:
             and item["model_name"] == "gpt-4o-mini"
             for item in options
         )
+
+
+class TestDeviceCaptureRoutes:
+    """POST /api/device/bind and /api/device/capture"""
+
+    def test_capture_requires_bound_device(self, client):
+        resp = client.post(
+            "/api/device/capture",
+            data={
+                "device_id": "unbound-device",
+                "image": (io.BytesIO(b"jpeg-bytes"), "capture.jpg"),
+            },
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["success"] is False
+
+    def test_bound_device_capture_enters_workbench_session(
+        self, client, test_db, tmp_path, monkeypatch
+    ):
+        from core.state import clear_user_session, get_user_session
+        from db.models import DeviceCapture
+
+        clear_user_session(TEST_USER_ID)
+        monkeypatch.setattr("routes.device.settings.upload_dir", tmp_path)
+
+        bind_resp = client.post("/api/device/bind", json={})
+        assert bind_resp.status_code == 200
+        bind_data = bind_resp.get_json()
+        assert bind_data["success"] is True
+        device_uuid = bind_data["device_uuid"]
+        assert bind_data["qr_payload"].endswith(device_uuid)
+
+        capture_resp = client.post(
+            "/api/device/capture",
+            data={
+                "device_uuid": device_uuid,
+                "image": (
+                    io.BytesIO(b"\xff\xd8fake-jpeg\xff\xd9"),
+                    "capture.jpg",
+                ),
+            },
+            content_type="multipart/form-data",
+        )
+        assert capture_resp.status_code == 201
+        data = capture_resp.get_json()
+        assert data["success"] is True
+        assert data["file_key"]
+
+        us = get_user_session(TEST_USER_ID)
+        saved = us["session_files"][data["file_key"]]
+        assert saved["filename"] == "capture.jpg"
+        assert os.path.exists(saved["filepath"])
+
+        capture = test_db.query(DeviceCapture).first()
+        assert capture is not None
+        assert capture.device_uuid == device_uuid
+        assert capture.user_id == TEST_USER_ID
+
+        list_resp = client.get(f"/api/device/images?device_uuid={device_uuid}")
+        assert list_resp.status_code == 200
+        images = list_resp.get_json()["images"]
+        assert len(images) == 1
+        assert images[0]["file_key"] == data["file_key"]
+
+
+class TestSplitQuotaRules:
+    """POST /api/split 的额度扣减规则"""
+
+    def test_erase_and_split_consume_twelve_quota_for_two_multi_page_pdfs(
+        self, client, test_db, tmp_path, monkeypatch
+    ):
+        from core.state import clear_user_session, get_user_session
+
+        clear_user_session(TEST_USER_ID)
+        pdf_one = tmp_path / "sample-2.pdf"
+        pdf_two = tmp_path / "sample-4.pdf"
+        pdf_one.write_bytes(b"%PDF-1.4 fake pdf one")
+        pdf_two.write_bytes(b"%PDF-1.4 fake pdf two")
+
+        us = get_user_session(TEST_USER_ID)
+        us["session_files"]["file-1"] = {
+            "filename": "sample-2.pdf",
+            "filepath": str(pdf_one),
+        }
+        us["session_files"]["file-2"] = {
+            "filename": "sample-4.pdf",
+            "filepath": str(pdf_two),
+        }
+        us["session_file_order"] = ["file-1", "file-2"]
+
+        rendered_paths = []
+        for index in range(6):
+            page_path = tmp_path / f"page-{index + 1}.png"
+            page_path.write_bytes(b"fake image")
+            rendered_paths.append(
+                {
+                    "input_path": str(page_path),
+                    "preview_path": str(page_path),
+                }
+            )
+
+        monkeypatch.setattr(
+            "routes.upload._expand_erase_sources",
+            lambda file_paths: rendered_paths,
+        )
+        monkeypatch.setattr("routes.upload.settings.model_path", tmp_path)
+
+        class DummyInferenceEngine:
+            def run(self, image_bytes):
+                return Image.new("RGB", (8, 8), color="white")
+
+        monkeypatch.setitem(
+            sys.modules,
+            "text_eraser_model.inference",
+            types.SimpleNamespace(InferenceEngine=DummyInferenceEngine),
+        )
+
+        erase_resp = client.post("/api/erase")
+        assert erase_resp.status_code == 200
+        erase_data = erase_resp.get_json()
+        assert erase_data["success"] is True
+        assert len(erase_data["images"]) == 6
+
+        cache_path = tmp_path / f"ocr_cache_{TEST_USER_ID}.json"
+        cache_path.write_text(json.dumps([{}, {}, {}, {}, {}, {}]), encoding="utf-8")
+        monkeypatch.setattr("routes.upload.settings.results_dir", tmp_path)
+
+        class DummyRun:
+            public_id = "run-test"
+            result_dir = str(tmp_path / "run-test")
+
+        monkeypatch.setattr(
+            "routes.upload.resolve_llm_selection",
+            lambda *args, **kwargs: {
+                "source": "system",
+                "model_name": "deepseek-chat",
+            },
+        )
+        monkeypatch.setattr("routes.upload._read_split_subject", lambda *args, **kwargs: "数学")
+        monkeypatch.setattr("routes.upload.run_store.create_split_run", lambda *args, **kwargs: DummyRun())
+        monkeypatch.setattr("routes.upload.run_store.mark_succeeded", lambda *args, **kwargs: None)
+        monkeypatch.setattr("routes.upload.crud.save_split_record", lambda *args, **kwargs: None)
+
+        invoke_results = iter([
+            None,
+            {
+                "questions": [
+                    {
+                        "uid": "1",
+                        "question_id": "1",
+                        "question_type": "选择题",
+                        "content_blocks": [{"block_type": "text", "content": "测试题"}],
+                        "has_formula": False,
+                        "has_image": False,
+                    }
+                ],
+                "warnings": [],
+                "ocr_data": [{}, {}, {}, {}, {}, {}],
+            },
+        ])
+        monkeypatch.setattr(
+            "routes.upload.workflow_graph.invoke",
+            lambda *args, **kwargs: next(invoke_results),
+        )
+
+        split_resp = client.post("/api/split", json={"model_provider": "openai"})
+        assert split_resp.status_code == 200
+        split_data = split_resp.get_json()
+        assert split_data["success"] is True
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        test_db.refresh(user)
+        assert user.daily_free_used == 12
+
+    def test_split_consumes_one_quota_per_ocr_page(self, client, test_db, tmp_path, monkeypatch):
+        from core.state import clear_user_session, get_user_session
+
+        clear_user_session(TEST_USER_ID)
+        upload_file = tmp_path / "sample.pdf"
+        upload_file.write_bytes(b"%PDF-1.4 fake pdf")
+
+        us = get_user_session(TEST_USER_ID)
+        us["session_files"]["file-1"] = {
+            "filename": "sample.pdf",
+            "filepath": str(upload_file),
+        }
+        us["session_file_order"] = ["file-1"]
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.daily_free_quota = 100
+        user.daily_free_used = 0
+        test_db.commit()
+
+        class DummyRun:
+            public_id = "run-test-1"
+            result_dir = str(tmp_path / "results")
+
+        monkeypatch.setattr(
+            "routes.upload.resolve_llm_selection",
+            lambda *args, **kwargs: {
+                "source": "system",
+                "model_name": "deepseek-chat",
+            },
+        )
+        monkeypatch.setattr("routes.upload._read_split_subject", lambda *args, **kwargs: "数学")
+        monkeypatch.setattr("routes.upload.run_store.create_split_run", lambda *args, **kwargs: DummyRun())
+        monkeypatch.setattr("routes.upload.run_store.mark_succeeded", lambda *args, **kwargs: None)
+        monkeypatch.setattr("routes.upload.crud.save_split_record", lambda *args, **kwargs: None)
+
+        invoke_results = iter([
+            None,
+            {
+                "questions": [
+                    {
+                        "uid": "1",
+                        "question_id": "1",
+                        "question_type": "选择题",
+                        "content_blocks": [{"block_type": "text", "content": "测试题"}],
+                        "has_formula": False,
+                        "has_image": False,
+                    }
+                ],
+                "warnings": [],
+                "ocr_data": [{}, {}, {}],
+            },
+        ])
+        monkeypatch.setattr(
+            "routes.upload.workflow_graph.invoke",
+            lambda *args, **kwargs: next(invoke_results),
+        )
+
+        resp = client.post("/api/split", json={"model_provider": "openai"})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+
+        test_db.refresh(user)
+        assert user.daily_free_used == 3
+
+    def test_split_rejects_when_remaining_quota_is_less_than_cached_page_count(self, client, test_db, tmp_path, monkeypatch):
+        from core.state import clear_user_session, get_user_session
+
+        clear_user_session(TEST_USER_ID)
+        upload_file = tmp_path / "sample.pdf"
+        upload_file.write_bytes(b"%PDF-1.4 fake pdf")
+
+        results_dir = tmp_path / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("routes.upload.settings.results_dir", results_dir)
+
+        us = get_user_session(TEST_USER_ID)
+        us["session_files"]["file-1"] = {
+            "filename": "sample.pdf",
+            "filepath": str(upload_file),
+        }
+        us["session_file_order"] = ["file-1"]
+
+        cache_path = results_dir / f"ocr_cache_{TEST_USER_ID}.json"
+        cache_path.write_text(json.dumps([{}, {}, {}]), encoding="utf-8")
+        monkeypatch.setattr("routes.upload._ocr_cache_path", lambda user_id: str(cache_path))
+
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.daily_free_quota = 100
+        user.daily_free_used = 98
+        user.daily_free_quota_date = datetime.utcnow().date().isoformat()
+        test_db.commit()
+
+        monkeypatch.setattr(
+            "routes.upload.resolve_llm_selection",
+            lambda *args, **kwargs: {
+                "source": "system",
+                "model_name": "deepseek-chat",
+            },
+        )
+
+        resp = client.post("/api/split", json={"model_provider": "openai"})
+        assert resp.status_code == 429
+        data = resp.get_json()
+        assert data["success"] is False
+        assert data["code"] == "DAILY_FREE_QUOTA_EXCEEDED"
+        assert data["required_amount"] == 3
+        assert data["quota"]["remaining"] == 2
+        assert "需要 3 个额度" in data["error"]
+
+
+# ── POST /api/notes/ ─────────────────────────────────────
+
+
+class TestNotesRoute:
+    """POST /api/notes/"""
+
+    @pytest.mark.parametrize("project_id", ["0", "999999"])
+    def test_create_note_rejects_unknown_project_before_ai_work(self, client, test_db, monkeypatch, project_id):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        user.daily_free_quota = 5
+        user.daily_free_used = 0
+        user.daily_free_quota_date = datetime.utcnow().date().isoformat()
+        test_db.commit()
+
+        def fail_if_model_selection_runs(*args, **kwargs):
+            raise AssertionError("model selection should not run for an invalid note project")
+
+        monkeypatch.setattr("routes.notes.resolve_llm_selection", fail_if_model_selection_runs)
+
+        resp = client.post(
+            "/api/notes/",
+            data={
+                "project_id": project_id,
+                "files": (io.BytesIO(b"fake-image"), "note.png"),
+            },
+            content_type="multipart/form-data",
+        )
+
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["success"] is False
+        assert data["error"] == "项目不存在"
+        test_db.refresh(user)
+        assert user.daily_free_used == 0
 
 
 # ── /api/history ─────────────────────────────────────────
@@ -595,6 +922,45 @@ class TestMultiUserWorkflowRunIsolation:
         assert saved[0].user_id == TEST_USER_ID
         assert "import me" in saved[0].content_json
 
+    def test_save_to_db_imports_split_record_without_run_id(self, client, test_db):
+        project = crud.create_project(test_db, "History Bank", user_id=TEST_USER_ID)
+        record = crud.save_split_record(
+            test_db,
+            subject="数学",
+            model_provider="openai",
+            file_names=["history.jpg"],
+            questions=[
+                {
+                    "uid": "hist_0",
+                    "question_id": "1",
+                    "question_type": "选择题",
+                    "content_blocks": [{"block_type": "text", "content": "from history"}],
+                    "has_formula": False,
+                    "has_image": False,
+                }
+            ],
+            user_id=TEST_USER_ID,
+        )
+
+        resp = client.post(
+            "/api/save-to-db",
+            json={
+                "split_record_id": record.id,
+                "selected_ids": ["hist_0"],
+                "project_id": project.id,
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["split_record_id"] == record.id
+
+        saved = test_db.query(Question).all()
+        assert len(saved) == 1
+        assert saved[0].user_id == TEST_USER_ID
+        assert "from history" in saved[0].content_json
+
 
 # ── PATCH /api/question/<id>/review-status ────────────
 
@@ -881,11 +1247,59 @@ class TestAuthProfileRoutes:
         assert resp.status_code == 200
         data = resp.get_json()
         quota = data["user"]["quota"]
-        assert quota["daily_free_quota"] == 5
+        assert quota["daily_free_quota"] == 100
         assert quota["daily_free_used"] == 0
-        assert quota["remaining"] == 5
+        assert quota["remaining"] == 100
         assert quota["quota_date"] != "2000-01-01"
         assert quota["reset_at"] is not None
+
+    def test_auth_me_returns_daily_quota_chart(self, client, test_db):
+        user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
+        today = datetime.utcnow().date()
+        user.daily_free_quota = 100
+        user.daily_free_used = 8
+        user.daily_free_quota_date = today.isoformat()
+        test_db.add_all(
+            [
+                QuotaUsageEvent(
+                    user_id=user.id,
+                    action_type="chat",
+                    amount=2,
+                    summary="AI 对话",
+                    quota_date=(today - timedelta(days=2)).isoformat(),
+                    created_at=datetime.utcnow() - timedelta(days=2),
+                ),
+                QuotaUsageEvent(
+                    user_id=user.id,
+                    action_type="erase",
+                    amount=3,
+                    summary="擦除笔记",
+                    quota_date=(today - timedelta(days=1)).isoformat(),
+                    created_at=datetime.utcnow() - timedelta(days=1),
+                ),
+                QuotaUsageEvent(
+                    user_id=user.id,
+                    action_type="split",
+                    amount=5,
+                    summary="分割题目",
+                    quota_date=today.isoformat(),
+                    created_at=datetime.utcnow(),
+                ),
+            ]
+        )
+        test_db.commit()
+
+        resp = client.get("/api/auth/me")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        daily_chart = data["user"]["quota"]["usage_stats"]["daily_chart"]
+        assert daily_chart["range_days"] == 14
+        assert len(daily_chart["days"]) == 14
+        assert daily_chart["actions"][0]["key"] == "chat"
+        assert daily_chart["days"][-3]["chat"] == 2
+        assert daily_chart["days"][-2]["erase"] == 3
+        assert daily_chart["days"][-1]["split"] == 5
+        assert daily_chart["days"][-1]["total"] == 5
 
     def test_update_profile_success(self, client, test_db):
         user = test_db.query(User).filter(User.id == TEST_USER_ID).first()

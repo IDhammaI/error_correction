@@ -22,6 +22,7 @@ const VIEW_TO_PATH = {
   'error-bank': '/app/error-bank',
   notes: '/app/notes',
   'ai-chat': '/app/ai-chat',
+  'component-preview': '/app/component-preview',
   settings: `/app/settings/${DEFAULT_SETTINGS_SUBVIEW}`,
   'split-history': '/app/split-history',
   chat: '/app/chat',
@@ -31,10 +32,10 @@ const WORKSPACE_VIEWS = new Set(['workspace', 'workspace_review', 'split-history
 
 const SETTINGS_NAV_ITEMS = [
   { id: 'quota', label: '免费额度', icon: 'fa-gauge-high' },
-  { id: 'system-providers', label: '平台托管', icon: 'fa-server', adminOnly: true },
+  { id: 'system-providers', label: '平台托管API', icon: 'fa-server', adminOnly: true },
   { id: 'appearance', label: '外观设置', icon: 'fa-palette' },
   { id: 'profile', label: '用户资料设置', icon: 'fa-user-gear' },
-  { id: 'api', label: 'API 设置', icon: 'fa-plug-circle-bolt' },
+  { id: 'api', label: '用户自定义API', icon: 'fa-plug-circle-bolt' },
 ]
 
 const NAV_GROUPS = [
@@ -42,6 +43,7 @@ const NAV_GROUPS = [
     label: null,
     items: [
       { id: 'workspace', label: '录入工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
+      { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
       { id: 'search-chat', label: '搜索聊天', icon: 'fa-magnifying-glass', match: (v) => v === 'search-chat' },
       { id: 'library', label: '库', icon: 'fa-box-archive', match: (v) => v === 'library' },
     ],

@@ -93,6 +93,25 @@ export async function updateReviewStatus(questionId, reviewStatus) {
 }
 
 /** 获取仪表盘统计数据。 */
+export async function recordQuestionReview(questionId, rating = 'good') {
+  const resp = await fetch(`/api/question/${questionId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating }),
+  })
+  return assertJsonSuccess(resp, 'record review failed')
+}
+
+export async function fetchDueReviews(params = {}) {
+  const qs = new URLSearchParams()
+  if (params.type) qs.set('type', params.type)
+  if (params.target_type) qs.set('target_type', params.target_type)
+  if (params.limit) qs.set('limit', params.limit)
+  if (params.project_id) qs.set('project_id', params.project_id)
+  const resp = await fetch(`/api/review/due?${qs}`)
+  return assertJsonSuccess(resp, 'load due reviews failed')
+}
+
 export async function fetchDashboardStats(subject, projectId) {
   const qs = new URLSearchParams()
   if (subject) qs.set('subject', subject)

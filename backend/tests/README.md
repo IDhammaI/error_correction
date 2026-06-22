@@ -60,7 +60,6 @@ backend/tests/
 ├── test_question_tools.py       # 题目工具函数测试
 ├── test_correct_node.py         # 纠错节点合并逻辑测试
 ├── test_utils.py                # 通用工具函数测试
-├── test_benchmark_metrics.py    # benchmark 评测指标测试
 ├── test_solve_schemas.py        # 解题结果 schema 测试
 ├── test_ocr_api.py              # PaddleOCR API 集成测试（需要 API 配置）
 ├── test_split_integration.py    # 分割集成测试（需要 API Key）
@@ -71,7 +70,7 @@ backend/tests/
 
 ### test_utils.py
 
-测试 `backend/src/utils.py` 中的通用工具函数：
+测试 `backend/pipeline/utils.py` 中的通用工具函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
@@ -79,7 +78,7 @@ backend/tests/
 
 ### test_workflow_helpers.py
 
-测试 `backend/src/workflow.py` 和 `backend/src/utils.py` 中不依赖外部服务的纯函数：
+测试 `backend/pipeline/workflow.py` 和 `backend/pipeline/utils.py` 中不依赖外部服务的纯函数：
 
 | 测试类 | 被测函数 | 用例数 | 说明 |
 |--------|----------|--------|------|
@@ -94,7 +93,7 @@ backend/tests/
 
 ### test_export.py
 
-测试 `backend/src/utils.py` 中的 `export_wrongbook` 函数：
+测试 `backend/pipeline/utils.py` 中的 `export_wrongbook` 函数：
 
 | 测试方法 | 说明 |
 |----------|------|
@@ -159,7 +158,7 @@ backend/tests/
 
 ### test_correct_node.py
 
-测试 `backend/src/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
+测试 `backend/pipeline/workflow.py` 中 `correct_questions_node` 的合并逻辑（mock 纠错工具）：
 
 | 测试方法 | 说明 |
 |----------|------|
@@ -167,16 +166,6 @@ backend/tests/
 | `test_skip_when_no_flagged` | 无 needs_correction 标记时跳过 |
 | `test_merge_corrected` | 纠错结果按 question_id 合并回原列表，未标记题目不受影响 |
 | `test_invalid_json_keeps_original` | 纠错返回无效 JSON 时保留原始题目 |
-
-### test_benchmark_metrics.py
-
-测试 `backend/benchmark/metrics.py` 中的评测指标函数：
-
-| 测试类 | 被测函数 | 用例数 | 说明 |
-|--------|----------|--------|------|
-| `TestNormalizeAnswer` | `normalize_answer` | 10 | 空白去除、选择题字母大写+排序、判断题统一格式、普通文本原样返回 |
-| `TestCompareAnswers` | `compare_answers` | 9 | 大小写、多选排序无关、判断题跨格式比较、空白容忍 |
-| `TestComputeAccuracy` | `compute_accuracy` | 7 | 空结果、全对、全错、混合、分题型统计、未知题型兜底 |
 
 ### test_solve_schemas.py
 

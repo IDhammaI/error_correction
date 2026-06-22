@@ -1,4 +1,4 @@
-"""
+﻿"""
 笔记模块 API 路由
 
 流程：上传笔记图片 → PaddleOCR 识别 → LLM 整理 → 保存到数据库
@@ -69,6 +69,28 @@ def _allowed_image(filename):
     }
 
 
+def _build_note_preview_payload(result, source_images: list[str], ocr_text: str) -> dict:
+    """构造未保存的笔记整理结果，供前端确认后再保存。"""
+    return {
+        "title": result.title,
+        "subject": result.subject,
+        "content_markdown": result.content_markdown,
+        "knowledge_tags": list(result.knowledge_tags or []),
+        "source_images": list(source_images or []),
+        "ocr_text": ocr_text,
+    }
+
+
+def _consume_note_quota_if_needed(should_consume_quota: bool, user_id) -> None:
+    """在笔记整理链路成功产出结果后扣减免费额度。"""
+    if not should_consume_quota or not user_id:
+        return
+    with SessionLocal() as db:
+        quota_user = crud.get_user_by_id(db, user_id)
+        if quota_user:
+            consume_daily_free_quota(db, quota_user, action_type="note")
+
+
 def _serialize_note(note) -> dict:
     """将 Note ORM 对象序列化为前端 JSON"""
     knowledge_tags = []
@@ -77,7 +99,7 @@ def _serialize_note(note) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    return {
+    payload = {
         "id": note.id,
         "title": note.title,
         "subject": note.subject,
@@ -89,6 +111,8 @@ def _serialize_note(note) -> dict:
         "created_at": note.created_at.isoformat() if note.created_at else None,
         "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
+    payload.update(crud.serialize_review_fields(note))
+    return payload
 
 
 def _apply_provider_context(db, user_id):
@@ -130,7 +154,7 @@ def _apply_provider_context(db, user_id):
 
 @bp.route("/", methods=["POST"])
 def create_note():
-    """上传笔记图片 → OCR → LLM 整理 → 保存
+    """上传笔记图片 → OCR → LLM 整理；若提供 project_id 则直接保存。
 
     请求：multipart/form-data
       - files: 一张或多张图片
@@ -150,14 +174,14 @@ def create_note():
             )
 
     user_id = session.get("user_id")
-    project_id = _project_id_form()
-    try:
-        with SessionLocal() as db:
-            project_id = crud.require_project_id(db, project_id, user_id=user_id, project_type="note")
-    except ValueError as exc:
-        if str(exc) == "PROJECT_TYPE_MISMATCH":
+    raw_project_id = request.form.get("project_id") or None
+    if raw_project_id is None:
+        project_id = None
+    else:
+        try:
+            project_id = int(raw_project_id)
+        except (TypeError, ValueError):
             return jsonify({"success": False, "error": "请选择一个笔记本"}), 400
-        return jsonify({"success": False, "error": "请先创建并选择一个笔记本"}), 400
     model_provider = request.form.get("model_provider", "openai")
     model_name = request.form.get("model_name") or None
     provider_source = request.form.get("provider_source") or None
@@ -166,6 +190,16 @@ def create_note():
     try:
         should_consume_quota = False
         with SessionLocal() as db:
+            if project_id is not None:
+                try:
+                    project_id = crud.require_project_id(
+                        db, project_id, user_id=user_id, project_type="note"
+                    )
+                except ValueError as exc:
+                    if str(exc) == "PROJECT_TYPE_MISMATCH":
+                        return jsonify({"success": False, "error": "请选择一个笔记本"}), 400
+                    return jsonify({"success": False, "error": "项目不存在"}), 404
+
             # 1. 解析模型选择
             try:
                 llm_selection = resolve_llm_selection(
@@ -213,8 +247,8 @@ def create_note():
             return jsonify({"success": False, "error": "没有有效的图片文件"}), 400
 
         # 2. OCR 识别
-        from src.paddleocr_client import PaddleOCRClient
-        from src.utils import simplify_ocr_results, run_async
+        from pipeline.paddleocr_client import PaddleOCRClient
+        from pipeline.utils import simplify_ocr_results, run_async
 
         # 从数据库加载用户 OCR 凭据
         ocr_kwargs = {}
@@ -285,38 +319,50 @@ def create_note():
                     ),
                     400,
                 )
+            if "Error code: 400" in msg or "BadRequest" in msg:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "code": "MODEL_REQUEST_FAILED",
+                            "error": "笔记整理失败：当前模型拒绝了结构化整理请求，请检查模型名称或更换支持 JSON 输出的模型。",
+                        }
+                    ),
+                    400,
+                )
             raise
 
-        # 4. 保存到数据库
+        note_preview = _build_note_preview_payload(result, saved_paths, ocr_text)
+
+        # 4. 未选择笔记本时，仅返回整理结果供前端确认保存
+        if project_id is None:
+            _consume_note_quota_if_needed(should_consume_quota, user_id)
+            return jsonify({"success": True, "note_preview": note_preview}), 200
+
+        # 5. 保存到数据库
         with SessionLocal() as db:
             try:
-                project_id = (
-                    crud.require_project_id(db, project_id, user_id=user_id, project_type="note")
-                    if project_id
-                    else crud.resolve_project_id(db, project_id, user_id=user_id, project_type="note")
+                project_id = crud.require_project_id(
+                    db, project_id, user_id=user_id, project_type="note"
                 )
             except ValueError as exc:
-                if str(exc) == "PROJECT_REQUIRED":
-                    return jsonify({"success": False, "error": "请先创建并选择一个笔记本"}), 400
+                if str(exc) == "PROJECT_TYPE_MISMATCH":
+                    return jsonify({"success": False, "error": "请选择一个笔记本"}), 400
                 return jsonify({"success": False, "error": "项目不存在"}), 404
             note = crud.save_note(
                 db,
-                title=result.title,
-                subject=result.subject,
-                content_markdown=result.content_markdown,
-                source_images=saved_paths,
-                ocr_text=ocr_text,
-                knowledge_tags=result.knowledge_tags,
+                title=note_preview["title"],
+                subject=note_preview["subject"],
+                content_markdown=note_preview["content_markdown"],
+                source_images=note_preview["source_images"],
+                ocr_text=note_preview["ocr_text"],
+                knowledge_tags=note_preview["knowledge_tags"],
                 user_id=user_id,
                 project_id=project_id,
             )
             note_id = note.id
 
-        if should_consume_quota and user_id:
-            with SessionLocal() as db:
-                quota_user = crud.get_user_by_id(db, user_id)
-                if quota_user:
-                    consume_daily_free_quota(db, quota_user)
+        _consume_note_quota_if_needed(should_consume_quota, user_id)
 
         with SessionLocal() as db:
             note = crud.get_note_by_id(db, note_id, user_id=_effective_user_id())
@@ -333,6 +379,54 @@ def create_note():
     except Exception as e:
         logger.exception("笔记创建失败")
         return jsonify({"success": False, "error": f"笔记创建失败: {str(e)}"}), 500
+
+
+@bp.route("/save-organized", methods=["POST"])
+def save_organized_note():
+    """保存前端确认后的笔记整理结果到指定笔记本。"""
+    try:
+        data = request.get_json(silent=True) or {}
+        user_id = session.get("user_id")
+        project_id = data.get("project_id")
+        try:
+            project_id = int(project_id)
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "请先选择一个笔记本"}), 400
+
+        with SessionLocal() as db:
+            try:
+                project_id = crud.require_project_id(
+                    db, project_id, user_id=user_id, project_type="note"
+                )
+            except ValueError as exc:
+                if str(exc) == "PROJECT_TYPE_MISMATCH":
+                    return jsonify({"success": False, "error": "请选择一个笔记本"}), 400
+                return jsonify({"success": False, "error": "项目不存在"}), 404
+
+            note = crud.save_note(
+                db,
+                title=(data.get("title") or "").strip() or "未命名笔记",
+                subject=(data.get("subject") or "").strip() or "未知",
+                content_markdown=data.get("content_markdown") or "",
+                source_images=[
+                    str(item)
+                    for item in (data.get("source_images") or [])
+                    if str(item).strip()
+                ],
+                ocr_text=data.get("ocr_text") or "",
+                knowledge_tags=[
+                    str(item).strip()
+                    for item in (data.get("knowledge_tags") or [])
+                    if str(item).strip()
+                ],
+                user_id=user_id,
+                project_id=project_id,
+            )
+
+            return jsonify({"success": True, "note": _serialize_note(note)}), 201
+    except Exception:
+        logger.exception("保存整理后的笔记失败")
+        return jsonify({"success": False, "error": "保存笔记失败"}), 500
 
 
 @bp.route("/", methods=["GET"])
@@ -421,6 +515,28 @@ def update_note_route(note_id):
     except Exception as e:
         logger.exception("更新笔记失败")
         return jsonify({"success": False, "error": "更新笔记失败"}), 500
+
+
+@bp.route("/<int:note_id>/review", methods=["POST"])
+def review_note(note_id):
+    """Record a spaced-repetition review result for a note."""
+    try:
+        data = request.get_json(silent=True) or {}
+        with SessionLocal() as db:
+            note = crud.schedule_note_review(
+                db,
+                note_id,
+                rating=data.get("rating") or data.get("quality") or "good",
+                user_id=_effective_user_id(),
+            )
+            if not note:
+                return jsonify({"success": False, "error": "笔记不存在"}), 404
+            return jsonify({"success": True, "note": _serialize_note(note)})
+    except ValueError:
+        return jsonify({"success": False, "error": "无效的复习结果"}), 400
+    except Exception as e:
+        logger.exception("记录笔记复习失败")
+        return jsonify({"success": False, "error": "记录复习失败"}), 500
 
 
 @bp.route("/<int:note_id>", methods=["DELETE"])

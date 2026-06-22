@@ -17,36 +17,99 @@ db_dir = settings.db_path.parent
 db_dir.mkdir(parents=True, exist_ok=True)
 
 # 创建引擎
-engine = create_engine(settings.database_url, echo=settings.database_echo)
+engine = create_engine(f"sqlite:///{settings.db_path}", echo=False)
 
-# 启用 SQLite 外键约束 (仅针对 SQLite)
-if settings.database_url.startswith("sqlite"):
-    @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_connection, connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+# 启用 SQLite 外键约束
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 # Session 工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def is_postgresql_backend(bind) -> bool:
-    dialect = getattr(bind, "dialect", None)
-    if dialect is not None:
-        return getattr(dialect, "name", "") == "postgresql"
-    return False
-
-
 def _migrate_schema():
     """轻量级自动迁移：为已有表补充新列"""
-    if not settings.database_url.startswith("sqlite"):
-        return
     import sqlite3
     import uuid
     conn = sqlite3.connect(str(settings.db_path))
     try:
         cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS device_bindings (
+                id INTEGER PRIMARY KEY,
+                device_uuid VARCHAR(36) NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at DATETIME,
+                updated_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_device_uuid ON device_bindings(device_uuid)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_user_id ON device_bindings(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_bindings_is_active ON device_bindings(is_active)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS device_captures (
+                id INTEGER PRIMARY KEY,
+                device_uuid VARCHAR(36) NOT NULL,
+                user_id INTEGER NOT NULL,
+                file_key VARCHAR(32) NOT NULL,
+                original_filename VARCHAR(255) NOT NULL,
+                file_path TEXT NOT NULL,
+                content_type VARCHAR(100),
+                file_size INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME,
+                FOREIGN KEY(device_uuid) REFERENCES device_bindings(device_uuid),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_device_uuid ON device_captures(device_uuid)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_user_id ON device_captures(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_device_captures_file_key ON device_captures(file_key)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS quota_usage_events (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                action_type VARCHAR(32) NOT NULL,
+                amount INTEGER NOT NULL DEFAULT 1,
+                summary VARCHAR(120) NOT NULL DEFAULT '',
+                quota_date VARCHAR(10) NOT NULL,
+                created_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_user_id ON quota_usage_events(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_action_type ON quota_usage_events(action_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_quota_date ON quota_usage_events(quota_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_quota_usage_events_created_at ON quota_usage_events(created_at)")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_model_selections (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                category VARCHAR(20) NOT NULL,
+                source VARCHAR(20) NOT NULL,
+                provider_id VARCHAR(36) NOT NULL,
+                model_name VARCHAR(100) NOT NULL,
+                option_id VARCHAR(255) NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                UNIQUE(user_id, category)
+            )
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_user_model_selections_user_id ON user_model_selections(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_user_model_selections_category ON user_model_selections(category)")
+        conn.commit()
         # 检查 questions 表是否有 answer 列
         cursor.execute("PRAGMA table_info(questions)")
         columns = {row[1] for row in cursor.fetchall()}
@@ -56,6 +119,17 @@ def _migrate_schema():
         if 'project_id' not in columns:
             cursor.execute("ALTER TABLE questions ADD COLUMN project_id INTEGER")
             conn.commit()
+        review_columns = {
+            "review_due_at": "DATETIME",
+            "review_last_at": "DATETIME",
+            "review_interval_days": "INTEGER DEFAULT 0 NOT NULL",
+            "review_count": "INTEGER DEFAULT 0 NOT NULL",
+            "ease_factor": "FLOAT DEFAULT 2.5 NOT NULL",
+        }
+        for column, col_type in review_columns.items():
+            if column not in columns:
+                cursor.execute(f"ALTER TABLE questions ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(upload_batches)")
         batch_columns = {row[1] for row in cursor.fetchall()}
@@ -68,6 +142,10 @@ def _migrate_schema():
         if 'project_id' not in note_columns:
             cursor.execute("ALTER TABLE notes ADD COLUMN project_id INTEGER")
             conn.commit()
+        for column, col_type in review_columns.items():
+            if column not in note_columns:
+                cursor.execute(f"ALTER TABLE notes ADD COLUMN {column} {col_type}")
+                conn.commit()
 
         cursor.execute("PRAGMA table_info(projects)")
         project_columns = {row[1] for row in cursor.fetchall()}
@@ -109,7 +187,7 @@ def _migrate_schema():
             cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
             conn.commit()
         if 'daily_free_quota' not in user_columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota INTEGER DEFAULT 5")
+            cursor.execute("ALTER TABLE users ADD COLUMN daily_free_quota INTEGER DEFAULT 100")
             conn.commit()
         if 'daily_free_used' not in user_columns:
             cursor.execute("ALTER TABLE users ADD COLUMN daily_free_used INTEGER DEFAULT 0")
@@ -120,6 +198,12 @@ def _migrate_schema():
 
         # chat_sessions 表：question_id 需要改为 nullable
         # SQLite 不支持 ALTER COLUMN，需要重建表
+        cursor.execute("PRAGMA table_info(split_records)")
+        split_record_columns = {row[1] for row in cursor.fetchall()}
+        if 'original_images_json' not in split_record_columns:
+            cursor.execute("ALTER TABLE split_records ADD COLUMN original_images_json TEXT")
+            conn.commit()
+
         cursor.execute("PRAGMA table_info(chat_sessions)")
         cs_columns = {row[1]: row for row in cursor.fetchall()}
         if 'title' not in cs_columns:

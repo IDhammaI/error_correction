@@ -5,6 +5,7 @@ const props = defineProps({
   modelValue: { type: [String, Number, Boolean], default: '' },
   options: { type: Array, default: () => [] },
   size: { type: String, default: 'sm' },
+  fullWidth: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -55,7 +56,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="relative inline-flex items-center overflow-hidden rounded-md brand-btn p-0.5 transition-colors">
+  <div ref="rootRef" class="relative items-center overflow-hidden rounded-md brand-btn !border-none p-0.5 transition-colors"
+    :class="fullWidth ? 'flex w-full' : 'inline-flex'">
     <span
       class="pointer-events-none absolute inset-y-0.5 left-0 rounded brand-gradient-bg shadow-sm transition-[transform,width,opacity] duration-200 ease-out"
       :style="indicatorStyle"
@@ -66,8 +68,9 @@ onBeforeUnmount(() => {
       :key="option.value"
       :ref="el => setOptionRef(el, index)"
       type="button"
-      class="relative z-10 inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded font-medium transition-colors duration-150"
+      class="relative z-10 items-center justify-center whitespace-nowrap rounded font-medium transition-colors duration-150"
       :class="[
+        fullWidth ? 'flex flex-1' : 'inline-flex shrink-0',
         size === 'sm' ? 'h-7 px-3 text-xs' : 'h-8 px-3.5 text-sm',
         modelValue === option.value
           ? 'text-white'

@@ -1,9 +1,9 @@
 <script setup>
 /**
  * ErrorBankView.vue
- * 错题库工作台：左侧题目列表 + 中间题目详情 + 右侧学习分析。
+ * 閿欓搴撳伐浣滃彴锛氬乏渚ч鐩垪琛?+ 涓棿棰樼洰璇︽儏 + 鍙充晶瀛︿範鍒嗘瀽銆?
  *
- * 第一版只使用现有后端能力：错题查询、筛选、统计、复习状态和 AI 分析占位接口。
+ * 绗竴鐗堝彧浣跨敤鐜版湁鍚庣鑳藉姏锛氶敊棰樻煡璇€佺瓫閫夈€佺粺璁°€佸涔犵姸鎬佸拰 AI 鍒嗘瀽鍗犱綅鎺ュ彛銆?
  */
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import {
@@ -18,7 +18,6 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseStat from '@/components/base/BaseStat.vue'
 import ErrorLearningAside from '@/components/features/app/error-bank/ErrorLearningAside.vue'
 import ErrorQuestionFinderAside from '@/components/features/app/error-bank/ErrorQuestionFinderAside.vue'
-import ErrorQuestionRecommendAside from '@/components/features/app/error-bank/ErrorQuestionRecommendAside.vue'
 import ErrorQuestionDetailPanel from '@/components/features/app/error-bank/ErrorQuestionDetailPanel.vue'
 import ErrorQuestionListPanel from '@/components/features/app/error-bank/ErrorQuestionListPanel.vue'
 import EditNoteDialog from '@/components/features/app/question/EditNoteDialog.vue'
@@ -38,13 +37,12 @@ const { pushToast } = useToast()
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
 const { openChat } = useChatSession()
-const { activeQuestionProjectId, questionProjects, loadProjects } = useProjects()
+const { activeQuestionProjectId, questionProjects } = useProjects()
 const hasQuestionProject = computed(() => questionProjects.value.length > 0)
 
 const activeTab = ref('analysis')
 const workbenchView = ref('list')
 const statsCollapsed = ref(false)
-const showRecommend = ref(false)
 
 const { selectMode, selectedIds, toggleSelectMode, toggleSelect, clearSelection } = useSelectableList()
 
@@ -54,10 +52,9 @@ const detailTabs = [
   { value: 'note', label: '作答记录', icon: 'fa-camera' },
 ]
 
-const rootEl = ref(null)
 const typesetMath = async () => {
   await nextTick()
-  await _typesetMath(rootEl.value || undefined)
+  await _typesetMath()
 }
 
 const {
@@ -116,7 +113,6 @@ const {
   selectedIds,
   activeQuestion,
   activeTab,
-  workbenchView,
   pushToast,
   typesetMath,
   loadStats,
@@ -126,9 +122,9 @@ const errorPatternRows = computed(() => {
   const tags = knowledgeTags.value.slice(0, 4)
   if (!tags.length) {
     return [
-      { label: '基础概念不稳', percent: 48, color: 'bg-orange-400' },
-      { label: '计算过程失误', percent: 32, color: 'bg-blue-400' },
-      { label: '审题信息遗漏', percent: 20, color: 'bg-emerald-400' },
+      { label: '鍩虹姒傚康涓嶇ǔ', percent: 48, color: 'bg-orange-400' },
+      { label: '璁＄畻杩囩▼澶辫', percent: 32, color: 'bg-blue-400' },
+      { label: '瀹￠淇℃伅閬楁紡', percent: 20, color: 'bg-emerald-400' },
     ]
   }
   return tags.map((tag, idx) => ({
@@ -139,7 +135,7 @@ const errorPatternRows = computed(() => {
 })
 
 /**
- * 选择题目后同步详情和分析区域。
+ * 閫夋嫨棰樼洰鍚庡悓姝ヨ鎯呭拰鍒嗘瀽鍖哄煙銆?
  */
 const selectQuestion = async (q) => {
   if (!q) return
@@ -159,15 +155,6 @@ const handleQuestionClick = async (q) => {
 }
 
 const handleFinderSelect = async (q) => {
-  workbenchView.value = 'detail'
-  await selectQuestion(q)
-}
-
-const toggleRecommendPanel = () => {
-  showRecommend.value = !showRecommend.value
-}
-
-const handleRecommendSelect = async (q) => {
   workbenchView.value = 'detail'
   await selectQuestion(q)
 }
@@ -196,11 +183,6 @@ onBeforeUnmount(() => {
   disposeQuery()
 })
 
-const onDetailDeleted = () => {
-  doQuery()
-  loadProjects()
-}
-
 defineExpose({
   refresh: doQuery,
   toggleSelectMode,
@@ -208,7 +190,6 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="rootEl" class="contents">
   <component
     :is="embedded ? 'div' : ContentPanel"
     :title="embedded ? undefined : '错题库'"
@@ -217,37 +198,26 @@ defineExpose({
     <template v-if="!embedded" #toolbar>
       <BaseButton size="sm" variant="primary" @click="currentView = 'workspace'">
         <i class="fa-solid fa-plus"></i>
-        录入题目
+        褰曞叆棰樼洰
       </BaseButton>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <!-- 顶部统计卡片 -->
-      <div>
-        <button
-          @click="statsCollapsed = !statsCollapsed"
-          class="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
-        >
-          <i class="fa-solid text-[10px] transition-transform duration-200" :class="statsCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'"></i>
-          {{ statsCollapsed ? '展开统计' : '收起统计' }}
-        </button>
-        <Transition name="collapse">
-          <div v-show="!statsCollapsed" class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-            <BaseStat
-              v-for="card in statsCards"
-              :key="card.label"
-              :label="card.label"
-              :value="card.value"
-              :suffix="card.suffix"
-              :hint="card.hint"
-              :icon="card.icon"
-              :tone="card.tone"
-            />
-          </div>
-        </Transition>
+    <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <!-- 椤堕儴缁熻鍗＄墖 -->
+      <div class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+        <BaseStat
+          v-for="card in statsCards"
+          :key="card.label"
+          :label="card.label"
+          :value="card.value"
+          :suffix="card.suffix"
+          :hint="card.hint"
+          :icon="card.icon"
+          :tone="card.tone"
+        />
       </div>
 
-      <!-- 主体：列表/详情主从切换 + 右侧学习分析 -->
+      <!-- 涓讳綋锛氬垪琛?璇︽儏涓讳粠鍒囨崲 + 鍙充晶瀛︿範鍒嗘瀽 -->
       <div class="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.34fr)]">
         <div class="flex min-h-0 flex-col gap-3">
           <ErrorQuestionListPanel
@@ -294,30 +264,23 @@ defineExpose({
             @open-chat="openChat"
             @start-practice="startPractice"
             @back-to-list="workbenchView = 'list'"
-            @open-recommend="toggleRecommendPanel"
           />
         </div>
 
-        <!-- 右侧：列表态找题 / 详情态学习分析 -->
+        <!-- 鍙充晶锛氬垪琛ㄦ€佹壘棰?/ 璇︽儏鎬佸涔犲垎鏋?-->
         <ErrorQuestionFinderAside
           v-if="workbenchView === 'list'"
           :project-id="activeQuestionProjectId"
           @select-question="handleFinderSelect"
-          @error="(e) => pushToast('error', e instanceof Error ? e.message : 'AI 找题失败')"
+          @error="(e) => pushToast('error', e instanceof Error ? e.message : 'AI 鎵鹃澶辫触')"
         />
         <ErrorLearningAside
-          v-if="workbenchView === 'detail' && !showRecommend"
+          v-else
           :knowledge-tags="knowledgeTags"
           :error-pattern-rows="errorPatternRows"
           :ai-summary="aiSummary"
           :ai-loading="aiLoading"
           @request-analysis="requestAnalysis"
-        />
-        <ErrorQuestionRecommendAside
-          v-else-if="workbenchView === 'detail' && showRecommend"
-          :current-question="activeQuestion"
-          :all-items="items"
-          @select-question="handleRecommendSelect"
         />
       </div>
 
@@ -330,9 +293,8 @@ defineExpose({
         @close="dialogOpen = false" @save="onDialogSave" />
 
       <QuestionDetailModal :open="detailOpen" :question="detailQuestion" @close="detailOpen = false"
-        @open-image="openModal" @deleted="onDetailDeleted" @push-toast="pushToast" @start-chat="openChat"
+        @open-image="openModal" @deleted="doQuery" @push-toast="pushToast" @start-chat="openChat"
         @answer-saved="doQuery" @review-status-changed="doQuery" />
     </div>
   </component>
-  </div>
 </template>

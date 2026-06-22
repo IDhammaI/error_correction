@@ -83,10 +83,10 @@ export async function exportQuestions(selectedIds, runId) {
 }
 
 /** 将选中的分割题目和答案保存到错题库。 */
-export async function saveToDb(selectedIds, answers = [], runId, projectId, recordId) {
+export async function saveToDb(selectedIds, answers = [], runId, projectId, splitRecordId) {
   const body = { selected_ids: selectedIds, answers }
   if (runId) body.run_id = runId
-  if (recordId) body.record_id = recordId
+  if (splitRecordId) body.split_record_id = splitRecordId
   if (projectId) body.project_id = projectId
   const resp = await fetch('/api/save-to-db', {
     method: 'POST',

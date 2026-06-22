@@ -8,23 +8,6 @@ import logging
 import re
 import threading
 import time
-
-# ============================================================
-# Monkeypatch: 修复 langgraph 依赖冲突
-# ============================================================
-try:
-    import langgraph.runtime
-    if not hasattr(langgraph.runtime, 'ExecutionInfo'):
-        class ExecutionInfo: pass
-        langgraph.runtime.ExecutionInfo = ExecutionInfo
-    if not hasattr(langgraph.runtime, 'ServerInfo'):
-        class ServerInfo: pass
-        langgraph.runtime.ServerInfo = ServerInfo
-except ImportError:
-    pass
-
-from langchain.agents import create_agent
-from langchain.agents.structured_output import ToolStrategy
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 
@@ -98,6 +81,9 @@ def create_inner_split_agent(provider: str = "openai", model_name: str | None = 
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
+    from langchain.agents import create_agent
+    from langchain.agents.structured_output import ToolStrategy
+
     model = _init_model(temperature=0.1, provider=provider, model_name=model_name)
 
     return create_agent(
@@ -126,6 +112,9 @@ def create_correction_agent(provider: str = "openai", model_name: str | None = N
     Returns:
         create_agent 返回的 CompiledStateGraph
     """
+    from langchain.agents import create_agent
+    from langchain.agents.structured_output import ToolStrategy
+
     model = _init_model(temperature=0.0, provider=provider, model_name=model_name)
 
     return create_agent(

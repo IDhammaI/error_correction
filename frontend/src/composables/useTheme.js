@@ -114,8 +114,9 @@ export function useTheme() {
     const nextDark = Boolean(dark)
     if (nextDark === isDark.value) return
 
-    const prefersReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const canTransition = !prefersReduce && typeof document.startViewTransition === 'function'
+    const hasWindow = typeof window !== 'undefined'
+    const prefersReduce = hasWindow && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const canTransition = hasWindow && canUseDom && !prefersReduce && typeof document.startViewTransition === 'function'
 
     if (!canTransition || !btnEl) {
       applyTheme(nextDark)
@@ -148,11 +149,46 @@ export function useTheme() {
   /**
    * 设置主题色，并同步到 CSS 变量和本地存储。
    */
-  function setAccentColor(colorId) {
+  async function setAccentColor(colorId, btnEl) {
     const color = getThemeColor(colorId)
-    accentColorId.value = color.id
-    applyAccentColor(color)
-    setStoredValue(THEME_COLOR_STORAGE_KEY, color.id)
+    if (color.id === accentColorId.value) return
+
+    const applyColor = () => {
+      accentColorId.value = color.id
+      applyAccentColor(color)
+      setStoredValue(THEME_COLOR_STORAGE_KEY, color.id)
+    }
+
+    const hasWindow = typeof window !== 'undefined'
+    const prefersReduce = hasWindow && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const canTransition = hasWindow && canUseDom && !prefersReduce && typeof document.startViewTransition === 'function'
+
+    if (!canTransition || !btnEl) {
+      applyColor()
+      return
+    }
+
+    const rect = btnEl.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+
+    const transition = document.startViewTransition(applyColor)
+    try {
+      await transition.ready
+      const duration = 900
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+        { duration, easing: 'cubic-bezier(0.2, 0, 0, 1)', pseudoElement: '::view-transition-new(root)' },
+      )
+      document.documentElement.animate(
+        { opacity: [1, 0.98] },
+        { duration, easing: 'linear', pseudoElement: '::view-transition-old(root)' },
+      )
+      await transition.finished
+    } catch (_) {
+      applyColor()
+    }
   }
 
   /**

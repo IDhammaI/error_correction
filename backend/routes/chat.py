@@ -403,30 +403,11 @@ def stream_chat(session_id):
         deep_think = data.get("deep_think", False)
         context_refs = data.get("context_refs") or []
 
-        # 深度思考模式：切换到 reasoner 模型
-        if deep_think and model_provider == "openai":
-            model_name = "deepseek-reasoner"
-
         if not message:
             return jsonify({"success": False, "error": "消息不能为空"}), 400
 
         user_id = session.get("user_id")
         with SessionLocal() as db:
-            try:
-                selection = resolve_llm_selection(
-                    db,
-                    user_id=user_id,
-                    category=model_provider,
-                    model_name=model_name,
-                    provider_source=provider_source,
-                    provider_id=provider_id,
-                )
-            except LLMSelectionError as e:
-                return (
-                    jsonify({"success": False, "code": e.code, "error": e.message}),
-                    e.status_code,
-                )
-
             uid = _effective_user_id()
             cs_query = (
                 db.query(ChatSessionModel)
@@ -445,6 +426,21 @@ def stream_chat(session_id):
             chat_session = cs_query.first()
             if not chat_session:
                 return jsonify({"success": False, "error": "对话不存在"}), 404
+
+            try:
+                selection = resolve_llm_selection(
+                    db,
+                    user_id=user_id,
+                    category=model_provider,
+                    model_name=model_name,
+                    provider_source=provider_source,
+                    provider_id=provider_id,
+                )
+            except LLMSelectionError as e:
+                return (
+                    jsonify({"success": False, "code": e.code, "error": e.message}),
+                    e.status_code,
+                )
 
             should_consume_quota = bool(user_id) and uses_server_llm_selection(
                 selection["source"],
@@ -492,6 +488,7 @@ def stream_chat(session_id):
                     messages=history,
                     provider=model_provider,
                     model_name=selection["model_name"],
+                    deep_think=deep_think,
                     context_prompt=context_prompt,
                 ):
                     # stream_teach 现在 yield dict: {"type": "reasoning"|"content", "content": "..."}
@@ -521,7 +518,7 @@ def stream_chat(session_id):
                         if should_consume_quota and quota_user_id:
                             quota_user = crud.get_user_by_id(db, quota_user_id)
                             if quota_user:
-                                consume_daily_free_quota(db, quota_user)
+                                consume_daily_free_quota(db, quota_user, action_type="chat")
                 except Exception as e:
                     logger.error(f"保存 assistant 回复失败: {e}")
 

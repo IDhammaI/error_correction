@@ -1,4 +1,4 @@
-"""
+﻿"""
 全局会话状态 — 供各 Blueprint 模块共享
 
 所有需要跨路由访问的运行时变量集中在此模块，
@@ -9,7 +9,7 @@
 
 import threading
 
-from src.workflow import build_workflow
+from pipeline.workflow import build_workflow
 
 # 全局工作流图（无状态，可安全共享）
 workflow_graph = build_workflow()
@@ -41,3 +41,7 @@ def clear_user_session(user_id):
     """清除指定用户的会话状态"""
     key = user_id if user_id is not None else "anon"
     _user_sessions.pop(key, None)
+
+
+def normalize_device_id(device_id: str | None) -> str:
+    return (device_id or "").strip()

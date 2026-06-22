@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from db.models import ProviderConfig, SystemProviderConfig
+from db.models import ProviderConfig, SystemProviderConfig, UserModelSelection
 
 logger = logging.getLogger(__name__)
 
@@ -293,3 +293,33 @@ def get_active_system_provider(db: Session, category: str) -> Optional[SystemPro
         SystemProviderConfig.category == category,
         SystemProviderConfig.is_active == True,
     ).first()
+
+
+def get_user_model_selection(db: Session, user_id: int, category: str = "openai") -> Optional[UserModelSelection]:
+    return db.query(UserModelSelection).filter(
+        UserModelSelection.user_id == user_id,
+        UserModelSelection.category == category,
+    ).first()
+
+
+def save_user_model_selection(
+    db: Session,
+    user_id: int,
+    *,
+    category: str,
+    source: str,
+    provider_id: str,
+    model_name: str,
+    option_id: str,
+) -> UserModelSelection:
+    selection = get_user_model_selection(db, user_id, category)
+    if selection is None:
+        selection = UserModelSelection(user_id=user_id, category=category)
+        db.add(selection)
+    selection.source = source
+    selection.provider_id = provider_id
+    selection.model_name = model_name
+    selection.option_id = option_id
+    db.commit()
+    db.refresh(selection)
+    return selection

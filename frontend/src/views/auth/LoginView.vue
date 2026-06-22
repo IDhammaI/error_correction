@@ -66,10 +66,15 @@ async function handleLogin() {
     />
 
     <div class="flex justify-end">
-      <button type="button" @click="fpOpen = true"
-        class="text-xs text-gray-500 dark:text-white/40 hover:accent-text transition-colors">
+      <BaseButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        class="!h-auto !rounded-none !border-0 !bg-transparent !px-0 !py-0 text-xs text-gray-500 dark:text-white/40 hover:!text-[rgb(var(--accent-rgb))]"
+        @click="fpOpen = true"
+      >
         忘记密码？
-      </button>
+      </BaseButton>
     </div>
     <p v-if="error" class="text-sm text-rose-500 dark:text-rose-400 flex items-center gap-2 transition-colors">
       <i class="fas fa-circle-exclamation text-xs"></i>{{ error }}

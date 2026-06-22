@@ -3,7 +3,7 @@
  * WorkspaceView.vue
  * 录入工作台 — 上传/擦除/OCR/分割/导出 全流程
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, inject } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast.js'
 import { useSystemStatus } from '@/composables/useSystemStatus.js'
@@ -22,14 +22,15 @@ import BaseModal from '@/components/base/BaseModal.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseToolbarButton from '@/components/base/BaseToolbarButton.vue'
 
+defineOptions({ name: 'WorkspaceView' })
+
 const WORKSPACE_STATE_KEY = 'workspace_split_state_v1'
 
 const route = useRoute()
 const { pushToast } = useToast()
-const openProjectDialog = inject('openProjectDialog', null)
 const { openModal } = useImageModal()
 const { currentView } = useWorkspaceNav()
-const { questionProjects, activeQuestionProjectId, setActiveProject } = useProjects()
+const { questionProjects, noteProjects, activeQuestionProjectId, activeNoteProjectId, loadProjects, setActiveProject } = useProjects()
 const {
   statusLoading, statusError,
   providerOptions, hasConfiguredModel, statusPills,
@@ -47,6 +48,7 @@ const props = defineProps({
 // ── 步骤控制 ────────────────────────────────────────────
 const step = ref(1)
 const uploadMode = ref('exam')
+const workflowMode = ref('manual')
 const splitting = ref(false)
 const splitCompleted = ref(false)
 const showSplitHistory = ref(false)
@@ -57,7 +59,7 @@ const S = computed(() => {
 })
 const workspaceSteps = computed(() => {
   const labels = uploadMode.value === 'note'
-    ? (eraseEnabled.value ? ['上传', '擦除', 'OCR', '整理', '保存'] : ['上传', 'OCR', '整理', '保存'])
+    ? ['上传', 'OCR', '整理', '保存']
     : (eraseEnabled.value ? ['上传', '擦除', 'OCR', '分割', '导出'] : ['上传', 'OCR', '分割', '导出'])
   return labels.map((label, i) => ({
     label,
@@ -98,6 +100,7 @@ const savePersistedWorkspaceState = () => {
     selectedIds: Array.from(selectedIds),
     currentView: currentView.value,
     uploadMode: uploadMode.value,
+    workflowMode: workflowMode.value,
     savedAt: Date.now(),
   }
   try {
@@ -122,6 +125,7 @@ const restorePersistedWorkspaceState = async () => {
   for (const id of (state.selectedIds || [])) selectedIds.add(id)
   splitCompleted.value = Boolean(state.splitCompleted)
   uploadMode.value = state.uploadMode === 'note' ? 'note' : 'exam'
+  workflowMode.value = state.workflowMode === 'auto' ? 'auto' : 'manual'
   step.value = Number(state.step) || S.value.EXPORT
   currentView.value = 'workspace_review'
   await nextTick()
@@ -140,11 +144,8 @@ const doReset = async () => {
 // ── 分割流水线 ──────────────────────────────────────────
 const {
   eraseEnabled, eraseLoading, eraseImages, eraseDone,
-  ocrLoading, ocrPages, ocrDone,
-  currentRunId, currentRecordId, setCurrentRecordId,
-  startProcess, doErase, doOcr, doSplit, doSaveToDb,
-  noteProjectDialogOpen, noteTargetProjectId, noteProjectSaving,
-  noteProjects, closeNoteProjectDialog, confirmNoteOrganize,
+  ocrLoading, ocrPages, ocrDone, notePreview, autoProcessing,
+  startProcess, runAutoProcess, doErase, doOcr, doSplit, doSaveToDb, saveNoteToProject, setLoadedSplitRecord,
 } = useSplitPipeline(pushToast, currentView, step, S, uploadReady, splitting, splitCompleted, uploadMode, selectedLlmOption, questions, selectedIds, pendingFiles, typesetMath)
 
 const reviewStageRef = ref(null)
@@ -152,22 +153,30 @@ const restoringWorkspaceState = ref(true)
 const importDialogOpen = ref(false)
 const importTargetProjectId = ref(null)
 const importSaving = ref(false)
-const hasReviewContent = computed(() =>
-  eraseLoading.value || eraseDone.value || ocrLoading.value || ocrDone.value
-  || splitting.value || (splitCompleted.value && questions.value.length > 0)
-)
+const noteSaveDialogOpen = ref(false)
+const noteTargetProjectId = ref(null)
+const noteSaving = ref(false)
+const updateSelectedLlmOption = (value) => {
+  selectedLlmOptionId.value = value || ''
+}
+const hasReviewContent = computed(() => {
+  if (eraseLoading.value) return true
+  if (eraseDone.value) return true
+  if (ocrLoading.value) return true
+  if (ocrDone.value) return true
+  if (splitting.value) return true
+  if (splitCompleted.value && questions.value.length > 0) return true
+  return false
+})
 
 /**
  * 把分割历史中的题目载入当前工作台核对页。
  */
 const handleLoadRecord = (qs, record) => {
   questions.value = qs || []; selectedIds.clear()
+  setLoadedSplitRecord(record)
   splitCompleted.value = true; step.value = S.value.EXPORT
   currentView.value = 'workspace_review'
-  // 保存 record_id，用于后续导入错题库
-  setCurrentRecordId(record?.id || null)
-  // 清除 run_id，因为历史记录导入不依赖 WorkflowRun
-  currentRunId.value = null
   pushToast('success', `已加载「${record?.subject || '历史记录'}」的 ${qs.length} 道题目`)
   nextTick(() => typesetMath())
 }
@@ -179,6 +188,8 @@ const handleBack = async () => {
   await doReset()
   eraseImages.value = []; eraseDone.value = false
   ocrPages.value = []; ocrDone.value = false
+  notePreview.value = null
+  noteSaveDialogOpen.value = false
   currentView.value = 'workspace'
 }
 
@@ -191,11 +202,7 @@ const openImportDialog = () => {
     return
   }
   if (!questionProjects.value.length) {
-    if (openProjectDialog) {
-      openProjectDialog('question')
-    } else {
-      pushToast('error', '请先创建一个错题库')
-    }
+    pushToast('error', '请先创建一个错题库')
     return
   }
   importTargetProjectId.value = activeQuestionProjectId.value || questionProjects.value[0]?.id || null
@@ -207,24 +214,28 @@ const closeImportDialog = () => {
   importDialogOpen.value = false
 }
 
-/**
- * 新建错题库后自动选中并重新打开导入弹窗。
- */
-const onQuestionProjectCreated = (newId) => {
-  if (newId) {
-    importTargetProjectId.value = newId
-    importDialogOpen.value = true
+const openNoteSaveDialog = async () => {
+  if (!notePreview.value) {
+    pushToast('error', '暂无可保存的笔记结果')
+    return
   }
+  try {
+    await loadProjects()
+  } catch (error) {
+    pushToast('error', error instanceof Error ? error.message : '刷新笔记本列表失败')
+    return
+  }
+  if (!noteProjects.value.length) {
+    pushToast('error', '请先创建一个笔记本')
+    return
+  }
+  noteTargetProjectId.value = activeNoteProjectId.value || noteProjects.value[0]?.id || null
+  noteSaveDialogOpen.value = true
 }
 
-/**
- * 新建笔记本后自动选中并重新打开笔记选择弹窗。
- */
-const onNoteProjectCreated = (newId) => {
-  if (newId) {
-    noteTargetProjectId.value = newId
-    noteProjectDialogOpen.value = true
-  }
+const closeNoteSaveDialog = () => {
+  if (noteSaving.value) return
+  noteSaveDialogOpen.value = false
 }
 
 /**
@@ -244,7 +255,31 @@ const confirmImportToProject = async () => {
   }
 }
 
+const confirmSaveNoteToProject = async () => {
+  if (!noteTargetProjectId.value || noteSaving.value) return
+  noteSaving.value = true
+  try {
+    const savedNote = await saveNoteToProject(noteTargetProjectId.value)
+    if (savedNote) {
+      setActiveProject(noteTargetProjectId.value, 'note')
+      noteSaveDialogOpen.value = false
+      currentView.value = 'notes'
+    }
+  } finally {
+    noteSaving.value = false
+  }
+}
+
 // ── 键盘事件 ────────────────────────────────────────────
+const handleStartProcess = () => {
+  if (!splitEnabled.value || autoProcessing.value) return
+  if (workflowMode.value === 'auto') {
+    runAutoProcess()
+    return
+  }
+  startProcess()
+}
+
 const onKeydown = (e) => {
   if (e.key === 'a' && (e.ctrlKey || e.metaKey) && questions.value.length) {
     e.preventDefault(); selectAll()
@@ -268,12 +303,25 @@ watch(currentView, async (v) => {
 }, { immediate: true })
 
 watch(
-  [questions, splitCompleted, step, currentView, uploadMode],
+  [questions, splitCompleted, step, currentView, uploadMode, workflowMode],
   () => savePersistedWorkspaceState(),
   { deep: true },
 )
 
+watch(uploadMode, (mode) => {
+  if (mode === 'note') {
+    eraseEnabled.value = false
+  }
+})
+
+watch(notePreview, (value) => {
+  if (uploadMode.value === 'note' && value) {
+    openNoteSaveDialog()
+  }
+})
+
 // ── 生命周期 ────────────────────────────────────────────
+import { onMounted } from 'vue'
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
   // 检查 URL 参数，设置上传模式
@@ -319,20 +367,31 @@ onBeforeUnmount(() => {
             @go-workspace="currentView = splitCompleted ? 'workspace_review' : 'workspace'" />
         </template>
 
-        <UploadStage :upload-mode="uploadMode" :erase-enabled="eraseEnabled" :status-loading="statusLoading"
+        <UploadStage :upload-mode="uploadMode" :workflow-mode="workflowMode" :erase-enabled="eraseEnabled" :status-loading="statusLoading"
           :status-error="statusError" :status-pills="statusPills" :model-options-data="modelOptionsData"
           :selected-llm-option-id="selectedLlmOptionId" :has-configured-model="hasConfiguredModel"
-          :splitting="splitting" :split-completed="splitCompleted" :pending-files="pendingFiles"
+          :splitting="splitting || autoProcessing" :split-completed="splitCompleted" :pending-files="pendingFiles"
           :file-progress="fileProgress" :waiting-keys="waitingKeys" :upload-busy="uploadBusy"
           :upload-ready="uploadReady" :split-enabled="splitEnabled" @update:upload-mode="(v) => uploadMode = v"
+          @update:workflow-mode="(v) => workflowMode = v"
           @update:erase-enabled="(v) => eraseEnabled = v"
-          @update:selected-llm-option-id="(v) => selectedLlmOptionId = v" @upload="enqueueUpload"
-          @remove-file="removePendingFile" @split="startProcess" />
+          @update:selected-llm-option-id="updateSelectedLlmOption" @upload="enqueueUpload"
+          @remove-file="removePendingFile" @split="handleStartProcess" />
       </ContentPanel>
 
       <!-- 第二页：解析结果核对 -->
       <ContentPanel v-else-if="currentView === 'workspace_review'" key="review"
-        :title="eraseLoading ? '正在擦除...' : eraseDone && !ocrLoading && !ocrDone ? '擦除预览' : splitting ? '正在分割...' : ocrDone && !splitCompleted ? 'OCR 预览' : '题目数据核对'"
+        :title="eraseLoading
+          ? '正在擦除...'
+          : eraseDone && !ocrLoading && !ocrDone
+            ? '擦除预览'
+            : splitting
+              ? (uploadMode === 'note' ? '正在整理笔记...' : '正在分割...')
+              : uploadMode === 'note' && notePreview
+                ? '笔记整理结果'
+                : ocrDone && !splitCompleted
+                  ? 'OCR 预览'
+                  : '题目数据核对'"
         :steps="workspaceSteps" :current-step="step - 1">
         <template #toolbar>
           <BaseToolbarButton icon="fa-arrow-left-long" @click="handleBack">
@@ -344,13 +403,19 @@ onBeforeUnmount(() => {
           </template>
           <template v-else-if="ocrDone && !splitCompleted && !splitting">
             <BaseToolbarButton icon="fa-arrows-rotate" @click="doOcr">重新识别</BaseToolbarButton>
-            <BaseToolbarButton icon="fa-check" variant="primary" @click="doSplit">确认并分割</BaseToolbarButton>
+            <BaseToolbarButton icon="fa-check" variant="primary" @click="doSplit">{{ uploadMode === 'note' ? '确认并整理' : '确认并分割' }}</BaseToolbarButton>
+          </template>
+          <template v-else-if="uploadMode === 'note' && notePreview">
+            <BaseToolbarButton icon="fa-floppy-disk" variant="primary" @click="openNoteSaveDialog">
+              保存到笔记本
+            </BaseToolbarButton>
           </template>
         </template>
 
         <ReviewStage ref="reviewStageRef" :erase-loading="eraseLoading" :erase-done="eraseDone"
           :erase-images="eraseImages" :ocr-loading="ocrLoading" :ocr-done="ocrDone" :ocr-pages="ocrPages"
-          :splitting="splitting" :split-completed="splitCompleted" :questions="questions" :selected-ids="selectedIds"
+          :upload-mode="uploadMode" :splitting="splitting" :split-completed="splitCompleted" :questions="questions" :selected-ids="selectedIds"
+          :note-preview="notePreview"
           :preview-url="pendingPreviewUrls[0]" @toggle-select="toggleQuestion" @select-all="selectAll"
           @deselect-all="deselectAll" @open-image="openModal" @reorder="reorderQuestions" />
       </ContentPanel>
@@ -360,8 +425,8 @@ onBeforeUnmount(() => {
     <SelectionPanel :visible="currentView === 'workspace_review'" :count="selectedIds.size" :show-export="false"
       :show-save="true" @save="openImportDialog" @clear="deselectAll" />
 
-    <BaseModal :open="importDialogOpen" title="导入错题库" icon="fa-database" iconBg="accent-bg-soft" iconClass="accent-text"
-      maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeImportDialog">
+    <BaseModal :open="importDialogOpen" title="导入错题库" icon="fa-database" iconBg="accent-bg-soft"
+      iconClass="accent-text" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeImportDialog">
       <div class="space-y-3">
         <p class="text-sm text-slate-500 dark:text-[#8a8f98]">
           将 {{ selectedIds.size }} 道已选题目导入到：
@@ -377,14 +442,6 @@ onBeforeUnmount(() => {
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
             <i v-if="String(importTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
           </button>
-          <button v-if="openProjectDialog" type="button"
-            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
-              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
-              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
-            @click="openProjectDialog('question', onQuestionProjectCreated)">
-            <i class="fa-solid fa-plus text-xs"></i>
-            <span>新建错题库</span>
-          </button>
         </div>
       </div>
       <template #footer>
@@ -398,13 +455,11 @@ onBeforeUnmount(() => {
       </template>
     </BaseModal>
 
-    <!-- 笔记本项目选择弹窗 -->
-    <BaseModal :open="noteProjectDialogOpen" title="选择笔记本" icon="fa-book-open" iconBg="emerald-bg-soft"
-      iconClass="text-emerald-500" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1"
-      @close="closeNoteProjectDialog">
+    <BaseModal :open="noteSaveDialogOpen" title="保存到笔记本" icon="fa-book-open" iconBg="accent-bg-soft"
+      iconClass="accent-text" maxWidth="max-w-[30rem]" bodyClass="px-6 pb-3 pt-1" @close="closeNoteSaveDialog">
       <div class="space-y-3">
         <p class="text-sm text-slate-500 dark:text-[#8a8f98]">
-          将整理后的笔记保存到：
+          选择要保存到的笔记本：
         </p>
         <div class="max-h-64 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
           <button v-for="project in noteProjects" :key="project.id" type="button"
@@ -417,23 +472,15 @@ onBeforeUnmount(() => {
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ project.name }}</span>
             <i v-if="String(noteTargetProjectId) === String(project.id)" class="fa-solid fa-check text-xs"></i>
           </button>
-          <button v-if="openProjectDialog" type="button"
-            class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors
-              border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-600
-              dark:border-white/[0.12] dark:text-[#8a8f98] dark:hover:border-white/[0.2] dark:hover:text-[#aeb6c2]"
-            @click="openProjectDialog('note', onNoteProjectCreated)">
-            <i class="fa-solid fa-plus text-xs"></i>
-            <span>新建笔记本</span>
-          </button>
         </div>
       </div>
       <template #footer>
-        <BaseButton variant="secondary" size="sm" :disabled="noteProjectSaving" @click="closeNoteProjectDialog">
+        <BaseButton variant="secondary" size="sm" :disabled="noteSaving" @click="closeNoteSaveDialog">
           取消
         </BaseButton>
-        <BaseButton variant="primary" size="sm" :disabled="noteProjectSaving || !noteTargetProjectId"
-          @click="confirmNoteOrganize">
-          {{ noteProjectSaving ? '整理中...' : '确认整理' }}
+        <BaseButton variant="primary" size="sm" :disabled="noteSaving || !noteTargetProjectId"
+          @click="confirmSaveNoteToProject">
+          {{ noteSaving ? '保存中...' : '确认保存' }}
         </BaseButton>
       </template>
     </BaseModal>

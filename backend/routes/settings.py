@@ -15,6 +15,7 @@ from db.models import ProviderConfig
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("settings", __name__)
+LLM_SELECTION_CATEGORY = "llm"
 
 
 def _require_admin():
@@ -57,7 +58,7 @@ def erase_text():
         return jsonify({"success": False, "error": "读取文件失败"}), 400
 
     try:
-        from models.inference import InferenceEngine
+        from text_eraser_model.inference import InferenceEngine
 
         result_img = InferenceEngine().run(image_bytes)
 
@@ -109,7 +110,11 @@ def get_status():
                     crud.get_active_provider(db, user_id, category) if user_id else None
                 )
                 if provider and provider.api_key:
-                    models = [provider.model_name] if provider.model_name else []
+                    models = (
+                        [m.strip() for m in provider.model_name.split(",")]
+                        if provider.model_name
+                        else []
+                    )
                     available_models.append(
                         {
                             "value": category,
@@ -124,7 +129,7 @@ def get_status():
                 else:
                     managed_cfg = managed_llm.get(category)
                     managed_models = (
-                        [managed_cfg.model_name]
+                        [m.strip() for m in managed_cfg.model_name.split(",")]
                         if managed_cfg
                         and managed_cfg.configured
                         and managed_cfg.model_name
@@ -182,10 +187,83 @@ def get_model_options():
     try:
         with SessionLocal() as db:
             payload = list_model_options(db, user_id)
+            selection = crud.get_user_model_selection(db, user_id, LLM_SELECTION_CATEGORY)
+            selected_option_id = selection.option_id if selection else None
+            if selected_option_id and any(
+                item.get("option_id") == selected_option_id and item.get("available")
+                for item in payload.get("options", [])
+            ):
+                payload["selected_option_id"] = selected_option_id
         return jsonify({"success": True, **payload})
     except Exception:
         logger.exception("获取模型选项失败")
         return jsonify({"success": False, "error": "获取模型选项失败"}), 500
+
+
+@bp.route("/models/selection", methods=["GET"])
+def get_model_selection():
+    """Return the user's persisted active LLM model option."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "login required"}), 401
+
+    try:
+        with SessionLocal() as db:
+            payload = list_model_options(db, user_id)
+            selection = crud.get_user_model_selection(db, user_id, LLM_SELECTION_CATEGORY)
+            selected_option_id = selection.option_id if selection else None
+            if not selected_option_id or not any(
+                item.get("option_id") == selected_option_id and item.get("available")
+                for item in payload.get("options", [])
+            ):
+                selected_option_id = payload.get("default_option_id")
+
+        return jsonify({"success": True, "selected_option_id": selected_option_id})
+    except Exception:
+        logger.exception("get model selection failed")
+        return jsonify({"success": False, "error": "get model selection failed"}), 500
+
+
+@bp.route("/models/selection", methods=["PUT"])
+def update_model_selection():
+    """Persist the user's active LLM model option."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "login required"}), 401
+
+    data = request.get_json(force=True) or {}
+    option_id = data.get("option_id") or data.get("selected_option_id") or ""
+    if not option_id:
+        return jsonify({"success": False, "error": "model option is required"}), 400
+
+    try:
+        with SessionLocal() as db:
+            payload = list_model_options(db, user_id)
+            selected = next(
+                (
+                    item
+                    for item in payload.get("options", [])
+                    if item.get("option_id") == option_id and item.get("available")
+                ),
+                None,
+            )
+            if not selected:
+                return jsonify({"success": False, "error": "model option unavailable"}), 400
+
+            crud.save_user_model_selection(
+                db,
+                user_id=user_id,
+                category=LLM_SELECTION_CATEGORY,
+                source=selected.get("source") or "",
+                provider_id=selected.get("provider_id") or "",
+                model_name=selected.get("model_name") or "",
+                option_id=selected.get("option_id") or option_id,
+            )
+
+        return jsonify({"success": True, "selected_option_id": option_id})
+    except Exception:
+        logger.exception("save model selection failed")
+        return jsonify({"success": False, "error": "save model selection failed"}), 500
 
 
 @bp.route("/config", methods=["GET"])
@@ -298,7 +376,7 @@ def list_models():
                     else:
                         provider = crud.get_active_provider(db, user_id, provider_type)
                     if provider:
-                        api_key = provider.api_key or ""
+                        api_key = api_key or provider.api_key or ""
                         base_url = base_url or provider.base_url or ""
                 if not api_key and provider_type in ("openai", "anthropic"):
                     system_provider = crud.get_active_system_provider(db, provider_type)
@@ -409,7 +487,7 @@ def test_paddleocr():
                     else:
                         provider = crud.get_active_provider(db, user_id, "paddleocr")
                     if provider:
-                        api_token = provider.api_key or ""
+                        api_token = api_token or provider.api_key or ""
                         api_url = api_url or provider.base_url or ""
                 if not api_token or not api_url:
                     system_provider = crud.get_active_system_provider(db, "paddleocr")

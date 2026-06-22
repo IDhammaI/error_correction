@@ -4,7 +4,7 @@
  *
  * 使用 Teleport 固定到 body，避免被父级 overflow 裁剪，并在移动端禁用 hover 残留。
  */
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue'
 
 const props = defineProps({
   text: { type: String, required: true },
@@ -14,6 +14,8 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
 })
 
+const provider = inject('baseTooltipProvider', null)
+
 const visible = ref(false)
 const triggerRef = ref(null)
 const tooltipRef = ref(null)
@@ -22,6 +24,7 @@ const position = ref({ left: 0, top: 0 })
 const tooltipStyle = computed(() => ({
   left: `${position.value.left}px`,
   top: `${position.value.top}px`,
+  zIndex: provider?.zIndex ?? 9999,
 }))
 
 /** 根据触发元素和浮层尺寸计算 Tooltip 在视口内的位置。 */
@@ -35,9 +38,10 @@ const updatePosition = async () => {
   let left, top
 
   if (props.placement === 'top' || props.placement === 'bottom') {
+    const tooltipOffset = provider?.offset ?? props.offset
     top = props.placement === 'top'
-      ? triggerRect.top - props.offset
-      : triggerRect.bottom + props.offset
+      ? triggerRect.top - tooltipOffset
+      : triggerRect.bottom + tooltipOffset
 
     const viewportPadding = 8
 
@@ -65,8 +69,8 @@ const updatePosition = async () => {
     // 左右布局时以触发元素垂直中心为基准，再限制到视口内。
     top = triggerRect.top + triggerRect.height / 2
     left = props.placement === 'left'
-      ? triggerRect.left - props.offset
-      : triggerRect.right + props.offset
+      ? triggerRect.left - (provider?.offset ?? props.offset)
+      : triggerRect.right + (provider?.offset ?? props.offset)
 
     // 防止 Tooltip 超出上下视口边界。
     const viewportPadding = 8
@@ -85,6 +89,7 @@ const isTouch = ref(false)
 /** 显示 Tooltip，并在 DOM 更新后重新计算位置。 */
 const show = async () => {
   if (props.disabled || isTouch.value) return
+  if (provider?.disabled) return
   // 如果设备不支持 hover（如移动端），则不显示 tooltip，防止点击后残留
   if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover)').matches) return
   visible.value = true

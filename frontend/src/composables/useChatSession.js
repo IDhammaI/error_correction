@@ -5,8 +5,6 @@
 import { ref } from 'vue'
 import * as api from '@/api/index.js'
 import { useToast } from '@/composables/useToast.js'
-import { useAiChatSessions } from '@/composables/useAiChatSessions.js'
-import { useProjects } from '@/composables/useProjects.js'
 import { useWorkspaceNav } from '@/composables/useWorkspaceNav.js'
 
 // ── 模块级单例状态 ──────────────────────────────────────
@@ -17,23 +15,20 @@ const answerModalOpen = ref(false)
 const answerModalTarget = ref(null)
 const answerModalText = ref('')
 const answerModalSaving = ref(false)
-const pendingAiChatProjectId = ref(null)
-const pendingAiChatQuestionIds = ref([])
 
 export function useChatSession() {
   const { pushToast } = useToast()
   const { currentView } = useWorkspaceNav()
-  const { createAiChat } = useAiChatSessions(pushToast)
-  const { activeQuestionProjectId } = useProjects()
 
   /**
-   * 切到新的独立 AI 对话页，并预置当前题目作为引用上下文。
+   * 获取题目绑定的对话会话；没有历史会话时创建一个新会话。
    */
-  const doOpenAiChat = async (question) => {
+  const doOpenChatSession = async (question) => {
     try {
-      pendingAiChatProjectId.value = activeQuestionProjectId.value || null
-      pendingAiChatQuestionIds.value = question?.id ? [question.id] : []
-      await createAiChat(currentView)
+      const sessions = await api.fetchChatSessions(question.id)
+      chatSessionId.value = sessions.length ? sessions[0].id : (await api.createChat(question.id)).id
+      chatActive.value = true
+      currentView.value = 'chat'
     } catch (e) {
       pushToast('error', '打开对话失败: ' + (e instanceof Error ? e.message : String(e)))
     }
@@ -50,7 +45,7 @@ export function useChatSession() {
       answerModalOpen.value = true
       return
     }
-    await doOpenAiChat(question)
+    await doOpenChatSession(question)
   }
 
   /**
@@ -66,7 +61,7 @@ export function useChatSession() {
       answerModalTarget.value.answer = text
       answerModalOpen.value = false
       pushToast('success', '答案已保存')
-      await doOpenAiChat(answerModalTarget.value)
+      await doOpenChatSession(answerModalTarget.value)
     } catch (e) {
       pushToast('error', '保存答案失败: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
@@ -87,7 +82,6 @@ export function useChatSession() {
   return {
     chatSessionId, chatQuestion, chatActive,
     answerModalOpen, answerModalTarget, answerModalText, answerModalSaving,
-    pendingAiChatProjectId, pendingAiChatQuestionIds,
     openChat, saveAnswerAndChat, backToErrorBank,
   }
 }

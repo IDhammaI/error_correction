@@ -4,7 +4,7 @@
  *
  * 负责展示平台托管/个人配置的模型分组、当前模型状态，以及跳转到 API 设置页。
  */
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Listbox,
@@ -22,6 +22,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   noModels: { type: Boolean, default: false },
   statusLoading: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -30,6 +31,8 @@ const router = useRouter()
 
 const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
 const checking = ref(false)
+const rootEl = ref(null)
+const menuStyle = ref({})
 
 // 后端返回的模型选项原样保留，组件只负责分组和展示状态。
 const options = computed(() => props.modelOptionsData?.options || [])
@@ -102,6 +105,27 @@ const statusState = computed(() => {
   return 'ready'
 })
 
+const updateMenuPosition = async () => {
+  await nextTick()
+  const rect = rootEl.value?.getBoundingClientRect()
+  if (!rect) return
+
+  const viewportPadding = 12
+  const menuWidth = Math.max(rect.width, props.compact ? 224 : 224)
+  const left = Math.min(
+    Math.max(viewportPadding, rect.right - menuWidth),
+    window.innerWidth - menuWidth - viewportPadding,
+  )
+  const maxHeight = Math.max(180, window.innerHeight - rect.bottom - 24)
+
+  menuStyle.value = {
+    top: `${rect.bottom + 8}px`,
+    left: `${left}px`,
+    width: `${menuWidth}px`,
+    maxHeight: `${maxHeight}px`,
+  }
+}
+
 /** 向父组件同步当前选择的模型 option_id。 */
 const selectModel = (value) => {
   emit('update:modelValue', value)
@@ -130,13 +154,24 @@ watch(() => props.modelValue, () => {
   }, 700)
 })
 
+onMounted(() => {
+  window.addEventListener('resize', updateMenuPosition)
+  window.addEventListener('scroll', updateMenuPosition, true)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateMenuPosition)
+  window.removeEventListener('scroll', updateMenuPosition, true)
+})
+
 </script>
 
 <template>
-  <Listbox :model-value="modelValue" :disabled="disabled || noModels" @update:model-value="selectModel">
-    <div class="relative w-56 min-w-0">
+  <Listbox v-slot="{ open }" :model-value="modelValue" :disabled="disabled || noModels" @update:model-value="selectModel">
+    <div ref="rootEl" class="relative w-56 min-w-0">
       <ListboxButton
-        class="group flex h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white/80 px-3 text-left text-xs font-medium text-gray-900 shadow-sm shadow-black/[0.02] transition-all hover:border-gray-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.09] dark:bg-white/[0.035] dark:text-[#d0d6e0] dark:shadow-black/20 dark:hover:border-white/[0.14] dark:hover:bg-white/[0.06]"
+        class="group flex h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg !border-none bg-white/80 px-3 text-left text-xs font-medium text-gray-900 shadow-sm shadow-black/[0.02] transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/[0.035] dark:text-[#d0d6e0] dark:shadow-black/20 dark:hover:bg-white/[0.06]"
+        @click="updateMenuPosition"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2.5">
           <div
@@ -198,18 +233,21 @@ watch(() => props.modelValue, () => {
         </div>
       </ListboxButton>
 
-      <Transition
-        enter-active-class="transition duration-160 ease-out"
-        enter-from-class="-translate-y-1 scale-[0.98] opacity-0"
-        enter-to-class="translate-y-0 scale-100 opacity-100"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="translate-y-0 scale-100 opacity-100"
-        leave-to-class="-translate-y-1 scale-[0.98] opacity-0"
-      >
-        <ListboxOptions
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition duration-160 ease-out"
+          enter-from-class="-translate-y-1 scale-[0.98] opacity-0"
+          enter-to-class="translate-y-0 scale-100 opacity-100"
+          leave-active-class="transition duration-100 ease-in"
+          leave-from-class="translate-y-0 scale-100 opacity-100"
+          leave-to-class="-translate-y-1 scale-[0.98] opacity-0"
+        >
+          <ListboxOptions
+          v-if="open"
           aria-multiselectable="false"
           data-checkmark-trailing="true"
-          class="absolute right-0 z-50 mt-2 max-h-72 w-full overflow-hidden rounded-xl border border-gray-200 bg-white p-1 text-sm text-gray-700 shadow-xl shadow-black/10 outline-none backdrop-blur-md dark:border-white/[0.08] dark:bg-[#1f1f20] dark:text-[#d7d7d8] dark:shadow-black/35"
+          :style="menuStyle"
+          class="fixed z-[80] overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-sm text-gray-700 shadow-xl shadow-black/10 outline-none backdrop-blur-md dark:border-white/[0.08] dark:bg-[#1f1f20] dark:text-[#d7d7d8] dark:shadow-black/35"
         >
           <template v-for="(item, index) in groupedOptions" :key="item.type === 'group' ? item.key : item.optionId">
             <li
@@ -267,8 +305,9 @@ watch(() => props.modelValue, () => {
               <span>API 设置</span>
             </button>
           </li>
-        </ListboxOptions>
-      </Transition>
+          </ListboxOptions>
+        </Transition>
+      </Teleport>
     </div>
   </Listbox>
 </template>

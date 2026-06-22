@@ -4,6 +4,7 @@
  * 文件上传拖拽区
  */
 import { ref } from 'vue'
+import ModelProviderSelect from '@/components/features/app/workspace/ModelProviderSelect.vue'
 
 const props = defineProps({
   pendingFiles: { type: Array, default: () => [] },
@@ -15,9 +16,13 @@ const props = defineProps({
   splitCompleted: { type: Boolean, default: false },
   expand: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  modelOptionsData: { type: Object, default: null },
+  selectedLlmOptionId: { type: String, default: '' },
+  noModels: { type: Boolean, default: false },
+  statusLoading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['upload', 'remove-file'])
+const emit = defineEmits(['upload', 'remove-file', 'update:selected-llm-option-id'])
 
 const fileInputEl = ref(null)
 const uploadHover = ref(false)
@@ -44,7 +49,7 @@ const onClickZone = () => {
 <template>
   <div :class="{ 'flex flex-col flex-1': expand }">
     <div
-      class="group relative flex flex-col items-center justify-center rounded-md border transition-colors"
+      class="group relative flex flex-col items-center justify-center rounded-xl border transition-colors"
       :class="[
         uploadHover
           ? 'accent-border bg-gray-100 dark:bg-white/[0.04]'
@@ -72,7 +77,25 @@ const onClickZone = () => {
           <p v-else class="text-sm text-gray-500 dark:text-[#8a8f98]">
             拖拽文件到此处或 <span class="accent-text cursor-pointer">浏览文件</span>
           </p>
-          <p class="mt-1 text-xs text-gray-400 dark:text-[#62666d]">PDF, PNG, JPG</p>
+          <p class="mt-1 text-xs text-gray-400 dark:text-[#62666d]">
+            支持PDF/PNG/JPG/BMP/TIF等各种图片格式
+          </p>
+          <p class="mt-1 text-xs text-gray-400 dark:text-[#62666d]">
+            单文件≤50MB&1000页 · 单图片≤10MB · 批量上传≤20个
+          </p>
+        </div>
+
+        <div class="mt-1 flex items-center gap-3" @click.stop @keydown.stop>
+          <span class="text-xs font-medium text-gray-500 dark:text-[#8a8f98]">选择模型</span>
+          <ModelProviderSelect
+            compact
+            :model-value="selectedLlmOptionId"
+            :model-options-data="modelOptionsData"
+            :disabled="splitting || splitCompleted"
+            :no-models="noModels"
+            :status-loading="statusLoading"
+            @update:model-value="(value) => emit('update:selected-llm-option-id', value)"
+          />
         </div>
       </div>
 

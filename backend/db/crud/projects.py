@@ -5,8 +5,15 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from db.models import (
-    ChatSession, Note, NoteTagMapping, Project, Question,
-    QuestionEmbedding, QuestionTagMapping, UploadBatch,
+    ChatSession,
+    Note,
+    NoteTagMapping,
+    Project,
+    Question,
+    QuestionEmbedding,
+    QuestionTagMapping,
+    ReviewEvent,
+    UploadBatch,
 )
 
 
@@ -138,18 +145,43 @@ def delete_project(db: Session, project_id: int, user_id=None) -> bool:
     if project.is_default:
         raise ValueError("DEFAULT_PROJECT_IMMUTABLE")
 
-    # 先删除题目和笔记的关联子表，再删除题目/笔记本身
-    question_ids = [q.id for q in db.query(Question.id).filter(Question.project_id == project.id).all()]
+    question_ids = [
+        row[0]
+        for row in db.query(Question.id).filter(Question.project_id == project.id).all()
+    ]
+    note_ids = [
+        row[0]
+        for row in db.query(Note.id).filter(Note.project_id == project.id).all()
+    ]
+
     if question_ids:
-        db.query(QuestionEmbedding).filter(QuestionEmbedding.question_id.in_(question_ids)).delete(synchronize_session=False)
-        db.query(ChatSession).filter(ChatSession.question_id.in_(question_ids)).delete(synchronize_session=False)
-        db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id.in_(question_ids)).delete(synchronize_session=False)
+        # 保留历史聊天，只解除它和被删除题目的绑定。
+        db.query(ChatSession).filter(ChatSession.question_id.in_(question_ids)).update(
+            {ChatSession.question_id: None},
+            synchronize_session=False,
+        )
+        db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id.in_(question_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(QuestionEmbedding).filter(QuestionEmbedding.question_id.in_(question_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(ReviewEvent).filter(
+            ReviewEvent.target_type == "question",
+            ReviewEvent.target_id.in_(question_ids),
+        ).delete(synchronize_session=False)
         db.query(Question).filter(Question.id.in_(question_ids)).delete(synchronize_session=False)
 
-    note_ids = [n.id for n in db.query(Note.id).filter(Note.project_id == project.id).all()]
     if note_ids:
-        db.query(NoteTagMapping).filter(NoteTagMapping.note_id.in_(note_ids)).delete(synchronize_session=False)
+        db.query(NoteTagMapping).filter(NoteTagMapping.note_id.in_(note_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(ReviewEvent).filter(
+            ReviewEvent.target_type == "note",
+            ReviewEvent.target_id.in_(note_ids),
+        ).delete(synchronize_session=False)
         db.query(Note).filter(Note.id.in_(note_ids)).delete(synchronize_session=False)
+
     db.query(UploadBatch).filter(UploadBatch.project_id == project.id).delete()
 
     db.delete(project)

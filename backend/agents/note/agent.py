@@ -4,12 +4,9 @@
 支持：
   - 重试机制（指数退避，最多 3 次）
   - 多页分批处理（超过阈值时分批整理再合并）
-  - 多模式结构化输出（function_calling → prompt JSON fallback）
 """
 
-import json
 import logging
-import re
 import time
 
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -25,32 +22,6 @@ logger = logging.getLogger(__name__)
 BATCH_CHAR_LIMIT = 6000
 MAX_RETRIES = 3
 
-_messages = lambda ocr_text: [
-    SystemMessage(content=NOTE_ORGANIZE_PROMPT),
-    HumanMessage(
-        content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"
-    ),
-]
-
-
-def _extract_json_from_text(text: str) -> dict | None:
-    """从 LLM 输出文本中提取 JSON 对象（兼容 ```json ... ``` 包裹）"""
-    # 尝试 ```json ... ``` 代码块
-    m = re.search(r"```json\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except json.JSONDecodeError:
-            pass
-    # 尝试裸 JSON 对象
-    m = re.search(r"\{[\s\S]*\}", text)
-    if m:
-        try:
-            return json.loads(m.group(0))
-        except json.JSONDecodeError:
-            pass
-    return None
-
 
 def _invoke_once(
     model,
@@ -58,46 +29,53 @@ def _invoke_once(
     provider: str = "openai",
     supports_function_calling: bool = True,
 ) -> OrganizedNote:
-    """单次 LLM 调用，返回结构化笔记。按优先级尝试多种输出模式。"""
-    messages = _messages(ocr_text)
+    """单次 LLM 调用，返回结构化笔记"""
+    def invoke_json_mode() -> OrganizedNote:
+        # 部分 OpenAI 兼容模型不支持 function calling。此路径只要求模型输出 JSON，
+        # 再由本地 Pydantic 解析，兼容性更好。
+        from langchain_core.output_parsers import PydanticOutputParser
 
-    # 模式 1: with_structured_output（function_calling / json_schema，取决于模型）
-    if supports_function_calling:
-        try:
-            structured_model = model.with_structured_output(OrganizedNote)
-            return structured_model.invoke(messages)
-        except Exception as exc:
-            logger.warning(
-                "笔记整理: with_structured_output 失败 (%s)，fallback 到 prompt JSON", exc
-            )
-
-    # 模式 2: prompt JSON — 在 system prompt 中要求输出 JSON，并手动解析
-    from langchain_core.output_parsers import PydanticOutputParser
-
-    parser = PydanticOutputParser(pydantic_object=OrganizedNote)
-    format_instructions = parser.get_format_instructions()
-
-    prompt_messages = [
-        SystemMessage(
-            content=NOTE_ORGANIZE_PROMPT
-            + f"\n\n你必须以 JSON 格式输出，且遵循以下结构：\n{format_instructions}"
-        ),
-        messages[1],  # HumanMessage
-    ]
-    response = model.invoke(prompt_messages)
-
-    # 先尝试 PydanticOutputParser（依赖严格格式）
-    try:
+        parser = PydanticOutputParser(pydantic_object=OrganizedNote)
+        format_instructions = parser.get_format_instructions()
+        response = model.invoke(
+            [
+                SystemMessage(
+                    content=NOTE_ORGANIZE_PROMPT
+                    + f"\n\n你必须以 JSON 格式输出，且遵循以下结构：\n{format_instructions}"
+                ),
+                HumanMessage(
+                    content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"
+                ),
+            ]
+        )
         return parser.parse(response.content)
-    except Exception:
-        pass
 
-    # 再尝试从文本中提取 JSON 并手动构建
-    data = _extract_json_from_text(response.content)
-    if data:
-        return OrganizedNote.model_validate(data)
+    if not supports_function_calling:
+        return invoke_json_mode()
 
-    raise RuntimeError("LLM 未返回合法的 JSON 结构")
+    try:
+        structured_model = model.with_structured_output(
+            OrganizedNote, method="function_calling"
+        )
+        return structured_model.invoke(
+            [
+                SystemMessage(content=NOTE_ORGANIZE_PROMPT),
+                HumanMessage(
+                    content=f"以下是 OCR 识别出的课堂笔记原始文本，请整理为结构化笔记：\n\n{ocr_text}"
+                ),
+            ]
+        )
+    except Exception as exc:
+        msg = str(exc)
+        if (
+            "400" in msg
+            or "tool" in msg.lower()
+            or "function" in msg.lower()
+            or "structured" in msg.lower()
+        ):
+            logger.info("笔记整理: 结构化调用失败，降级为 JSON 输出解析: %s", msg)
+            return invoke_json_mode()
+        raise
 
 
 def _invoke_with_retry(
@@ -108,14 +86,17 @@ def _invoke_with_retry(
 ) -> OrganizedNote:
     """带指数退避的重试调用"""
     last_error = None
+    use_function_calling = bool(supports_function_calling)
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            result = _invoke_once(model, ocr_text, provider, supports_function_calling)
+            result = _invoke_once(model, ocr_text, provider, use_function_calling)
             if result:
                 return result
             last_error = "LLM 未返回有效结果"
         except Exception as e:
             last_error = str(e)
+            if "tool_choice" in last_error or "Thinking mode" in last_error:
+                use_function_calling = False
             logger.warning(f"笔记整理: 第 {attempt}/{MAX_RETRIES} 次失败: {last_error}")
 
         if attempt < MAX_RETRIES:
@@ -205,10 +186,14 @@ def invoke_note_organize(
         base_url=base_url,
         supports_function_calling=supports_function_calling,
     )
+    use_function_calling = bool(supports_function_calling)
+    normalized_model = (model_name or "").strip().lower()
+    if "deepseek-v4" in normalized_model:
+        use_function_calling = False
 
     # 短文本：直接整理
     if len(ocr_text) <= BATCH_CHAR_LIMIT:
-        return _invoke_with_retry(model, ocr_text, provider, supports_function_calling)
+        return _invoke_with_retry(model, ocr_text, provider, use_function_calling)
 
     # 长文本：分批处理
     batches = _split_text_into_batches(ocr_text)
@@ -217,7 +202,7 @@ def invoke_note_organize(
     results = []
     for i, batch in enumerate(batches):
         logger.info(f"处理第 {i + 1}/{len(batches)} 批（{len(batch)} 字符）")
-        result = _invoke_with_retry(model, batch, provider, supports_function_calling)
+        result = _invoke_with_retry(model, batch, provider, use_function_calling)
         results.append(result)
 
     return _merge_notes(results)

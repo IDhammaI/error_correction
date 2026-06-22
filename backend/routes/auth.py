@@ -468,9 +468,10 @@ def upload_profile_avatar():
             if saved_file_path and os.path.exists(saved_file_path):
                 os.remove(saved_file_path)
             raise
+        user_payload = _serialize_user(user, db)
 
     _delete_avatar_file_if_exists(old_avatar_path)
-    return jsonify({"success": True, "user": _serialize_user(user)})
+    return jsonify({"success": True, "user": user_payload})
 
 
 @bp.route("/profile/avatar", methods=["DELETE"])
@@ -487,6 +488,7 @@ def delete_profile_avatar():
             return jsonify({"success": False, "error": "用户不存在"}), 404
         old_avatar_path = getattr(user, "avatar_path", None)
         user = crud.update_user_avatar(db, user_id, None)
+        user_payload = _serialize_user(user, db)
 
     _delete_avatar_file_if_exists(old_avatar_path)
-    return jsonify({"success": True, "user": _serialize_user(user)})
+    return jsonify({"success": True, "user": user_payload})

@@ -12,20 +12,25 @@ defineProps({
   showArrow: { type: Boolean, default: false },
   layout: { type: String, default: 'horizontal' }, // 'horizontal' | 'vertical'
   skeleton: { type: Boolean, default: false }, // 新增骨架屏模式
+  card: { type: Boolean, default: false },
+  unwrapSlot: { type: Boolean, default: false },
 })
 </script>
 
 <template>
-  <li 
+  <div
     class="group relative flex min-h-[56px]"
     :class="[
-      interactive && !skeleton ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors' : '',
-      'items-center justify-between px-4 py-3 gap-4'
+      card
+        ? 'rounded-xl border border-gray-100 bg-gray-50/80 transition-all hover:bg-gray-100 dark:border-white/[0.08] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]'
+        : '',
+      interactive && !skeleton && !card ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors' : '',
+      'items-center justify-between gap-4 px-4 py-3'
     ]"
     @click="interactive && !skeleton && $emit('click')"
   >
     <!-- 内部底边框（不连接外边框的分割线） -->
-    <div class="absolute bottom-0 left-4 right-4 h-px bg-gray-100 group-last:hidden dark:bg-white/[0.04]"></div>
+    <div v-if="!card" class="absolute bottom-0 left-4 right-4 h-px bg-gray-100 group-last:hidden dark:bg-white/[0.04]"></div>
 
     <!-- 左侧区域：Label 和 Description -->
     <div class="flex flex-col shrink-0 min-w-0 max-w-[50%]">
@@ -61,15 +66,20 @@ defineProps({
           {{ value }}
         </span>
         
-        <!-- 当存在默认插槽（如 input）时，让其占据合理的宽度并靠右对齐 -->
-        <div v-if="$slots.right || $slots.default" class="w-44 max-w-full">
-          <slot name="right">
+        <!-- 默认保留宽度约束；对少数紧凑控件可直接输出插槽内容，减少冗余容器 -->
+        <template v-if="$slots.right || $slots.default">
+          <slot v-if="unwrapSlot" name="right">
             <slot />
           </slot>
-        </div>
+          <div v-else class="w-44 max-w-full">
+            <slot name="right">
+              <slot />
+            </slot>
+          </div>
+        </template>
 
         <i v-if="showArrow" class="fa-solid fa-chevron-right text-[10px] text-gray-400 dark:text-[#62666d] ml-1 shrink-0"></i>
       </template>
     </div>
-  </li>
+  </div>
 </template>

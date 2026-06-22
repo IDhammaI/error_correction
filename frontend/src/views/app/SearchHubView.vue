@@ -3,7 +3,7 @@
  * SearchHubView.vue
  * 库页面：Linear Projects 风格的项目列表。
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDropdown from '@/components/base/BaseDropdown.vue'
@@ -58,8 +58,6 @@ const renameSaving = ref(false)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
 const deleteSaving = ref(false)
-const deleteCountdown = ref(0)
-let deleteTimer = null
 
 const projectTypeOptions = computed(() => [
   { value: 'all', label: `全部 ${projects.value.length}` },
@@ -270,31 +268,16 @@ function openDeleteDialog(project) {
   deleteTarget.value = project
   deleteDialogOpen.value = true
   actionMenuProjectId.value = null
-  const hasContent = (project.question_count || 0) > 0 || (project.note_count || 0) > 0
-  if (hasContent) {
-    deleteCountdown.value = 5
-    deleteTimer = setInterval(() => {
-      deleteCountdown.value--
-      if (deleteCountdown.value <= 0) {
-        clearInterval(deleteTimer)
-        deleteTimer = null
-      }
-    }, 1000)
-  } else {
-    deleteCountdown.value = 0
-  }
 }
 
 function closeDeleteDialog() {
   if (deleteSaving.value) return
-  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
-  deleteCountdown.value = 0
   deleteDialogOpen.value = false
   deleteTarget.value = null
 }
 
 async function confirmDelete() {
-  if (!deleteTarget.value || deleteSaving.value || deleteCountdown.value > 0) return
+  if (!deleteTarget.value || deleteSaving.value) return
   deleteSaving.value = true
   try {
     await removeProject(deleteTarget.value.id)
@@ -308,17 +291,10 @@ async function confirmDelete() {
   }
 }
 
-onBeforeUnmount(() => {
-  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
-})
-
 onMounted(() => {
-  // 如果全局项目列表已有数据，不重新拉取，避免覆盖刚创建的项目
-  if (!projects.value.length) {
-    loadProjects().catch((error) => {
-      pushToast('error', error instanceof Error ? error.message : '加载项目失败')
-    })
-  }
+  loadProjects().catch((error) => {
+    pushToast('error', error instanceof Error ? error.message : '加载项目失败')
+  })
 })
 
 watch(activeLibraryProject, (project) => {
@@ -493,7 +469,7 @@ watch(activeLibraryProject, (project) => {
       </div>
 
       <div v-else-if="mode === 'library'" class="flex h-full min-h-0 flex-col overflow-hidden">
-        <div v-if="activeLibraryProject" :key="activeLibraryProject.id" class="flex h-full min-h-0 flex-col overflow-hidden">
+        <div v-if="activeLibraryProject" class="flex h-full min-h-0 flex-col overflow-hidden">
           <NoteView v-if="activeLibraryProject.normalizedType === 'note'" embedded />
           <ErrorBankView v-else embedded />
         </div>
@@ -622,21 +598,18 @@ watch(activeLibraryProject, (project) => {
       iconBg="bg-rose-500/10"
       iconClass="text-rose-400"
       maxWidth="max-w-[28rem]"
-      bodyClass="px-6 pb-3 pt-1"
+      bodyClass="px-6 py-3"
       @close="closeDeleteDialog"
     >
-      <p class=”text-sm leading-6 text-gray-600 dark:text-[#aeb6c2]”>
-        确定删除”<span class=”font-semibold text-gray-900 dark:text-[#f7f8f8]”>{{ deleteTarget?.name }}</span>”吗？
-      </p>
-      <p class=”mt-2 text-xs text-gray-400 dark:text-[#62666d]”>
-        项目内的所有题目或笔记将一并删除，且不可恢复。
+      <p class="text-sm leading-6 text-gray-600 dark:text-[#aeb6c2]">
+        确定删除“<span class="font-semibold text-gray-900 dark:text-[#f7f8f8]">{{ deleteTarget?.name }}</span>”吗？项目里的题目、笔记和复习记录会一并删除。
       </p>
       <template #footer>
         <BaseButton variant="secondary" size="sm" :disabled="deleteSaving" @click="closeDeleteDialog">
           取消
         </BaseButton>
-        <BaseButton variant="primary" size="sm" :disabled="deleteSaving || deleteCountdown > 0" @click="confirmDelete">
-          {{ deleteSaving ? '删除中...' : deleteCountdown > 0 ? `删除 (${deleteCountdown}s)` : '删除' }}
+        <BaseButton variant="primary" size="sm" :disabled="deleteSaving" @click="confirmDelete">
+          {{ deleteSaving ? '删除中...' : '删除' }}
         </BaseButton>
       </template>
     </BaseModal>

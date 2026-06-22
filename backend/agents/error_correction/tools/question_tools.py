@@ -1,4 +1,4 @@
-"""
+﻿"""
 题目处理相关工具
 """
 
@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain_core.tools import tool
 from core.config import settings
-from src.utils import simplify_ocr_results, run_async
+from pipeline.utils import simplify_ocr_results, run_async
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -267,7 +267,7 @@ def retry_ocr(image_paths_json: str) -> str:
         if not isinstance(image_paths, list) or not image_paths:
             return "错误: image_paths_json 必须是非空的路径列表 JSON"
 
-        from src.paddleocr_client import PaddleOCRClient
+        from pipeline.paddleocr_client import PaddleOCRClient
 
         client = PaddleOCRClient()
 

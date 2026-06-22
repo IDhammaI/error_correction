@@ -12,9 +12,13 @@ solve_agent 集成测试 — 调用真实 LLM API 验证解题能力
 import os
 import pytest
 from dotenv import load_dotenv
-from benchmark.metrics import compare_answers
 
 load_dotenv()
+
+
+def compare_answers(predicted: str, expected: str) -> bool:
+    """Small local comparison helper for the solve integration smoke test."""
+    return str(predicted).strip().upper() == str(expected).strip().upper()
 
 skip_no_api_key = pytest.mark.skipif(
     not os.getenv("OPENAI_API_KEY") and not os.getenv("ANTHROPIC_API_KEY"),

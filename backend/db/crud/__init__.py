@@ -119,6 +119,8 @@ from db.crud.providers import (
     save_system_providers,
     get_active_provider,
     get_active_system_provider,
+    get_user_model_selection,
+    save_user_model_selection,
 )
 
 from db.crud.projects import (
@@ -141,6 +143,25 @@ from db.crud.notes import (
     delete_note,
     get_note_subjects,
     get_note_tag_names,
+)
+
+from db.crud.review import (
+    compute_review_priority,
+    serialize_review_fields,
+    schedule_question_review,
+    schedule_note_review,
+    get_due_reviews,
+)
+
+from db.crud.devices import (
+    create_device_binding,
+    get_active_device_binding,
+    get_user_device_binding,
+    get_latest_user_device_binding,
+    deactivate_user_device_binding,
+    create_device_capture,
+    get_device_captures,
+    get_device_captures_by_ids,
 )
 
 __all__ = [
@@ -223,6 +244,8 @@ __all__ = [
     "save_system_providers",
     "get_active_provider",
     "get_active_system_provider",
+    "get_user_model_selection",
+    "save_user_model_selection",
     # projects
     "normalize_project_type",
     "serialize_project",
@@ -241,4 +264,19 @@ __all__ = [
     "delete_note",
     "get_note_subjects",
     "get_note_tag_names",
+    # review
+    "compute_review_priority",
+    "serialize_review_fields",
+    "schedule_question_review",
+    "schedule_note_review",
+    "get_due_reviews",
+    # devices
+    "create_device_binding",
+    "get_active_device_binding",
+    "get_user_device_binding",
+    "get_latest_user_device_binding",
+    "deactivate_user_device_binding",
+    "create_device_capture",
+    "get_device_captures",
+    "get_device_captures_by_ids",
 ]

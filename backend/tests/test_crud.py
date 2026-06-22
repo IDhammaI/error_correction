@@ -39,12 +39,41 @@ from db.crud import (
     update_review_status,
     get_review_status_stats,
     get_daily_counts,
+    save_split_record,
+    get_recent_split_records,
     create_workflow_run,
     get_workflow_run,
     get_latest_workflow_run,
     update_workflow_run,
 )
 from db.models import ProviderConfig, User
+from routes.upload import _serialize_split_record
+
+
+class TestSplitRecords:
+    def test_recent_records_include_original_uploaded_image(self, db):
+        original_images = [
+            {
+                "filename": "note.jpg",
+                "stored_name": "stored-note.jpg",
+                "url": "/api/image/stored-note.jpg",
+                "image_url": "/api/image/stored-note.jpg",
+                "is_image": True,
+            }
+        ]
+        save_split_record(
+            db,
+            subject="math",
+            model_provider="openai",
+            file_names=["note.jpg"],
+            questions=[{"question_id": "1"}],
+            original_images=original_images,
+        )
+
+        record = get_recent_split_records(db, limit=1)[0]
+        payload = _serialize_split_record(record)
+
+        assert payload["original_images"] == original_images
 
 
 # ═══════════════════════════════════════════════════════════
@@ -355,37 +384,37 @@ class TestQueryQuestions:
 
     def test_no_filter(self, db):
         self._seed(db)
-        qs, total = query_questions(db)
+        qs, total, _ = query_questions(db)
         assert total == 3
         assert len(qs) == 3
 
     def test_filter_by_subject(self, db):
         self._seed(db)
-        qs, total = query_questions(db, subject="高中物理")
+        qs, total, _ = query_questions(db, subject="高中物理")
         assert total == 1
         assert len(qs) == 1
 
     def test_filter_by_keyword(self, db):
         self._seed(db)
-        qs, total = query_questions(db, keyword="电场")
+        qs, total, _ = query_questions(db, keyword="电场")
         assert total == 1
 
     def test_filter_by_question_type(self, db):
         self._seed(db)
-        qs, total = query_questions(db, question_type="填空题")
+        qs, total, _ = query_questions(db, question_type="填空题")
         assert total == 1
 
     def test_combined_filters(self, db):
         self._seed(db)
-        qs, total = query_questions(db, subject="高中数学", question_type="选择题")
+        qs, total, _ = query_questions(db, subject="高中数学", question_type="选择题")
         assert total == 1
 
     def test_pagination(self, db):
         self._seed(db)
-        qs, total = query_questions(db, page=1, page_size=2)
+        qs, total, _ = query_questions(db, page=1, page_size=2)
         assert total == 3
         assert len(qs) == 2
-        qs2, _ = query_questions(db, page=2, page_size=2)
+        qs2, _, _ = query_questions(db, page=2, page_size=2)
         assert len(qs2) == 1
 
 
@@ -411,30 +440,30 @@ class TestQueryQuestionsMultiTag:
 
     def test_single_tag(self, db):
         self._seed(db)
-        qs, total = query_questions(db, knowledge_tag="导数")
+        qs, total, _ = query_questions(db, knowledge_tag="导数")
         assert total == 1
 
     def test_multi_tag_or(self, db):
         """逗号分隔多标签应返回匹配任一标签的题目"""
         self._seed(db)
-        qs, total = query_questions(db, knowledge_tag="导数,积分")
+        qs, total, _ = query_questions(db, knowledge_tag="导数,积分")
         assert total == 2
 
     def test_multi_tag_with_spaces(self, db):
         """标签前后空格应被忽略"""
         self._seed(db)
-        qs, total = query_questions(db, knowledge_tag=" 导数 , 电场 ")
+        qs, total, _ = query_questions(db, knowledge_tag=" 导数 , 电场 ")
         assert total == 2
 
     def test_multi_tag_no_match(self, db):
         self._seed(db)
-        qs, total = query_questions(db, knowledge_tag="不存在的标签")
+        qs, total, _ = query_questions(db, knowledge_tag="不存在的标签")
         assert total == 0
 
     def test_empty_after_strip(self, db):
         """只有逗号和空格时不应报错"""
         self._seed(db)
-        qs, total = query_questions(db, knowledge_tag=", ,")
+        qs, total, _ = query_questions(db, knowledge_tag=", ,")
         # tag_list 为空，不触发过滤，应返回全部
         assert total == 3
 
@@ -585,7 +614,7 @@ class TestQueryQuestionsReviewStatus:
         qs = db.query(Question).all()
         update_review_status(db, qs[0].id, "已掌握")
 
-        result, total = query_questions(db, review_status="已掌握")
+        result, total, _ = query_questions(db, review_status="已掌握")
         assert total == 1
         assert result[0].review_status == "已掌握"
 

@@ -20,7 +20,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, ChatMessage, ProviderConfig, User
+from db.models import Base, ChatMessage, ProviderConfig, SystemProviderConfig, User
 from db import crud
 from tests.conftest import make_question
 
@@ -78,11 +78,24 @@ def client(test_db):
 
 def _ensure_test_user(test_db):
     user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
-    if user:
-        return user
+    if not user:
+        user = User(id=TEST_USER_ID, username="test", email="test@test.com", password_hash="x")
+        test_db.add(user)
 
-    user = User(id=TEST_USER_ID, username="test", email="test@test.com", password_hash="x")
-    test_db.add(user)
+    provider = test_db.query(SystemProviderConfig).filter(
+        SystemProviderConfig.id == "system-openai-test"
+    ).first()
+    if not provider:
+        test_db.add(
+            SystemProviderConfig(
+                id="system-openai-test",
+                category="openai",
+                name="测试平台 OpenAI",
+                is_active=True,
+                api_key="sk-system-test",
+                model_name="gpt-4o-mini",
+            )
+        )
     test_db.commit()
     return user
 
@@ -408,6 +421,46 @@ class TestStreamChat:
         user = test_db.query(User).filter(User.id == 1).first()
         assert user.daily_free_used == 0
 
+    def test_deepseek_v4_deep_think_keeps_selected_model(self, client, test_db):
+        provider = ProviderConfig(
+            id=str(uuid.uuid4()),
+            user_id=1,
+            category="openai",
+            name="DeepSeek",
+            is_active=True,
+            api_key="sk-deepseek",
+            base_url="https://api.deepseek.com",
+            model_name="deepseek-v4-pro",
+        )
+        test_db.add(provider)
+        test_db.commit()
+
+        session = crud.create_chat_session(test_db, user_id=1)
+        captured = {}
+
+        def fake_stream_teach(**kwargs):
+            captured["model_name"] = kwargs["model_name"]
+            captured["deep_think"] = kwargs["deep_think"]
+            yield {"type": "content", "content": "深度思考回答"}
+
+        with patch("agents.teach.stream_teach", side_effect=fake_stream_teach):
+            resp = client.post(
+                f"/api/chat/{session.public_id}/stream",
+                json={
+                    "message": "请深度思考",
+                    "model_provider": "openai",
+                    "model_name": "deepseek-v4-pro",
+                    "provider_source": "personal",
+                    "provider_id": provider.id,
+                    "deep_think": True,
+                },
+            )
+
+        assert resp.status_code == 200
+        body = b"".join(resp.response).decode("utf-8")
+        assert '"done": true' in body
+        assert captured == {"model_name": "deepseek-v4-pro", "deep_think": True}
+
     def test_missing_personal_provider_returns_clear_error(self, client, test_db):
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id, user_id=1)
@@ -430,8 +483,8 @@ class TestStreamChat:
 
     def test_quota_exhausted_chat_returns_429_and_does_not_save_user_message(self, client, test_db):
         user = test_db.query(User).filter(User.id == TEST_USER_ID).first()
-        user.daily_free_quota = 5
-        user.daily_free_used = 5
+        user.daily_free_quota = 100
+        user.daily_free_used = 100
         user.daily_free_quota_date = datetime.utcnow().date().isoformat()
         test_db.commit()
 

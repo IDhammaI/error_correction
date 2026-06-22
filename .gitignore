@@ -20,16 +20,20 @@ frontend/dist/
 frontend/package-lock.json
 frontend/uploads/
 frontend/output
+presentation-vue/
 
 # 后端运行产物
 backend/runtime_data/
 backend/output/
+backend/*.db
+backend/db/*.db
 output/
 __pycache__/
 backend/static/vue/assets
 
 # 模型权重文件
 backend/models/weight/
+backend/text_eraser_model/weight/
 
 # 示例上传文件
 example_uploads/notes/
@@ -42,5 +46,7 @@ dataset/
 # 环境变量
 .env
 backend/.env
+*.pem
 PR.md
 TODO.md
+openapi.json

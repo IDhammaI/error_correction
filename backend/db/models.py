@@ -3,7 +3,7 @@
 """
 
 import uuid
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -25,7 +25,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
     session_version = Column(Integer, default=0, nullable=False)
-    daily_free_quota = Column(Integer, default=5, nullable=False)
+    daily_free_quota = Column(Integer, default=100, nullable=False)
     daily_free_used = Column(Integer, default=0, nullable=False)
     daily_free_quota_date = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -37,6 +37,75 @@ class User(Base):
     notes = relationship("Note", back_populates="user")
     workflow_runs = relationship("WorkflowRun", back_populates="user")
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    device_bindings = relationship("DeviceBinding", back_populates="user")
+    device_captures = relationship("DeviceCapture", back_populates="user")
+    quota_usage_events = relationship("QuotaUsageEvent", back_populates="user", cascade="all, delete-orphan")
+    model_selections = relationship("UserModelSelection", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserModelSelection(Base):
+    """User-level selected LLM model option."""
+    __tablename__ = "user_model_selections"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_model_selection_category"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(20), nullable=False, index=True)
+    source = Column(String(20), nullable=False)
+    provider_id = Column(String(36), nullable=False)
+    model_name = Column(String(100), nullable=False)
+    option_id = Column(String(255), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="model_selections")
+
+
+class QuotaUsageEvent(Base):
+    """额度消费事件，用于前端展示今日拆分和最近活动。"""
+    __tablename__ = "quota_usage_events"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action_type = Column(String(32), nullable=False, index=True)
+    amount = Column(Integer, default=1, nullable=False)
+    summary = Column(String(120), default="", nullable=False)
+    quota_date = Column(String(10), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", back_populates="quota_usage_events")
+
+
+class DeviceBinding(Base):
+    """Hardware camera binding owned by a user."""
+    __tablename__ = "device_bindings"
+
+    id = Column(Integer, primary_key=True)
+    device_uuid = Column(String(36), unique=True, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="device_bindings")
+    captures = relationship("DeviceCapture", back_populates="device")
+
+
+class DeviceCapture(Base):
+    """Image uploaded by a bound hardware camera."""
+    __tablename__ = "device_captures"
+
+    id = Column(Integer, primary_key=True)
+    device_uuid = Column(String(36), ForeignKey("device_bindings.device_uuid"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    file_key = Column(String(32), nullable=False, index=True)
+    original_filename = Column(String(255), nullable=False)
+    file_path = Column(Text, nullable=False)
+    content_type = Column(String(100), default="")
+    file_size = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", back_populates="device_captures")
+    device = relationship("DeviceBinding", back_populates="captures")
 
 
 class Project(Base):
@@ -145,6 +214,11 @@ class Question(Base):
     user_answer = Column(Text, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     review_status = Column(String(10), nullable=True, default='待复习', index=True)
+    review_due_at = Column(DateTime, nullable=True, index=True)
+    review_last_at = Column(DateTime, nullable=True)
+    review_interval_days = Column(Integer, default=0, nullable=False)
+    review_count = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     answer = Column(Text, nullable=True)
 
@@ -214,6 +288,7 @@ class SplitRecord(Base):
     subject = Column(String(50))
     model_provider = Column(String(20))
     file_names_json = Column(Text)
+    original_images_json = Column(Text)
     questions_json = Column(Text)
     question_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -283,6 +358,11 @@ class Note(Base):
     content_markdown = Column(Text, default="")           # LLM 整理后的 Markdown 内容
     source_images_json = Column(Text)                     # 原始上传图片路径列表 JSON
     ocr_text = Column(Text)                               # OCR 识别的原始文本（保留用于重新整理）
+    review_due_at = Column(DateTime, nullable=True, index=True)
+    review_last_at = Column(DateTime, nullable=True)
+    review_interval_days = Column(Integer, default=0, nullable=False)
+    review_count = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -302,6 +382,22 @@ class NoteTagMapping(Base):
     tag = relationship("KnowledgeTag")
 
 
+class ReviewEvent(Base):
+    """Spaced-repetition review history for questions and notes."""
+    __tablename__ = "review_events"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    target_type = Column(String(20), nullable=False, index=True)
+    target_id = Column(Integer, nullable=False, index=True)
+    rating = Column(String(20), nullable=False)
+    quality = Column(Integer, default=3, nullable=False)
+    interval_days = Column(Integer, default=0, nullable=False)
+    ease_factor = Column(Float, default=2.5, nullable=False)
+    reviewed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    next_due_at = Column(DateTime, nullable=True, index=True)
+
+
 class EmailVerification(Base):
     """注册邮箱验证码（仅存哈希，不存明文）"""
     __tablename__ = "email_verifications"
@@ -313,22 +409,3 @@ class EmailVerification(Base):
     last_sent_at = Column(DateTime, nullable=True)
     attempts = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class RagDocumentChunk(Base):
-    """RAG 文档分块（用于错题库语义检索）"""
-    __tablename__ = "rag_document_chunks"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
-    source_type = Column(String(20), nullable=False, index=True)
-    source_id = Column(Integer, nullable=False, index=True)
-    chunk_index = Column(Integer, default=0, nullable=False)
-    content = Column(Text, nullable=False)
-    metadata_json = Column(Text, default="")
-    content_hash = Column(String(64), default="", index=True)
-    embedding_model = Column(String(100), nullable=True)
-    vector_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

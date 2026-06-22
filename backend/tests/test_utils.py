@@ -1,4 +1,4 @@
-"""
+﻿"""
 utils.py 工具函数的单元测试
 
 覆盖函数：
@@ -7,7 +7,7 @@ utils.py 工具函数的单元测试
 
 import os
 import pytest
-from src.utils import prepare_input
+from pipeline.utils import prepare_input
 
 
 @pytest.fixture

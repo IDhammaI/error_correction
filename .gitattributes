@@ -1,1 +1,2 @@
 backend/models/weight/*.pth filter=lfs diff=lfs merge=lfs -text
+backend/text_eraser_model/weight/*.pth filter=lfs diff=lfs merge=lfs -text

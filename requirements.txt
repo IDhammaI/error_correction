@@ -3,8 +3,6 @@ deepagents==0.3.5
 langchain==1.2.3
 langchain-core==1.2.7
 langgraph==1.0.5
-# 注：若遇到 'ExecutionInfo' 导入错误，是因为 langgraph-prebuilt 与 langgraph 版本不匹配。
-# 已在 web_app.py 中通过 Monkeypatch 修复，或可尝试升级到 langgraph>=1.2.0
 langgraph-cli[inmem]==0.4.12
 
 # --- 模型提供商 / 适配器 ---
@@ -29,6 +27,10 @@ Pillow>=10.0.0
 pdf2image>=1.16.3
 numpy>=1.24.0
 
+# EnsExam handwriting eraser model
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.7.1+cpu
+
 # --- HTTP 请求 ---
 requests>=2.31.0
 
@@ -41,8 +43,6 @@ pydantic-settings>=2.0.0
 
 # --- 数据库 ---
 sqlalchemy>=2.0
-psycopg[binary]>=3.2.0
-pgvector>=0.3.6
 
 # --- Web 框架 ---
 flask==3.1.2

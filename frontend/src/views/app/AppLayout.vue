@@ -34,6 +34,7 @@ import SettingsView from '@/views/app/SettingsView.vue'
 import NoteView from '@/views/app/NoteView.vue'
 import ChatPage from '@/views/app/ChatPageView.vue'
 import SearchHubView from '@/views/app/SearchHubView.vue'
+import ComponentPreviewView from '@/views/app/ComponentPreviewView.vue'
 
 // ── 全局 Composables ────────────────────────────────────
 const router = useRouter()
@@ -106,13 +107,35 @@ const projectDialogSaving = ref(false)
 const deleteProjectDialogOpen = ref(false)
 const deleteProjectTarget = ref(null)
 const deleteProjectSaving = ref(false)
-const deleteCountdown = ref(0)
-let deleteTimer = null
 const projectDialogTitle = computed(() => {
   if (projectDialogMode.value === 'rename') return '重命名'
   return projectDialogType.value === 'note' ? '新建笔记本' : '新建错题库'
 })
 const projectDialogPlaceholder = computed(() => projectDialogType.value === 'note' ? '比如：语文笔记、数学公式' : '比如：数学错题、语文错题')
+const activeViewComponent = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return WorkspaceView
+  if (currentView.value === 'review') return ReviewView
+  if (currentView.value === 'dashboard') return Dashboard
+  if (currentView.value === 'error-bank') return ErrorBank
+  if (currentView.value === 'settings') return SettingsView
+  if (currentView.value === 'search-chat' || currentView.value === 'library') return SearchHubView
+  if (currentView.value === 'chat') return ChatView
+  if (currentView.value === 'notes') return NoteView
+  if (currentView.value === 'ai-chat') return ChatPage
+  if (currentView.value === 'component-preview') return ComponentPreviewView
+  return WorkspaceView
+})
+const activeViewKey = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return 'workspace'
+  return currentView.value
+})
+const activeViewProps = computed(() => {
+  if (currentView.value === 'workspace' || currentView.value === 'workspace_review') return { theme: theme.value }
+  if (currentView.value === 'settings') return { section: currentSettingsSubView.value }
+  if (currentView.value === 'search-chat') return { mode: 'chat' }
+  if (currentView.value === 'library') return { mode: 'library' }
+  return {}
+})
 const sidebarActiveProjectId = computed(() =>
   currentView.value === 'notes' ? activeNoteProjectId.value : activeQuestionProjectId.value
 )
@@ -176,7 +199,9 @@ const createRefSetter = (target) => (value) => {
   target.value = value
 }
 
-const updateCurrentSettingsSubView = setSettingsSubView
+const updateCurrentSettingsSubView = (v) => {
+  setSettingsSubView(v)
+}
 
 const updateCollapsedGroups = createRefSetter(collapsedGroups)
 const updateChatCollapsed = createRefSetter(chatCollapsed)
@@ -189,12 +214,8 @@ const updateChatListRef = createRefSetter(chatListRef)
 
 /**
  * 打开新建项目弹窗，projectType 区分错题库和笔记本。
- * 支持 onCreated 回调，创建完成后触发，参数为新建项目的 id。
  */
-let _projectDialogOnCreated = null
-
-const openProjectDialog = (projectType = 'question', onCreated = null) => {
-  _projectDialogOnCreated = typeof onCreated === 'function' ? onCreated : null
+const openProjectDialog = (projectType = 'question') => {
   projectDialogMode.value = 'create'
   projectDialogTarget.value = null
   projectDialogType.value = projectType === 'note' ? 'note' : 'question'
@@ -243,12 +264,8 @@ const handleCreateProject = async () => {
       await renameProject(projectDialogTarget.value.id, name)
       pushToast('success', '项目已重命名')
     } else {
-      const newProject = await createAndSelectProject(name, projectDialogType.value)
+      await createAndSelectProject(name, projectDialogType.value)
       pushToast('success', '项目已创建')
-      if (_projectDialogOnCreated) {
-        _projectDialogOnCreated(newProject?.id || null)
-        _projectDialogOnCreated = null
-      }
     }
     projectDialogOpen.value = false
     projectDialogName.value = ''
@@ -261,31 +278,16 @@ const handleCreateProject = async () => {
 }
 
 /**
- * 打开删除项目确认弹窗。有内容时启动 5 秒倒计时，无内容可直接删除。
+ * 打开删除项目确认弹窗。
  */
 const handleDeleteProject = async (project) => {
   if (!project || project.is_default) return
   deleteProjectTarget.value = project
   deleteProjectDialogOpen.value = true
-  const hasContent = (project.question_count || 0) > 0 || (project.note_count || 0) > 0
-  if (hasContent) {
-    deleteCountdown.value = 5
-    deleteTimer = setInterval(() => {
-      deleteCountdown.value--
-      if (deleteCountdown.value <= 0) {
-        clearInterval(deleteTimer)
-        deleteTimer = null
-      }
-    }, 1000)
-  } else {
-    deleteCountdown.value = 0
-  }
 }
 
 const closeDeleteProjectDialog = () => {
   if (deleteProjectSaving.value) return
-  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
-  deleteCountdown.value = 0
   deleteProjectDialogOpen.value = false
   deleteProjectTarget.value = null
 }
@@ -295,7 +297,7 @@ const closeDeleteProjectDialog = () => {
  */
 const confirmDeleteProject = async () => {
   const project = deleteProjectTarget.value
-  if (!project || project.is_default || deleteProjectSaving.value || deleteCountdown.value > 0) return
+  if (!project || project.is_default || deleteProjectSaving.value) return
   deleteProjectSaving.value = true
   try {
     await removeProject(project.id)
@@ -354,7 +356,6 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
   document.removeEventListener('keydown', onKeydown)
   document.removeEventListener('click', closeChatMenu)
-  if (deleteTimer) { clearInterval(deleteTimer); deleteTimer = null }
 })
 </script>
 
@@ -397,24 +398,16 @@ onBeforeUnmount(() => {
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
-      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:py-3 lg:pr-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
+      class="relative z-10 flex-1 flex flex-col overflow-hidden lg:pt-3 lg:pr-3 transition-[margin-left] duration-[var(--sidebar-transition-duration)] ease-[var(--sidebar-transition-timing)] will-change-[margin-left]"
       :class="[
         isMobile ? 'ml-0' : (sidebarMode === 'collapsed-icon' ? 'lg:ml-16' : 'lg:ml-64')
       ]">
       <!-- 原内容区 -->
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade" mode="out-in">
-          <WorkspaceView v-if="currentView === 'workspace' || currentView === 'workspace_review'" key="workspace"
-            :theme="theme" />
-          <ReviewView v-else-if="currentView === 'review'" key="review" />
-          <Dashboard v-else-if="currentView === 'dashboard'" key="dashboard" />
-          <ErrorBank v-else-if="currentView === 'error-bank'" key="error-bank" />
-          <SettingsView v-else-if="currentView === 'settings'" key="settings" :section="currentSettingsSubView" />
-          <SearchHubView v-else-if="currentView === 'search-chat'" key="search-chat" mode="chat" />
-          <SearchHubView v-else-if="currentView === 'library'" key="library" mode="library" />
-          <ChatView v-else-if="currentView === 'chat'" key="chat" />
-          <NoteView v-else-if="currentView === 'notes'" key="notes" />
-          <ChatPage v-else-if="currentView === 'ai-chat'" key="ai-chat" />
+          <KeepAlive include="WorkspaceView">
+            <component :is="activeViewComponent" :key="activeViewKey" v-bind="activeViewProps" />
+          </KeepAlive>
         </Transition>
       </div>
 
@@ -448,7 +441,7 @@ onBeforeUnmount(() => {
         @select-chat="selectAiChatFromSearch"
       />
       <BaseModal :open="projectDialogOpen" :title="projectDialogTitle" icon="fa-folder-plus" iconBg="accent-bg-soft"
-        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" :z-index="110" @close="closeProjectDialog">
+        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeProjectDialog">
         <form class="space-y-4" @submit.prevent="handleCreateProject">
           <BaseInput v-model="projectDialogName" label="名称" :placeholder="projectDialogPlaceholder" maxlength="100"
             data-project-name-input />
@@ -464,7 +457,7 @@ onBeforeUnmount(() => {
         </template>
       </BaseModal>
       <BaseModal :open="deleteProjectDialogOpen" title="删除项目" icon="fa-trash" iconBg="bg-rose-50 dark:bg-rose-500/10"
-        iconClass="text-rose-600 dark:text-rose-300" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1"
+        iconClass="text-rose-600 dark:text-rose-300" maxWidth="max-w-[28rem]" bodyClass="px-6 py-3"
         @close="closeDeleteProjectDialog">
         <div class="space-y-3 text-sm text-slate-600 dark:text-[#aeb6c2]">
           <p>
@@ -472,15 +465,15 @@ onBeforeUnmount(() => {
             }}</span>”吗？
           </p>
           <p class="text-xs text-slate-400 dark:text-[#737b86]">
-            项目内的所有错题将一并删除，且不可恢复。
+            删除后会一并删除项目里的题目、笔记和复习记录；默认项目不能删除。
           </p>
         </div>
         <template #footer>
           <BaseButton variant="secondary" size="sm" :disabled="deleteProjectSaving" @click="closeDeleteProjectDialog">
             取消
           </BaseButton>
-          <BaseButton variant="primary" size="sm" :disabled="deleteProjectSaving || deleteCountdown > 0" @click="confirmDeleteProject">
-            {{ deleteProjectSaving ? '删除中...' : deleteCountdown > 0 ? `删除 (${deleteCountdown}s)` : '删除' }}
+          <BaseButton variant="primary" size="sm" :disabled="deleteProjectSaving" @click="confirmDeleteProject">
+            {{ deleteProjectSaving ? '删除中...' : '删除' }}
           </BaseButton>
         </template>
       </BaseModal>
