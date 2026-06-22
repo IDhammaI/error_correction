@@ -49,3 +49,4 @@ backend/.env
 *.pem
 PR.md
 TODO.md
+openapi.json
