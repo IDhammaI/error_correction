@@ -136,7 +136,7 @@ cd frontend && npm test
 
 ## 项目规则
 
-项目规则集中维护在 [rules/项目规则索引.md](rules/项目规则索引.md)。
+项目规则集中维护在 [AGENTS.md](AGENTS.md)。
 
 - `rules/development/`：架构、前端、后端、测试和代码注释规则
 - `rules/workflow/`：提交、协作、同步、启动、环境和测试构建规则
